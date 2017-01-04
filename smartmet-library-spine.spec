@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 16.11.30
+Version: 17.1.4
 Release: 1%{?dist}.fmi
 License: FMI
 Group: BrainStorm/Development
@@ -11,8 +11,8 @@ URL: http://www.weatherproof.fi
 Source0: %{name}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: boost-devel
-BuildRequires: libsmartmet-newbase-devel >= 16.11.18
-BuildRequires: libsmartmet-macgyver-devel >= 16.9.30
+BuildRequires: smartmet-library-newbase-devel >= 16.12.19
+BuildRequires: smartmet-library-macgyver-devel >= 16.12.20
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -26,8 +26,8 @@ BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
 BuildRequires: netcdf-devel
-Requires: libsmartmet-newbase >= 16.11.18
-Requires: libsmartmet-macgyver >= 16.9.30
+Requires: smartmet-library-newbase >= 16.12.19
+Requires: smartmet-library-macgyver >= 16.12.20
 Requires: smartmet-timezones >= 16.11.14
 Requires: mariadb-libs
 Requires: boost-filesystem
@@ -84,6 +84,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Jan  4 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.1.4-1.fmi
+- Updated newbase and macgyver dependencies
+
 * Wed Nov 30 2016 Mika Heiskanen <mika.heiskanen@fmi.fi> - 16.11.30-1.fmi
 - Added stack trace print if init() fails
 

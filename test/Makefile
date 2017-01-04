@@ -15,7 +15,7 @@ CFLAGS = -DUNIX -O0 -g $(MAINFLAGS)
 INCLUDES = -I ../include -I /usr/include/smartmet `pkg-config --cflags jsoncpp`
 LIBS = -L .. \
 	../libsmartmet-spine.so \
-	-lsmartmet_macgyver \
+	-lsmartmet-macgyver \
 	`pkg-config --libs jsoncpp` \
 	`pkg-config --libs libconfig++` \
 	-lboost_filesystem \

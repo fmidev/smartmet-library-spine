@@ -85,8 +85,8 @@ endif
 # Common library compiling template
 
 LIBS =	-L$(libdir) \
-	-lsmartmet_newbase \
-	-lsmartmet_macgyver \
+	-lsmartmet-newbase \
+	-lsmartmet-macgyver \
 	-L$(libdir)/mysql -lmysqlclient_r \
 	-lboost_filesystem \
 	-lboost_regex \
