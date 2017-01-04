@@ -25,7 +25,6 @@ BuildRequires: glibc-devel
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-BuildRequires: netcdf-devel
 Requires: smartmet-library-newbase >= 16.12.19
 Requires: smartmet-library-macgyver >= 16.12.20
 Requires: smartmet-timezones >= 16.11.14
