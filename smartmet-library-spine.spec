@@ -83,6 +83,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Upcoming
+- Added header FmiApiKey.h (function FmiApiKey::getFmiApiKey()) for extracting request apikey
+
 * Wed Jan  4 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.1.4-1.fmi
 - Updated newbase and macgyver dependencies
 
