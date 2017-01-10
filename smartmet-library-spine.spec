@@ -3,15 +3,15 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.1.4
+Version: 17.1.10
 Release: 1%{?dist}.fmi
-License: FMI
+License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
 Source0: %{name}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 16.12.19
+BuildRequires: smartmet-library-newbase-devel >= 17.1.10
 BuildRequires: smartmet-library-macgyver-devel >= 16.12.20
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
@@ -25,7 +25,7 @@ BuildRequires: glibc-devel
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 16.12.19
+Requires: smartmet-library-newbase >= 17.1.10
 Requires: smartmet-library-macgyver >= 16.12.20
 Requires: smartmet-timezones >= 16.11.14
 Requires: mariadb-libs
@@ -83,7 +83,7 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
-* Upcoming
+* Tue Jan 10 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.1.10-1.fmi
 - Added header FmiApiKey.h (function FmiApiKey::getFmiApiKey()) for extracting request apikey
 
 * Wed Jan  4 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.1.4-1.fmi
