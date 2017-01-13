@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.1.10
+Version: 17.1.12
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -83,6 +83,10 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Fri Jan 13 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.1.12-1.fmi
+- Improved debug-mode html output
+- Valid html5 output in debug-mode
+
 * Tue Jan 10 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.1.10-1.fmi
 - Added header FmiApiKey.h (function FmiApiKey::getFmiApiKey()) for extracting request apikey
 
