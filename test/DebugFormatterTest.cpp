@@ -41,9 +41,10 @@ void basic()
       tab.set(i, j, tostr(10 * i + j));
 
   const char* res =
-      "<html><head><title>Debug mode output</title><style>table { border: 1px solid black; }td { "
-      "border: 1px solid black; "
-      "text-align:right;}</style></head><body><table><tr><th>col0</th><th>col1</th><th>col2</"
+      "<!DOCTYPE html><html><head><title>Debug mode output</title><style>table {border-collapse: "
+      "collapse;}th, td {border-bottom: 1px solid black; padding: 3px 0.5em 3px 0.5em; text-align: "
+      "center;}tr:nth-child(even) {background-color: #f2f2f2;}tr:hover {background-color: "
+      "#e2e2e2;}</style>\n</head><body>\n<table><tr><th>col0</th><th>col1</th><th>col2</"
       "th><th>col3</th></tr><tr>\n<td>0</td><td>10</td><td>20</td><td>30</td></tr><tr>\n<td>1</"
       "td><td>11</td><td>21</td><td>31</td></tr><tr>\n<td>2</td><td>12</td><td>22</td><td>32</td></"
       "tr><tr>\n<td>3</td><td>13</td><td>23</td><td>33</td></tr></table></body></html>";
@@ -77,9 +78,10 @@ void empty()
   fmt.format(out, tab, names, req, config);
 
   if (out.str() !=
-      "<html><head><title>Debug mode output</title><style>table { border: 1px solid black; }td { "
-      "border: 1px solid black; "
-      "text-align:right;}</style></head><body><table><tr></tr></table></body></html>")
+      "<!DOCTYPE html><html><head><title>Debug mode output</title><style>table {border-collapse: "
+      "collapse;}th, td {border-bottom: 1px solid black; padding: 3px 0.5em 3px 0.5em; text-align: "
+      "center;}tr:nth-child(even) {background-color: #f2f2f2;}tr:hover {background-color: "
+      "#e2e2e2;}</style>\n</head><body>\n<table><tr></tr></table></body></html>")
     TEST_FAILED("Incorrect result:\n" + out.str());
 
   TEST_PASSED();
