@@ -63,12 +63,17 @@ void DebugFormatter::format(std::ostream& theOutput,
     const Table::Indexes cols = theTable.columns();
     const Table::Indexes rows = theTable.rows();
 
-    theOutput << "<html><head><title>Debug mode output</title>"
+    theOutput << "<!DOCTYPE html><html><head><title>Debug mode output</title>"
               << "<style>"
-              << "table { border: 1px solid black; }"
-              << "td { border: 1px solid black; text-align:right;}"
+              << "table {border-collapse: collapse;}"
+              << "th, td {border-bottom: 1px solid black; padding: 3px 0.5em 3px 0.5em; "
+              << "text-align: center;}"
+              << "tr:nth-child(even) {background-color: #f2f2f2;}"
+              << "tr:hover {background-color: #e2e2e2;}"
               << "</style>"
-              << "</head><body>";
+              << std::endl
+              << "</head><body>"
+              << std::endl;
 
     // Output headers
 
