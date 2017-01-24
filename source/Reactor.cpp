@@ -99,7 +99,7 @@ Reactor::Reactor(Options& options)
     {
       std::cout << ANSI_ITALIC_ON << "+ SmartMet Server "
                 << "(compiled on " __DATE__ " " __TIME__ ")" << std::endl
-                << "  Copyright (c) Commercial Services of Finnish Meteorological Institute"
+                << "  Copyright (c) Finnish Meteorological Institute"
                 << ANSI_ITALIC_OFF << std::endl
                 << std::endl;
     }
