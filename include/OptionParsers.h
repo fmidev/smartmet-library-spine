@@ -27,8 +27,6 @@ class ParameterOptions
   void add(const Parameter& theParam);
   void add(const Parameter& theParam, const ParameterFunctions& theParamFunctions);
 
-  friend std::ostream& operator<<(std::ostream& out, const ParameterOptions& options);
-
  private:
   ParameterList itsParameters;
   ParameterFunctionList itsParameterFunctions;
@@ -37,7 +35,6 @@ class ParameterOptions
 
 ParameterOptions parseParameters(const HTTP::Request& theReq);
 TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq);
-std::ostream& operator<<(std::ostream& out, const ParameterOptions& options);
 
 }  // namespace OptionParsers
 }  // namespace Spine

@@ -10,7 +10,6 @@
 #include <macgyver/String.h>
 #include <stdexcept>
 #include <boost/algorithm/string.hpp>
-#include <prettyprint.hpp>
 
 using namespace std;
 

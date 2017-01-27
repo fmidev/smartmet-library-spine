@@ -9,7 +9,6 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
-#include <prettyprint.hpp>
 
 namespace SmartMet
 {

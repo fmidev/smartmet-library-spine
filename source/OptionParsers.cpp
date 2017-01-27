@@ -4,7 +4,6 @@
 #include <macgyver/String.h>
 #include <boost/date_time/posix_time/ptime.hpp>
 
-#include <prettyprint.hpp>
 #include <stdexcept>
 
 const int default_timestep = 60;
@@ -25,13 +24,6 @@ void ParameterOptions::add(const Parameter& theParam, const ParameterFunctions& 
 {
   itsParameters.push_back(theParam);
   itsParameterFunctions.push_back(ParameterAndFunctions(theParam, theParamFunctions));
-}
-
-std::ostream& operator<<(std::ostream& out, const ParameterOptions& options)
-{
-  out << "parameters =\t" << options.itsParameters << "\n"
-      << "functions =\t" << options.itsParameterFunctions << "\n";
-  return out;
 }
 
 ParameterOptions parseParameters(const HTTP::Request& theReq)
