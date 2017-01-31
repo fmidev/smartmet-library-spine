@@ -33,7 +33,7 @@ boost::optional<std::string> getFmiApiKey(const HTTP::Request& theRequest,
       apikey = theRequest.getParameter("fmi-apikey");
 
       if (!apikey && checkAccessToken)
-        apikey = theRequest.getHeader("access-token");
+        apikey = theRequest.getParameter("access-token");
     }
 
     return apikey;
