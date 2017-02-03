@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.1.24
+Version: 17.2.3
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -83,6 +83,12 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Fri Feb  3 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.2.3-1.fmi
+- Fixed plugin base to flush error messages before exit
+
+* Wed Feb  1 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.2.1-1.fmi
+- FmiApiKey implementation refactored
+
 * Tue Jan 24 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.1.24-1.fmi
 - Added flushing of stdout to make sure the stack trace is printed if an engine is terminated
 
