@@ -12,7 +12,7 @@ DIFFICULTFLAGS = -Weffc++ -Wunreachable-code -Wredundant-decls
 
 CC = g++
 CFLAGS = -DUNIX -O0 -g $(MAINFLAGS)
-INCLUDES = -I ../include -I /usr/include/smartmet `pkg-config --cflags jsoncpp`
+INCLUDES = -I ../spine -I /usr/include/smartmet `pkg-config --cflags jsoncpp`
 LIBS = -L .. \
 	../libsmartmet-spine.so \
 	-lsmartmet-macgyver \

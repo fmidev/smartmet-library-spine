@@ -116,15 +116,15 @@ INSTALL_DATA = install -p -m 664
 
 # Compilation directories
 
-vpath %.cpp source
-vpath %.h include
+vpath %.cpp $(SUBNAME)
+vpath %.h $(SUBNAME)
 vpath %.o $(objdir)
 
 # The files to be compiled
 
-SRCS = $(wildcard source/*.cpp)
-HDRS = $(wildcard include/*.h)
-OBJS = $(patsubst source/%.cpp,obj/%.o,$(SRCS))
+SRCS = $(wildcard $(SUBNAME)/*.cpp)
+HDRS = $(wildcard $(SUBNAME)/*.h)
+OBJS = $(patsubst $(SUBNAME)/%.cpp,obj/%.o,$(SRCS))
 
 INCLUDES := -Iinclude $(INCLUDES)
 
@@ -141,10 +141,10 @@ $(LIBFILE): $(OBJS)
 	$(CXX) $(CFLAGS) -shared -rdynamic -o $(LIBFILE) $(OBJS) $(LIBS)
 
 clean:
-	rm -f $(LIBFILE) $(OBJS) $(patsubst obj/%.o,obj/%.d,$(OBJS)) *~ source/*~ include/*~
+	rm -f $(LIBFILE) $(OBJS) $(patsubst obj/%.o,obj/%.d,$(OBJS)) *~ $(SUBNAME)/*~
 
 format:
-	clang-format -i -style=file include/*.h source/*.cpp test/*.cpp
+	clang-format -i -style=file $(SUBNAME)/*.h $(SUBNAME)/*.cpp test/*.cpp
 
 install:
 	@mkdir -p $(includedir)/$(INCDIR)
