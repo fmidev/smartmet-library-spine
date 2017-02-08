@@ -69,7 +69,7 @@ rm -rf $RPM_BUILD_ROOT
 make %{_smp_mflags}
 
 %install
-%makeinstall includedir=%{buildroot}%{_includedir}
+%makeinstall
 
 %clean
 # rm -rf $RPM_BUILD_ROOT
