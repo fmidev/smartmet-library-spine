@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.2.3
+Version: 17.3.13
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -11,8 +11,8 @@ URL: https://github.com/fmidev/smartmet-library-spine
 Source0: %{name}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 17.1.10
-BuildRequires: smartmet-library-macgyver-devel >= 16.12.20
+BuildRequires: smartmet-library-newbase-devel >= 17.3.9
+BuildRequires: smartmet-library-macgyver-devel >= 17.2.22
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -25,9 +25,9 @@ BuildRequires: glibc-devel
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 17.1.10
-Requires: smartmet-library-macgyver >= 16.12.20
-Requires: smartmet-timezones >= 16.11.14
+Requires: smartmet-library-newbase >= 17.3.9
+Requires: smartmet-library-macgyver >= 17.2.22
+Requires: smartmet-timezones >= 17.3.6
 Requires: mariadb-libs
 Requires: boost-filesystem
 Requires: boost-iostreams
@@ -83,6 +83,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon Mar 13 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.3.13-1.fmi
+- Recompiled with latest newbase and macgyver
+
 * Fri Feb  3 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.2.3-1.fmi
 - Fixed plugin base to flush error messages before exit
 
