@@ -1,5 +1,5 @@
 #include <iostream>
-#include <macgyver/String.h>
+#include <macgyver/StringConversion.h>
 #include <boost/test/included/unit_test.hpp>
 #include "Exception.h"
 #include "Value.h"
