@@ -1,7 +1,7 @@
 #include "PostGISDataSource.h"
 #include "Exception.h"
 
-#include <macgyver/String.h>
+#include <macgyver/StringConversion.h>
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/case_conv.hpp>

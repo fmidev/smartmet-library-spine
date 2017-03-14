@@ -2,7 +2,7 @@
 #include "Reactor.h"
 #include "Exception.h"
 
-#include <macgyver/String.h>
+#include <macgyver/StringConversion.h>
 
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>

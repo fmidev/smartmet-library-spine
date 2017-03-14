@@ -2,7 +2,7 @@
 #include "FileCache.h"
 #include "HTTP.h"
 #include "Exception.h"
-#include <macgyver/String.h>
+#include <macgyver/StringConversion.h>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/foreach.hpp>
 #include <boost/regex.hpp>

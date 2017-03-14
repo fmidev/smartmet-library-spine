@@ -6,7 +6,7 @@
 
 #include "TimeSeriesGeneratorOptions.h"
 #include "Exception.h"
-#include <macgyver/String.h>
+#include <macgyver/StringConversion.h>
 #include <boost/functional/hash.hpp>
 
 namespace SmartMet

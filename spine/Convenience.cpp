@@ -7,7 +7,7 @@
 #include "Convenience.h"
 #include "Exception.h"
 #include "ValueFormatter.h"
-#include <macgyver/String.h>
+#include <macgyver/StringConversion.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <string>

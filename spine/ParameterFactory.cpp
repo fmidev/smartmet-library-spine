@@ -7,7 +7,7 @@
 #include "ParameterFactory.h"
 #include "Convenience.h"
 #include "Exception.h"
-#include <macgyver/String.h>
+#include <macgyver/StringConversion.h>
 #include <stdexcept>
 #include <boost/algorithm/string.hpp>
 

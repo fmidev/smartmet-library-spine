@@ -3,7 +3,7 @@
 
 #include <newbase/NFmiGlobals.h>
 
-#include <macgyver/String.h>
+#include <macgyver/StringConversion.h>
 
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/copy.hpp>

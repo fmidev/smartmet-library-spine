@@ -17,7 +17,7 @@
 #include "Convenience.h"
 #endif
 
-#include <macgyver/String.h>
+#include <macgyver/StringConversion.h>
 
 #include <mysql.h>
 

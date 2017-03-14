@@ -1,7 +1,7 @@
 #include "HTTP.h"
 #include "HTTPParsers.h"
 #include "Exception.h"
-#include <macgyver/String.h>
+#include <macgyver/StringConversion.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/foreach.hpp>
 #include <boost/shared_array.hpp>

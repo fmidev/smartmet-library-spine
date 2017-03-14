@@ -1,7 +1,7 @@
 #include "OptionParsers.h"
 #include "Convenience.h"
 #include "Exception.h"
-#include <macgyver/String.h>
+#include <macgyver/StringConversion.h>
 #include <boost/date_time/posix_time/ptime.hpp>
 
 #include <stdexcept>

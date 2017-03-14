@@ -9,7 +9,7 @@
 #include "Table.h"
 #include "TableFormatterOptions.h"
 #include "Convenience.h"
-#include <macgyver/String.h>
+#include <macgyver/StringConversion.h>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/foreach.hpp>
 #include <boost/math/special_functions/fpclassify.hpp>

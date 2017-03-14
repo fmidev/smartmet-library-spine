@@ -5,7 +5,7 @@
 // ======================================================================
 #pragma once
 
-#include <macgyver/String.h>
+#include <macgyver/StringConversion.h>
 #include <macgyver/TimeParser.h>
 
 #include <boost/date_time/posix_time/posix_time.hpp>

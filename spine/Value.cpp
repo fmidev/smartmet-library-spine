@@ -1,7 +1,7 @@
 #include "Value.h"
 #include "Exception.h"
 #include "ConfigBase.h"
-#include <macgyver/String.h>
+#include <macgyver/StringConversion.h>
 #include <macgyver/TimeParser.h>
 #include <macgyver/TypeName.h>
 #include <boost/algorithm/string.hpp>

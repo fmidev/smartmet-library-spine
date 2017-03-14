@@ -1,6 +1,6 @@
 #include "Location.h"
 #include "Exception.h"
-#include <macgyver/String.h>
+#include <macgyver/StringConversion.h>
 #include <cmath>
 #include <sstream>
 
