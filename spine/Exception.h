@@ -80,6 +80,12 @@ class Exception : public std::exception
   std::string getStackTrace() const;
   std::string getHtmlStackTrace() const;
 
+  bool loggingDisabled() const;
+  bool stackTraceDisabled() const;
+
+  void disableLogging();
+  void disableStackTrace();
+
  protected:
   TimeStamp timestamp;
   std::string filename;
@@ -89,6 +95,8 @@ class Exception : public std::exception
   Exception* prevException;
   ParameterVector parameterVector;
   DetailVector detailVector;
+  bool mLoggingDisabled = false;
+  bool mStackTraceDisabled = false;
 };
 
 #define BCP __FILE__, __LINE__, __PRETTY_FUNCTION__

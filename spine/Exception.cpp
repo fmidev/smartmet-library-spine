@@ -14,18 +14,21 @@ Exception::Exception()
   prevException = nullptr;
 }
 
-Exception::Exception(const Exception& _exception)
+Exception::Exception(const Exception& other)
 {
-  timestamp = _exception.timestamp;
-  filename = _exception.filename;
-  line = _exception.line;
-  function = _exception.function;
-  message = _exception.message;
-  detailVector = _exception.detailVector;
-  parameterVector = _exception.parameterVector;
+  timestamp = other.timestamp;
+  filename = other.filename;
+  line = other.line;
+  function = other.function;
+  message = other.message;
+  detailVector = other.detailVector;
+  parameterVector = other.parameterVector;
   prevException = nullptr;
-  if (_exception.prevException != nullptr)
-    prevException = new Exception(*_exception.prevException);
+  mStackTraceDisabled = other.mStackTraceDisabled;
+  mLoggingDisabled = other.mLoggingDisabled;
+
+  if (other.prevException != nullptr)
+    prevException = new Exception(*other.prevException);
 }
 
 Exception::Exception(const char* _filename,
@@ -53,6 +56,9 @@ Exception::Exception(const char* _filename,
     catch (SmartMet::Spine::Exception& e)
     {
       prevException = new Exception(e);
+      // Propagate the flags to the top
+      mStackTraceDisabled = e.mStackTraceDisabled;
+      mLoggingDisabled = e.mLoggingDisabled;
     }
     catch (std::out_of_range& e)
     {
@@ -287,8 +293,31 @@ unsigned int Exception::getParameterCount() const
   return static_cast<unsigned int>(parameterVector.size());
 }
 
+bool Exception::loggingDisabled() const
+{
+  return mLoggingDisabled;
+}
+
+bool Exception::stackTraceDisabled() const
+{
+  return mStackTraceDisabled;
+}
+
+void Exception::disableLogging()
+{
+  mLoggingDisabled = true;
+}
+
+void Exception::disableStackTrace()
+{
+  mStackTraceDisabled = true;
+}
+
 std::string Exception::getStackTrace() const
 {
+  if (mLoggingDisabled || mStackTraceDisabled)
+    return "";
+
   std::ostringstream out;
 
   const Exception* e = this;
@@ -338,6 +367,8 @@ std::string Exception::getStackTrace() const
 
 std::string Exception::getHtmlStackTrace() const
 {
+  // This is used only when debugging, hence mStackTraceDisabled is ignored
+
   std::ostringstream out;
 
   out << "<html><body>"

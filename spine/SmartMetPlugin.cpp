@@ -61,7 +61,12 @@ void SmartMetPlugin::initPlugin()
   catch (...)
   {
     SmartMet::Spine::Exception exception(BCP, "Plugin initialization failed!", NULL);
-    std::cerr << exception.getStackTrace() << std::endl;
+
+    if (!exception.stackTraceDisabled())
+      std::cerr << exception.getStackTrace();
+    else if (!exception.loggingDisabled())
+      std::cerr << "Error: " << exception.what() << std::endl;
+
     // Will terminate the program
     throw exception;
   }
