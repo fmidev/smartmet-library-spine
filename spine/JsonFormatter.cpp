@@ -13,6 +13,7 @@
 #include <boost/foreach.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <algorithm>
+#include <iomanip>
 #include <iostream>
 #include <list>
 #include <set>
@@ -23,6 +24,31 @@ namespace Spine
 {
 namespace
 {
+// ----------------------------------------------------------------------
+/*!
+ * \brief Encode a JSON string
+ *
+ * Ref: http://stackoverflow.com/questions/7724448/simple-json-string-escape-for-c
+ */
+// ----------------------------------------------------------------------
+
+void escape_json(std::ostream& out, const std::string& s)
+{
+  out << '"';
+  for (auto c = s.cbegin(); c != s.cend(); c++)
+  {
+    if (*c == '"' || *c == '\\' || ('\x00' <= *c && *c <= '\x1f'))
+    {
+      out << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(*c);
+    }
+    else
+    {
+      out << *c;
+    }
+  }
+  out << '"';
+}
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Test if string looks like a number
@@ -146,7 +172,7 @@ void format_recursively(std::ostream& theOutput,
           else if (looks_number(value))
             theOutput << value;
           else
-            theOutput << '"' << value << '"';
+            escape_json(theOutput, value);
         }
         theOutput << "}";
       }

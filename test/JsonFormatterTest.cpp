@@ -158,6 +158,41 @@ void empty()
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Test escaping
+ */
+// ----------------------------------------------------------------------
+
+void escaping()
+{
+  SmartMet::Spine::Table tab;
+  SmartMet::Spine::TableFormatter::Names names;
+  names.push_back("newline");
+  names.push_back("control chars");
+  names.push_back("quotation mark");
+  names.push_back("backslash");
+
+  tab.set(0, 0, "abc\ndef");
+  tab.set(1, 0, "\x01\x02\x03...\x1e\x1f\x20\x21\x22\x23\x24\x25\x25\x27");
+  tab.set(2, 0, "\"\"\"");
+  tab.set(3, 0, "\\\\\\");
+
+  const char* res =
+      R"([{"newline":"abc\u000adef","control chars":"\u0001\u0002\u0003...\u001e\u001f !\u0022#$%%'","quotation mark":"\u0022\u0022\u0022","backslash":"\u005c\u005c\u005c"}])";
+
+  SmartMet::Spine::HTTP::Request req;
+
+  SmartMet::Spine::JsonFormatter fmt;
+  std::ostringstream out;
+  fmt.format(out, tab, names, req, config);
+
+  if (out.str() != res)
+    TEST_FAILED("Incorrect result:\n" + out.str() + "\nexpected:\n" + res);
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+/*!
  * The actual test suite
  */
 // ----------------------------------------------------------------------
@@ -171,6 +206,7 @@ class tests : public tframe::tests
     TEST(oneattribute);
     TEST(twoattributes);
     TEST(empty);
+    TEST(escaping);
     // TEST(missingtext);
   }
 };

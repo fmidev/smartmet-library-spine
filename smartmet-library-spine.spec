@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.3.15
+Version: 17.3.16
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -83,6 +83,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu Mar 16 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.3.16-1.fmi
+- Fixed JsonFormatter to escape the characters required by the RFC
+
 * Wed Mar 15 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.3.15-1.fmi
 - Added logging and stack trace modes to Exception class
 
