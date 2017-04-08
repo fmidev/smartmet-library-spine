@@ -12,10 +12,10 @@ namespace SmartMet
 {
 namespace Spine
 {
-typedef boost::posix_time::ptime TimeStamp;
+using TimeStamp = boost::posix_time::ptime;
 typedef std::vector<std::pair<std::string, std::string>> ParameterVector;
-typedef std::vector<std::string> DetailVector;
-typedef std::list<std::string> DetailList;
+using DetailVector = std::vector<std::string>;
+using DetailList = std::list<std::string>;
 
 class Exception : public std::exception
 {
@@ -38,7 +38,7 @@ class Exception : public std::exception
             Exception* _prevException);
 
   // Destructor
-  virtual ~Exception();
+  ~Exception() override;
 
   // The following methods can be used for adding some additional information
   // related to the current exception.
@@ -53,7 +53,7 @@ class Exception : public std::exception
 
   void addParameter(const char* _name, std::string _value);
 
-  const char* what() const noexcept(true);
+  const char* what() const noexcept(true) override;
   const char* getWhat() const noexcept(true);
 
   std::string getFilename() const;
@@ -85,6 +85,8 @@ class Exception : public std::exception
 
   void disableLogging();
   void disableStackTrace();
+
+  void printError() const;
 
  protected:
   TimeStamp timestamp;

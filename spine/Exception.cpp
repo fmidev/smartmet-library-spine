@@ -1,7 +1,8 @@
 #include "Exception.h"
+#include <macgyver/AnsiEscapeCodes.h>
+#include <spine/Convenience.h>
 #include <iostream>
 #include <sstream>
-#include <macgyver/AnsiEscapeCodes.h>
 
 namespace SmartMet
 {
@@ -414,6 +415,20 @@ std::string Exception::getHtmlStackTrace() const
   out << "</body></html>";
 
   return out.str();
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Print the exception error report while obeying the user settings
+ */
+// ----------------------------------------------------------------------
+
+void Exception::printError() const
+{
+  if (!stackTraceDisabled())
+    std::cout << getStackTrace() << std::flush;
+  else
+    std::cout << Spine::log_time_str() << " Error: " << what() << std::endl;
 }
 
 }  // namespace Spine
