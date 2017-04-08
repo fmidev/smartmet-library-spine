@@ -426,9 +426,9 @@ std::string Exception::getHtmlStackTrace() const
 void Exception::printError() const
 {
   if (!stackTraceDisabled())
-    std::cout << getStackTrace() << std::flush;
+    std::cerr << getStackTrace() << std::flush;
   else
-    std::cout << Spine::log_time_str() << " Error: " << what() << std::endl;
+    std::cerr << Spine::log_time_str() << " Error: " << what() << std::endl;
 }
 
 }  // namespace Spine
