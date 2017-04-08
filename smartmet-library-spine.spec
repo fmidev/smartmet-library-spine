@@ -4,7 +4,7 @@
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
 Version: 17.4.8
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -87,6 +87,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Sat Apr  8 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.4.8-2.fmi
+- Exception::addParameter, addDetail and addDetails now return this to enable chaining
+
 * Sat Apr  8 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.4.8-1.fmi
 - Added Exception::printError to simplify printing error messages with time stamps, stack traces etc
 

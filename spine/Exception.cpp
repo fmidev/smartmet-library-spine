@@ -209,23 +209,27 @@ void Exception::setTimeStamp(TimeStamp _timestamp)
   timestamp = _timestamp;
 }
 
-void Exception::addDetail(std::string _detailStr)
+Exception& Exception::addDetail(std::string _detailStr)
 {
   detailVector.push_back(_detailStr);
+  return *this;
 }
 
-void Exception::addDetails(const DetailList& _detailList)
+Exception& Exception::addDetails(const DetailList& _detailList)
 {
   auto begin = _detailList.begin();
   auto end = _detailList.end();
 
   while (begin != end)
     addDetail(*begin++);
+
+  return *this;
 }
 
-void Exception::addParameter(const char* _name, std::string _value)
+Exception& Exception::addParameter(const char* _name, std::string _value)
 {
   parameterVector.push_back(std::make_pair(std::string(_name), _value));
+  return *this;
 }
 
 const char* Exception::getDetailByIndex(unsigned int _index) const

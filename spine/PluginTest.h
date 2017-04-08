@@ -19,8 +19,8 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/bind.hpp>
-#include <boost/foreach.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/foreach.hpp>
 #include <boost/range/iterator_range.hpp>
 
 #include <algorithm>
@@ -172,10 +172,9 @@ void add_to_path_list(fs::directory_entry& entry,
 
         if (dest->size() >= max_files)
         {
-          SmartMet::Spine::Exception exception(BCP, "Too many files!");
-          exception.addParameter("Files", std::to_string(dest->size()));
-          exception.addParameter("Max files", std::to_string(max_files));
-          throw exception;
+          throw SmartMet::Spine::Exception(BCP, "Too many files!")
+              .addParameter("Files", std::to_string(dest->size()))
+              .addParameter("Max files", std::to_string(max_files));
         }
 
         if (std::accumulate(it1, curr_parts.end(), true, &check_path))
