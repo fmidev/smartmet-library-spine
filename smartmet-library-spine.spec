@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.3.16
+Version: 17.4.8
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -87,6 +87,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Sat Apr  8 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.4.8-1.fmi
+- Added Exception::printError to simplify printing error messages with time stamps, stack traces etc
+
 * Thu Mar 16 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.3.16-1.fmi
 - Fixed JsonFormatter to escape the characters required by the RFC
 
@@ -124,7 +127,7 @@ make %{_smp_mflags}
 * Tue Nov 29 2016 Mika Heiskanen <mika.heiskanen@fmi.fi> - 16.11.29-1.fmi
 - Fixed the default crs value of BoundingBox.
 
-* Tue Nov  19 2016 Mika Heiskanen <mika.heiskanen@fmi.fi> - 16.11.1-1.fmi
+* Tue Nov  1 2016 Mika Heiskanen <mika.heiskanen@fmi.fi> - 16.11.1-1.fmi
 - Namespace changed.
 - Derive Exception from std::exception
 
