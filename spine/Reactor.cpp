@@ -5,12 +5,12 @@
 // ======================================================================
 
 #include "Reactor.h"
-#include "SmartMet.h"
-#include "SmartMetEngine.h"
-#include "Options.h"
-#include "Names.h"
 #include "DynamicPlugin.h"
 #include "Exception.h"
+#include "Names.h"
+#include "Options.h"
+#include "SmartMet.h"
+#include "SmartMetEngine.h"
 
 // sleep?t=n queries only in debug mode
 #ifndef NDEBUG
@@ -99,8 +99,8 @@ Reactor::Reactor(Options& options)
     {
       std::cout << ANSI_ITALIC_ON << "+ SmartMet Server "
                 << "(compiled on " __DATE__ " " __TIME__ ")" << std::endl
-                << "  Copyright (c) Finnish Meteorological Institute"
-                << ANSI_ITALIC_OFF << std::endl
+                << "  Copyright (c) Finnish Meteorological Institute" << ANSI_ITALIC_OFF
+                << std::endl
                 << std::endl;
     }
 
@@ -145,8 +145,8 @@ Reactor::Reactor(Options& options)
 
         std::string name = settings.getName();
         std::string defaultfile = enginedir + "/" + name + ".so";
-        std::string libfile = itsOptions.itsConfig->get_optional_config_param(
-            "engines." + name + ".libfile", defaultfile);
+        std::string libfile =
+            itsOptions.itsConfig->get_optional_path("engines." + name + ".libfile", defaultfile);
 
         loadEngine(libfile, itsOptions.verbose);
       }
@@ -179,8 +179,8 @@ Reactor::Reactor(Options& options)
 
         std::string name = settings.getName();
         std::string defaultfile = plugindir + "/" + name + ".so";
-        std::string libfile = itsOptions.itsConfig->get_optional_config_param(
-            "plugins." + name + ".libfile", defaultfile);
+        std::string libfile =
+            itsOptions.itsConfig->get_optional_path("plugins." + name + ".libfile", defaultfile);
 
         addPlugin(libfile, itsOptions.verbose);
       }
@@ -564,8 +564,8 @@ bool Reactor::addPlugin(const std::string& theFilename, bool verbose)
       return false;
     }
 
-    std::string configfile = itsOptions.itsConfig->get_optional_config_param(
-        "plugins." + pluginname + ".configfile", "");
+    std::string configfile =
+        itsOptions.itsConfig->get_optional_path("plugins." + pluginname + ".configfile", "");
     if (configfile != "")
       absolutize_path(configfile);
 
@@ -783,8 +783,8 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
       return false;
     }
 
-    std::string configfile = itsOptions.itsConfig->get_optional_config_param<std::string>(
-        "engines." + enginename + ".configfile", "");
+    std::string configfile =
+        itsOptions.itsConfig->get_optional_path("engines." + enginename + ".configfile", "");
     if (configfile != "")
       absolutize_path(configfile);
 
@@ -827,9 +827,9 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
 
     // Create a permanent string out of engines human readable name
 
-    if (!itsEngines.insert(EngineList::value_type(
-                               (*itsNamePointer)(),
-                               static_cast<EngineInstanceCreator>(itsCreatorPointer)))
+    if (!itsEngines
+             .insert(EngineList::value_type((*itsNamePointer)(),
+                                            static_cast<EngineInstanceCreator>(itsCreatorPointer)))
              .second)
       return false;
 
@@ -1054,8 +1054,8 @@ void Reactor::shutdown()
     // this way we can relatively safely shutdown all plugins even if the do not
     // implement their own shutdown() method.
 
-    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown plugins\n" << ANSI_BOLD_OFF
-              << ANSI_FG_DEFAULT;
+    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown plugins\n"
+              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT;
 
     for (auto it = itsPlugins.begin(); it != itsPlugins.end(); it++)
     {
@@ -1067,8 +1067,8 @@ void Reactor::shutdown()
 
     // STEP 4: Requesting all engines to shutdown.
 
-    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown engines\n" << ANSI_BOLD_OFF
-              << ANSI_FG_DEFAULT;
+    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown engines\n"
+              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT;
 
     for (auto it = itsSingletons.begin(); it != itsSingletons.end(); it++)
     {
@@ -1081,8 +1081,8 @@ void Reactor::shutdown()
     // STEP 5: Deleting engines. We should not delete engines before they are all shutted down
     //         because they might use other engines (for example, obsengine => geoengine).
 
-    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nDeleting engines\n" << ANSI_BOLD_OFF
-              << ANSI_FG_DEFAULT;
+    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nDeleting engines\n"
+              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT;
 
     for (auto it = itsSingletons.begin(); it != itsSingletons.end(); it++)
     {

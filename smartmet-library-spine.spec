@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.4.8
-Release: 2%{?dist}.fmi
+Version: 17.4.10
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -87,6 +87,10 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon Apr 10 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.4.10-1.fmi
+- Added ConfigBase methods get_optional_path and get_mandatory_path
+- Modified code to allow relative paths for libfile and configfile
+
 * Sat Apr  8 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.4.8-2.fmi
 - Exception::addParameter, addDetail and addDetails now return this to enable chaining
 

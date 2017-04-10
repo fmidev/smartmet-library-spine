@@ -1,12 +1,13 @@
 #include "ConfigBase.h"
 #include "Exception.h"
+#include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/lambda/lambda.hpp>
+#include <boost/numeric/conversion/cast.hpp>
+#include <boost/spirit/include/qi.hpp>
 #include <cassert>
 #include <iostream>
 #include <vector>
-#include <boost/algorithm/string.hpp>
-#include <boost/lambda/lambda.hpp>
-#include <boost/spirit/include/qi.hpp>
-#include <boost/numeric/conversion/cast.hpp>
 
 namespace SmartMet
 {
@@ -498,6 +499,45 @@ std::size_t ConfigBase::get_setting_value<std::size_t>(const libconfig::Setting&
   {
     throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
   }
+}
+
+std::string ConfigBase::get_optional_path(const std::string& theName,
+                                          const std::string& theDefault) const
+{
+  if (!itsConfig)
+    throw Spine::Exception(BCP, "Config missing");
+
+  std::string value;
+  if (!itsConfig->lookupValue(theName, value))
+    value = theDefault;
+
+  if (value.empty())
+    throw Spine::Exception(BCP, "Empty value for configuration variable " + theName);
+
+  if (value[0] != '/')
+  {
+    boost::filesystem::path p(file_name);
+    value = p.parent_path().string() + "/" + value;
+  }
+  return value;
+}
+
+std::string ConfigBase::get_mandatory_path(const std::string& theName) const
+{
+  if (!itsConfig)
+    throw Spine::Exception(BCP, "Config missing");
+
+  std::string value;
+  if (!itsConfig->lookupValue(theName, value))
+    throw Spine::Exception(BCP, "Configuration variable " + theName + " is mandatory");
+
+  if (value[0] != '/')
+  {
+    boost::filesystem::path p(file_name);
+    value = p.parent_path().string() + "/" + value;
+  }
+
+  return value;
 }
 
 }  // namespace Spine

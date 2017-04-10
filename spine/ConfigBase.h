@@ -403,6 +403,9 @@ class ConfigBase
 
   std::string format_path(libconfig::Setting* origin, const std::string& path) const;
 
+  std::string get_optional_path(const std::string& theName, const std::string& theDefault) const;
+  std::string get_mandatory_path(const std::string& theName) const;
+
  private:
   /**
    *   @brief Add method to workaround ambiguity of assignment of libconfig::Setting to std::string
