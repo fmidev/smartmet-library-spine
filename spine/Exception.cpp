@@ -1,6 +1,6 @@
 #include "Exception.h"
+#include "Convenience.h"
 #include <macgyver/AnsiEscapeCodes.h>
-#include <spine/Convenience.h>
 #include <iostream>
 #include <sstream>
 
