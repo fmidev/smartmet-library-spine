@@ -511,8 +511,9 @@ std::string ConfigBase::get_optional_path(const std::string& theName,
   if (!itsConfig->lookupValue(theName, value))
     value = theDefault;
 
+  // Allow empty values too
   if (value.empty())
-    throw Spine::Exception(BCP, "Empty value for configuration variable " + theName);
+    return value;
 
   if (value[0] != '/')
   {
