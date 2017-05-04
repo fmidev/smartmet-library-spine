@@ -537,6 +537,11 @@ boost::optional<std::string> Message::getHeader(const std::string& headerName) c
   }
 }
 
+boost::optional<std::string> Message::getProtocol() const
+{
+  return getHeader("X-Forwarded-Proto");
+}
+
 HeaderMap Message::getHeaders() const
 {
   return itsHeaders;
