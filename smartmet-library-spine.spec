@@ -88,7 +88,7 @@ make %{_smp_mflags}
 
 %changelog
 * Upcoming
-- Added HTTP method for getting protocol from header
+- Added HTTP method getProtocol for getting protocol from header
 
 * Mon Apr 10 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.4.10-1.fmi
 - Added ConfigBase methods get_optional_path and get_mandatory_path
