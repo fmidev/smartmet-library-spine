@@ -511,8 +511,9 @@ std::string ConfigBase::get_optional_path(const std::string& theName,
   if (!itsConfig->lookupValue(theName, value))
     value = theDefault;
 
+  // Allow empty values too
   if (value.empty())
-    throw Spine::Exception(BCP, "Empty value for configuration variable " + theName);
+    return value;
 
   if (value[0] != '/')
   {
@@ -538,6 +539,35 @@ std::string ConfigBase::get_mandatory_path(const std::string& theName) const
   }
 
   return value;
+}
+
+std::vector<std::string> ConfigBase::get_mandatory_path_array(const std::string& theName,
+                                                              int min_size,
+                                                              int max_size)
+{
+  try
+  {
+    if (!itsConfig)
+      throw Spine::Exception(BCP, "Config missing");
+
+    std::vector<std::string> paths;
+    if (!get_config_array(theName, paths, min_size, max_size))
+      throw Spine::Exception(BCP, "Failed to read array of strings from variable " + theName);
+
+    boost::filesystem::path p(file_name);
+
+    for (auto i = 0u; i < paths.size(); i++)
+    {
+      if (!paths[i].empty() && paths[i][0] != '/')
+        paths[i] = p.parent_path().string() + "/" + paths[i];
+    }
+    return paths;
+  }
+  catch (...)
+  {
+    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL)
+        .addParameter("Path array variable name", theName);
+  }
 }
 
 }  // namespace Spine

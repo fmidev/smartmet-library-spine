@@ -406,6 +406,10 @@ class ConfigBase
   std::string get_optional_path(const std::string& theName, const std::string& theDefault) const;
   std::string get_mandatory_path(const std::string& theName) const;
 
+  std::vector<std::string> get_mandatory_path_array(const std::string& theName,
+                                                    int min_size = 0,
+                                                    int max_size = std::numeric_limits<int>::max());
+
  private:
   /**
    *   @brief Add method to workaround ambiguity of assignment of libconfig::Setting to std::string
