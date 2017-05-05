@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.4.27
+Version: 17.5.5
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -87,8 +87,7 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
-<<<<<<< HEAD
-* Upcoming
+* Fri May  5 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.5.5-1.fmi
 - Added HTTP method getProtocol for getting protocol from header
 
 * Thu Apr 27 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.4.27-1.fmi
