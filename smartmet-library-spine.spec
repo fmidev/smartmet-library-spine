@@ -87,6 +87,10 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+<<<<<<< HEAD
+* Upcoming
+- Added HTTP method getProtocol for getting protocol from header
+
 * Thu Apr 27 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.4.27-1.fmi
 - Allow empty paths in get_optional_path
 
