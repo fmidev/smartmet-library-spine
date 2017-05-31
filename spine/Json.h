@@ -5,10 +5,10 @@
 //======================================================================
 
 #pragma once
-#include "HTTP.h"
 #include "Exception.h"
-#include <smartmet/macgyver/TimeParser.h>
+#include "HTTP.h"
 #include <json/json.h>
+#include <smartmet/macgyver/TimeParser.h>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -21,6 +21,12 @@ class FileCache;
 
 namespace JSON
 {
+// void substitute json-includes and references from query string options
+void replaceReferences(Json::Value& theJson,
+                       const HTTP::ParamMap& theParams,
+                       const std::string& thePrefix = "",
+                       bool theCaseIsInsensitive = true);
+
 // expand includes in the Json ("json:file/name.json")
 void preprocess(Json::Value& theJson,
                 const std::string& theRootPath,
@@ -30,7 +36,7 @@ void preprocess(Json::Value& theJson,
 // expand references in the Json ("path:name1.name2[0].parameter")
 void dereference(Json::Value& theJson);
 
-// expand query string options
+// expand normal query string options
 void expand(Json::Value& theJson,
             const HTTP::ParamMap& theParams,
             const std::string& thePrefix = "",

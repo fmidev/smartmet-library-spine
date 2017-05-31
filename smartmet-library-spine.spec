@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.5.5
+Version: 17.5.31
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -87,6 +87,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed May 31 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.5.31-1.fmi
+- Added a separate method for substituting JSON references from query strings
+
 * Fri May  5 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.5.5-1.fmi
 - Added HTTP method getProtocol for getting protocol from header
 

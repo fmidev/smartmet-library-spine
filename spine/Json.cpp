@@ -1,11 +1,11 @@
 #include "Json.h"
+#include "Exception.h"
 #include "FileCache.h"
 #include "HTTP.h"
-#include "Exception.h"
-#include <macgyver/StringConversion.h>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/foreach.hpp>
 #include <boost/regex.hpp>
+#include <macgyver/StringConversion.h>
 
 namespace SmartMet
 {
@@ -99,7 +99,7 @@ void JSON::preprocess(Json::Value& theJson,
  * For example:
  *
  * {
- *    "projection":   "path:name1.name2.name3[0].projection",
+ *    "projection":   "ref:name1.name2.name3[0].projection",
  *    ...
  * }
  *
@@ -243,13 +243,16 @@ void JSON::extract_set(const std::string& theName,
  *
  * A map with "qid" set changes the current active prefix for query string
  * options. The top level qid is an empty string unless set in the json.
+ *
+ * Note: references are no longer substituted
  */
 // ----------------------------------------------------------------------
 
-void JSON::expand(Json::Value& theJson,
-                  const HTTP::ParamMap& theParams,
-                  const std::string& thePrefix,
-                  bool theCaseIsInsensitive)
+void replaceFromQueryString(Json::Value& theJson,
+                            const HTTP::ParamMap& theParams,
+                            const std::string& thePrefix,
+                            bool theCaseIsInsensitive,
+                            bool replaceReferences)
 {
   try
   {
@@ -260,7 +263,7 @@ void JSON::expand(Json::Value& theJson,
       for (unsigned int i = 0; i < theJson.size(); i++)
       {
         Json::Value& json = theJson[i];
-        expand(json, theParams, thePrefix, theCaseIsInsensitive);
+        replaceFromQueryString(json, theParams, thePrefix, theCaseIsInsensitive, replaceReferences);
       }
     }
     else if (theJson.isObject())
@@ -303,16 +306,22 @@ void JSON::expand(Json::Value& theJson,
 
         if (match)
         {
-          if (!boost::regex_match(name_value.second, number_regex))
-            theJson[name] = name_value.second;
-          else
+          bool is_reference = (boost::algorithm::starts_with(name_value.second, "ref:") ||
+                               boost::algorithm::starts_with(name_value.second, "json:"));
+
+          if ((replaceReferences && is_reference) || (!replaceReferences && !is_reference))
           {
-            Json::Value value;
-            // Try parsing as JSON, store as string on failure
-            if (reader.parse(name_value.second, value, false))
-              theJson[name] = value;
-            else
+            if (!boost::regex_match(name_value.second, number_regex))
               theJson[name] = name_value.second;
+            else
+            {
+              Json::Value value;
+              // Try parsing as JSON, store as string on failure
+              if (reader.parse(name_value.second, value, false))
+                theJson[name] = value;
+              else
+                theJson[name] = name_value.second;
+            }
           }
         }
       }
@@ -322,9 +331,14 @@ void JSON::expand(Json::Value& theJson,
       for (const auto& name : members)
       {
         if (prefix.empty())
-          expand(theJson[name], theParams, name);
+          replaceFromQueryString(
+              theJson[name], theParams, name, theCaseIsInsensitive, replaceReferences);
         else
-          expand(theJson[name], theParams, prefix + "." + name);
+          replaceFromQueryString(theJson[name],
+                                 theParams,
+                                 prefix + "." + name,
+                                 theCaseIsInsensitive,
+                                 replaceReferences);
       }
     }
   }
@@ -332,6 +346,42 @@ void JSON::expand(Json::Value& theJson,
   {
     throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
   }
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Expand Json from query string
+ *
+ * A map with "qid" set changes the current active prefix for query string
+ * options. The top level qid is an empty string unless set in the json.
+ *
+ * Note: references are no longer substituted
+ */
+// ----------------------------------------------------------------------
+
+void JSON::expand(Json::Value& theJson,
+                  const HTTP::ParamMap& theParams,
+                  const std::string& thePrefix,
+                  bool theCaseIsInsensitive)
+{
+  const bool replace_references = false;
+  replaceFromQueryString(theJson, theParams, thePrefix, theCaseIsInsensitive, replace_references);
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Replace references and includes given in query string
+ *
+ */
+// ----------------------------------------------------------------------
+
+void JSON::replaceReferences(Json::Value& theJson,
+                             const HTTP::ParamMap& theParams,
+                             const std::string& thePrefix,
+                             bool theCaseIsInsensitive)
+{
+  const bool replace_references = true;
+  replaceFromQueryString(theJson, theParams, thePrefix, theCaseIsInsensitive, replace_references);
 }
 
 }  // namespace Spine
