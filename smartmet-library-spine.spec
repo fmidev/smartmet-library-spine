@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.5.31
+Version: 17.7.10
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -87,6 +87,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon Jul 10 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.7.10-1.fmi
+- Print stack trace if PluginTest fails to run
+
 * Wed May 31 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.5.31-1.fmi
 - Added a separate method for substituting JSON references from query strings
 

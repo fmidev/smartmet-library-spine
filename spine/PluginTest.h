@@ -495,7 +495,9 @@ int test(SmartMet::Spine::Options& options, PreludeFunction prelude, bool proces
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    SmartMet::Spine::Exception e(BCP, "Plugin test failed!", nullptr);
+    std::cout << e.getStackTrace() << std::endl;
+    return 1;
   }
 }
 
