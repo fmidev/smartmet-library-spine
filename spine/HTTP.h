@@ -10,8 +10,8 @@
 #include <boost/logic/tribool.hpp>
 #include <boost/optional.hpp>
 #include <boost/range.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/shared_array.hpp>
+#include <boost/shared_ptr.hpp>
 
 // For asio buffer types
 #include <boost/asio.hpp>
@@ -166,6 +166,7 @@ class ContentStreamer
 
   void setStatus(StreamerStatus theStatus) { itsStatus = theStatus; }
   StreamerStatus getStatus() const { return itsStatus; }
+
  private:
   StreamerStatus itsStatus;
 };
@@ -754,6 +755,22 @@ class Response : public Message
   std::string itsOriginatingBackend;
   int itsBackendPort;
 };
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief urlencode a string
+ */
+// ----------------------------------------------------------------------
+
+std::string urlencode(const std::string& url_path);
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief urldecode a string
+ */
+// ----------------------------------------------------------------------
+
+std::string urldecode(const std::string& url_path);
 
 // ----------------------------------------------------------------------
 /*!

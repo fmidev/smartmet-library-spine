@@ -1,125 +1,24 @@
 #include "HTTP.h"
-#include "HTTPParsers.h"
 #include "Exception.h"
-#include <macgyver/StringConversion.h>
+#include "HTTPParsers.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/foreach.hpp>
 #include <boost/shared_array.hpp>
+#include <macgyver/StringConversion.h>
 
-#include <vector>
-#include <list>
-#include <utility>
-#include <sstream>
-#include <iostream>
-#include <stdexcept>
 #include <cstdlib>
+#include <iostream>
+#include <list>
+#include <sstream>
+#include <stdexcept>
+#include <utility>
+#include <vector>
 
 // Code from http://www.boost.org/doc/libs/1_52_0/tools/inspect/link_check.cpp
 // Boost inspect tools parse URIs etc to validate documentation
 
 namespace
 {
-// Decode percent encoded characters. Ignores failed conversions so control characters
-// can be sent onwards.
-
-std::string decode_percents(std::string const& url_path)
-{
-  try
-  {
-    std::string::size_type pos = 0, next;
-    std::string result;
-    result.reserve(url_path.length());
-
-    while ((next = url_path.find('%', pos)) != std::string::npos)
-    {
-      result.append(url_path, pos, next - pos);
-      pos = next;
-      switch (url_path[pos])
-      {
-        case '%':
-        {
-          if (url_path.length() - next < 3)
-          {
-            result.append(url_path, pos, url_path.length() - next);
-            pos = url_path.length();
-            break;
-          }
-          char hex[3] = {url_path[next + 1], url_path[next + 2], '\0'};
-          char* end_ptr;
-          char res = static_cast<char>(std::strtol(hex, &end_ptr, 16));
-          if (*end_ptr)
-          {
-            result += "%";
-            pos = next + 1;
-            break;
-          }
-          result += res;
-          pos = next + 3;
-          break;
-        }
-      }
-    }
-
-    result.append(url_path, pos, url_path.length());
-    return result;
-  }
-  catch (...)
-  {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
-  }
-}
-
-#if 0
-  inline long int hex2dec(const std::string& hexString)
-  {
-	return std::strtol(hexString.c_str(), NULL, 16);
-  }
-#endif
-
-std::string char2hex(int dec)
-{
-  try
-  {
-    const char* hd = "0123456789ABCDEF";
-    char dig[2] = {hd[(dec & 0xF0) >> 4], hd[dec & 0x0F]};
-
-    return std::string(dig, dig + 2);
-  }
-  catch (...)
-  {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
-  }
-}
-
-std::string urlEncode(const std::string& c)
-{
-  try
-  {
-    std::string escaped;
-    std::size_t max = c.length();
-    for (std::size_t i = 0; i < max; i++)
-    {
-      if ((48 <= c[i] && c[i] <= 57) ||   // 0-9
-          (65 <= c[i] && c[i] <= 90) ||   // ABC...XYZ
-          (97 <= c[i] && c[i] <= 122) ||  // abc...xyz
-          (c[i] == '~' || c[i] == '-' || c[i] == '_' || c[i] == '.'))
-      {
-        escaped.append(&c[i], 1);
-      }
-      else
-      {
-        escaped.append("%");
-        escaped.append(char2hex(static_cast<int>(c[i])));  // converts char 255 to string "FF"
-      }
-    }
-    return escaped;
-  }
-  catch (...)
-  {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
-  }
-}
-
 void parseTokens(SmartMet::Spine::HTTP::ParamMap& outputMap,
                  const std::string& inputString,
                  const std::string& delimiter,
@@ -140,7 +39,7 @@ void parseTokens(SmartMet::Spine::HTTP::ParamMap& outputMap,
 
         boost::algorithm::replace_all(second, "+", " ");      // replace plusses with spaces
         boost::algorithm::replace_all(second, "\r\n", "\n");  // Replace line breaks
-        second = decode_percents(second);
+        second = SmartMet::Spine::HTTP::urldecode(second);
 
         outputMap.insert(std::make_pair(first, second));
       }
@@ -155,7 +54,7 @@ void parseTokens(SmartMet::Spine::HTTP::ParamMap& outputMap,
         auto second = std::string(delimiter_range.end(), it->end());
 
         boost::algorithm::replace_all(second, "+", " ");  // replace plusses with spaces
-        second = decode_percents(second);
+        second = SmartMet::Spine::HTTP::urldecode(second);
 
         outputMap.insert(std::make_pair(first, second));
       }
@@ -654,12 +553,12 @@ std::string Request::toString() const
           for (auto it = itsParameters.begin(); it != nextToLast; ++it)
           {
             paramValue = it->second;
-            paramValue = ::urlEncode(paramValue);
+            paramValue = urlencode(paramValue);
             ss << it->first << "=" << paramValue << "&";
           }
 
           paramValue = nextToLast->second;
-          paramValue = ::urlEncode(paramValue);
+          paramValue = urlencode(paramValue);
           ss << nextToLast->first << "=" << paramValue;
           break;
         }
@@ -787,12 +686,12 @@ std::string Request::getURI() const
       for (auto it = itsParameters.begin(); it != nextToLast; ++it)
       {
         paramValue = it->second;
-        paramValue = ::urlEncode(paramValue);
+        paramValue = urlencode(paramValue);
         ss << it->first << "=" << paramValue << "&";
       }
 
       paramValue = nextToLast->second;
-      paramValue = ::urlEncode(paramValue);
+      paramValue = urlencode(paramValue);
       ss << nextToLast->first << "=" << paramValue;
     }
 
@@ -821,12 +720,12 @@ std::string Request::getQueryString() const
       for (auto it = itsParameters.begin(); it != nextToLast; ++it)
       {
         paramValue = it->second;
-        paramValue = ::urlEncode(paramValue);
+        paramValue = urlencode(paramValue);
         ss << it->first << "=" << paramValue << "&";
       }
 
       paramValue = nextToLast->second;
-      paramValue = ::urlEncode(paramValue);
+      paramValue = urlencode(paramValue);
       ss << nextToLast->first << "=" << paramValue;
     }
 
@@ -1323,12 +1222,12 @@ std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::stri
       // Build header and param maps
       BOOST_FOREACH (const auto& pair, target.params)
       {
-        std::string first = decode_percents(pair.first);
+        std::string first = urldecode(pair.first);
         if (!first.empty())  // Ignore any empty parameters
         {
           std::string second = pair.second;
           boost::algorithm::replace_all(second, "+", " ");  // replace plusses with spaces
-          second = decode_percents(second);
+          second = urldecode(second);
           theParameters.insert(std::make_pair(first, second));
         }
       }
@@ -1727,6 +1626,108 @@ ContentStreamer::StreamerStatus MessageContent::getStreamingStatus() const
 ContentStreamer::~ContentStreamer()
 {
 }
+
+// Decode percent encoded characters. Ignores failed conversions so control characters
+// can be sent onwards.
+
+std::string urldecode(std::string const& url_path)
+{
+  try
+  {
+    std::string::size_type pos = 0, next;
+    std::string result;
+    result.reserve(url_path.length());
+
+    while ((next = url_path.find('%', pos)) != std::string::npos)
+    {
+      result.append(url_path, pos, next - pos);
+      pos = next;
+      switch (url_path[pos])
+      {
+        case '%':
+        {
+          if (url_path.length() - next < 3)
+          {
+            result.append(url_path, pos, url_path.length() - next);
+            pos = url_path.length();
+            break;
+          }
+          char hex[3] = {url_path[next + 1], url_path[next + 2], '\0'};
+          char* end_ptr;
+          char res = static_cast<char>(std::strtol(hex, &end_ptr, 16));
+          if (*end_ptr)
+          {
+            result += "%";
+            pos = next + 1;
+            break;
+          }
+          result += res;
+          pos = next + 3;
+          break;
+        }
+      }
+    }
+
+    result.append(url_path, pos, url_path.length());
+    return result;
+  }
+  catch (...)
+  {
+    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+  }
+}
+
+#if 0
+  inline long int hex2dec(const std::string& hexString)
+  {
+	return std::strtol(hexString.c_str(), NULL, 16);
+  }
+#endif
+
+std::string char2hex(int dec)
+{
+  try
+  {
+    const char* hd = "0123456789ABCDEF";
+    char dig[2] = {hd[(dec & 0xF0) >> 4], hd[dec & 0x0F]};
+
+    return std::string(dig, dig + 2);
+  }
+  catch (...)
+  {
+    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+  }
+}
+
+std::string urlencode(const std::string& c)
+{
+  try
+  {
+    std::string escaped;
+    std::size_t max = c.length();
+    for (std::size_t i = 0; i < max; i++)
+    {
+      if ((48 <= c[i] && c[i] <= 57) ||   // 0-9
+          (65 <= c[i] && c[i] <= 90) ||   // ABC...XYZ
+          (97 <= c[i] && c[i] <= 122) ||  // abc...xyz
+          (c[i] == '~' || c[i] == '-' || c[i] == '_' || c[i] == '.'))
+      {
+        escaped.append(&c[i], 1);
+      }
+      else
+      {
+        escaped.append("%");
+        escaped.append(char2hex(static_cast<int>(c[i])));  // converts char 255 to string "FF"
+      }
+    }
+    return escaped;
+  }
+  catch (...)
+  {
+    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+  }
+}
+
 }  // namespace HTTP
 }  // namespace Spine
 }  // namespace SmartMet

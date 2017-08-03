@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.7.10
+Version: 17.8.3
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -87,6 +87,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu Aug  3 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.8.3-1.fmi
+- Added HTTP::urlencode and HTTP::urldecode
+
 * Mon Jul 10 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.7.10-1.fmi
 - Print stack trace if PluginTest fails to run
 
