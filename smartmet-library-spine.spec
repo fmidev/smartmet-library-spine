@@ -10,6 +10,7 @@ Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
 Source0: %{name}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+BuildRequires: make
 BuildRequires: boost-devel
 BuildRequires: smartmet-library-newbase-devel >= 17.3.28
 BuildRequires: smartmet-library-macgyver-devel >= 17.3.16
