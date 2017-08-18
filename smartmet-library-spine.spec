@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.8.18
+Version: 17.8.3
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -89,9 +89,6 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
-* Fri Aug 18 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.8.18-1.fmi
-- Fixed TimeSeriesGeneratorOptions has not to include the start and end times
-
 * Thu Aug  3 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.8.3-1.fmi
 - Added HTTP::urlencode and HTTP::urldecode
 

@@ -6,8 +6,8 @@
 
 #include "TimeSeriesGeneratorOptions.h"
 #include "Exception.h"
-#include <boost/functional/hash.hpp>
 #include <macgyver/StringConversion.h>
+#include <boost/functional/hash.hpp>
 
 namespace SmartMet
 {
@@ -53,16 +53,8 @@ std::size_t TimeSeriesGeneratorOptions::hash_value() const
   {
     std::size_t hash = 0;
     boost::hash_combine(hash, boost::hash_value(mode));
-
-    // These must not be included in the hash. They are relevant for the generated
-    // timeseries, whose hash we can then use. But as it is these may change every
-    // second and thus prevent effective caching.
-    // boost::hash_combine(hash, boost::hash_value(Fmi::to_iso_string(startTime)));
-    // boost::hash_combine(hash, boost::hash_value(Fmi::to_iso_string(endTime)));
-
-    // No need for this either - querydata hash is included
-    // boost::hash_combine(hash, boost::hash_value(dataTimes.get()));
-
+    boost::hash_combine(hash, boost::hash_value(Fmi::to_iso_string(startTime)));
+    boost::hash_combine(hash, boost::hash_value(Fmi::to_iso_string(endTime)));
     boost::hash_combine(hash, boost::hash_value(startTimeUTC));
     boost::hash_combine(hash, boost::hash_value(endTimeUTC));
     if (timeSteps)
@@ -71,6 +63,9 @@ std::size_t TimeSeriesGeneratorOptions::hash_value() const
       boost::hash_combine(hash, boost::hash_value(*timeStep));
     for (const auto& t : timeList)
       boost::hash_combine(hash, boost::hash_value(t));
+    // We only need to hash the address of the valid times, since the
+    // address stays constant during the lifetime of a single Q object
+    boost::hash_combine(hash, boost::hash_value(dataTimes.get()));
     boost::hash_combine(hash, boost::hash_value(startTimeData));
     boost::hash_combine(hash, boost::hash_value(endTimeData));
     boost::hash_combine(hash, boost::hash_value(isClimatology));
