@@ -5,19 +5,19 @@
 // ======================================================================
 
 #include "DynamicPlugin.h"
-#include "Reactor.h"
 #include "Exception.h"
+#include "Reactor.h"
 
 #include <macgyver/AnsiEscapeCodes.h>
 
 #include <boost/bind.hpp>
 #include <boost/timer/timer.hpp>
 
+#include <sys/types.h>
 #include <iostream>
+#include <signal.h>
 #include <stdexcept>
 #include <string>
-#include <signal.h>
-#include <sys/types.h>
 
 extern "C" {
 #include <dlfcn.h>
@@ -84,18 +84,11 @@ void DynamicPlugin::initializePlugin()
 
 DynamicPlugin::~DynamicPlugin()
 {
-  try
-  {
-    // Debug
-    std::cout << "\t  + [Destructing dynamic plugin '" << itsFilename << "']" << std::endl;
+  // Debug
+  std::cout << "\t  + [Destructing dynamic plugin '" << itsFilename << "']" << std::endl;
 
-    // Call the actual module destroy implementation (private method)
-    pluginClose();
-  }
-  catch (...)
-  {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
-  }
+  // Call the actual module destroy implementation (private method)
+  pluginClose();
 }
 
 // ----------------------------------------------------------------------

@@ -1,12 +1,12 @@
 #include "HandlerView.h"
-#include "Reactor.h"
 #include "Exception.h"
+#include "Reactor.h"
 
 #include <macgyver/StringConversion.h>
 
 #include <boost/bind.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/filesystem.hpp>
 
 namespace
 {
@@ -104,14 +104,7 @@ void AccessLogger::stop()
 
 AccessLogger::~AccessLogger()
 {
-  try
-  {
-    this->stop();
-  }
-  catch (...)
-  {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
-  }
+  this->stop();
 }
 
 void AccessLogger::log(const LoggedRequest& theRequest)

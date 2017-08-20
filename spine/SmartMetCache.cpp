@@ -28,18 +28,11 @@ SmartMetCache::SmartMetCache(std::size_t memoryCacheSize,
 
 SmartMetCache::~SmartMetCache()
 {
-  try
-  {
-    itsShutdownRequested = true;
-    itsCondition.notify_one();
-    boost::this_thread::sleep(boost::posix_time::milliseconds(200));
-    itsFileThread->interrupt();
-    itsFileThread->join();
-  }
-  catch (...)
-  {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
-  }
+  itsShutdownRequested = true;
+  itsCondition.notify_one();
+  boost::this_thread::sleep(boost::posix_time::milliseconds(200));
+  itsFileThread->interrupt();
+  itsFileThread->join();
 }
 
 SmartMetCache::ValueType SmartMetCache::find(KeyType hash)
