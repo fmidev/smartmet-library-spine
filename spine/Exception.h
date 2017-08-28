@@ -83,8 +83,8 @@ class Exception : public std::exception
   bool loggingDisabled() const;
   bool stackTraceDisabled() const;
 
-  void disableLogging();
-  void disableStackTrace();
+  Exception& disableLogging();
+  Exception& disableStackTrace();
 
   void printError() const;
 

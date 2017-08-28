@@ -308,14 +308,16 @@ bool Exception::stackTraceDisabled() const
   return mStackTraceDisabled;
 }
 
-void Exception::disableLogging()
+Exception& Exception::disableLogging()
 {
   mLoggingDisabled = true;
+  return *this;
 }
 
-void Exception::disableStackTrace()
+Exception& Exception::disableStackTrace()
 {
   mStackTraceDisabled = true;
+  return *this;
 }
 
 std::string Exception::getStackTrace() const
