@@ -5,9 +5,9 @@
 // ======================================================================
 
 #include "XmlFormatter.h"
+#include "Convenience.h"
 #include "Exception.h"
 #include "Table.h"
-#include "Convenience.h"
 #include "TableFormatterOptions.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
@@ -71,7 +71,7 @@ void XmlFormatter::format(std::ostream& theOutput,
       format_tags(theOutput, theTable, theNames, tag, theReq);
     else if (style == "mixed")
     {
-      if (theReq.getParameter("attributes") != NULL)
+      if (theReq.getParameter("attributes"))
         format_mixed(theOutput, theTable, theNames, tag, theReq);
       else
         format_tags(theOutput, theTable, theNames, tag, theReq);

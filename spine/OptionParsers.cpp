@@ -1,8 +1,8 @@
 #include "OptionParsers.h"
 #include "Convenience.h"
 #include "Exception.h"
-#include <macgyver/StringConversion.h>
 #include <boost/date_time/posix_time/ptime.hpp>
+#include <macgyver/StringConversion.h>
 
 #include <stdexcept>
 
@@ -81,7 +81,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
     // because the behaviour of some other options depend on it
 
     // Parse hour option
-    if (theReq.getParameter("hour") != NULL)
+    if (theReq.getParameter("hour"))
     {
       options.mode = TimeSeriesGeneratorOptions::FixedTimes;
 
@@ -100,7 +100,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
     }
 
     // Parse time option
-    if (theReq.getParameter("time") != NULL)
+    if (theReq.getParameter("time"))
     {
       options.mode = TimeSeriesGeneratorOptions::FixedTimes;
       const std::string times = required_string(theReq.getParameter("time"), "");
@@ -121,7 +121,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
     // Timestep should be parsed last so we can check if the
     // defaults have been changed
 
-    if (theReq.getParameter("timestep") != NULL)
+    if (theReq.getParameter("timestep"))
     {
       if (options.mode != TimeSeriesGeneratorOptions::TimeSteps)
         throw SmartMet::Spine::Exception(
@@ -160,7 +160,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
     // The number of timesteps is a spine option for various modes,
     // including DataTimes and GraphTimes
 
-    if (theReq.getParameter("timesteps") != NULL)
+    if (theReq.getParameter("timesteps"))
     {
       const std::string steps = optional_string(theReq.getParameter("timesteps"), "");
 
@@ -174,7 +174,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
     // starttime option may modify "now" which is the default
     // value set by the constructor
 
-    if (theReq.getParameter("starttime") != NULL)
+    if (theReq.getParameter("starttime"))
     {
       std::string stamp = required_string(theReq.getParameter("starttime"), "");
 
@@ -194,7 +194,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
 
     // startstep must be handled after starttime and timestep options
 
-    if (theReq.getParameter("startstep") != NULL)
+    if (theReq.getParameter("startstep"))
     {
       int startstep = optional_int(theReq.getParameter("startstep"), 0);
 
@@ -213,7 +213,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
     // timestep and timesteps options. The default is to set the end
     // time to the start time plus 24 hours.
 
-    if (theReq.getParameter("endtime") != NULL)
+    if (theReq.getParameter("endtime"))
     {
       std::string stamp = required_string(theReq.getParameter("endtime"), "");
       if (stamp != "now")
