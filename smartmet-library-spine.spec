@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.8.20
+Version: 17.8.28
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -13,8 +13,8 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 17.3.28
-BuildRequires: smartmet-library-macgyver-devel >= 17.3.16
+BuildRequires: smartmet-library-newbase-devel >= 17.8.28
+BuildRequires: smartmet-library-macgyver-devel >= 17.8.28
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -23,16 +23,16 @@ BuildRequires: gdal-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 17.3.14
+BuildRequires: smartmet-library-gis-devel >= 17.8.28
 
 %if 0%{rhel} >= 7
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 17.3.28
-Requires: smartmet-library-macgyver >= 17.3.16
-Requires: smartmet-timezones >= 17.3.6
-Requires: smartmet-library-gis >= 17.3.14
+Requires: smartmet-library-newbase >= 17.8.28
+Requires: smartmet-library-macgyver >= 17.8.28
+Requires: smartmet-timezones >= 17.4.12
+Requires: smartmet-library-gis >= 17.8.28
 Requires: mariadb-libs
 Requires: boost-filesystem
 Requires: boost-iostreams
@@ -89,6 +89,10 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon Aug 28 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.8.28-1.fmi
+- Upgrade to boost 1.65
+- Exception::disable -methods now return the exception itself to enable command chaining
+
 * Sun Aug 20 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.8.20-1.fmi
 - Removed throwing from ~DynamicPlugin for causing std::terminate
 
