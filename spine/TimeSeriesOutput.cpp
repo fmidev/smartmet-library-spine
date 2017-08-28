@@ -5,9 +5,9 @@
 
 #include <macgyver/StringConversion.h>
 
+#include <boost/format.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/copy.hpp>
-#include <boost/format.hpp>
 
 namespace SmartMet
 {
@@ -25,7 +25,7 @@ std::ostream& operator<<(std::ostream& os, const Value& val)
       os << *(boost::get<int>(&val));
     else if (boost::get<std::string>(&val))
       os << *(boost::get<std::string>(&val));
-    else if (boost::get<std::pair<double, double> >(&val))
+    else if (boost::get<LonLat>(&val))
     {
       LonLat coord = *(boost::get<LonLat>(&val));
       os << coord;
@@ -382,7 +382,7 @@ TableVisitor& operator<<(TableVisitor& tf, const Value& val)
       tf << *(boost::get<double>(&val));
     else if (boost::get<std::string>(&val))
       tf << *(boost::get<std::string>(&val));
-    else if (boost::get<std::pair<double, double> >(&val))
+    else if (boost::get<LonLat>(&val))
     {
       LonLat coord = *(boost::get<LonLat>(&val));
       tf << coord;
