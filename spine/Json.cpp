@@ -3,6 +3,7 @@
 #include "FileCache.h"
 #include "HTTP.h"
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <boost/foreach.hpp>
 #include <boost/regex.hpp>
 #include <macgyver/StringConversion.h>
@@ -21,6 +22,85 @@ namespace Spine
 // Matches start of object, array or string or a valid number
 boost::regex number_regex(
     R"END(^((\{|\[|\").*)|([+-]?([0-9]*\.?[0-9]+|[0-9]+\.?[0-9]*)([eE][+-]?[0-9]+)?)$)END");
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Extract QID part from a query string parameter
+ */
+// ----------------------------------------------------------------------
+
+std::string extract_qid(const std::string& theName)
+{
+  auto dotpos = theName.find('.');
+  if (dotpos == std::string::npos)
+    return theName;
+
+  return theName.substr(0, dotpos);
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Collect all qid:s from Json
+ */
+// ----------------------------------------------------------------------
+
+// map from qid to respective JSON object
+using QidMap = std::map<std::string, Json::Value*>;
+
+void collect_qids(Json::Value& theJson, QidMap& theQids, const std::string& thePrefix)
+{
+  try
+  {
+    if (theJson.isArray())
+    {
+      for (unsigned int i = 0; i < theJson.size(); i++)
+        collect_qids(theJson[i], theQids, thePrefix + "[" + Fmi::to_string(i) + "]");
+    }
+    else if (theJson.isObject())
+    {
+      // Save path to qid if it is present
+      if (theJson.isMember("qid"))
+      {
+        Json::Value& json = theJson["qid"];
+
+        if (!json.isString())
+          throw SmartMet::Spine::Exception(BCP, "The 'qid' value must be a string!");
+        auto qid = json.asString();
+
+        if (qid.empty())
+          throw SmartMet::Spine::Exception(BCP, "The 'qid' value must not be empty!");
+
+        auto dotpos = qid.find(".");
+        if (dotpos != std::string::npos)
+          throw SmartMet::Spine::Exception(BCP, "The 'qid' value must not contain dots!");
+
+        theQids[qid] = &theJson;
+      }
+
+      // Search member variables
+
+      const auto members = theJson.getMemberNames();
+      for (const auto& name : members)
+      {
+        if (thePrefix.empty())
+          collect_qids(theJson[name], theQids, name);
+        else
+          collect_qids(theJson[name], theQids, thePrefix + "." + name);
+      }
+    }
+  }
+  catch (...)
+  {
+    throw SmartMet::Spine::Exception(BCP, "Failed to collect qid:s from JSON!", NULL);
+  }
+}
+
+QidMap collect_qids(Json::Value& theJson)
+{
+  QidMap qids;
+  collect_qids(theJson, qids, "");
+  return qids;
+}
 
 // ----------------------------------------------------------------------
 /*!
@@ -251,100 +331,97 @@ void JSON::extract_set(const std::string& theName,
 void replaceFromQueryString(Json::Value& theJson,
                             const HTTP::ParamMap& theParams,
                             const std::string& thePrefix,
+                            const QidMap& theQids,
                             bool theCaseIsInsensitive,
                             bool replaceReferences)
 {
   try
   {
+    // Needed for parsing JSON values in query strings
     Json::Reader reader;
 
-    if (theJson.isArray())
+    // Override old values and add new ones from query string
+
+    for (const auto& name_value : theParams)
     {
-      for (unsigned int i = 0; i < theJson.size(); i++)
+      // WMS query string parameters are case insensitive, hence optional support is given
+      auto name = name_value.first;
+      if (theCaseIsInsensitive)
+        Fmi::ascii_tolower(name);
+
+      // Is the value a reference
+      bool value_is_reference = (boost::algorithm::starts_with(name_value.second, "ref:") ||
+                                 boost::algorithm::starts_with(name_value.second, "json:"));
+
+      // Extract the value
+
+      bool process_value =
+          (replaceReferences && value_is_reference) || (!replaceReferences && !value_is_reference);
+
+      // Skip the value if we do not wish to process it at this iteration (references or
+      // non-references only)
+      if (!process_value)
+        continue;
+
+      // Extract the JSON value from the query string
+      Json::Value value;
+      if (!boost::regex_match(name_value.second, number_regex))
+        value = name_value.second;
+      else
       {
-        Json::Value& json = theJson[i];
-        replaceFromQueryString(json, theParams, thePrefix, theCaseIsInsensitive, replaceReferences);
-      }
-    }
-    else if (theJson.isObject())
-    {
-      // Establish the prefix
-      std::string prefix = thePrefix;
-      if (theJson.isMember("qid"))
-      {
-        const Json::Value& json = theJson.get("qid", prefix);
-        if (!json.isString())
-          throw SmartMet::Spine::Exception(BCP, "The 'qid' value must be a string!");
-        prefix = json.asString();
-      }
-
-      // Override old values and add new ones
-
-      for (const auto& name_value : theParams)
-      {
-        auto name = name_value.first;
-        if (theCaseIsInsensitive)
-          Fmi::ascii_tolower(name);
-
-        bool match = false;
-
-        if (prefix.empty())
-        {
-          // Put all input without dots to global level
-          match = (name.find(".") == std::string::npos);
-        }
-        else
-        {
-          if (boost::algorithm::starts_with(name, prefix) &&
-              (name.size() > prefix.size() && name[prefix.size()] == '.') &&
-              name.find(".", prefix.size() + 1) == std::string::npos)
-          {
-            match = true;
-            name = name.substr(prefix.size() + 1, std::string::npos);
-          }
-        }
-
-        if (match)
-        {
-          bool is_reference = (boost::algorithm::starts_with(name_value.second, "ref:") ||
-                               boost::algorithm::starts_with(name_value.second, "json:"));
-
-          if ((replaceReferences && is_reference) || (!replaceReferences && !is_reference))
-          {
-            if (!boost::regex_match(name_value.second, number_regex))
-              theJson[name] = name_value.second;
-            else
-            {
-              Json::Value value;
-              // Try parsing as JSON, store as string on failure
-              if (reader.parse(name_value.second, value, false))
-                theJson[name] = value;
-              else
-                theJson[name] = name_value.second;
-            }
-          }
-        }
+        // Try parsing as JSON, store as string on failure
+        if (!reader.parse(name_value.second, value, false))
+          value = name_value.second;
       }
 
-      // Expand members
-      const auto members = theJson.getMemberNames();
-      for (const auto& name : members)
+      // Assign the value to the proper location in the JSON
+
+      auto path = name;              // Path for the setting
+      auto qid = extract_qid(name);  // The part until the first dot
+
+      // By default insertions go to top level
+      Json::Value* json = &theJson;
+
+      // Unless there is a matching qid
+      auto qid_json = theQids.find(qid);
+      if (qid_json != theQids.end())
       {
-        if (prefix.empty())
-          replaceFromQueryString(
-              theJson[name], theParams, name, theCaseIsInsensitive, replaceReferences);
-        else
-          replaceFromQueryString(theJson[name],
-                                 theParams,
-                                 prefix + "." + name,
-                                 theCaseIsInsensitive,
-                                 replaceReferences);
+        if (qid == name)
+          throw SmartMet::Spine::Exception(BCP, "Parameter name cannot match qid exactly")
+              .addParameter("parameter", name)
+              .addParameter("value", name_value.second);
+
+        json = qid_json->second;
+
+        path = path.substr(qid.size() + 1, std::string::npos);
+      }
+
+      // Now store the object following the remaining path.
+
+      namespace ba = boost::algorithm;
+
+      std::vector<std::string> path_components;
+      ba::split(path_components, path, ba::is_any_of("."), ba::token_compress_on);
+
+      if (path_components.size() == 1)
+      {
+        (*json)[path] = value;
+      }
+      else
+      {
+        for (const auto& component : path_components)
+        {
+          if (!json->isMember(component))
+            (*json)[component] = Json::objectValue;
+          json = &(*json)[component];
+        }
+        (*json) = value;
       }
     }
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception(BCP, "JSON expansion failed!", NULL);
   }
 }
 
@@ -365,7 +442,9 @@ void JSON::expand(Json::Value& theJson,
                   bool theCaseIsInsensitive)
 {
   const bool replace_references = false;
-  replaceFromQueryString(theJson, theParams, thePrefix, theCaseIsInsensitive, replace_references);
+  auto qids = collect_qids(theJson);
+  replaceFromQueryString(
+      theJson, theParams, thePrefix, qids, theCaseIsInsensitive, replace_references);
 }
 
 // ----------------------------------------------------------------------
@@ -381,7 +460,9 @@ void JSON::replaceReferences(Json::Value& theJson,
                              bool theCaseIsInsensitive)
 {
   const bool replace_references = true;
-  replaceFromQueryString(theJson, theParams, thePrefix, theCaseIsInsensitive, replace_references);
+  auto qids = collect_qids(theJson);
+  replaceFromQueryString(
+      theJson, theParams, thePrefix, qids, theCaseIsInsensitive, replace_references);
 }
 
 }  // namespace Spine

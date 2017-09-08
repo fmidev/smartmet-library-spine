@@ -21,9 +21,9 @@ const char* text1 = R"EOF({
          "crs": "data",
          "xsize": 500
      },
-     "projectionglob":
+     "p":
      {
-         "qid": "",
+         "qid": "p",
          "crs": "data",
          "xsize": 500
      },
@@ -73,22 +73,25 @@ void expand()
   if (!reader.parse(text1, json))
     TEST_FAILED("Failed to parse the sample json");
 
-  SmartMet::Spine::HTTP::ParamMap params = {{"time", "2014-09-05"},
-                                            {"language", "en"},
-                                            {"projection.xsize", "666"},
-                                            {"projection.ysize", "666"},
-                                            {"bbox", "1,2,3,4"},
-                                            {"crs", "WGS84"},
-                                            {"ysize", "777"},
-                                            {"main.filter", "emboss"},
-                                            {"main.fill", "none"},
-                                            {"layer1.parameter", "RoadTemperature"},
-                                            {"layer1.attributes.fill", "none"},
-                                            {"layer1.attributes.stroke", "red"},
-                                            {"layer1.extra", "{}"},
-                                            {"layer1.extra.test", "bar"},
-                                            {"layer1.extra.json", "json:foo"},
-                                            {"layer1.extra.ref", "ref:bar"}};
+  SmartMet::Spine::HTTP::ParamMap params = {
+      {"a.b.c.d", "abcd"},  // create a deep path in one go
+      {"bbox", "1,2,3,4"},
+      {"crs", "WGS84"},
+      {"foo.bar", "bar"},  // new top level elements
+      {"foo.foo", "foo"},
+      {"language", "en"},
+      {"layer1.attributes.fill", "none"},
+      {"layer1.attributes.stroke", "red"},
+      {"layer1.extra.json", "json:foo"},  // new lower level elements
+      {"layer1.extra.ref", "ref:bar"},
+      {"layer1.extra.test", "bar"},
+      {"layer1.parameter", "RoadTemperature"},
+      {"main.fill", "none"},
+      {"main.filter", "emboss"},
+      {"projection.xsize", "666"},
+      {"projection.ysize", "666"},
+      {"time", "2014-09-05"},
+      {"ysize", "777"}};
 
   SmartMet::Spine::JSON::expand(json, params);
 
@@ -97,25 +100,36 @@ void expand()
   out << json;
 
   const char* expected = R"EOF({
+	"a" : 
+	{
+		"b" : 
+		{
+			"c" : 
+			{
+				"d" : "abcd"
+			}
+		}
+	},
 	"bbox" : "1,2,3,4",
 	"crs" : "WGS84",
+	"foo" : 
+	{
+		"bar" : "bar",
+		"foo" : "foo"
+	},
 	"language" : "en",
+	"p" : 
+	{
+		"crs" : "data",
+		"qid" : "p",
+		"xsize" : 500
+	},
 	"producer" : "pal_skandinavia",
 	"projection" : 
 	{
 		"crs" : "data",
 		"xsize" : 666,
 		"ysize" : 666
-	},
-	"projectionglob" : 
-	{
-		"bbox" : "1,2,3,4",
-		"crs" : "WGS84",
-		"language" : "en",
-		"qid" : "",
-		"time" : "2014-09-05",
-		"xsize" : 500,
-		"ysize" : 777
 	},
 	"time" : "2014-09-05",
 	"views" : 
@@ -204,16 +218,16 @@ void replaceReferences()
 
   const char* expected = R"EOF({
 	"language" : "fi",
+	"p" : 
+	{
+		"crs" : "data",
+		"qid" : "p",
+		"xsize" : 500
+	},
 	"producer" : "pal_skandinavia",
 	"projection" : 
 	{
 		"crs" : "data",
-		"xsize" : 500
-	},
-	"projectionglob" : 
-	{
-		"crs" : "data",
-		"qid" : "",
 		"xsize" : 500
 	},
 	"views" : 
