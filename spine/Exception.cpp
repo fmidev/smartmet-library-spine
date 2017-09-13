@@ -32,6 +32,14 @@ Exception::Exception(const Exception& other)
     prevException = new Exception(*other.prevException);
 }
 
+Exception Exception::Trace(const char* _filename,
+                           int _line,
+                           const char* _function,
+                           std::string _message)
+{
+  return Exception(_filename, _line, _function, _message, nullptr);
+}
+
 Exception::Exception(const char* _filename,
                      int _line,
                      const char* _function,

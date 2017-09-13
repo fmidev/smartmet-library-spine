@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.9.8
+Version: 17.9.13
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -89,6 +89,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Sep 13 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.9.13-1.fmi
+- Added Exception::Trace as a simpler way to trace exceptions
+
 * Fri Sep  8 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.9.8-1.fmi
 - Fixed Json expansion to insert missing objects along the variable path
 

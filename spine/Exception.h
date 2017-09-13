@@ -31,6 +31,12 @@ class Exception : public std::exception
   // (i.e when you are in a "catch" block. If '_prevExeption' parameter is NULL then
   // the constructor automatically detects the content of the previous exception.
 
+  static Exception Trace(const char* _filename,
+                         int _line,
+                         const char* _function,
+                         std::string _message);
+
+  // TODO: Make this private to enforce using Exception::Trace
   Exception(const char* _filename,
             int _line,
             const char* _function,
