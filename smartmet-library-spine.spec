@@ -41,6 +41,8 @@ Requires: boost-date-time
 Requires: boost-thread
 Requires: boost-program-options
 Requires: boost-system
+Requires: boost-timer
+Requires: boost-chrono
 %else
 BuildRequires: mysql-devel
 Requires: mysql-libs
