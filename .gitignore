@@ -3,6 +3,7 @@
 .#*
 Dependencies*
 *.so
+doc/
 obj/
 *Test
 server/smartmetd
