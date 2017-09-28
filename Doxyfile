@@ -4,11 +4,11 @@
 # Project related configuration options
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
-PROJECT_NAME           = "BrainStorm: Spine library"
+PROJECT_NAME           = "SmartMet: Spine library"
 PROJECT_NUMBER         =
 PROJECT_BRIEF          =
 PROJECT_LOGO           =
-OUTPUT_DIRECTORY       = ../doc/brainstorm/spine
+OUTPUT_DIRECTORY       = doc
 CREATE_SUBDIRS         = NO
 OUTPUT_LANGUAGE        = English
 BRIEF_MEMBER_DESC      = YES
@@ -24,7 +24,7 @@ JAVADOC_AUTOBRIEF      = NO
 QT_AUTOBRIEF           = NO
 MULTILINE_CPP_IS_BRIEF = NO
 INHERIT_DOCS           = YES
-SEPARATE_MEMBER_PAGES  = NO
+SEPARATE_MEMBER_PAGES  = YES
 TAB_SIZE               = 4
 ALIASES                =
 TCL_SUBST              =
@@ -95,10 +95,10 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = source include
+INPUT                  = spine
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.cpp *.h
-RECURSIVE              = NO
+RECURSIVE              = YES
 EXCLUDE                =
 EXCLUDE_SYMLINKS       = NO
 EXCLUDE_PATTERNS       =
@@ -117,7 +117,7 @@ FILTER_SOURCE_PATTERNS =
 SOURCE_BROWSER         = YES
 INLINE_SOURCES         = YES
 STRIP_CODE_COMMENTS    = YES
-REFERENCED_BY_RELATION = NO
+REFERENCED_BY_RELATION = YES
 REFERENCES_RELATION    = NO
 REFERENCES_LINK_SOURCE = YES
 USE_HTAGS              = NO
@@ -247,8 +247,10 @@ SKIP_FUNCTION_MACROS   = YES
 #---------------------------------------------------------------------------
 # Configuration::additions related to external references
 #---------------------------------------------------------------------------
-TAGFILES               =
-GENERATE_TAGFILE       = ../doc/brainstorm/spine/spine.tag
+TAGFILES               = ../../library/macgyver/doc/macgyver.tag=../../../../library/macgyver/doc/html \
+                         ../../library/newbase/doc/newbase.tag=../../../../library/newbase/doc/html \
+                         ../../library/gis/doc/gis.tag=../../../../library/gis/doc/html
+GENERATE_TAGFILE       = doc/spine.tag
 ALLEXTERNALS           = NO
 EXTERNAL_GROUPS        = YES
 PERL_PATH              = /usr/bin/perl
