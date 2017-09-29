@@ -64,6 +64,11 @@ FMI BrainStorm Spinal Cord Library
 Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: dtl
+Requires: smartmet-library-macgyver-devel
+Requires: smartmet-library-gis-devel
+Requires: smartmet-library-newbase-devel
+Requires: libconfig-devel
+Requires: %{SPECNAME}
 Obsoletes: libsmartmet-brainstorm-spine-devel < 16.11.1
 %description -n %{SPECNAME}-devel
 SmartMet Spine development files
