@@ -518,7 +518,10 @@ std::string ConfigBase::get_optional_path(const std::string& theName,
   if (value[0] != '/')
   {
     boost::filesystem::path p(file_name);
-    value = p.parent_path().string() + "/" + value;
+    auto prefix = p.parent_path().string();
+    // prevent "f.conf" from being expanded to "/f.conf"
+    if (!prefix.empty())
+      value = prefix + "/" + value;
   }
   return value;
 }
@@ -535,7 +538,10 @@ std::string ConfigBase::get_mandatory_path(const std::string& theName) const
   if (value[0] != '/')
   {
     boost::filesystem::path p(file_name);
-    value = p.parent_path().string() + "/" + value;
+    auto prefix = p.parent_path().string();
+    // prevent "f.conf" from being expanded to "/f.conf"
+    if (!prefix.empty())
+      value = prefix + "/" + value;
   }
 
   return value;
