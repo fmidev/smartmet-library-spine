@@ -40,6 +40,10 @@
 #include <stdexcept>
 #include <string>
 
+extern "C" {
+#include <unistd.h>
+}
+
 namespace fs = boost::filesystem;
 namespace ba = boost::algorithm;
 
@@ -56,6 +60,24 @@ void absolutize_path(std::string& file_name)
       file_name = path.string();
     }
   }
+}
+int is_file_readable(std::string& file_name)
+{
+  int handle;
+  // Apparently the only reliable way to test for readability is to actually open the file
+  // Use POSIX syscalls here for most efficient solution
+  if ((handle = open(file_name.c_str(), O_RDONLY)) >= 0)
+  {
+    // Open is not enough: directory might be opened with open as well
+    // On NFS: file reading may fail even if it was succesfully opened
+    char buf[1];
+    int rdtest = read(handle, (void*)buf, 1);
+    close(handle);
+    if (rdtest < 0)  // 0 bytes might be returned, if file has no data
+      return errno;
+    return 0;
+  }
+  return errno;
 }
 }
 
@@ -567,7 +589,16 @@ bool Reactor::addPlugin(const std::string& theFilename, bool verbose)
     std::string configfile =
         itsOptions.itsConfig->get_optional_path("plugins." + pluginname + ".configfile", "");
     if (configfile != "")
+    {
       absolutize_path(configfile);
+
+      if (is_file_readable(configfile) != 0)
+      {
+        std::cerr << ANSI_FG_RED << "plugin " << pluginname << ": configuration file unreadable"
+                  << ANSI_FG_DEFAULT << std::endl;
+        throw SmartMet::Spine::Exception(BCP, configfile + ": " + std::strerror(errno));
+      }
+    }
 
     // Find the ip filters
     std::vector<std::string> filterTokens;
@@ -786,7 +817,13 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     std::string configfile =
         itsOptions.itsConfig->get_optional_path("engines." + enginename + ".configfile", "");
     if (configfile != "")
+    {
       absolutize_path(configfile);
+      if (is_file_readable(configfile) != 0)
+        throw SmartMet::Spine::Exception(BCP,
+                                         "engine " + enginename + " config " + configfile +
+                                             " is unreadable: " + std::strerror(errno));
+    }
 
     itsEngineConfigs.insert(ConfigList::value_type(enginename, configfile));
 
