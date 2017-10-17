@@ -64,11 +64,17 @@ void absolutize_path(std::string& file_name)
 int is_file_readable(std::string& file_name)
 {
   int handle;
-  // Apparently the only reliable way to test for readability is to actually open the file
+  // Open appears to be the only practical solution
   // Use POSIX syscalls here for most efficient solution
   if ((handle = open(file_name.c_str(), O_RDONLY)) >= 0)
   {
+    // Open is not enough: directory might be opened but is not readable
+    // On NFS: open(2) man page says reading might fail even if open succeeds
+    char buf[1];
+    int rdtest = read(handle, (void*)buf, 1);
     close(handle);
+    if (rdtest < 0)  // 0 bytes might be returned, if file has no data
+      return errno;
     return 0;
   }
   return errno;
@@ -587,11 +593,7 @@ bool Reactor::addPlugin(const std::string& theFilename, bool verbose)
       absolutize_path(configfile);
 
       if (is_file_readable(configfile) != 0)
-      {
-        std::cerr << ANSI_FG_RED << "plugin " << pluginname << ": configuration file unreadable"
-                  << ANSI_FG_DEFAULT << std::endl;
-        throw SmartMet::Spine::Exception(BCP, configfile + ": " + std::strerror(errno));
-      }
+        throw SmartMet::Spine::Exception(BCP, "plugin " + pluginname + " config " + configfile + " is unreadable: " + std::strerror(errno));
     }
 
     // Find the ip filters
@@ -814,11 +816,9 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     {
       absolutize_path(configfile);
       if (is_file_readable(configfile) != 0)
-      {
-        std::cerr << ANSI_FG_RED << "engine " << enginename << ": configuration file unreadable"
-                  << ANSI_FG_DEFAULT << std::endl;
-        throw SmartMet::Spine::Exception(BCP, configfile + ": " + std::strerror(errno));
-      }
+        throw SmartMet::Spine::Exception(BCP,
+                                         "engine " + enginename + " config " + configfile +
+                                             " is unreadable: " + std::strerror(errno));
     }
 
     itsEngineConfigs.insert(ConfigList::value_type(enginename, configfile));
