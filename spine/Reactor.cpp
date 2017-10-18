@@ -70,8 +70,9 @@ int is_file_readable(std::string& file_name)
   {
     // Open is not enough: directory might be opened but is not readable
     // On NFS: open(2) man page says reading might fail even if open succeeds
-    char buf[1];
-    int rdtest = read(handle, (void*)buf, 1);
+    std::size_t nbytes = 1;
+    char buf[nbytes];
+    auto rdtest = read(handle, static_cast<void*>(buf), nbytes);
     close(handle);
     if (rdtest < 0)  // 0 bytes might be returned, if file has no data
       return errno;
@@ -593,7 +594,9 @@ bool Reactor::addPlugin(const std::string& theFilename, bool verbose)
       absolutize_path(configfile);
 
       if (is_file_readable(configfile) != 0)
-        throw SmartMet::Spine::Exception(BCP, "plugin " + pluginname + " config " + configfile + " is unreadable: " + std::strerror(errno));
+        throw SmartMet::Spine::Exception(BCP,
+                                         "plugin " + pluginname + " config " + configfile +
+                                             " is unreadable: " + std::strerror(errno));
     }
 
     // Find the ip filters
