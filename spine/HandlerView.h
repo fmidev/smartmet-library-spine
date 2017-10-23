@@ -1,17 +1,14 @@
 #pragma once
 
-#include <string>
-#include <fstream>
-
-#include <boost/shared_ptr.hpp>
+#include "AccessLogger.h"
+#include "HTTP.h"
+#include "IPFilter.h"
+#include "SmartMetPlugin.h"
+#include "Thread.h"
 #include <boost/function.hpp>
 #include <boost/noncopyable.hpp>
-
-#include "IPFilter.h"
-#include "LoggedRequest.h"
-#include "SmartMetPlugin.h"
-#include "HTTP.h"
-#include "Thread.h"
+#include <boost/shared_ptr.hpp>
+#include <string>
 
 namespace SmartMet
 {
@@ -20,44 +17,9 @@ namespace Spine
 // Content handling typedefs
 
 class Reactor;
+class AccessLogger;
 
 typedef boost::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)> ContentHandler;
-
-// Logging-related typedefs
-typedef std::list<LoggedRequest> LogListType;
-typedef std::map<std::string, LogListType> LoggedRequests;
-typedef std::tuple<bool, LoggedRequests, boost::posix_time::ptime> AccessLogStruct;  // Fields are:
-                                                                                     // Logging
-                                                                                     // enabled
-                                                                                     // flag, the
-                                                                                     // logged
-                                                                                     // requests,
-                                                                                     // last cleanup
-                                                                                     // time
-
-// AccessLogger handles a file for access logs and rotation
-class AccessLogger
-{
- public:
-  AccessLogger(const std::string& resource, const std::string& accessLogDir);
-
-  ~AccessLogger();
-
-  void log(const LoggedRequest& theRequest);
-
-  void start();
-
-  void stop();
-
- private:
-  std::string itsResource;
-
-  std::string itsLoggingDir;
-
-  std::unique_ptr<std::ofstream> itsFileHandle;
-
-  bool itsIsRunning;
-};
 
 class HandlerView : private boost::noncopyable
 {
