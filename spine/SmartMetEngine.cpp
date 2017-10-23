@@ -1,9 +1,10 @@
 #include "SmartMetEngine.h"
+#include "Convenience.h"
 #include "Exception.h"
 #include <macgyver/AnsiEscapeCodes.h>
+#include <sys/types.h>
 #include <iostream>
 #include <signal.h>
-#include <sys/types.h>
 
 #include <boost/timer/timer.hpp>
 
@@ -41,7 +42,7 @@ void SmartMetEngine::construct(const std::string& engineName)
     if (!exception.stackTraceDisabled())
       std::cerr << exception.getStackTrace();
     else if (!exception.loggingDisabled())
-      std::cerr << "Error: " << exception.what() << std::endl;
+      std::cerr << Spine::log_time_str() + " Error: " + exception.what() << std::endl;
 
     kill(getpid(), SIGKILL);  // If we use exit() we might get a core dump.
                               // exit(-1);

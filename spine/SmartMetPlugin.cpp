@@ -1,10 +1,5 @@
-// ======================================================================
-/*!
- * \brief Implementation of class SmartMetPlugin
- */
-// ======================================================================
-
 #include "SmartMetPlugin.h"
+#include "Convenience.h"
 #include "Exception.h"
 #include <boost/thread.hpp>
 #include <boost/timer/timer.hpp>
@@ -65,7 +60,7 @@ void SmartMetPlugin::initPlugin()
     if (!exception.stackTraceDisabled())
       std::cerr << exception.getStackTrace();
     else if (!exception.loggingDisabled())
-      std::cerr << "Error: " << exception.what() << std::endl;
+      std::cerr << SmartMet::Spine::log_time_str() + " Error: " + exception.what() << std::endl;
 
     // Will terminate the program
     throw exception;

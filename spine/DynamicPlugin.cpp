@@ -5,6 +5,7 @@
 // ======================================================================
 
 #include "DynamicPlugin.h"
+#include "Convenience.h"
 #include "Exception.h"
 #include "Reactor.h"
 
@@ -69,7 +70,7 @@ void DynamicPlugin::initializePlugin()
     if (!exception.stackTraceDisabled())
       std::cerr << exception.getStackTrace();
     else if (!exception.loggingDisabled())
-      std::cerr << "Error: " << exception.what() << std::endl;
+      std::cerr << Spine::log_time_str() + " Error: " + exception.what() << std::endl;
 
     kill(getpid(), SIGKILL);  // If we use exit() we might get a core dump.
                               // exit(-1);

@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.10.18
+Version: 17.10.23
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -96,6 +96,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon Oct 23 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.10.23-1.fmi
+- Added timestamps to error logging
+
 * Wed Oct 18 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.10.18-1.fmi
 - Added error checking for missing/unreadable configuration files
 
