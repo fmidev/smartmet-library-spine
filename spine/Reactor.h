@@ -196,6 +196,7 @@ class Reactor
   bool itsShutdownRequested;
 
  private:
+  bool pluginsLoaded = false;
   // No void construction, options must be known
   Reactor();
   /* [[noreturn]] */ void cleanLog();

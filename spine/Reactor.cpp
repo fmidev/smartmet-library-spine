@@ -208,7 +208,7 @@ Reactor::Reactor(Options& options)
         addPlugin(libfile, itsOptions.verbose);
       }
     }
-
+    pluginsLoaded = true;
     // Set ContentEngine default logging. Do this after plugins are loaded so handlers are
     // recognized
 
@@ -245,6 +245,9 @@ Reactor::Reactor(Options& options)
 void Reactor::pluginInitializedCallback(DynamicPlugin* plugin)
 {
   size_t initialized = 0;
+  while (pluginsLoaded == false)
+    boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
+
   for (auto& plugin : itsPlugins)
     if (plugin->isInitialized())
       initialized++;
