@@ -44,6 +44,8 @@ class DynamicPlugin
   void setShutdownRequestedFlag();
   void shutdownPlugin();
 
+  bool isInitialized() { return initialized; }
+
  protected:
   // Filename of the dynamic library
   const std::string itsFilename;
@@ -72,6 +74,9 @@ class DynamicPlugin
   // Method to call the destroy function of dynamic module,
   // and close the dynamic module.
   void pluginClose();
+
+  // Set to true when initialization is ready
+  bool initialized;
 };
 
 }  // namespace Spine
