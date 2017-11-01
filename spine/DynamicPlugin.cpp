@@ -40,7 +40,8 @@ DynamicPlugin::DynamicPlugin(const std::string& theFilename,
     : itsFilename(theFilename),
       itsConfigFile(theConfig),
       itsReactorClass(theReactor),
-      itsPlugin(NULL)
+      itsPlugin(NULL),
+      initialized(false)
 {
   try
   {
@@ -63,6 +64,8 @@ void DynamicPlugin::initializePlugin()
     boost::timer::auto_cpu_timer timer(2, report);
 
     itsPlugin->initPlugin();
+    initialized = true;
+    itsReactorClass.pluginInitializedCallback(this);
   }
   catch (...)
   {

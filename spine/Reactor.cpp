@@ -238,6 +238,26 @@ Reactor::Reactor(Options& options)
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Function called by DynamicPlugin to inform that a particular plugin has been initialized
+ */
+// ----------------------------------------------------------------------
+
+void Reactor::pluginInitializedCallback(DynamicPlugin* plugin)
+{
+  size_t initialized = 0;
+  for (auto& plugin : itsPlugins)
+    if (plugin->isInitialized())
+      initialized++;
+
+  std::cout << std::string("Plugin ") + plugin->pluginname() + " initialized (" +
+                   std::to_string(initialized) + "/" + std::to_string(itsPlugins.size()) + ")\n";
+
+  if (initialized == itsPlugins.size())
+    std::cout << std::string("All ") + std::to_string(initialized) + " plugins initialized\n";
+}
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Required API version
  */
 // ----------------------------------------------------------------------

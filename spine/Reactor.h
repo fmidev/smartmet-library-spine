@@ -12,13 +12,13 @@
 
 #pragma once
 
-#include "SmartMetPlugin.h"
 #include "ConfigBase.h"
 #include "HTTP.h"
 #include "HandlerView.h"
 #include "IPFilter.h"
 #include "LoggedRequest.h"
 #include "Options.h"
+#include "SmartMetPlugin.h"
 #include "Thread.h"
 
 #include <boost/function.hpp>
@@ -27,9 +27,9 @@
 
 #include <libconfig.h++>
 
+#include <list>
 #include <map>
 #include <string>
-#include <list>
 #include <utility>
 
 namespace SmartMet
@@ -129,6 +129,9 @@ class Reactor
 
   void callClientConnectionFinishedHooks(const std::string& theClientIP,
                                          const boost::system::error_code& theError);
+
+  void pluginInitializedCallback(DynamicPlugin* plugin);
+
   bool isShutdownRequested();
   void shutdown();
 
