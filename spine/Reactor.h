@@ -197,6 +197,7 @@ class Reactor
 
  private:
   bool pluginsLoaded = false;
+  std::atomic<size_t> pluginsInitialized;
   // No void construction, options must be known
   Reactor();
   /* [[noreturn]] */ void cleanLog();

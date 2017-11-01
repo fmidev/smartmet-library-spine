@@ -117,6 +117,8 @@ Reactor::Reactor(Options& options)
 {
   try
   {
+    pluginsInitialized.store(0);
+
     // Startup message
     if (!itsOptions.quiet)
     {
@@ -244,17 +246,15 @@ Reactor::Reactor(Options& options)
 
 void Reactor::pluginInitializedCallback(DynamicPlugin* plugin)
 {
-  size_t initialized = 0;
+  size_t initialized = pluginsInitialized.fetch_add(1) + 1;
+
+  // Before printing anything, wait until all are loaded(not necessarily initialized)
+  // Otherwise we do not get the total count right and don't know when all are initialized
   while (pluginsLoaded == false)
     boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
 
-  for (auto& plugin : itsPlugins)
-    if (plugin->isInitialized())
-      initialized++;
-
   std::cout << std::string("Plugin ") + plugin->pluginname() + " initialized (" +
                    std::to_string(initialized) + "/" + std::to_string(itsPlugins.size()) + ")\n";
-
   if (initialized == itsPlugins.size())
     std::cout << std::string("All ") + std::to_string(initialized) + " plugins initialized\n";
 }
