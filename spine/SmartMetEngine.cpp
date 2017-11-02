@@ -31,7 +31,7 @@ void SmartMetEngine::construct(const std::string& engineName, Reactor* reactor)
 
     isReady = true;
     itsCond.notify_all();
-    reactor->engineInitializedCallback(this);
+    reactor->engineInitializedCallback(this, engineName);
   }
   catch (...)
   {

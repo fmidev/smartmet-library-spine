@@ -264,7 +264,7 @@ void Reactor::pluginInitializedCallback(DynamicPlugin* plugin)
  */
 // ----------------------------------------------------------------------
 
-void Reactor::engineInitializedCallback(SmartMetEngine* engine)
+void Reactor::engineInitializedCallback(SmartMetEngine* engine, const std::string& engineName)
 {
   size_t initialized = enginesInitialized.fetch_add(1) + 1;
 
@@ -273,7 +273,7 @@ void Reactor::engineInitializedCallback(SmartMetEngine* engine)
   while (enginesLoaded == false)
     boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
 
-  std::cout << std::string("Engine ") + engine->itsName + " initialized (" +
+  std::cout << std::string("Engine ") + engineName + " initialized (" +
                    std::to_string(initialized) + "/" + std::to_string(itsEngines.size()) + ")\n";
   if (initialized == itsEngines.size())
     std::cout << std::string("All ") + std::to_string(initialized) + " engines initialized\n";
