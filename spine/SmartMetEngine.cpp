@@ -1,6 +1,7 @@
 #include "SmartMetEngine.h"
 #include "Convenience.h"
 #include "Exception.h"
+#include "Reactor.h"
 #include <macgyver/AnsiEscapeCodes.h>
 #include <sys/types.h>
 #include <iostream>
@@ -12,15 +13,11 @@ namespace SmartMet
 {
 namespace Spine
 {
-SmartMetEngine::SmartMetEngine() : itsShutdownRequested(false), isReady(false)
-{
-}
+SmartMetEngine::SmartMetEngine() : itsShutdownRequested(false), isReady(false) {}
 
-SmartMetEngine::~SmartMetEngine()
-{
-}
+SmartMetEngine::~SmartMetEngine() {}
 
-void SmartMetEngine::construct(const std::string& engineName)
+void SmartMetEngine::construct(const std::string& engineName, Reactor* reactor)
 {
   try
   {
@@ -34,6 +31,7 @@ void SmartMetEngine::construct(const std::string& engineName)
 
     isReady = true;
     itsCond.notify_all();
+    reactor->engineInitializedCallback(this);
   }
   catch (...)
   {

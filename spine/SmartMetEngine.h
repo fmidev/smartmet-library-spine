@@ -10,8 +10,8 @@
 
 #pragma once
 
-#include <boost/thread.hpp>
 #include <boost/noncopyable.hpp>
+#include <boost/thread.hpp>
 
 #include <string>
 
@@ -54,7 +54,7 @@ class SmartMetEngine : private boost::noncopyable
   void wait();
 
   /// This function is used by the Reactor to initialize the engine
-  void construct(const std::string& engineName);
+  void construct(const std::string& engineName, Reactor* reactor);
 
   std::string itsName;
 
