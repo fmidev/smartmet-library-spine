@@ -132,7 +132,7 @@ class Reactor
                                          const boost::system::error_code& theError);
 
   void pluginInitializedCallback(DynamicPlugin* plugin);
-  void engineInitializedCallback(SmartMetEngine* engine);
+  void engineInitializedCallback(SmartMetEngine* engine, const std::string& engineName);
 
   bool isShutdownRequested();
   void shutdown();
