@@ -118,6 +118,7 @@ Reactor::Reactor(Options& options)
   try
   {
     pluginsInitialized.store(0);
+    enginesInitialized.store(0);
 
     // Startup message
     if (!itsOptions.quiet)
@@ -142,9 +143,7 @@ Reactor::Reactor(Options& options)
     std::cout.imbue(std::locale());
 
     // Load engines - all or just the requested ones
-
     const std::string enginedir = itsOptions.directory + "/engines";
-
     auto& root = itsOptions.itsConfig->get_root();
 
     if (!root.exists("engines"))
@@ -176,9 +175,9 @@ Reactor::Reactor(Options& options)
         loadEngine(libfile, itsOptions.verbose);
       }
     }
+    enginesLoaded = true;
 
     // Load plugins
-
     const std::string plugindir = itsOptions.directory + "/plugins";
 
     if (!root.exists("plugins"))
@@ -257,6 +256,27 @@ void Reactor::pluginInitializedCallback(DynamicPlugin* plugin)
                    std::to_string(initialized) + "/" + std::to_string(itsPlugins.size()) + ")\n";
   if (initialized == itsPlugins.size())
     std::cout << std::string("All ") + std::to_string(initialized) + " plugins initialized\n";
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Function called by SmartmetEngine to inform that a particular engine has been initialized
+ */
+// ----------------------------------------------------------------------
+
+void Reactor::engineInitializedCallback(SmartMetEngine* engine)
+{
+  size_t initialized = enginesInitialized.fetch_add(1) + 1;
+
+  // Before printing anything, wait until all are loaded(not necessarily initialized)
+  // Otherwise we do not get the total count right and don't know when all are initialized
+  while (enginesLoaded == false)
+    boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
+
+  std::cout << std::string("Engine ") + engine->itsName + " initialized (" +
+                   std::to_string(initialized) + "/" + std::to_string(itsEngines.size()) + ")\n";
+  if (initialized == itsEngines.size())
+    std::cout << std::string("All ") + std::to_string(initialized) + " engines initialized\n";
 }
 
 // ----------------------------------------------------------------------
@@ -746,7 +766,7 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
 
     // Fire the initialization thread
     itsInitThreads.push_back(boost::make_shared<boost::thread>(
-        boost::bind(&SmartMetEngine::construct, theEngine, theClassName)));
+        boost::bind(&SmartMetEngine::construct, theEngine, theClassName, this)));
 
     return engineInstance;
   }

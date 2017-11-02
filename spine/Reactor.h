@@ -18,6 +18,7 @@
 #include "IPFilter.h"
 #include "LoggedRequest.h"
 #include "Options.h"
+#include "SmartMetEngine.h"
 #include "SmartMetPlugin.h"
 #include "Thread.h"
 
@@ -131,6 +132,7 @@ class Reactor
                                          const boost::system::error_code& theError);
 
   void pluginInitializedCallback(DynamicPlugin* plugin);
+  void engineInitializedCallback(SmartMetEngine* engine);
 
   bool isShutdownRequested();
   void shutdown();
@@ -198,6 +200,8 @@ class Reactor
  private:
   bool pluginsLoaded = false;
   std::atomic<size_t> pluginsInitialized;
+  bool enginesLoaded = false;
+  std::atomic<size_t> enginesInitialized;
   // No void construction, options must be known
   Reactor();
   /* [[noreturn]] */ void cleanLog();
