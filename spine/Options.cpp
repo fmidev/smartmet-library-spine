@@ -5,10 +5,12 @@
 // ======================================================================
 
 #include "Options.h"
+#include "ConfigTools.h"
 #include "Exception.h"
-#include <macgyver/AnsiEscapeCodes.h>
-#include <boost/program_options.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <boost/program_options.hpp>
+#include <macgyver/AnsiEscapeCodes.h>
 #include <iostream>
 
 namespace SmartMet
@@ -215,38 +217,32 @@ void Options::parseConfig()
       return;
 
     if (verbose)
-    {
       std::cout << "Reading configuration file '" << configfile << "'" << std::endl;
-    }
 
-    itsConfig.reset(new ConfigBase(configfile, "SmartMet"));
+    itsConfig.readFile(configfile.c_str());
 
     // Read options
 
-    port = itsConfig->get_optional_config_param("port", port);
-    username = itsConfig->get_optional_config_param("user", username);
-    directory = itsConfig->get_optional_config_param("libdir", directory);
-    timeout = itsConfig->get_optional_config_param("timeout", timeout);
-    locale = itsConfig->get_optional_config_param("locale", locale);
-    verbose = itsConfig->get_optional_config_param("verbose", verbose);
-    debug = itsConfig->get_optional_config_param("debug", debug);
-    quiet = itsConfig->get_optional_config_param("quiet", quiet);
-    logrequests = itsConfig->get_optional_config_param("logrequests", logrequests);
-    compress = itsConfig->get_optional_config_param("compress", compress);
-    compresslimit = itsConfig->get_optional_config_param("compresslimit", compresslimit);
-    defaultlogging = itsConfig->get_optional_config_param("defaultlogging", defaultlogging);
-    lazylinking = itsConfig->get_optional_config_param("lazylinking", lazylinking);
-    accesslogdir = itsConfig->get_optional_config_param("accesslogdir", accesslogdir);
+    lookupHostSetting(itsConfig, port, "port");
+    lookupHostSetting(itsConfig, username, "user");
+    lookupHostSetting(itsConfig, directory, "libdir");
+    lookupHostSetting(itsConfig, timeout, "timeout");
+    lookupHostSetting(itsConfig, locale, "locale");
+    lookupHostSetting(itsConfig, verbose, "verbose");
+    lookupHostSetting(itsConfig, debug, "debug");
+    lookupHostSetting(itsConfig, quiet, "quiet");
+    lookupHostSetting(itsConfig, logrequests, "logrequests");
+    lookupHostSetting(itsConfig, compress, "compress");
+    lookupHostSetting(itsConfig, compresslimit, "compresslimit");
+    lookupHostSetting(itsConfig, defaultlogging, "defaultlogging");
+    lookupHostSetting(itsConfig, lazylinking, "lazylinking");
+    lookupHostSetting(itsConfig, accesslogdir, "accesslogdir");
 
-    slowpool.minsize =
-        itsConfig->get_optional_config_param("slowpool.maxthreads", slowpool.minsize);
-    slowpool.maxrequeuesize =
-        itsConfig->get_optional_config_param("slowpool.maxrequeuesize", slowpool.maxrequeuesize);
+    lookupHostSetting(itsConfig, slowpool.minsize, "slowpool.maxthreads");
+    lookupHostSetting(itsConfig, slowpool.maxrequeuesize, "slowpool.maxrequeuesize");
 
-    fastpool.minsize =
-        itsConfig->get_optional_config_param("fastpool.maxthreads", fastpool.minsize);
-    fastpool.maxrequeuesize =
-        itsConfig->get_optional_config_param("fastpool.maxrequeuesize", fastpool.maxrequeuesize);
+    lookupHostSetting(itsConfig, fastpool.minsize, "fastpool.maxthreads");
+    lookupHostSetting(itsConfig, fastpool.maxrequeuesize, "fastpool.maxrequeuesize");
   }
   catch (...)
   {

@@ -5,6 +5,7 @@
 // ======================================================================
 
 #include "Reactor.h"
+#include "ConfigTools.h"
 #include "DynamicPlugin.h"
 #include "Exception.h"
 #include "Names.h"
@@ -144,15 +145,16 @@ Reactor::Reactor(Options& options)
 
     // Load engines - all or just the requested ones
     const std::string enginedir = itsOptions.directory + "/engines";
-    auto& root = itsOptions.itsConfig->get_root();
 
-    if (!root.exists("engines"))
+    const auto& config = itsOptions.itsConfig;
+
+    if (!config.exists("engines"))
     {
       loadEngines(enginedir, itsOptions.verbose);
     }
     else
     {
-      auto& engines = root["engines"];
+      auto& engines = config.lookup("engines");
 
       if (!engines.isGroup())
         throw SmartMet::Spine::Exception(BCP, "engines-setting must be a group of settings", NULL);
@@ -168,10 +170,8 @@ Reactor::Reactor(Options& options)
           throw SmartMet::Spine::Exception(BCP, "engine settings must have names", NULL);
 
         std::string name = settings.getName();
-        std::string defaultfile = enginedir + "/" + name + ".so";
-        std::string libfile =
-            itsOptions.itsConfig->get_optional_path("engines." + name + ".libfile", defaultfile);
-
+        std::string libfile = enginedir + "/" + name + ".so";
+        config.lookupValue("engines." + name + ".libfile", libfile);
         loadEngine(libfile, itsOptions.verbose);
       }
     }
@@ -180,13 +180,13 @@ Reactor::Reactor(Options& options)
     // Load plugins
     const std::string plugindir = itsOptions.directory + "/plugins";
 
-    if (!root.exists("plugins"))
+    if (!config.exists("plugins"))
     {
       addPlugins(plugindir, itsOptions.verbose);
     }
     else
     {
-      auto& plugins = root["plugins"];
+      auto& plugins = config.lookup("plugins");
 
       if (!plugins.isGroup())
         throw SmartMet::Spine::Exception(BCP, "plugins-setting must be a group of settings", NULL);
@@ -202,9 +202,8 @@ Reactor::Reactor(Options& options)
           throw SmartMet::Spine::Exception(BCP, "plugin settings must have names", NULL);
 
         std::string name = settings.getName();
-        std::string defaultfile = plugindir + "/" + name + ".so";
-        std::string libfile =
-            itsOptions.itsConfig->get_optional_path("plugins." + name + ".libfile", defaultfile);
+        std::string libfile = plugindir + "/" + name + ".so";
+        config.lookupValue("plugins." + name + ".libfile", libfile);
 
         addPlugin(libfile, itsOptions.verbose);
       }
@@ -618,8 +617,9 @@ bool Reactor::addPlugin(const std::string& theFilename, bool verbose)
   {
     std::string pluginname = Names::plugin_name(theFilename);
 
-    bool disabled = itsOptions.itsConfig->get_optional_config_param<bool>(
-        "plugins." + pluginname + ".disabled", false);
+    bool disabled = false;
+    lookupHostSetting(itsOptions.itsConfig, disabled, "plugins." + pluginname + ".disabled");
+
     if (disabled)
     {
       if (verbose)
@@ -630,9 +630,10 @@ bool Reactor::addPlugin(const std::string& theFilename, bool verbose)
       return false;
     }
 
-    std::string configfile =
-        itsOptions.itsConfig->get_optional_path("plugins." + pluginname + ".configfile", "");
-    if (configfile != "")
+    std::string configfile;
+    lookupHostSetting(itsOptions.itsConfig, configfile, "plugins." + pluginname + ".configfile");
+
+    if (!configfile.empty())
     {
       absolutize_path(configfile);
 
@@ -644,8 +645,8 @@ bool Reactor::addPlugin(const std::string& theFilename, bool verbose)
 
     // Find the ip filters
     std::vector<std::string> filterTokens;
-    itsOptions.itsConfig->get_config_array<std::string>("plugins." + pluginname + ".ip_filters",
-                                                        filterTokens);
+    lookupHostStringSettings(
+        itsOptions.itsConfig, filterTokens, "plugins." + pluginname + ".ip_filters");
 
     if (not filterTokens.empty())
     {
@@ -844,8 +845,8 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
 
     std::string enginename = Names::engine_name(theFilename);
 
-    bool disabled = itsOptions.itsConfig->get_optional_config_param<bool>(
-        "engines." + enginename + ".disabled", false);
+    bool disabled = false;
+    lookupHostSetting(itsOptions.itsConfig, disabled, "engines." + enginename + ".disabled");
     if (disabled)
     {
       if (verbose)
@@ -856,8 +857,8 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
       return false;
     }
 
-    std::string configfile =
-        itsOptions.itsConfig->get_optional_path("engines." + enginename + ".configfile", "");
+    std::string configfile;
+    lookupHostSetting(itsOptions.itsConfig, configfile, "engines." + enginename + ".configfile");
     if (configfile != "")
     {
       absolutize_path(configfile);

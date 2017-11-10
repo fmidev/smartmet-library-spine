@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.11.2
+Version: 17.11.10
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -96,6 +96,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Fri Nov 10 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.11.10-1.fmi
+- Added host dependent configuration setting lookup
+
 * Thu Nov  2 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.11.2-1.fmi
 - Added reporting on when all plugins or engines have been initialized
 

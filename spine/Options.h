@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "ConfigBase.h"
 #include <boost/shared_ptr.hpp>
+#include <libconfig.h++>
 #include <string>
 
 namespace SmartMet
@@ -20,9 +20,8 @@ struct PoolOptions
 {
   // TODO: Fix naming scheme, now we set libconfig slowpool.maxthreads to be minsize
   //	std::size_t maxsize;
-  std::size_t minsize;
-  std::size_t maxrequeuesize;
-
+  unsigned int minsize;
+  unsigned int maxrequeuesize;
   PoolOptions();
 };
 
@@ -31,7 +30,7 @@ struct PoolOptions
 struct Options
 {
   int port;
-  long timeout;
+  unsigned int timeout;
   std::string directory;
   std::string configfile;
   std::string username;
@@ -41,7 +40,7 @@ struct Options
   bool debug;
   bool logrequests;
   bool compress;
-  std::size_t compresslimit;
+  unsigned int compresslimit;
   bool defaultlogging;
   bool lazylinking;
 
@@ -50,7 +49,7 @@ struct Options
   PoolOptions slowpool;
   PoolOptions fastpool;
 
-  boost::shared_ptr<ConfigBase> itsConfig;
+  libconfig::Config itsConfig;
 
   Options();
   bool parse(int argc, char* argv[]);
