@@ -203,5 +203,15 @@ bool lookupHostStringSettings(const libconfig::Config& theConfig,
   }
 }
 
+// ----------------------------------------------------------------------
+/*!
+ * \brief Lookup a path setting
+ */
+// ----------------------------------------------------------------------
+
+bool lookupPathSetting(const libconfig::Config& theConfig,
+                       std::string& theValue,
+                       const std::string& theVariable);
+
 }  // namespace Spine
 }  // namespace SmartMet

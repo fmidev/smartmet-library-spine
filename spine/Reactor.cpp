@@ -62,6 +62,7 @@ void absolutize_path(std::string& file_name)
     }
   }
 }
+
 int is_file_readable(std::string& file_name)
 {
   int handle;
@@ -171,7 +172,7 @@ Reactor::Reactor(Options& options)
 
         std::string name = settings.getName();
         std::string libfile = enginedir + "/" + name + ".so";
-        config.lookupValue("engines." + name + ".libfile", libfile);
+        lookupPathSetting(config, libfile, "engines." + name + ".libfile");
         loadEngine(libfile, itsOptions.verbose);
       }
     }
@@ -203,7 +204,7 @@ Reactor::Reactor(Options& options)
 
         std::string name = settings.getName();
         std::string libfile = plugindir + "/" + name + ".so";
-        config.lookupValue("plugins." + name + ".libfile", libfile);
+        lookupPathSetting(config, libfile, "plugins." + name + ".libfile");
 
         addPlugin(libfile, itsOptions.verbose);
       }
@@ -631,7 +632,7 @@ bool Reactor::addPlugin(const std::string& theFilename, bool verbose)
     }
 
     std::string configfile;
-    lookupHostSetting(itsOptions.itsConfig, configfile, "plugins." + pluginname + ".configfile");
+    lookupPathSetting(itsOptions.itsConfig, configfile, "plugins." + pluginname + ".configfile");
 
     if (!configfile.empty())
     {
@@ -858,7 +859,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     }
 
     std::string configfile;
-    lookupHostSetting(itsOptions.itsConfig, configfile, "engines." + enginename + ".configfile");
+    lookupPathSetting(itsOptions.itsConfig, configfile, "engines." + enginename + ".configfile");
     if (configfile != "")
     {
       absolutize_path(configfile);
