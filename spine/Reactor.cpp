@@ -41,7 +41,8 @@
 #include <stdexcept>
 #include <string>
 
-extern "C" {
+extern "C"
+{
 #include <unistd.h>
 }
 
@@ -82,7 +83,7 @@ int is_file_readable(std::string& file_name)
   }
   return errno;
 }
-}
+}  // namespace
 
 namespace SmartMet
 {
@@ -151,7 +152,9 @@ Reactor::Reactor(Options& options)
 
     if (!config.exists("engines"))
     {
-      loadEngines(enginedir, itsOptions.verbose);
+      std::cerr << "Warning: engines setting missing from the server configuration file - are you "
+                   "sure you do not need any?"
+                << std::endl;
     }
     else
     {
@@ -183,7 +186,7 @@ Reactor::Reactor(Options& options)
 
     if (!config.exists("plugins"))
     {
-      addPlugins(plugindir, itsOptions.verbose);
+      throw std::runtime_error("plugins setting missing from the server configuration file");
     }
     else
     {
@@ -697,46 +700,6 @@ bool Reactor::addPlugin(const std::string& theFilename, bool verbose)
 
 // ----------------------------------------------------------------------
 /*!
- * \brief Load plugins from a directory
- */
-// ----------------------------------------------------------------------
-
-bool Reactor::addPlugins(const std::string& theDirectory, bool verbose)
-{
-  try
-  {
-    if (!fs::exists(theDirectory))
-      throw SmartMet::Spine::Exception(BCP,
-                                       "Plugin directory '" + theDirectory + "' does not exist!");
-
-    if (!fs::is_directory(theDirectory))
-      throw SmartMet::Spine::Exception(
-          BCP, "Expecting '" + theDirectory + "' to be a plugin directory!");
-
-    if (verbose)
-    {
-      std::cout << "\t+ [Loading plugins in directory '" << theDirectory << "']" << std::endl;
-    }
-
-    unsigned int count = 0;
-    fs::directory_iterator end_dir;
-    for (fs::directory_iterator it(theDirectory); it != end_dir; ++it)
-    {
-      if (fs::extension(*it) == ".so")
-        if (addPlugin(it->path().string(), verbose))
-          ++count;
-    }
-
-    return (count > 0);
-  }
-  catch (...)
-  {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
-  }
-}
-
-// ----------------------------------------------------------------------
-/*!
  * \brief Method to create a new instance of loaded class
  */
 // ----------------------------------------------------------------------
@@ -930,47 +893,6 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     itsSingletons.insert(SingletonList::value_type(itsNamePointer(), theSingleton));
 
     return true;
-  }
-  catch (...)
-  {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
-  }
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Dynamic Engine loader
- */
-// ----------------------------------------------------------------------
-
-bool Reactor::loadEngines(const std::string& theDirectory, bool verbose)
-{
-  try
-  {
-    if (!fs::exists(theDirectory))
-      throw SmartMet::Spine::Exception(BCP,
-                                       "Engine directory '" + theDirectory + "' does not exist");
-
-    if (!fs::is_directory(theDirectory))
-      throw SmartMet::Spine::Exception(
-          BCP, "Expecting '" + theDirectory + "' to be an engine directory");
-
-    if (verbose)
-    {
-      std::cout << "\t+ [Loading engine classes in directory '" << theDirectory << "']"
-                << std::endl;
-    }
-
-    unsigned int count = 0;
-    fs::directory_iterator end_dir;
-    for (fs::directory_iterator it(theDirectory); it != end_dir; ++it)
-    {
-      if (fs::extension(*it) == ".so")
-        if (loadEngine(it->path().string(), verbose))
-          ++count;
-    }
-
-    return (count > 0);
   }
   catch (...)
   {

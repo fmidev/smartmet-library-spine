@@ -99,13 +99,11 @@ class Reactor
   // Plugins
 
   bool addPlugin(const std::string& theFilename, bool verbose);
-  bool addPlugins(const std::string& theDirectory, bool verbose);
   void listPlugins() const;
 
   // Engines
 
   bool loadEngine(const std::string& theFilename, bool verbose);
-  bool loadEngines(const std::string& theDirectory, bool verbose);
   void listEngines() const;
   EngineInstance newInstance(const std::string& theClassName, void* user_data);
   EngineInstance getSingleton(const std::string& theClassName, void* user_data);
