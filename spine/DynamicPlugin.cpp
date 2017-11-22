@@ -20,7 +20,8 @@
 #include <stdexcept>
 #include <string>
 
-extern "C" {
+extern "C"
+{
 #include <dlfcn.h>
 }
 
@@ -58,14 +59,8 @@ void DynamicPlugin::initializePlugin()
 {
   try
   {
-    std::string report = (std::string(ANSI_FG_GREEN) + "Plugin [" + itsPlugin->getPluginName() +
-                          "] initialized in %t sec CPU, %w sec real] \n" + ANSI_FG_DEFAULT);
-
-    boost::timer::auto_cpu_timer timer(2, report);
-
     itsPlugin->initPlugin();
     initialized = true;
-    itsReactorClass.pluginInitializedCallback(this);
   }
   catch (...)
   {

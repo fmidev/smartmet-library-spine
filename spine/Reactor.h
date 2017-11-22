@@ -18,6 +18,7 @@
 #include "IPFilter.h"
 #include "LoggedRequest.h"
 #include "Options.h"
+#include "SmartMet.h"
 #include "SmartMetEngine.h"
 #include "SmartMetPlugin.h"
 #include "Thread.h"
@@ -98,7 +99,7 @@ class Reactor
 
   // Plugins
 
-  bool addPlugin(const std::string& theFilename, bool verbose);
+  bool loadPlugin(const std::string& theFilename, bool verbose);
   void listPlugins() const;
 
   // Engines
@@ -129,15 +130,15 @@ class Reactor
   void callClientConnectionFinishedHooks(const std::string& theClientIP,
                                          const boost::system::error_code& theError);
 
-  void pluginInitializedCallback(DynamicPlugin* plugin);
-  void engineInitializedCallback(SmartMetEngine* engine, const std::string& engineName);
-
   bool isShutdownRequested();
   void shutdown();
 
  private:
+  void initializeEngine(SmartMetEngine* theEngine, const std::string& theName);
+  void initializePlugin(DynamicPlugin* thePlugin, const std::string& theName);
+
   // SmartMet API Version
-  int APIVersion;
+  int APIVersion = SMARTMET_API_VERSION;
 
   const Options& itsOptions;
 
@@ -145,7 +146,7 @@ class Reactor
   mutable MutexType itsContentMutex;
   typedef std::map<std::string, boost::shared_ptr<HandlerView> > Handlers;
   Handlers itsHandlers;
-  bool itsCatchNoMatch;
+  bool itsCatchNoMatch = false;
   boost::shared_ptr<HandlerView> itsCatchNoMatchHandler;
 
   // Filters are determined at construction, an will be stored here until inserted into the handler
@@ -190,16 +191,17 @@ class Reactor
   // Logging
 
   mutable MutexType itsLoggingMutex;
-  bool itsLoggingEnabled;
+  bool itsLoggingEnabled = false;
   boost::posix_time::ptime itsLogLastCleaned;
   boost::shared_ptr<boost::thread> itsLogCleanerThread;
-  bool itsShutdownRequested;
+  bool itsShutdownRequested = false;
 
  private:
-  bool pluginsLoaded = false;
-  std::atomic<size_t> pluginsInitialized;
-  bool enginesLoaded = false;
-  std::atomic<size_t> enginesInitialized;
+  std::size_t itsEngineCount = 0;
+  std::size_t itsPluginCount = 0;
+
+  std::atomic<size_t> itsInitializedPluginCount{0};
+  std::atomic<size_t> itsInitializedEngineCount{0};
   // No void construction, options must be known
   Reactor();
   /* [[noreturn]] */ void cleanLog();

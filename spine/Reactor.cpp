@@ -30,6 +30,7 @@
 #include <boost/foreach.hpp>
 #include <boost/locale.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/timer/timer.hpp>
 
 #include <macgyver/AnsiEscapeCodes.h>
 
@@ -107,22 +108,10 @@ Reactor::~Reactor()
  */
 // ----------------------------------------------------------------------
 
-Reactor::Reactor(Options& options)
-    : APIVersion(SMARTMET_API_VERSION),
-      itsOptions(options),
-      itsContentMutex(),
-      itsHandlers(),
-      itsCatchNoMatch(false),
-      itsLoggingMutex(),
-      itsLoggingEnabled(false),
-      itsLogCleanerThread(),
-      itsShutdownRequested(false)
+Reactor::Reactor(Options& options) : itsOptions(options)
 {
   try
   {
-    pluginsInitialized.store(0);
-    enginesInitialized.store(0);
-
     // Startup message
     if (!itsOptions.quiet)
     {
@@ -163,6 +152,10 @@ Reactor::Reactor(Options& options)
       if (!engines.isGroup())
         throw SmartMet::Spine::Exception(BCP, "engines-setting must be a group of settings", NULL);
 
+      // Collect all enabled engfines so we can count them before loading them
+
+      std::vector<std::string> enabled_engines;
+
       for (int i = 0; i < engines.getLength(); i++)
       {
         auto& settings = engines[i];
@@ -176,10 +169,30 @@ Reactor::Reactor(Options& options)
         std::string name = settings.getName();
         std::string libfile = enginedir + "/" + name + ".so";
         lookupPathSetting(config, libfile, "engines." + name + ".libfile");
-        loadEngine(libfile, itsOptions.verbose);
+
+        bool disabled = false;
+        lookupHostSetting(itsOptions.itsConfig, disabled, "engines." + name + ".disabled");
+
+        if (disabled)
+        {
+          if (itsOptions.verbose)
+          {
+            std::cout << ANSI_FG_YELLOW << "\t  + [Ignoring engine '" << name
+                      << "' since disabled flag is true]" << ANSI_FG_DEFAULT << std::endl;
+          }
+        }
+
+        else
+        {
+          enabled_engines.push_back(libfile);
+        }
       }
+
+      itsEngineCount = enabled_engines.size();
+
+      for (const auto& libfile : enabled_engines)
+        loadEngine(libfile, itsOptions.verbose);
     }
-    enginesLoaded = true;
 
     // Load plugins
     const std::string plugindir = itsOptions.directory + "/plugins";
@@ -195,6 +208,10 @@ Reactor::Reactor(Options& options)
       if (!plugins.isGroup())
         throw SmartMet::Spine::Exception(BCP, "plugins-setting must be a group of settings", NULL);
 
+      // Collect all enabled plugins so we can count them before loading them
+
+      std::vector<std::string> enabled_plugins;
+
       for (int i = 0; i < plugins.getLength(); i++)
       {
         auto& settings = plugins[i];
@@ -209,77 +226,41 @@ Reactor::Reactor(Options& options)
         std::string libfile = plugindir + "/" + name + ".so";
         lookupPathSetting(config, libfile, "plugins." + name + ".libfile");
 
-        addPlugin(libfile, itsOptions.verbose);
+        std::string pluginname = Names::plugin_name(libfile);
+        bool disabled = false;
+        lookupHostSetting(itsOptions.itsConfig, disabled, "plugins." + pluginname + ".disabled");
+
+        if (disabled)
+        {
+          if (itsOptions.verbose)
+          {
+            std::cout << ANSI_FG_YELLOW << "\t  + [Ignoring dynamic plugin '" << pluginname
+                      << "' since disabled flag is true]" << ANSI_FG_DEFAULT << std::endl;
+          }
+        }
+
+        else
+        {
+          enabled_plugins.push_back(libfile);
+        }
       }
+
+      itsPluginCount = enabled_plugins.size();
+
+      // Then load them in parallel, keeping track of how many have been loaded
+      for (const auto& libfile : enabled_plugins)
+        loadPlugin(libfile, itsOptions.verbose);
     }
-    pluginsLoaded = true;
+
     // Set ContentEngine default logging. Do this after plugins are loaded so handlers are
     // recognized
 
     setLogging(itsOptions.defaultlogging);
-
-    // List services in verbose mode
-
-    // if(itsOptions.verbose)
-    //   {
-    // 	listEngines();
-    // 	listPlugins();
-
-    // 	std::cout << std::endl << "Registered services:" << std::endl;
-    // 	BOOST_FOREACH(const auto & uri_func, itsHandlers)
-    // 	  {
-    // 		std::cout << "  " << uri_func.first << std::endl;
-    // 	  }
-    // 	std::cout << itsHandlers.size() << " registered services" << std::endl;
-
-    //   }
   }
   catch (...)
   {
     throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
   }
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Function called by DynamicPlugin to inform that a particular plugin has been initialized
- */
-// ----------------------------------------------------------------------
-
-void Reactor::pluginInitializedCallback(DynamicPlugin* plugin)
-{
-  size_t initialized = pluginsInitialized.fetch_add(1) + 1;
-
-  // Before printing anything, wait until all are loaded(not necessarily initialized)
-  // Otherwise we do not get the total count right and don't know when all are initialized
-  while (pluginsLoaded == false)
-    boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
-
-  std::cout << std::string("Plugin ") + plugin->pluginname() + " initialized (" +
-                   std::to_string(initialized) + "/" + std::to_string(itsPlugins.size()) + ")\n";
-  if (initialized == itsPlugins.size())
-    std::cout << std::string("All ") + std::to_string(initialized) + " plugins initialized\n";
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Function called by SmartmetEngine to inform that a particular engine has been initialized
- */
-// ----------------------------------------------------------------------
-
-void Reactor::engineInitializedCallback(SmartMetEngine* engine, const std::string& engineName)
-{
-  size_t initialized = enginesInitialized.fetch_add(1) + 1;
-
-  // Before printing anything, wait until all are loaded(not necessarily initialized)
-  // Otherwise we do not get the total count right and don't know when all are initialized
-  while (enginesLoaded == false)
-    boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
-
-  std::cout << std::string("Engine ") + engineName + " initialized (" +
-                   std::to_string(initialized) + "/" + std::to_string(itsEngines.size()) + ")\n";
-  if (initialized == itsEngines.size())
-    std::cout << std::string("All ") + std::to_string(initialized) + " engines initialized\n";
 }
 
 // ----------------------------------------------------------------------
@@ -615,24 +596,11 @@ void Reactor::listPlugins() const
  */
 // ----------------------------------------------------------------------
 
-bool Reactor::addPlugin(const std::string& theFilename, bool verbose)
+bool Reactor::loadPlugin(const std::string& theFilename, bool verbose)
 {
   try
   {
     std::string pluginname = Names::plugin_name(theFilename);
-
-    bool disabled = false;
-    lookupHostSetting(itsOptions.itsConfig, disabled, "plugins." + pluginname + ".disabled");
-
-    if (disabled)
-    {
-      if (verbose)
-      {
-        std::cout << ANSI_FG_YELLOW << "\t  + [Ignoring dynamic plugin '" << theFilename
-                  << "' since disabled flag is true]" << ANSI_FG_DEFAULT << std::endl;
-      }
-      return false;
-    }
 
     std::string configfile;
     lookupPathSetting(itsOptions.itsConfig, configfile, "plugins." + pluginname + ".configfile");
@@ -683,8 +651,8 @@ bool Reactor::addPlugin(const std::string& theFilename, bool verbose)
     {
       // Start to initialize the plugin
 
-      itsInitThreads.push_back(
-          boost::make_shared<boost::thread>(boost::bind(&DynamicPlugin::initializePlugin, plugin)));
+      itsInitThreads.push_back(boost::make_shared<boost::thread>(
+          boost::bind(&Reactor::initializePlugin, this, plugin.get(), pluginname)));
 
       itsPlugins.push_back(plugin);
       return true;
@@ -731,7 +699,7 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
 
     // Fire the initialization thread
     itsInitThreads.push_back(boost::make_shared<boost::thread>(
-        boost::bind(&SmartMetEngine::construct, theEngine, theClassName, this)));
+        boost::bind(&Reactor::initializeEngine, this, theEngine, theClassName)));
 
     return engineInstance;
   }
@@ -809,20 +777,9 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
 
     std::string enginename = Names::engine_name(theFilename);
 
-    bool disabled = false;
-    lookupHostSetting(itsOptions.itsConfig, disabled, "engines." + enginename + ".disabled");
-    if (disabled)
-    {
-      if (verbose)
-      {
-        std::cout << ANSI_FG_YELLOW << "\t  + [Ignoring engine class '" << theFilename
-                  << "' since disabled flag is true]" << ANSI_FG_DEFAULT << std::endl;
-      }
-      return false;
-    }
-
     std::string configfile;
     lookupPathSetting(itsOptions.itsConfig, configfile, "engines." + enginename + ".configfile");
+
     if (configfile != "")
     {
       absolutize_path(configfile);
@@ -833,19 +790,6 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     }
 
     itsEngineConfigs.insert(ConfigList::value_type(enginename, configfile));
-
-    // if(verbose)
-    //   {
-    // 	std::cout << "\t  + [Loading engine class '"
-    // 			  << theFilename;
-    // 	if(configfile.empty())
-    // 	  std::cout << "' with no configfile]";
-    // 	else
-    // 	  std::cout << "' with configfile '"
-    // 				<< configfile
-    // 				<< "']";
-    // 	std::cout << std::endl;
-    //   }
 
     void* itsHandle = dlopen(theFilename.c_str(), RTLD_NOW | RTLD_GLOBAL);
     if (itsHandle == 0)
@@ -898,6 +842,60 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
   {
     throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
   }
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Initialize an engine
+ */
+// ----------------------------------------------------------------------
+
+void Reactor::initializeEngine(SmartMetEngine* theEngine, const std::string& theName)
+{
+  boost::timer::cpu_timer timer;
+  theEngine->construct(theName, this);
+  timer.stop();
+
+  auto now_initialized = itsInitializedEngineCount.fetch_add(1) + 1;
+
+  std::string report =
+      (std::string(ANSI_FG_GREEN) + "Engine [" + theName +
+       "] initialized in %t sec CPU, %w sec real (" + std::to_string(now_initialized) + "/" +
+       std::to_string(itsEngineCount) + ")" + ANSI_FG_DEFAULT);
+
+  std::cout << timer.format(2, report) << std::endl;
+
+  if (now_initialized == itsEngineCount)
+    std::cout << std::string(ANSI_FG_GREEN) + std::string("*** All ") +
+                     std::to_string(itsEngineCount) + " engines initialized" + ANSI_FG_DEFAULT
+              << std::endl;
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Initialize a plugin
+ */
+// ----------------------------------------------------------------------
+
+void Reactor::initializePlugin(DynamicPlugin* thePlugin, const std::string& theName)
+{
+  boost::timer::cpu_timer timer;
+  thePlugin->initializePlugin();
+  timer.stop();
+
+  auto now_initialized = itsInitializedPluginCount.fetch_add(1) + 1;
+
+  std::string report =
+      (std::string(ANSI_FG_GREEN) + "Plugin [" + theName +
+       "] initialized in %t sec CPU, %w sec real (" + std::to_string(now_initialized) + "/" +
+       std::to_string(itsPluginCount) + ")" + ANSI_FG_DEFAULT);
+
+  std::cout << timer.format(2, report) << std::endl;
+
+  if (now_initialized == itsPluginCount)
+    std::cout << std::string(ANSI_FG_GREEN) + std::string("*** All ") +
+                     std::to_string(itsPluginCount) + " plugins initialized" + ANSI_FG_DEFAULT
+              << std::endl;
 }
 
 // ----------------------------------------------------------------------

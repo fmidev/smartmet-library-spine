@@ -23,15 +23,10 @@ void SmartMetEngine::construct(const std::string& engineName, Reactor* reactor)
   {
     boost::unique_lock<boost::mutex> theLock(itsInitMutex);
 
-    std::string report = (std::string(ANSI_FG_GREEN) + "Engine [" + engineName +
-                          "] initialized in %t sec CPU, %w sec real \n" + ANSI_FG_DEFAULT);
-    boost::timer::auto_cpu_timer timer(2, report);
-
     this->init();
 
     isReady = true;
     itsCond.notify_all();
-    reactor->engineInitializedCallback(this, engineName);
   }
   catch (...)
   {
