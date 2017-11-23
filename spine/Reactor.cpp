@@ -135,7 +135,6 @@ Reactor::Reactor(Options& options) : itsOptions(options)
     std::cout.imbue(std::locale());
 
     // Load engines - all or just the requested ones
-    const std::string enginedir = itsOptions.directory + "/engines";
 
     const auto& config = itsOptions.itsConfig;
 
@@ -147,55 +146,14 @@ Reactor::Reactor(Options& options) : itsOptions(options)
     }
     else
     {
-      auto& engines = config.lookup("engines");
+      auto libs = findLibraries("engine");
+      itsEngineCount = libs.size();
 
-      if (!engines.isGroup())
-        throw SmartMet::Spine::Exception(BCP, "engines-setting must be a group of settings", NULL);
-
-      // Collect all enabled engfines so we can count them before loading them
-
-      std::vector<std::string> enabled_engines;
-
-      for (int i = 0; i < engines.getLength(); i++)
-      {
-        auto& settings = engines[i];
-
-        if (!settings.isGroup())
-          throw SmartMet::Spine::Exception(BCP, "engine settings must be groups", NULL);
-
-        if (settings.getName() == NULL)
-          throw SmartMet::Spine::Exception(BCP, "engine settings must have names", NULL);
-
-        std::string name = settings.getName();
-        std::string libfile = enginedir + "/" + name + ".so";
-        lookupPathSetting(config, libfile, "engines." + name + ".libfile");
-
-        bool disabled = false;
-        lookupHostSetting(itsOptions.itsConfig, disabled, "engines." + name + ".disabled");
-
-        if (disabled)
-        {
-          if (itsOptions.verbose)
-          {
-            std::cout << ANSI_FG_YELLOW << "\t  + [Ignoring engine '" << name
-                      << "' since disabled flag is true]" << ANSI_FG_DEFAULT << std::endl;
-          }
-        }
-
-        else
-        {
-          enabled_engines.push_back(libfile);
-        }
-      }
-
-      itsEngineCount = enabled_engines.size();
-
-      for (const auto& libfile : enabled_engines)
+      for (const auto& libfile : libs)
         loadEngine(libfile, itsOptions.verbose);
     }
 
     // Load plugins
-    const std::string plugindir = itsOptions.directory + "/plugins";
 
     if (!config.exists("plugins"))
     {
@@ -203,52 +161,12 @@ Reactor::Reactor(Options& options) : itsOptions(options)
     }
     else
     {
-      auto& plugins = config.lookup("plugins");
+      auto libs = findLibraries("plugin");
 
-      if (!plugins.isGroup())
-        throw SmartMet::Spine::Exception(BCP, "plugins-setting must be a group of settings", NULL);
-
-      // Collect all enabled plugins so we can count them before loading them
-
-      std::vector<std::string> enabled_plugins;
-
-      for (int i = 0; i < plugins.getLength(); i++)
-      {
-        auto& settings = plugins[i];
-
-        if (!settings.isGroup())
-          throw SmartMet::Spine::Exception(BCP, "plugin settings must be groups", NULL);
-
-        if (settings.getName() == NULL)
-          throw SmartMet::Spine::Exception(BCP, "plugin settings must have names", NULL);
-
-        std::string name = settings.getName();
-        std::string libfile = plugindir + "/" + name + ".so";
-        lookupPathSetting(config, libfile, "plugins." + name + ".libfile");
-
-        std::string pluginname = Names::plugin_name(libfile);
-        bool disabled = false;
-        lookupHostSetting(itsOptions.itsConfig, disabled, "plugins." + pluginname + ".disabled");
-
-        if (disabled)
-        {
-          if (itsOptions.verbose)
-          {
-            std::cout << ANSI_FG_YELLOW << "\t  + [Ignoring dynamic plugin '" << pluginname
-                      << "' since disabled flag is true]" << ANSI_FG_DEFAULT << std::endl;
-          }
-        }
-
-        else
-        {
-          enabled_plugins.push_back(libfile);
-        }
-      }
-
-      itsPluginCount = enabled_plugins.size();
+      itsPluginCount = libs.size();
 
       // Then load them in parallel, keeping track of how many have been loaded
-      for (const auto& libfile : enabled_plugins)
+      for (const auto& libfile : libs)
         loadPlugin(libfile, itsOptions.verbose);
     }
 
@@ -261,6 +179,57 @@ Reactor::Reactor(Options& options) : itsOptions(options)
   {
     throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
   }
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Find enabled libraries or plugins from the configuration
+ */
+// ----------------------------------------------------------------------
+
+std::vector<std::string> Reactor::findLibraries(const std::string& theName) const
+{
+  const auto& name = theName;
+  const auto names = theName + "s";
+
+  const auto moduledir = itsOptions.directory + "/" + names;
+
+  const auto& config = itsOptions.itsConfig;
+  const auto& modules = config.lookup(names);
+
+  if (!modules.isGroup())
+    throw SmartMet::Spine::Exception(BCP, names + "-setting must be a group of settings", NULL);
+
+  // Collect all enabled modules
+
+  std::vector<std::string> libs;
+
+  for (int i = 0; i < modules.getLength(); i++)
+  {
+    auto& settings = modules[i];
+
+    if (!settings.isGroup())
+      throw SmartMet::Spine::Exception(BCP, name + " settings must be groups", NULL);
+
+    if (settings.getName() == NULL)
+      throw SmartMet::Spine::Exception(BCP, name + " settings must have names", NULL);
+
+    std::string module_name = settings.getName();
+    std::string libfile = moduledir + "/" + module_name + ".so";
+    lookupPathSetting(config, libfile, names + "." + module_name + ".libfile");
+
+    bool disabled = false;
+    lookupHostSetting(itsOptions.itsConfig, disabled, names + "." + module_name + ".disabled");
+
+    if (!disabled)
+      libs.push_back(libfile);
+    else if (itsOptions.verbose)
+    {
+      std::cout << ANSI_FG_YELLOW << "\t  + [Ignoring " << name << " '" << module_name
+                << "' since disabled flag is true]" << ANSI_FG_DEFAULT << std::endl;
+    }
+  }
+  return libs;
 }
 
 // ----------------------------------------------------------------------

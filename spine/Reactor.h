@@ -136,6 +136,7 @@ class Reactor
  private:
   void initializeEngine(SmartMetEngine* theEngine, const std::string& theName);
   void initializePlugin(DynamicPlugin* thePlugin, const std::string& theName);
+  std::vector<std::string> findLibraries(const std::string& theName) const;
 
   // SmartMet API Version
   int APIVersion = SMARTMET_API_VERSION;
