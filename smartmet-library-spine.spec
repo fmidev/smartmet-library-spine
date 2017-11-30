@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.11.23
+Version: 17.11.30
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -96,6 +96,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu Nov 30 2017 Anssi Reponen <anssi.reponen@fmi.fi> - 17.11.30-1.fmi
+- PostGISDataSource class removed (BRAINSTORM-722)
+
 * Wed Nov 22 2017 Mika Heiskanen <mika.heiskanen@fmi.fi> - 17.11.23-1.fmi
 - Improved progress reports on engine and plugin initialization
 
