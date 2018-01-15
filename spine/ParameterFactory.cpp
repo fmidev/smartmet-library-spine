@@ -33,7 +33,6 @@ std::ostream& operator<<(std::ostream& out, const ParameterAndFunctions& paramfu
 // ----------------------------------------------------------------------
 /*!
  * \brief Get an instance of the parameter factory (singleton)
- *
  */
 // ----------------------------------------------------------------------
 
@@ -610,13 +609,15 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
 {
   try
   {
+    auto tmpname = boost::algorithm::trim_copy(name);
+
     ParameterFunction innerFunction;
     ParameterFunction outerFunction;
 
-    std::string paramnameAlias(name);
+    std::string paramnameAlias = tmpname;
 
     std::string paramname = parse_parameter_name(
-        parse_parameter_functions(name, paramnameAlias, innerFunction, outerFunction));
+        parse_parameter_functions(tmpname, paramnameAlias, innerFunction, outerFunction));
     Parameter parameter = parse(paramname, ignoreBadParameter);
 
     parameter.setAlias(paramnameAlias);
