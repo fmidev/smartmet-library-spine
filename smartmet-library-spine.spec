@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 17.11.30
+Version: 18.1.15
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -13,8 +13,8 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 17.10.5
-BuildRequires: smartmet-library-macgyver-devel >= 17.8.28
+BuildRequires: smartmet-library-newbase-devel >= 18.1.13
+BuildRequires: smartmet-library-macgyver-devel >= 17.11.27
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -23,16 +23,16 @@ BuildRequires: gdal-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 17.9.12
+BuildRequires: smartmet-library-gis-devel >= 18.1.15
 
 %if 0%{rhel} >= 7
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 17.10.5
-Requires: smartmet-library-macgyver >= 17.8.28
-Requires: smartmet-timezones >= 17.4.12
-Requires: smartmet-library-gis >= 17.9.12
+Requires: smartmet-library-newbase >= 18.1.13
+Requires: smartmet-library-macgyver >= 17.11.27
+Requires: smartmet-timezones >= 17.10.26
+Requires: smartmet-library-gis >= 18.1.15
 Requires: mariadb-libs
 Requires: boost-filesystem
 Requires: boost-iostreams
@@ -96,6 +96,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon Jan 15 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.1.15-1.fmi
+- Recompiled with latest postgresql and libpqxx
+
 * Thu Nov 30 2017 Anssi Reponen <anssi.reponen@fmi.fi> - 17.11.30-1.fmi
 - PostGISDataSource class removed (BRAINSTORM-722)
 
