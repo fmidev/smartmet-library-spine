@@ -10,6 +10,7 @@
 #include <macgyver/StringConversion.h>
 #include <stdexcept>
 #include <boost/algorithm/string.hpp>
+#include <boost/regex.hpp>
 
 using namespace std;
 
@@ -720,15 +721,11 @@ Parameter ParameterFactory::parse(const std::string& paramname,
 
       if (number == kFmiBadParameter)
       {
-        try
-        {
+        // Prefer regex instead of a try..catch block
+        if(boost::regex_match(paramname, boost::regex("^[(-|+)]?[0-9]+$")))
           number = FmiParameterName(Fmi::stol(paramname));
-        }
-        catch (...)
-        {
-          if (!ignoreBadParameter)
-            throw SmartMet::Spine::Exception(BCP, "Unknown parameter '" + paramname + "'!");
-        }
+        else if (!ignoreBadParameter)
+          throw SmartMet::Spine::Exception(BCP, "Unknown parameter '" + paramname + "'!");
       }
     }
 
