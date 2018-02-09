@@ -31,7 +31,7 @@ class SmartMetEngine : private boost::noncopyable
 
  public:
   /// Constructor
-  SmartMetEngine();
+  SmartMetEngine() = default;
 
   /// Virtual destructor declaration (otherwise runtime relocation will fail)
   virtual ~SmartMetEngine();
@@ -47,7 +47,8 @@ class SmartMetEngine : private boost::noncopyable
   virtual void shutdown() = 0;
   virtual void shutdownRequestFlagSet();
 
-  bool itsShutdownRequested;
+  bool itsShutdownRequested = false;
+  Reactor* itsReactor = nullptr;
 
  private:
   /// This function is used by Reactor getSingleton - method to wait until the engine is constructed
@@ -56,13 +57,10 @@ class SmartMetEngine : private boost::noncopyable
   /// This function is used by the Reactor to initialize the engine
   void construct(const std::string& engineName, Reactor* reactor);
 
+  bool isReady = false;
   std::string itsName;
-
   boost::mutex itsInitMutex;
-
   boost::condition_variable itsCond;
-
-  bool isReady;
 };
 
 }  // namespace Spine

@@ -13,14 +13,13 @@ namespace SmartMet
 {
 namespace Spine
 {
-SmartMetEngine::SmartMetEngine() : itsShutdownRequested(false), isReady(false) {}
-
 SmartMetEngine::~SmartMetEngine() {}
 
 void SmartMetEngine::construct(const std::string& engineName, Reactor* reactor)
 {
   try
   {
+    itsReactor = reactor;
     boost::unique_lock<boost::mutex> theLock(itsInitMutex);
 
     this->init();
@@ -30,7 +29,7 @@ void SmartMetEngine::construct(const std::string& engineName, Reactor* reactor)
   }
   catch (...)
   {
-    SmartMet::Spine::Exception exception(BCP, "Engine construction failed!", NULL);
+    Spine::Exception exception(BCP, "Engine construction failed!", nullptr);
 
     if (!exception.stackTraceDisabled())
       std::cerr << exception.getStackTrace();
@@ -54,7 +53,7 @@ void SmartMetEngine::wait()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -67,7 +66,7 @@ void SmartMetEngine::setShutdownRequestedFlag()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -80,7 +79,7 @@ void SmartMetEngine::shutdownEngine()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
