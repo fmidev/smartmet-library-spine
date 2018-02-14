@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 18.2.9
+Version: 18.2.14
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -96,6 +96,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Feb 14 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.2.14-1.fmi
+- Added data derived parameters 'symbol' and 'symboltext'
+
 * Fri Feb  9 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.2.9-1.fmi
 - SmartMetEngine now has a reactor datamember to provide reactor services to engines
 

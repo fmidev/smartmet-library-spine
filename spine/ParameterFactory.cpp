@@ -7,10 +7,10 @@
 #include "ParameterFactory.h"
 #include "Convenience.h"
 #include "Exception.h"
-#include <macgyver/StringConversion.h>
-#include <stdexcept>
 #include <boost/algorithm/string.hpp>
 #include <boost/regex.hpp>
+#include <macgyver/StringConversion.h>
+#include <stdexcept>
 
 using namespace std;
 
@@ -675,24 +675,24 @@ Parameter ParameterFactory::parse(const std::string& paramname,
              paramname == "lon" || paramname == "longitude" || paramname == "lonlat" ||
              paramname == "lpnn" || paramname == "model" || paramname == "modtime" ||
              paramname == "mtime" ||  // aliases
-             paramname == "mon" ||
-             paramname == "month" || paramname == "moondown24h" || paramname == "moonphase" ||
-             paramname == "moonrise" || paramname == "moonrise2" || paramname == "moonrise2today" ||
-             paramname == "moonrisetoday" || paramname == "moonset" || paramname == "moonset2" ||
-             paramname == "moonset2today" || paramname == "moonsettoday" ||
-             paramname == "moonup24h" || paramname == "name" || paramname == "noon" ||
-             paramname == "origintime" || paramname == "place" || paramname == "population" ||
-             paramname == "region" || paramname == "rwsid" || paramname == "sensor_no" ||
-             paramname == "stationary" || paramname == "station_elevation" ||
-             paramname == "stationlat" || paramname == "stationlatitude" ||
-             paramname == "stationlon" || paramname == "stationlongitude" ||
-             paramname == "station_name" || paramname == "stationname" ||
-             paramname == "sunazimuth" || paramname == "sundeclination" ||
-             paramname == "sunelevation" || paramname == "sunrise" || paramname == "sunrisetoday" ||
-             paramname == "sunset" || paramname == "sunsettoday" || paramname == "time" ||
-             paramname == "timestring" || paramname == "tz" || paramname == "utctime" ||
-             paramname == "wday" || paramname == "weekday" || paramname == "wmo" ||
-             paramname == "xmltime" || paramname == "timestring" || paramname == "nearlatitude" ||
+             paramname == "mon" || paramname == "month" || paramname == "moondown24h" ||
+             paramname == "moonphase" || paramname == "moonrise" || paramname == "moonrise2" ||
+             paramname == "moonrise2today" || paramname == "moonrisetoday" ||
+             paramname == "moonset" || paramname == "moonset2" || paramname == "moonset2today" ||
+             paramname == "moonsettoday" || paramname == "moonup24h" || paramname == "name" ||
+             paramname == "noon" || paramname == "origintime" || paramname == "place" ||
+             paramname == "population" || paramname == "region" || paramname == "rwsid" ||
+             paramname == "sensor_no" || paramname == "stationary" ||
+             paramname == "station_elevation" || paramname == "stationlat" ||
+             paramname == "stationlatitude" || paramname == "stationlon" ||
+             paramname == "stationlongitude" || paramname == "station_name" ||
+             paramname == "stationname" || paramname == "sunazimuth" ||
+             paramname == "sundeclination" || paramname == "sunelevation" ||
+             paramname == "sunrise" || paramname == "sunrisetoday" || paramname == "sunset" ||
+             paramname == "sunsettoday" || paramname == "time" || paramname == "timestring" ||
+             paramname == "tz" || paramname == "utctime" || paramname == "wday" ||
+             paramname == "weekday" || paramname == "wmo" || paramname == "xmltime" ||
+             paramname == "timestring" || paramname == "nearlatitude" ||
              paramname == "nearlongitude" || paramname == "nearlatlon" || paramname == "nearlonlat")
     {
       type = Parameter::Type::DataIndependent;
@@ -702,7 +702,8 @@ Parameter ParameterFactory::parse(const std::string& paramname,
              paramname == "windchill" || paramname == "summersimmerindex" || paramname == "ssi" ||
              paramname == "feelslike" || paramname == "weather" || paramname == "weathersymbol" ||
              paramname == "apparenttemperature" || paramname == "snow1hlower" ||
-             paramname == "snow1hupper" || paramname == "snow1h")
+             paramname == "snow1hupper" || paramname == "snow1h" || paramname == "symbol" ||
+             paramname == "symboltext")
     {
       type = Parameter::Type::DataDerived;
     }
@@ -722,7 +723,7 @@ Parameter ParameterFactory::parse(const std::string& paramname,
       if (number == kFmiBadParameter)
       {
         // Prefer regex instead of a try..catch block
-        if(boost::regex_match(paramname, boost::regex("^[(-|+)]?[0-9]+$")))
+        if (boost::regex_match(paramname, boost::regex("^[(-|+)]?[0-9]+$")))
           number = FmiParameterName(Fmi::stol(paramname));
         else if (!ignoreBadParameter)
           throw SmartMet::Spine::Exception(BCP, "Unknown parameter '" + paramname + "'!");
