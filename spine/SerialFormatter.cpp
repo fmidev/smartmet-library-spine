@@ -5,11 +5,11 @@
 // ======================================================================
 
 #include "SerialFormatter.h"
+#include "Convenience.h"
 #include "Exception.h"
 #include "Table.h"
-#include "Convenience.h"
-#include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <boost/foreach.hpp>
 #include <algorithm>
 #include <iostream>
@@ -39,13 +39,13 @@ unsigned int find_name(const std::string& theName, const TableFormatter::Names& 
     }
 
     if (nam >= theNames.size())
-      throw SmartMet::Spine::Exception(BCP, "Invalid attribute name '" + theName + "'");
+      throw Spine::Exception(BCP, "Invalid attribute name '" + theName + "'");
 
     return nam;
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -66,7 +66,7 @@ std::list<std::string> parse_attributes(const std::string& theStr)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -119,7 +119,7 @@ void format_plain(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -224,10 +224,10 @@ void format_attributes(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
-}
+}  // namespace
 
 // ----------------------------------------------------------------------
 /*!
@@ -266,7 +266,7 @@ void SerialFormatter::format(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

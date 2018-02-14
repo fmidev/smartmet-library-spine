@@ -64,15 +64,15 @@ void collect_qids(Json::Value& theJson, QidMap& theQids, const std::string& theP
         Json::Value& json = theJson["qid"];
 
         if (!json.isString())
-          throw SmartMet::Spine::Exception(BCP, "The 'qid' value must be a string!");
+          throw Spine::Exception(BCP, "The 'qid' value must be a string!");
         auto qid = json.asString();
 
         if (qid.empty())
-          throw SmartMet::Spine::Exception(BCP, "The 'qid' value must not be empty!");
+          throw Spine::Exception(BCP, "The 'qid' value must not be empty!");
 
         auto dotpos = qid.find(".");
         if (dotpos != std::string::npos)
-          throw SmartMet::Spine::Exception(BCP, "The 'qid' value must not contain dots!");
+          throw Spine::Exception(BCP, "The 'qid' value must not contain dots!");
 
         theQids[qid] = &theJson;
       }
@@ -91,7 +91,7 @@ void collect_qids(Json::Value& theJson, QidMap& theQids, const std::string& theP
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Failed to collect qid:s from JSON!", NULL);
+    throw Spine::Exception::Trace(BCP, "Failed to collect qid:s from JSON!");
   }
 }
 
@@ -143,7 +143,7 @@ void JSON::preprocess(Json::Value& theJson,
         // parse directly over old contents
         bool json_ok = reader.parse(json_text, theJson);
         if (!json_ok)
-          throw SmartMet::Spine::Exception(
+          throw Spine::Exception(
               BCP, "Failed to parse '" + json_file + "': " + reader.getFormattedErrorMessages());
         // TODO: should we prevent infinite recursion?
         preprocess(theJson, theRootPath, thePath, theFileCache);
@@ -168,7 +168,7 @@ void JSON::preprocess(Json::Value& theJson,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -201,7 +201,7 @@ void deref(Json::Value& theJson, Json::Value& theRoot)
         Json::Path json_path(path);
         Json::Value value = json_path.resolve(theRoot);
         if (value.isNull())
-          throw SmartMet::Spine::Exception(BCP, "Failed to dereference '" + tmp + "'!");
+          throw Spine::Exception(BCP, "Failed to dereference '" + tmp + "'!");
         // We will not dereference the dereferenced value!
         theJson = value;
       }
@@ -225,7 +225,7 @@ void deref(Json::Value& theJson, Json::Value& theRoot)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -237,7 +237,7 @@ void JSON::dereference(Json::Value& theJson)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -265,17 +265,16 @@ void JSON::extract_set(const std::string& theName,
         if (json.isString())
           theSet.insert(json.asString());
         else
-          throw SmartMet::Spine::Exception(
-              BCP, "The '" + theName + "' array must contain strings only!");
+          throw Spine::Exception(BCP, "The '" + theName + "' array must contain strings only!");
       }
     }
     else
-      throw SmartMet::Spine::Exception(
+      throw Spine::Exception(
           BCP, "The '" + theName + "' setting must be a string or an array of strings!");
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -303,17 +302,16 @@ void JSON::extract_set(const std::string& theName,
         if (json.isInt())
           theSet.insert(json.asInt());
         else
-          throw SmartMet::Spine::Exception(
-              BCP, "The '" + theName + "' array must contain integers only");
+          throw Spine::Exception(BCP, "The '" + theName + "' array must contain integers only");
       }
     }
     else
-      throw SmartMet::Spine::Exception(
+      throw Spine::Exception(
           BCP, "The '" + theName + "' setting must be an integer or an array of integers");
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -387,7 +385,7 @@ void replaceFromQueryString(Json::Value& theJson,
       if (qid_json != theQids.end())
       {
         if (qid == name)
-          throw SmartMet::Spine::Exception(BCP, "Parameter name cannot match qid exactly")
+          throw Spine::Exception(BCP, "Parameter name cannot match qid exactly")
               .addParameter("parameter", name)
               .addParameter("value", name_value.second);
 
@@ -421,7 +419,7 @@ void replaceFromQueryString(Json::Value& theJson,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "JSON expansion failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "JSON expansion failed!");
   }
 }
 

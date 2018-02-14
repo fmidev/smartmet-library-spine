@@ -7,8 +7,8 @@
 #include "TimeSeriesGenerator.h"
 #include "Exception.h"
 
-#include <macgyver/TimeParser.h>
 #include <boost/foreach.hpp>
+#include <macgyver/TimeParser.h>
 
 namespace bp = boost::posix_time;
 namespace bg = boost::gregorian;
@@ -79,7 +79,7 @@ void generate_fixedtimes(std::set<bl::local_date_time>& theTimes,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -154,7 +154,7 @@ void generate_timesteps(std::set<bl::local_date_time>& theTimes,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -240,7 +240,7 @@ void generate_datatimes(std::set<bl::local_date_time>& theTimes,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -275,7 +275,7 @@ void generate_graphtimes(std::set<bl::local_date_time>& theTimes,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -350,7 +350,7 @@ LocalTimeList generate(const TimeSeriesGeneratorOptions& theOptions,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

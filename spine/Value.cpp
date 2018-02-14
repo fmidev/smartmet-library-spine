@@ -1,12 +1,12 @@
 #include "Value.h"
-#include "Exception.h"
 #include "ConfigBase.h"
-#include <macgyver/StringConversion.h>
-#include <macgyver/TimeParser.h>
-#include <macgyver/TypeName.h>
+#include "Exception.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/lambda/lambda.hpp>
 #include <boost/spirit/include/qi.hpp>
+#include <macgyver/StringConversion.h>
+#include <macgyver/TimeParser.h>
+#include <macgyver/TypeName.h>
 #include <stdexcept>
 
 using Fmi::demangle_cpp_type_name;
@@ -48,7 +48,7 @@ NumType check_limits_impl(NumType arg,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -65,22 +65,18 @@ bool inside_limits_impl(NumType arg,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
-}
+}  // namespace
 
 namespace SmartMet
 {
 namespace Spine
 {
-Value::Value() : data()
-{
-}
+Value::Value() : data() {}
 
-Value::~Value()
-{
-}
+Value::~Value() {}
 
 void Value::reset()
 {
@@ -91,7 +87,7 @@ void Value::reset()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -128,7 +124,7 @@ const Value& Value::check_limits(const boost::optional<Value>& lower_limit,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -149,7 +145,7 @@ bool Value::inside_limits(const boost::optional<Value>& lower_limit,
         {
           std::ostringstream msg;
           msg << "Usupported type '" << demangle_cpp_type_name(data.type().name()) << "'";
-          throw SmartMet::Spine::Exception(BCP, msg.str());
+          throw Spine::Exception(BCP, msg.str());
         }
 
         return true;
@@ -169,7 +165,7 @@ bool Value::inside_limits(const boost::optional<Value>& lower_limit,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -197,7 +193,7 @@ bool Value::get_bool() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -217,7 +213,7 @@ int64_t Value::get_int() const
         {
           std::ostringstream msg;
           msg << "The value '" << tmp << "' is too large for int64_t";
-          throw SmartMet::Spine::Exception(BCP, msg.str());
+          throw Spine::Exception(BCP, msg.str());
         }
         return static_cast<int64_t>(tmp);
 
@@ -231,7 +227,7 @@ int64_t Value::get_int() const
           std::ostringstream msg;
           msg << "Failed to read an integer value from the string '"
               << boost::get<std::string>(data) << "'!";
-          throw SmartMet::Spine::Exception(BCP, msg.str());
+          throw Spine::Exception(BCP, msg.str());
         }
 
       default:
@@ -240,7 +236,7 @@ int64_t Value::get_int() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -261,7 +257,7 @@ uint64_t Value::get_uint() const
         {
           std::ostringstream msg;
           msg << "Cannot assign negative value " << tmp << " to uint64_t!";
-          throw SmartMet::Spine::Exception(BCP, msg.str());
+          throw Spine::Exception(BCP, msg.str());
         }
         return static_cast<uint64_t>(tmp);
 
@@ -275,7 +271,7 @@ uint64_t Value::get_uint() const
           std::ostringstream msg;
           msg << "Failed to read an unsigned integer value from the string '"
               << boost::get<std::string>(data) << "'!";
-          throw SmartMet::Spine::Exception(BCP, msg.str());
+          throw Spine::Exception(BCP, msg.str());
         }
 
       default:
@@ -284,7 +280,7 @@ uint64_t Value::get_uint() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -313,7 +309,7 @@ double Value::get_double() const
           std::ostringstream msg;
           msg << "Failed to read a double value from the string '" << boost::get<std::string>(data)
               << "'";
-          throw SmartMet::Spine::Exception(BCP, msg.str());
+          throw Spine::Exception(BCP, msg.str());
         }
 
       default:
@@ -322,7 +318,7 @@ double Value::get_double() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -351,7 +347,7 @@ boost::posix_time::ptime Value::get_ptime(bool use_extensions) const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -378,7 +374,7 @@ Point Value::get_point() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -404,7 +400,7 @@ BoundingBox Value::get_bbox() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -417,7 +413,7 @@ std::string Value::get_string() const
       case TI_STRING:
         return boost::get<std::string>(data);
 
-      // FIXME: Do we need conversions from other types back to string?
+        // FIXME: Do we need conversions from other types back to string?
 
       default:
         bad_value_type(METHOD_NAME, typeid(std::string));
@@ -425,7 +421,7 @@ std::string Value::get_string() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -465,15 +461,15 @@ Value Value::from_config(libconfig::Setting& setting)
         std::ostringstream msg;
         msg << "Only scalar values are supported.\n"
             << "Got (at '" << setting.getPath() << "'):\n";
-        SmartMet::Spine::ConfigBase::dump_setting(msg, setting, 16);
-        throw SmartMet::Spine::Exception(BCP, msg.str());
+        Spine::ConfigBase::dump_setting(msg, setting, 16);
+        throw Spine::Exception(BCP, msg.str());
       }
     }
     return result;
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -486,7 +482,7 @@ Value Value::from_config(libconfig::Config& config, const std::string& path)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -507,7 +503,7 @@ Value Value::from_config(libconfig::Config& config,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -558,13 +554,13 @@ std::string Value::dump_to_string() const
         break;
 
       default:
-        throw SmartMet::Spine::Exception(BCP, "INTERNAL ERROR: unrecognized type code");
+        throw Spine::Exception(BCP, "INTERNAL ERROR: unrecognized type code");
     }
     return out.str();
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -576,7 +572,7 @@ void Value::print_on(std::ostream& output) const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -592,7 +588,7 @@ std::string Value::to_string() const
     switch (data.which())
     {
       case TI_EMPTY:
-        throw SmartMet::Spine::Exception(BCP, "Uninitialized value");
+        throw Spine::Exception(BCP, "Uninitialized value");
 
       case TI_BOOL:
         return boost::get<bool>(data) ? "true" : "false";
@@ -624,12 +620,12 @@ std::string Value::to_string() const
         return boost::get<BoundingBox>(data).as_string();
 
       default:
-        throw SmartMet::Spine::Exception(BCP, "INTERNAL ERROR: unrecognized type code");
+        throw Spine::Exception(BCP, "INTERNAL ERROR: unrecognized type code");
     }
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -641,11 +637,11 @@ void Value::bad_value_type(const std::string& location, const std::type_info& ex
     msg << location << ": conversion from " << demangle_cpp_type_name(data.type().name()) << " to "
         << demangle_cpp_type_name(exp_type.name())
         << " is not supported (value=" << dump_to_string() << ")";
-    throw SmartMet::Spine::Exception(BCP, msg.str());
+    throw Spine::Exception(BCP, msg.str());
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -655,11 +651,11 @@ void Value::get_not_implemented_for(const std::type_info& type) const
   {
     std::ostringstream msg;
     msg << "<" << demangle_cpp_type_name(type.name()) << ">() is not implemented";
-    throw SmartMet::Spine::Exception(BCP, msg.str());
+    throw Spine::Exception(BCP, msg.str());
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -721,7 +717,7 @@ boost::posix_time::ptime string2ptime(const std::string& value,
         {
           std::ostringstream msg;
           msg << "Invalid request to round to full minutes in '" << value << "'";
-          throw SmartMet::Spine::Exception(BCP, msg.str());
+          throw Spine::Exception(BCP, msg.str());
         }
       }
 
@@ -756,7 +752,7 @@ boost::posix_time::ptime string2ptime(const std::string& value,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -805,7 +801,7 @@ boost::posix_time::ptime parse_xml_time(const std::string& value)
       {
         std::ostringstream msg;
         msg << "Time zone not provided in '" << tmp << "'";
-        throw SmartMet::Spine::Exception(BCP, msg.str());
+        throw Spine::Exception(BCP, msg.str());
       }
 
       try
@@ -822,7 +818,7 @@ boost::posix_time::ptime parse_xml_time(const std::string& value)
       {
         std::ostringstream msg;
         msg << "Failed to read time from the string '" << tmp << "': " << err.what();
-        throw SmartMet::Spine::Exception(BCP, msg.str());
+        throw Spine::Exception(BCP, msg.str());
       }
     }
     else
@@ -832,7 +828,7 @@ boost::posix_time::ptime parse_xml_time(const std::string& value)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -858,12 +854,12 @@ bool string2bool(const std::string src)
     {
       std::ostringstream msg;
       msg << "Cannot convert '" << src << "' to bool.";
-      throw SmartMet::Spine::Exception(BCP, msg.str());
+      throw Spine::Exception(BCP, msg.str());
     }
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -876,7 +872,7 @@ bool Value::get() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -889,7 +885,7 @@ int64_t Value::get() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -902,7 +898,7 @@ uint64_t Value::get() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -915,7 +911,7 @@ double Value::get() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -928,7 +924,7 @@ std::string Value::get() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -941,7 +937,7 @@ boost::posix_time::ptime Value::get() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -954,7 +950,7 @@ Point Value::get() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -967,7 +963,7 @@ BoundingBox Value::get() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -980,7 +976,7 @@ Value Value::get() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -996,7 +992,7 @@ void Point::parse_string(const std::string& src)
     {
       std::ostringstream msg;
       msg << "Invalid point format in '" << src << "' (x,y[,crs]) expected)";
-      throw SmartMet::Spine::Exception(BCP, msg.str());
+      throw Spine::Exception(BCP, msg.str());
     }
     else
     {
@@ -1007,7 +1003,7 @@ void Point::parse_string(const std::string& src)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1022,7 +1018,7 @@ std::string Point::as_string() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1035,7 +1031,7 @@ bool Point::operator==(const Point& p) const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1051,7 +1047,7 @@ void BoundingBox::parse_string(const std::string& src)
     {
       std::ostringstream msg;
       msg << "Invalid bounding box format in '" << src << "' (xMin,yMin,xMax,yMax[,crs]) expected)";
-      throw SmartMet::Spine::Exception(BCP, msg.str());
+      throw Spine::Exception(BCP, msg.str());
     }
     else
     {
@@ -1064,7 +1060,7 @@ void BoundingBox::parse_string(const std::string& src)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1079,7 +1075,7 @@ std::string BoundingBox::as_string() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1093,7 +1089,7 @@ bool BoundingBox::operator==(const BoundingBox& b) const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

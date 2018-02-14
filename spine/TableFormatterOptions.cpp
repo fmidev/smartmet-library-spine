@@ -62,7 +62,7 @@ TableFormatterOptions::TableFormatterOptions(const libconfig::Config& theConfig)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

@@ -33,11 +33,11 @@ std::size_t hash_value(const date& theDate)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
-}
-}
+}  // namespace gregorian
+}  // namespace boost
 
 // ----------------------------------------------------------------------
 /*!
@@ -69,11 +69,11 @@ std::size_t hash_value(const time_duration& theDuration)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
-}
-}
+}  // namespace posix_time
+}  // namespace boost
 
 // ----------------------------------------------------------------------
 /*!
@@ -107,11 +107,11 @@ std::size_t hash_value(const ptime& theTime)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
-}
-}
+}  // namespace posix_time
+}  // namespace boost
 
 // ----------------------------------------------------------------------
 /*!
@@ -137,8 +137,8 @@ std::size_t hash_value(const time_zone_ptr& theZone)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
-}
-}
+}  // namespace local_time
+}  // namespace boost

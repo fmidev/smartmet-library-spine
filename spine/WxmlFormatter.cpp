@@ -5,15 +5,15 @@
 // ======================================================================
 
 #include "WxmlFormatter.h"
+#include "Convenience.h"
 #include "Exception.h"
 #include "Table.h"
 #include "TableFormatterOptions.h"
-#include "Convenience.h"
-#include <macgyver/StringConversion.h>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/foreach.hpp>
 #include <boost/math/special_functions/fpclassify.hpp>
 #include <boost/spirit/include/qi.hpp>
+#include <macgyver/StringConversion.h>
 #include <iostream>
 #include <stdexcept>
 
@@ -48,11 +48,11 @@ bool looks_number(const std::string& theValue)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
-}  // namespace anonymous
+}  // namespace
 
 // ----------------------------------------------------------------------
 /*!
@@ -165,7 +165,7 @@ void WxmlFormatter::format_100(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -295,7 +295,7 @@ void WxmlFormatter::format_200(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -328,11 +328,11 @@ void WxmlFormatter::format(std::ostream& theOutput,
     else if (version == "2.00")
       format_200(theOutput, theTable, theNames, theReq, theConfig);
     else
-      throw SmartMet::Spine::Exception(BCP, "Unsupported wxml version: " + version);
+      throw Spine::Exception(BCP, "Unsupported wxml version: " + version);
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

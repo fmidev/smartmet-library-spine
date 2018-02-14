@@ -5,9 +5,9 @@
 // ======================================================================
 
 #include "TableFormatterFactory.h"
-#include "Exception.h"
 #include "AsciiFormatter.h"
 #include "DebugFormatter.h"
+#include "Exception.h"
 #include "HtmlFormatter.h"
 #include "JsonFormatter.h"
 #include "PhpFormatter.h"
@@ -49,11 +49,11 @@ TableFormatter* create(const std::string& theName)
     else if (theName == "debug")
       return new DebugFormatter();
     else
-      throw SmartMet::Spine::Exception(BCP, "Unknown data format request '" + theName + "'");
+      throw Spine::Exception(BCP, "Unknown data format request '" + theName + "'");
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

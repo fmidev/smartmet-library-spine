@@ -22,7 +22,7 @@ SmartMetCache::SmartMetCache(std::size_t memoryCacheSize,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -72,7 +72,7 @@ SmartMetCache::ValueType SmartMetCache::find(KeyType hash)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -92,7 +92,7 @@ void SmartMetCache::insert(KeyType hash, ValueType data)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -116,7 +116,7 @@ std::vector<std::pair<SmartMetCache::KeyType, SmartMetCache::ValueType>> SmartMe
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -150,7 +150,7 @@ void SmartMetCache::operateFileCache()
   }
   catch (...)
   {
-    SmartMet::Spine::Exception exception(BCP, "Operation failed!", NULL);
+    Spine::Exception exception(BCP, "Operation failed!", nullptr);
     std::cerr << exception.getStackTrace();
   }
 }
@@ -171,7 +171,7 @@ void SmartMetCache::queueFileWrites(const std::vector<std::pair<KeyType, ValueTy
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

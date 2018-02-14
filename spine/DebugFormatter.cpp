@@ -5,11 +5,11 @@
 // ======================================================================
 
 #include "DebugFormatter.h"
+#include "Convenience.h"
 #include "Exception.h"
 #include "Table.h"
-#include "Convenience.h"
-#include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <iostream>
 #include <set>
 #include <stdexcept>
@@ -34,7 +34,7 @@ std::set<std::string> parse_debug_attributes(const std::string& theStr)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -70,10 +70,8 @@ void DebugFormatter::format(std::ostream& theOutput,
               << "text-align: center;}"
               << "tr:nth-child(even) {background-color: #f2f2f2;}"
               << "tr:hover {background-color: #e2e2e2;}"
-              << "</style>"
-              << std::endl
-              << "</head><body>"
-              << std::endl;
+              << "</style>" << std::endl
+              << "</head><body>" << std::endl;
 
     // Output headers
 
@@ -99,7 +97,7 @@ void DebugFormatter::format(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

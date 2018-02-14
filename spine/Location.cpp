@@ -32,7 +32,7 @@ std::string type_string(const Location::LocationType& type)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -81,11 +81,11 @@ std::string formatLocation(const Location& loc, const std::string& key)
     else if (key == "type")
       return (isnan(loc.type) ? nanstring : type_string(loc.type));
     else
-      throw SmartMet::Spine::Exception(BCP, "Unsupported location parameter name '" + key + "'!");
+      throw Spine::Exception(BCP, "Unsupported location parameter name '" + key + "'!");
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -117,7 +117,7 @@ std::string formatLocation(const Location& loc)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

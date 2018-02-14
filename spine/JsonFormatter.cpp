@@ -5,11 +5,11 @@
 // ======================================================================
 
 #include "JsonFormatter.h"
-#include "Table.h"
 #include "Convenience.h"
 #include "Exception.h"
-#include <boost/algorithm/string/split.hpp>
+#include "Table.h"
 #include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <boost/foreach.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <algorithm>
@@ -70,7 +70,7 @@ bool looks_number(const std::string& theValue)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -92,13 +92,13 @@ unsigned int find_name(const std::string& theName, const TableFormatter::Names& 
     }
 
     if (nam >= theNames.size())
-      throw SmartMet::Spine::Exception(BCP, "Invalid attribute name '" + theName + "'!");
+      throw Spine::Exception(BCP, "Invalid attribute name '" + theName + "'!");
 
     return nam;
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -120,7 +120,7 @@ std::list<std::string> parse_attributes(const std::string& theStr)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -229,11 +229,11 @@ void format_recursively(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
-}  // namespace anonymous
+}  // namespace
 
 // ----------------------------------------------------------------------
 /*!
@@ -265,7 +265,7 @@ void JsonFormatter::format(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

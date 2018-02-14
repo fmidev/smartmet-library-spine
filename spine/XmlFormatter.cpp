@@ -35,7 +35,7 @@ std::set<std::string> parse_xml_attributes(const std::string& theStr)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -77,11 +77,11 @@ void XmlFormatter::format(std::ostream& theOutput,
         format_tags(theOutput, theTable, theNames, tag, theReq);
     }
     else
-      throw SmartMet::Spine::Exception(BCP, "Unknown xmlstyle '" + style + "'");
+      throw Spine::Exception(BCP, "Unknown xmlstyle '" + style + "'");
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -129,7 +129,7 @@ void XmlFormatter::format_attributes(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -177,7 +177,7 @@ void XmlFormatter::format_tags(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -209,7 +209,7 @@ void XmlFormatter::format_mixed(std::ostream& theOutput,
     std::string attribstring;
     auto attr = theReq.getParameter("attributes");
     if (!attr)
-      throw SmartMet::Spine::Exception(BCP, "attribute list is required in mixed style formatting");
+      throw Spine::Exception(BCP, "attribute list is required in mixed style formatting");
     else
       attribstring = *attr;
 
@@ -249,7 +249,7 @@ void XmlFormatter::format_mixed(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

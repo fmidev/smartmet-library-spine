@@ -78,7 +78,7 @@ void printRequest(SmartMet::Spine::HTTP::Request& request)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -100,7 +100,7 @@ std::vector<std::string> read_file(const std::string& fn)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -125,7 +125,7 @@ void show_diff(const std::string& src, const std::string& dest)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -144,7 +144,7 @@ bool check_path(bool ok, const fs::path& p)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -186,7 +186,7 @@ void add_to_path_list(fs::directory_entry& entry,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -210,7 +210,7 @@ std::list<fs::path> recursive_directory_contents(const fs::path& top, unsigned m
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -228,7 +228,7 @@ std::string get_file_contents(const boost::filesystem::path& filename)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -249,7 +249,7 @@ void put_file_contents(const boost::filesystem::path& filename, const std::strin
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -279,7 +279,7 @@ std::string get_full_response(SmartMet::Spine::HTTP::Response& response)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -294,7 +294,7 @@ bool get_processed_response(const SmartMet::Spine::HTTP::Response& response,
     using boost::filesystem::path;
 
     bool ok = false;
-    FILE* handle = NULL;
+    FILE* handle = nullptr;
     path temp_fn = path("tmp") / scriptfile.filename();
 
     try
@@ -339,10 +339,10 @@ bool get_processed_response(const SmartMet::Spine::HTTP::Response& response,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
-}
+}  // namespace
 
 namespace SmartMet
 {
@@ -364,10 +364,10 @@ int test(SmartMet::Spine::Options& options, PreludeFunction prelude, bool proces
     const std::size_t padding = 90;
     BOOST_FOREACH (const boost::filesystem::path& fn, inputfiles)
     {
+      using boost::filesystem::path;
       using std::cout;
       using std::endl;
       using std::string;
-      using boost::filesystem::path;
 
       path inputfile("input");
       inputfile /= fn;

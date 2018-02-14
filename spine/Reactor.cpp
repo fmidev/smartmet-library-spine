@@ -126,7 +126,7 @@ Reactor::Reactor(Options& options) : itsOptions(options)
       itsOptions.report();
 
     // This has to be done before threading starts
-    mysql_library_init(0, NULL, NULL);
+    mysql_library_init(0, nullptr, nullptr);
 
     // Initialize the locale before engines are loaded
 
@@ -157,7 +157,7 @@ Reactor::Reactor(Options& options) : itsOptions(options)
 
     if (!config.exists("plugins"))
     {
-      throw std::runtime_error("plugins setting missing from the server configuration file");
+      throw Spine::Exception(BCP, "plugins setting missing from the server configuration file");
     }
     else
     {
@@ -177,7 +177,7 @@ Reactor::Reactor(Options& options) : itsOptions(options)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -198,7 +198,7 @@ std::vector<std::string> Reactor::findLibraries(const std::string& theName) cons
   const auto& modules = config.lookup(names);
 
   if (!modules.isGroup())
-    throw SmartMet::Spine::Exception(BCP, names + "-setting must be a group of settings", NULL);
+    throw Spine::Exception(BCP, names + "-setting must be a group of settings");
 
   // Collect all enabled modules
 
@@ -209,10 +209,10 @@ std::vector<std::string> Reactor::findLibraries(const std::string& theName) cons
     auto& settings = modules[i];
 
     if (!settings.isGroup())
-      throw SmartMet::Spine::Exception(BCP, name + " settings must be groups", NULL);
+      throw Spine::Exception(BCP, name + " settings must be groups");
 
-    if (settings.getName() == NULL)
-      throw SmartMet::Spine::Exception(BCP, name + " settings must have names", NULL);
+    if (settings.getName() == nullptr)
+      throw Spine::Exception(BCP, name + " settings must have names");
 
     std::string module_name = settings.getName();
     std::string libfile = moduledir + "/" + module_name + ".so";
@@ -279,7 +279,7 @@ bool Reactor::addContentHandler(SmartMetPlugin* thePlugin,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -313,7 +313,7 @@ bool Reactor::setNoMatchHandler(ContentHandler theHandler)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -350,7 +350,7 @@ boost::optional<HandlerView&> Reactor::getHandlerView(const HTTP::Request& theRe
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -403,7 +403,7 @@ Reactor::AccessLogStruct Reactor::getLoggedRequests() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -429,7 +429,7 @@ URIMap Reactor::getURIMap() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -470,7 +470,7 @@ URIMap Reactor::getURIMap() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -526,7 +526,7 @@ void Reactor::setLogging(bool loggingEnabled)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -555,7 +555,7 @@ void Reactor::listPlugins() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -579,9 +579,9 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool verbose)
       absolutize_path(configfile);
 
       if (is_file_readable(configfile) != 0)
-        throw SmartMet::Spine::Exception(BCP,
-                                         "plugin " + pluginname + " config " + configfile +
-                                             " is unreadable: " + std::strerror(errno));
+        throw Spine::Exception(BCP,
+                               "plugin " + pluginname + " config " + configfile +
+                                   " is unreadable: " + std::strerror(errno));
     }
 
     // Find the ip filters
@@ -631,7 +631,7 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool verbose)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -674,7 +674,7 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -695,7 +695,7 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
       // phase when the plugin requests an engine. This exception is usually
       // caught in the plugin's initPlugin() method.
 
-      throw SmartMet::Spine::Exception(BCP, "Shutdown active!");
+      throw Spine::Exception(BCP, "Shutdown active!");
     }
 
     Reactor::EngineInstance result;
@@ -727,7 +727,7 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -753,9 +753,9 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     {
       absolutize_path(configfile);
       if (is_file_readable(configfile) != 0)
-        throw SmartMet::Spine::Exception(BCP,
-                                         "engine " + enginename + " config " + configfile +
-                                             " is unreadable: " + std::strerror(errno));
+        throw Spine::Exception(BCP,
+                               "engine " + enginename + " config " + configfile +
+                                   " is unreadable: " + std::strerror(errno));
     }
 
     itsEngineConfigs.insert(ConfigList::value_type(enginename, configfile));
@@ -764,7 +764,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     if (itsHandle == 0)
     {
       // Error occurred while opening the dynamic library
-      throw SmartMet::Spine::Exception(
+      throw Spine::Exception(
           BCP, "Unable to load dynamic engine class library: " + std::string(dlerror()));
     }
 
@@ -778,8 +778,8 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     // Check that pointers to function were loaded succesfully
     if (itsNamePointer == 0 || itsCreatorPointer == 0)
     {
-      throw SmartMet::Spine::Exception(
-          BCP, "Cannot resolve dynamic library symbols: " + std::string(dlerror()));
+      throw Spine::Exception(BCP,
+                             "Cannot resolve dynamic library symbols: " + std::string(dlerror()));
     }
 
     // Create a permanent string out of engines human readable name
@@ -791,7 +791,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
       return false;
 
     // Begin constructing the engine
-    auto theSingleton = newInstance(itsNamePointer(), NULL);
+    auto theSingleton = newInstance(itsNamePointer(), nullptr);
 
     // Check whether the preliminary creation succeeded
     if (theSingleton == 0)
@@ -809,7 +809,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -889,7 +889,7 @@ void Reactor::listEngines() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -903,7 +903,7 @@ bool Reactor::addClientConnectionStartedHook(const std::string& hookName,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -917,7 +917,7 @@ bool Reactor::addBackendConnectionFinishedHook(const std::string& hookName,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -931,7 +931,7 @@ bool Reactor::addClientConnectionFinishedHook(const std::string& hookName,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -948,14 +948,14 @@ void Reactor::callClientConnectionStartedHooks(const std::string& theClientIP)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
 void Reactor::callBackendConnectionFinishedHooks(
     const std::string& theHostName,
     int thePort,
-    SmartMet::Spine::HTTP::ContentStreamer::StreamerStatus theStatus)
+    Spine::HTTP::ContentStreamer::StreamerStatus theStatus)
 {
   try
   {
@@ -968,7 +968,7 @@ void Reactor::callBackendConnectionFinishedHooks(
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -985,7 +985,7 @@ void Reactor::callClientConnectionFinishedHooks(const std::string& theClientIP,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1063,7 +1063,7 @@ void Reactor::shutdown()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

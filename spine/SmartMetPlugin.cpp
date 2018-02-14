@@ -15,9 +15,7 @@ SmartMetPlugin::SmartMetPlugin()
  */
 // ----------------------------------------------------------------------
 
-SmartMetPlugin::~SmartMetPlugin()
-{
-}
+SmartMetPlugin::~SmartMetPlugin() {}
 // ----------------------------------------------------------------------
 /*!
  * \brief Default performance query implementation. If not overrided in
@@ -44,7 +42,7 @@ void SmartMetPlugin::initPlugin()
     }
     catch (...)
     {
-      SmartMet::Spine::Exception exception(BCP, "Init call failed!", NULL);
+      SmartMet::Spine::Exception exception(BCP, "Init call failed!", nullptr);
       if (!itsShutdownRequested)
         throw exception;
       // else
@@ -55,7 +53,7 @@ void SmartMetPlugin::initPlugin()
   }
   catch (...)
   {
-    SmartMet::Spine::Exception exception(BCP, "Plugin initialization failed!", NULL);
+    SmartMet::Spine::Exception exception(BCP, "Plugin initialization failed!", nullptr);
 
     if (!exception.stackTraceDisabled())
       std::cerr << exception.getStackTrace();
@@ -105,7 +103,7 @@ void SmartMetPlugin::shutdownPlugin()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -134,6 +132,6 @@ void SmartMetPlugin::callRequestHandler(SmartMet::Spine::Reactor &theReactor,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }

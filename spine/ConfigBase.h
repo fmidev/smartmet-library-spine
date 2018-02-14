@@ -71,8 +71,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL)
-          .addParameter("Parameter", theName);
+      throw Exception::Trace(BCP, "Operation failed!").addParameter("Parameter", theName);
     }
   }
 
@@ -97,8 +96,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL)
-          .addParameter("Parameter", theName);
+      throw Exception::Trace(BCP, "Operation failed!").addParameter("Parameter", theName);
     }
   }
 
@@ -137,8 +135,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL)
-          .addParameter("Parameter", theName);
+      throw Exception::Trace(BCP, "Operation failed!").addParameter("Parameter", theName);
     }
   }
 
@@ -163,8 +160,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL)
-          .addParameter("Parameter", theName);
+      throw Exception::Trace(BCP, "Operation failed!").addParameter("Parameter", theName);
     }
   }
 
@@ -206,7 +202,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL).addParameter("Path", path);
+      throw Exception::Trace(BCP, "Operation failed!").addParameter("Path", path);
     }
   }
 
@@ -243,7 +239,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL).addParameter("Path", path);
+      throw Exception::Trace(BCP, "Operation failed!").addParameter("Path", path);
     }
   }
 
@@ -291,8 +287,7 @@ class ConfigBase
             int len = setting.getLength();
             if (len < min_size or len > max_size)
             {
-              throw SmartMet::Spine::Exception(BCP,
-                                               "The size of the array setting is out of the range!")
+              throw Exception(BCP, "The size of the array setting is out of the range!")
                   .addParameter("Configuration file", file_name)
                   .addParameter("Size", std::to_string(len))
                   .addParameter("Range",
@@ -309,8 +304,7 @@ class ConfigBase
           {
             if (min_size > 1 or max_size < 1)
             {
-              throw SmartMet::Spine::Exception(BCP,
-                                               "The size of the array setting is out of the range!")
+              throw Exception(BCP, "The size of the array setting is out of the range!")
                   .addParameter("Configuration file", file_name)
                   .addParameter("Size", "1")
                   .addParameter("Range",
@@ -322,7 +316,7 @@ class ConfigBase
           }
           else
           {
-            throw SmartMet::Spine::Exception(BCP, "Incorrect configuration type!")
+            throw Exception(BCP, "Incorrect configuration type!")
                 .addParameter("Configuration file", file_name)
                 .addParameter("Path", path)
                 .addDetail("Scalar or array of " +
@@ -342,7 +336,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL).addParameter("Path", path);
+      throw Exception::Trace(BCP, "Operation failed!").addParameter("Path", path);
     }
   }
 
@@ -356,7 +350,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL).addParameter("Path", path);
+      throw Exception::Trace(BCP, "Operation failed!").addParameter("Path", path);
     }
   }
 
@@ -371,7 +365,7 @@ class ConfigBase
       std::vector<MemberType> result;
       if (not this->get_config_array(setting, path, result, min_size, max_size))
       {
-        throw SmartMet::Spine::Exception(BCP, "Mandatory array setting not found!")
+        throw Exception(BCP, "Mandatory array setting not found!")
             .addParameter("Configuration file", file_name)
             .addParameter("Path", path);
       }
@@ -379,7 +373,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL).addParameter("Path", path);
+      throw Exception::Trace(BCP, "Operation failed!").addParameter("Path", path);
     }
   }
 

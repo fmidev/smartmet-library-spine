@@ -6,8 +6,8 @@
 
 #include "TimeSeriesGeneratorOptions.h"
 #include "Exception.h"
-#include <macgyver/StringConversion.h>
 #include <boost/functional/hash.hpp>
+#include <macgyver/StringConversion.h>
 
 namespace SmartMet
 {
@@ -73,7 +73,7 @@ std::size_t TimeSeriesGeneratorOptions::hash_value() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -102,7 +102,7 @@ bool TimeSeriesGeneratorOptions::all() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -160,7 +160,7 @@ std::ostream& operator<<(std::ostream& stream, const TimeSeriesGeneratorOptions&
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -179,7 +179,7 @@ void TimeSeriesGeneratorOptions::setDataTimes(const TimeList& times, bool climat
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

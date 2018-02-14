@@ -46,7 +46,7 @@ const ParameterFactory& ParameterFactory::instance()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -70,7 +70,7 @@ ParameterFactory::ParameterFactory() : converter()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -88,7 +88,7 @@ std::string ParameterFactory::name(int number) const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -105,7 +105,7 @@ int ParameterFactory::number(const std::string& name) const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -192,11 +192,11 @@ FunctionId ParameterFactory::parse_function(const string& theFunction) const
         return functions[i];
     }
 
-    throw SmartMet::Spine::Exception(BCP, "Unrecognized function name '" + theFunction + "'!");
+    throw Spine::Exception(BCP, "Unrecognized function name '" + theFunction + "'!");
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -223,13 +223,13 @@ string ParameterFactory::extract_limits(const string& theString) const
 
     string::size_type pos2 = theString.find(']', pos1);
     if (pos2 == string::npos && pos2 != theString.size() - 1)
-      throw SmartMet::Spine::Exception(BCP, "Invalid function modifier in '" + theString + "'!");
+      throw Spine::Exception(BCP, "Invalid function modifier in '" + theString + "'!");
 
     return theString.substr(pos1 + 1, pos2 - pos1 - 1);
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -273,7 +273,7 @@ string ParameterFactory::extract_function(const string& theString,
         const string::size_type pos = limits.find(':');
 
         if (pos == string::npos)
-          throw SmartMet::Spine::Exception(BCP, "Unrecognized modifier format '" + limits + "'!");
+          throw Spine::Exception(BCP, "Unrecognized modifier format '" + limits + "'!");
 
         string lo = limits.substr(0, pos);
         string hi = limits.substr(pos + 1);
@@ -281,8 +281,7 @@ string ParameterFactory::extract_function(const string& theString,
         boost::algorithm::trim(hi);
 
         if (lo.empty() && hi.empty())
-          throw SmartMet::Spine::Exception(
-              BCP, "Both lower and upper limit are missing from the modifier!");
+          throw Spine::Exception(BCP, "Both lower and upper limit are missing from the modifier!");
 
         if (!lo.empty())
           theLowerLimit = Fmi::stod(lo);
@@ -295,7 +294,7 @@ string ParameterFactory::extract_function(const string& theString,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -432,7 +431,7 @@ string parse_parameter_name(const string& param_name)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -469,8 +468,7 @@ std::string ParameterFactory::parse_parameter_functions(
       std::string restOfTheParamReq = paramreq.substr(startIndex);
 
       if (restOfTheParamReq.find(")") == std::string::npos)
-        throw SmartMet::Spine::Exception(
-            BCP, "Errorneous parameter request '" + theParameterRequest + "'!");
+        throw Spine::Exception(BCP, "Errorneous parameter request '" + theParameterRequest + "'!");
 
       size_t sizeOfTimeFormatString = restOfTheParamReq.find(")") + 1;
       restOfTheParamReq = restOfTheParamReq.substr(sizeOfTimeFormatString);
@@ -493,8 +491,7 @@ std::string ParameterFactory::parse_parameter_functions(
     }
 
     if (parts.size() == 0 || parts.size() > 3)
-      throw SmartMet::Spine::Exception(
-          BCP, "Errorneous parameter request '" + theParameterRequest + "'!");
+      throw Spine::Exception(BCP, "Errorneous parameter request '" + theParameterRequest + "'!");
 
     string paramname = parts.back();
 
@@ -523,8 +520,8 @@ std::string ParameterFactory::parse_parameter_functions(
 
       if (agg_interval_ahead < 0 || agg_interval_ahead < 0)
       {
-        throw SmartMet::Spine::Exception(
-            BCP, "The 'interval' option for '" + paramname + "' must be positive!");
+        throw Spine::Exception(BCP,
+                               "The 'interval' option for '" + paramname + "' must be positive!");
       }
       aggregation_interval_behind = boost::numeric_cast<unsigned int>(agg_interval_behind);
     }
@@ -601,7 +598,7 @@ std::string ParameterFactory::parse_parameter_functions(
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -627,7 +624,7 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -643,7 +640,7 @@ Parameter ParameterFactory::parse(const std::string& paramname,
   try
   {
     if (paramname.empty())
-      throw SmartMet::Spine::Exception(BCP, "Empty parameters are not allowed!");
+      throw Spine::Exception(BCP, "Empty parameters are not allowed!");
 
     std::string name = paramname;
     Parameter::Type type = Parameter::Type::Data;
@@ -661,8 +658,7 @@ Parameter ParameterFactory::parse(const std::string& paramname,
       number = FmiParameterName(converter.ToEnum(paramname));
       if (number == kFmiBadParameter)
         if (!ignoreBadParameter)
-          throw SmartMet::Spine::Exception(
-              BCP, "Unknown parameter to be landscaped '" + paramname + "'!");
+          throw Spine::Exception(BCP, "Unknown parameter to be landscaped '" + paramname + "'!");
     }
 
     else if (paramname == "country" || paramname == "covertype" || paramname == "dark" ||
@@ -726,7 +722,7 @@ Parameter ParameterFactory::parse(const std::string& paramname,
         if (boost::regex_match(paramname, boost::regex("^[(-|+)]?[0-9]+$")))
           number = FmiParameterName(Fmi::stol(paramname));
         else if (!ignoreBadParameter)
-          throw SmartMet::Spine::Exception(BCP, "Unknown parameter '" + paramname + "'!");
+          throw Spine::Exception(BCP, "Unknown parameter '" + paramname + "'!");
       }
     }
 
@@ -734,7 +730,7 @@ Parameter ParameterFactory::parse(const std::string& paramname,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 }  // namespace Spine

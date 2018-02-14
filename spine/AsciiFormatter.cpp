@@ -5,9 +5,9 @@
 // ======================================================================
 
 #include "AsciiFormatter.h"
+#include "Convenience.h"
 #include "Exception.h"
 #include "Table.h"
-#include "Convenience.h"
 #include <boost/foreach.hpp>
 #include <iostream>
 
@@ -72,7 +72,7 @@ void AsciiFormatter::format(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 }  // namespace Spine

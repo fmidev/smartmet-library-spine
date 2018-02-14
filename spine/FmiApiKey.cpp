@@ -21,8 +21,7 @@ namespace FmiApiKey
  */
 // ----------------------------------------------------------------------
 
-boost::optional<std::string> getFmiApiKey(const HTTP::Request& theRequest,
-                                          bool checkAccessToken)
+boost::optional<std::string> getFmiApiKey(const HTTP::Request& theRequest, bool checkAccessToken)
 {
   try
   {
@@ -40,7 +39,7 @@ boost::optional<std::string> getFmiApiKey(const HTTP::Request& theRequest,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

@@ -5,10 +5,10 @@
 // ======================================================================
 
 #include "ValueFormatter.h"
-#include "Exception.h"
 #include "Convenience.h"
-#include <iomanip>
+#include "Exception.h"
 #include <cmath>
+#include <iomanip>
 #include <stdexcept>
 
 static int powers_of_ten[] = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000};
@@ -58,7 +58,7 @@ ValueFormatter::ValueFormatter(const HTTP::Request& theReq)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -147,7 +147,7 @@ std::string ValueFormatter::format(double theValue, int thePrecision) const
     else if (itsAdjustField == "internal")
       out << std::internal;
     else
-      throw SmartMet::Spine::Exception(BCP, "Unknown adjustfield '" + itsAdjustField + "'");
+      throw Spine::Exception(BCP, "Unknown adjustfield '" + itsAdjustField + "'");
 
     if (itsFloatField == "fixed")
       out << std::fixed;
@@ -156,7 +156,7 @@ std::string ValueFormatter::format(double theValue, int thePrecision) const
     else if (itsFloatField == "none")
       ;
     else
-      throw SmartMet::Spine::Exception(BCP, "Unknown floatfield '" + itsFloatField + "'");
+      throw Spine::Exception(BCP, "Unknown floatfield '" + itsFloatField + "'");
 
     out << value;
 
@@ -164,7 +164,7 @@ std::string ValueFormatter::format(double theValue, int thePrecision) const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

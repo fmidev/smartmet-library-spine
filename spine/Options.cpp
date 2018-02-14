@@ -28,7 +28,7 @@ const unsigned int default_maxthreads = 10;
 const unsigned int default_timeout = 60;
 const unsigned int default_maxrequeuesize = 100;
 const unsigned int default_compresslimit = 1000;
-}
+}  // namespace
 
 // ----------------------------------------------------------------------
 /*!
@@ -36,9 +36,7 @@ const unsigned int default_compresslimit = 1000;
  */
 // ----------------------------------------------------------------------
 
-PoolOptions::PoolOptions() : minsize(default_maxthreads), maxrequeuesize(default_maxrequeuesize)
-{
-}
+PoolOptions::PoolOptions() : minsize(default_maxthreads), maxrequeuesize(default_maxrequeuesize) {}
 
 // ----------------------------------------------------------------------
 /*!
@@ -91,7 +89,7 @@ bool Options::parse(int argc, char* argv[])
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -187,19 +185,19 @@ bool Options::parseOptions(int argc, char* argv[])
 
     if (slowpool.minsize > 10000 || fastpool.minsize > 10000)
     {
-      throw SmartMet::Spine::Exception(BCP, "The maximum number of threads is 10000!");
+      throw Spine::Exception(BCP, "The maximum number of threads is 10000!");
     }
 
     if (compresslimit < 100)
     {
-      throw SmartMet::Spine::Exception(BCP, "Compression size limit below 100 makes no sense!");
+      throw Spine::Exception(BCP, "Compression size limit below 100 makes no sense!");
     }
 
     return true;
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -246,7 +244,7 @@ void Options::parseConfig()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -278,7 +276,7 @@ void Options::report() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

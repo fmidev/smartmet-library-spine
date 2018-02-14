@@ -41,7 +41,7 @@ DynamicPlugin::DynamicPlugin(const std::string& theFilename,
     : itsFilename(theFilename),
       itsConfigFile(theConfig),
       itsReactorClass(theReactor),
-      itsPlugin(NULL),
+      itsPlugin(nullptr),
       initialized(false)
 {
   try
@@ -51,7 +51,7 @@ DynamicPlugin::DynamicPlugin(const std::string& theFilename,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -64,7 +64,7 @@ void DynamicPlugin::initializePlugin()
   }
   catch (...)
   {
-    SmartMet::Spine::Exception exception(BCP, "Operation failed!", NULL);
+    Spine::Exception exception(BCP, "Operation failed!", nullptr);
     if (!exception.stackTraceDisabled())
       std::cerr << exception.getStackTrace();
     else if (!exception.loggingDisabled())
@@ -118,7 +118,7 @@ void DynamicPlugin::reloadPlugin()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -146,8 +146,8 @@ void DynamicPlugin::pluginOpen()
     if (itsHandle == 0)
     {
       // Error occurred while opening the dynamic library
-      throw SmartMet::Spine::Exception(
-          BCP, "Unable to load dynamic library plugin: " + std::string(dlerror()));
+      throw Spine::Exception(BCP,
+                             "Unable to load dynamic library plugin: " + std::string(dlerror()));
     }
 
     // Load the symbols (pointers to functions in dynamic library)
@@ -159,7 +159,7 @@ void DynamicPlugin::pluginOpen()
     // Check that pointers to function were loaded succesfully
     if (plugin_create_func == 0 || plugin_destroy_func == 0)
     {
-      throw SmartMet::Spine::Exception(BCP, "Cannot load symbols: " + std::string(dlerror()));
+      throw Spine::Exception(BCP, "Cannot load symbols: " + std::string(dlerror()));
     }
 
     // Create an instance of the class using the pointer to "create" function
@@ -168,19 +168,19 @@ void DynamicPlugin::pluginOpen()
 
     if (itsPlugin == 0)
     {
-      throw SmartMet::Spine::Exception(BCP, "Unable to create a new instance of plugin class");
+      throw Spine::Exception(BCP, "Unable to create a new instance of plugin class");
     }
 
     // Verify that the Plugin and Reactor API versions match.
 
     if (itsPlugin->getRequiredAPIVersion() != itsReactorClass.getRequiredAPIVersion())
     {
-      throw SmartMet::Spine::Exception(BCP, "Plugin and Server SmartMet API Version mismatch.");
+      throw Spine::Exception(BCP, "Plugin and Server SmartMet API Version mismatch.");
     }
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -217,7 +217,7 @@ void DynamicPlugin::pluginClose()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -225,14 +225,14 @@ void DynamicPlugin::shutdownPlugin()
 {
   try
   {
-    if (itsPlugin != NULL)
+    if (itsPlugin != nullptr)
     {
       itsPlugin->shutdownPlugin();
     }
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -240,14 +240,14 @@ void DynamicPlugin::setShutdownRequestedFlag()
 {
   try
   {
-    if (itsPlugin != NULL)
+    if (itsPlugin != nullptr)
     {
       itsPlugin->setShutdownRequestedFlag();
     }
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

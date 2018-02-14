@@ -14,7 +14,7 @@ bool isNotOld(const boost::posix_time::ptime& target, const SmartMet::Spine::Log
 {
   return compare.getRequestTime() > target;
 }
-}
+}  // namespace
 
 namespace SmartMet
 {
@@ -42,7 +42,7 @@ HandlerView::HandlerView(ContentHandler theHandler,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -54,9 +54,7 @@ HandlerView::HandlerView(ContentHandler theHandler)
 {
 }
 
-HandlerView::~HandlerView()
-{
-}
+HandlerView::~HandlerView() {}
 
 bool HandlerView::handle(Reactor& theReactor,
                          const HTTP::Request& theRequest,
@@ -149,7 +147,7 @@ void HandlerView::setLogging(bool newStatus)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -166,7 +164,7 @@ bool HandlerView::queryIsFast(HTTP::Request& theRequest) const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -178,7 +176,7 @@ std::string HandlerView::getPluginName() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -226,7 +224,7 @@ void HandlerView::cleanLog(const boost::posix_time::ptime& minTime)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -255,7 +253,7 @@ void HandlerView::flushLog()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

@@ -1,14 +1,14 @@
 #include "TimeSeriesAggregator.h"
-#include "TimeSeries.h"
-#include "TimeSeriesOutput.h"
 #include "Convenience.h"
 #include "Exception.h"
+#include "TimeSeries.h"
+#include "TimeSeriesOutput.h"
 
-#include <stdexcept>
-#include <numeric>
 #include <cmath>
 #include <iostream>
+#include <numeric>
 #include <sstream>
+#include <stdexcept>
 
 #include <boost/foreach.hpp>
 
@@ -88,7 +88,7 @@ double StatCalculator::getDoubleStatValue(const ParameterFunction& func, bool us
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -119,12 +119,12 @@ std::string StatCalculator::getStringStatValue(const ParameterFunction& func) co
       return boost::get<std::string>(itsTimeSeries[itsTimeSeries.size() / 2].value);
     else
     {
-      throw SmartMet::Spine::Exception(BCP, "Invalid string aggregation");
+      throw Spine::Exception(BCP, "Invalid string aggregation");
     }
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -147,12 +147,12 @@ boost::local_time::local_date_time StatCalculator::getLocalDateTimeStatValue(
     {
       std::stringstream ss;
       ss << "Function " << func.hash() << " can not be applied for a date!";
-      throw SmartMet::Spine::Exception(BCP, ss.str().c_str());
+      throw Spine::Exception(BCP, ss.str().c_str());
     }
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -206,12 +206,12 @@ LonLat StatCalculator::getLonLatStatValue(const ParameterFunction& func) const
     {
       std::stringstream ss;
       ss << "Function " << func.hash() << " can not be applied for a lonlat-coordinate!";
-      throw SmartMet::Spine::Exception(BCP, ss.str().c_str());
+      throw Spine::Exception(BCP, ss.str().c_str());
     }
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -236,7 +236,7 @@ void StatCalculator::operator()(const TimedValue& tv)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -250,7 +250,7 @@ Value StatCalculator::getStatValue(const ParameterFunction& func, bool useWeight
     bool missingValuesPresent(false);
     for (const TimedValue& tv : itsTimeSeries)
     {
-      if (boost::get<SmartMet::Spine::TimeSeries::None>(&(tv.value)))
+      if (boost::get<Spine::TimeSeries::None>(&(tv.value)))
       {
         missingValuesPresent = true;
         break;
@@ -258,9 +258,9 @@ Value StatCalculator::getStatValue(const ParameterFunction& func, bool useWeight
     }
 
     if (!func.isNanFunction() && missingValuesPresent)
-      return SmartMet::Spine::TimeSeries::None();
+      return Spine::TimeSeries::None();
 
-    Value ret = SmartMet::Spine::TimeSeries::None();
+    Value ret = Spine::TimeSeries::None();
 
     if (itsDataVector.size() > 0)
     {
@@ -287,7 +287,7 @@ Value StatCalculator::getStatValue(const ParameterFunction& func, bool useWeight
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -337,7 +337,7 @@ std::vector<std::pair<int, int> > get_aggregation_indexes(const ParameterFunctio
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -375,7 +375,7 @@ TimeSeries area_aggregate(const TimeSeriesGroup& ts_group, const ParameterFuncti
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -394,7 +394,7 @@ TimeSeriesPtr time_aggregate(const TimeSeries& ts, const ParameterFunction& func
 
       if (agg_index_start < 0 || agg_index_end < 0)
       {
-        ret->push_back(TimedValue(ts[i].time, SmartMet::Spine::TimeSeries::None()));
+        ret->push_back(TimedValue(ts[i].time, Spine::TimeSeries::None()));
         continue;
       }
 
@@ -410,7 +410,7 @@ TimeSeriesPtr time_aggregate(const TimeSeries& ts, const ParameterFunction& func
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -432,7 +432,7 @@ TimeSeriesGroupPtr time_aggregate(const TimeSeriesGroup& ts_group, const Paramet
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -454,7 +454,7 @@ TimeSeriesPtr aggregate(const TimeSeries& ts, const ParameterFunctions& pf)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -528,7 +528,7 @@ TimeSeriesGroupPtr aggregate(const TimeSeriesGroup& ts_group, const ParameterFun
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

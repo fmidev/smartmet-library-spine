@@ -37,7 +37,7 @@ ParameterOptions parseParameters(const HTTP::Request& theReq)
 
     // Protect against empty selection
     if (opt.empty())
-      throw SmartMet::Spine::Exception(BCP, "param option is empty");
+      throw Spine::Exception(BCP, "param option is empty");
 
     // Split
 
@@ -55,7 +55,7 @@ ParameterOptions parseParameters(const HTTP::Request& theReq)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -93,7 +93,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
       {
         int hour = Fmi::stoi(part);
         if (hour < 0 || hour > 23)
-          throw SmartMet::Spine::Exception(BCP, "Invalid hour selection '" + part + "'!");
+          throw Spine::Exception(BCP, "Invalid hour selection '" + part + "'!");
 
         options.timeList.insert(hour * 100);
       }
@@ -112,7 +112,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
       {
         int th = Fmi::stoi(part);
         if (th < 0 || th > 2359)
-          throw SmartMet::Spine::Exception(BCP, "Invalid time selection '" + part + "'!");
+          throw Spine::Exception(BCP, "Invalid time selection '" + part + "'!");
 
         options.timeList.insert(th);
       }
@@ -124,7 +124,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
     if (theReq.getParameter("timestep"))
     {
       if (options.mode != TimeSeriesGeneratorOptions::TimeSteps)
-        throw SmartMet::Spine::Exception(
+        throw Spine::Exception(
             BCP, "Cannot use timestep option when another time mode is implied by another option");
 
       const std::string step = optional_string(theReq.getParameter("timestep"), "");
@@ -145,11 +145,11 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
         int num = duration_string_to_minutes(step);
 
         if (num < 0)
-          throw SmartMet::Spine::Exception(BCP, "The 'timestep' option cannot be negative!");
+          throw Spine::Exception(BCP, "The 'timestep' option cannot be negative!");
 
         if (num > 0 && 1440 % num != 0)
-          throw SmartMet::Spine::Exception(
-              BCP, "Timestep must be a divisor of 24*60 or zero for all timesteps!");
+          throw Spine::Exception(BCP,
+                                 "Timestep must be a divisor of 24*60 or zero for all timesteps!");
 
         options.timeStep = num;
       }
@@ -166,7 +166,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
 
       int num = Fmi::stoi(steps);
       if (num < 0)
-        throw SmartMet::Spine::Exception(BCP, "The 'timesteps' option cannot be negative!");
+        throw Spine::Exception(BCP, "The 'timesteps' option cannot be negative!");
 
       options.timeSteps = num;
     }
@@ -199,9 +199,9 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
       int startstep = optional_int(theReq.getParameter("startstep"), 0);
 
       if (startstep < 0)
-        throw SmartMet::Spine::Exception(BCP, "The 'startstep' option cannot be negative!");
+        throw Spine::Exception(BCP, "The 'startstep' option cannot be negative!");
       else if (startstep > 10000)
-        throw SmartMet::Spine::Exception(BCP, "Too large 'startstep' value!");
+        throw Spine::Exception(BCP, "Too large 'startstep' value!");
 
       int timestep = (options.timeStep ? *options.timeStep : default_timestep);
 
@@ -219,8 +219,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
       if (stamp != "now")
       {
         if (!!options.timeSteps)
-          throw SmartMet::Spine::Exception(
-              BCP, "Cannot specify 'timesteps' and 'endtime' simultaneously!");
+          throw Spine::Exception(BCP, "Cannot specify 'timesteps' and 'endtime' simultaneously!");
 
         if (stamp == "data")
           options.endTimeData = true;
@@ -251,7 +250,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

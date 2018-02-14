@@ -20,7 +20,7 @@ ConfigBase::ConfigBase(const std::string& file_name, const std::string& name)
   {
     if (file_name.empty())
     {
-      SmartMet::Spine::Exception exception(BCP, "Configuration not provided!");
+      Spine::Exception exception(BCP, "Configuration not provided!");
       if (name != "")
         exception.addParameter("Name", name);
       throw exception;
@@ -37,7 +37,7 @@ ConfigBase::ConfigBase(const std::string& file_name, const std::string& name)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -48,7 +48,7 @@ ConfigBase::ConfigBase(boost::shared_ptr<libconfig::Config> config, const std::s
   {
     if (not config)
     {
-      SmartMet::Spine::Exception exception(BCP, "Configuration not provided!");
+      Spine::Exception exception(BCP, "Configuration not provided!");
       exception.addDetail("Empty boost::shared_ptr<>");
       if (name != "")
         exception.addParameter("Name", name);
@@ -57,13 +57,11 @@ ConfigBase::ConfigBase(boost::shared_ptr<libconfig::Config> config, const std::s
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
-ConfigBase::~ConfigBase()
-{
-}
+ConfigBase::~ConfigBase() {}
 
 void ConfigBase::handle_libconfig_exceptions(const std::string& location) const
 {
@@ -73,7 +71,7 @@ void ConfigBase::handle_libconfig_exceptions(const std::string& location) const
   }
   catch (const libconfig::SettingException& err)
   {
-    SmartMet::Spine::Exception exception(BCP, "Configuration file setting error!");
+    Spine::Exception exception(BCP, "Configuration file setting error!");
     exception.addParameter("Name", name);
     exception.addParameter("Exception type", Fmi::current_exception_type());
     exception.addParameter("Configuration file", file_name);
@@ -84,7 +82,7 @@ void ConfigBase::handle_libconfig_exceptions(const std::string& location) const
   }
   catch (libconfig::ParseException& err)
   {
-    SmartMet::Spine::Exception exception(BCP, "Configuration file parsing failed!");
+    Spine::Exception exception(BCP, "Configuration file parsing failed!");
     exception.addParameter("Name", name);
     exception.addParameter("Exception type", Fmi::current_exception_type());
     exception.addParameter("Configuration file", file_name);
@@ -94,7 +92,7 @@ void ConfigBase::handle_libconfig_exceptions(const std::string& location) const
   }
   catch (const libconfig::ConfigException& err)
   {
-    SmartMet::Spine::Exception exception(BCP, "Configuration exception!");
+    Spine::Exception exception(BCP, "Configuration exception!");
     exception.addParameter("Name", name);
     exception.addParameter("Exception type", Fmi::current_exception_type());
     exception.addParameter("Configuration file", file_name);
@@ -104,7 +102,7 @@ void ConfigBase::handle_libconfig_exceptions(const std::string& location) const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 
   // Not supposed to be here
@@ -134,7 +132,7 @@ void ConfigBase::dump_config(std::ostream& stream, const libconfig::Config& conf
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -255,7 +253,7 @@ void ConfigBase::dump_setting(std::ostream& stream,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -270,12 +268,12 @@ libconfig::Setting& ConfigBase::assert_is_list(libconfig::Setting& setting, int 
       msg << "The length of the 'libconfig' list ";
       if (min_size > 0)
         msg << "expected to be at least '" << min_size << "' ";
-      msg << "in the '" << format_path(NULL, path) << "' path!";
+      msg << "in the '" << format_path(nullptr, path) << "' path!";
 
       std::ostringstream msg2;
       dump_setting(msg2, setting);
 
-      SmartMet::Spine::Exception exception(BCP, msg.str());
+      Spine::Exception exception(BCP, msg.str());
       exception.addParameter("Configuration file", file_name);
       exception.addDetail(msg2.str());
       throw exception;
@@ -286,12 +284,13 @@ libconfig::Setting& ConfigBase::assert_is_list(libconfig::Setting& setting, int 
       std::ostringstream msg;
       const std::string path = setting.getPath();
       msg << "The length '" << setting.getLength() << "' of "
-          << "the 'libconfig' list in the '" << format_path(NULL, path) << "' path is too small!";
+          << "the 'libconfig' list in the '" << format_path(nullptr, path)
+          << "' path is too small!";
 
       std::ostringstream msg2;
       dump_setting(msg2, setting);
 
-      SmartMet::Spine::Exception exception(BCP, msg.str());
+      Spine::Exception exception(BCP, msg.str());
       exception.addParameter("Configuration file", file_name);
       exception.addDetail(msg2.str());
       throw exception;
@@ -301,7 +300,7 @@ libconfig::Setting& ConfigBase::assert_is_list(libconfig::Setting& setting, int 
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -317,19 +316,19 @@ libconfig::Setting& ConfigBase::assert_is_group(libconfig::Setting& setting)
     {
       std::ostringstream msg;
       const std::string path = setting.getPath();
-      msg << "The libconfig group expected in the '" << format_path(NULL, path) << " path!";
+      msg << "The libconfig group expected in the '" << format_path(nullptr, path) << " path!";
 
       std::ostringstream msg2;
       dump_setting(msg2, setting);
 
-      SmartMet::Spine::Exception exception(BCP, msg.str());
+      Spine::Exception exception(BCP, msg.str());
       exception.addDetail(msg2.str());
       throw exception;
     }
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -354,7 +353,7 @@ libconfig::Setting* ConfigBase::find_setting(libconfig::Setting& search_start,
 
       if (curr->isScalar())
       {
-        SmartMet::Spine::Exception exception(BCP, "Incorrect path!");
+        Spine::Exception exception(BCP, "Incorrect path!");
         exception.addParameter("Configuration file", file_name);
         exception.addParameter("Path", format_path(&search_start, path));
         exception.addDetail(curr->getPath() + "' is scalar");
@@ -368,7 +367,7 @@ libconfig::Setting* ConfigBase::find_setting(libconfig::Setting& search_start,
       {
         if (curr->isGroup())
         {
-          SmartMet::Spine::Exception exception(BCP, "Incorrect path!");
+          Spine::Exception exception(BCP, "Incorrect path!");
           exception.addParameter("Path", format_path(&search_start, path));
           exception.addDetail(curr->getPath() + "' is group when array or list is expected");
           throw exception;
@@ -377,7 +376,7 @@ libconfig::Setting* ConfigBase::find_setting(libconfig::Setting& search_start,
         {
           if (mandatory)
           {
-            SmartMet::Spine::Exception exception(BCP, "Index in path is out of range!");
+            Spine::Exception exception(BCP, "Index in path is out of range!");
             exception.addParameter("Configuration file", file_name);
             exception.addParameter("Path", format_path(&search_start, path));
             exception.addParameter("Index", std::to_string(ind));
@@ -386,7 +385,7 @@ libconfig::Setting* ConfigBase::find_setting(libconfig::Setting& search_start,
           }
           else
           {
-            return NULL;
+            return nullptr;
           }
         }
         else
@@ -404,19 +403,19 @@ libconfig::Setting* ConfigBase::find_setting(libconfig::Setting& search_start,
           }
           else if (mandatory)
           {
-            SmartMet::Spine::Exception exception(BCP, "Path not found!");
+            Spine::Exception exception(BCP, "Path not found!");
             exception.addParameter("Configuration file", file_name);
             exception.addParameter("Path", format_path(curr, name));
             throw exception;
           }
           else
           {
-            return NULL;
+            return nullptr;
           }
         }
         else
         {
-          SmartMet::Spine::Exception exception(BCP, "Incorrect path!");
+          Spine::Exception exception(BCP, "Incorrect path!");
           exception.addParameter("Configuration file", file_name);
           exception.addParameter("Path", format_path(curr, name));
           exception.addDetail(curr->getPath() + "' is not a group");
@@ -429,7 +428,7 @@ libconfig::Setting* ConfigBase::find_setting(libconfig::Setting& search_start,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -447,7 +446,7 @@ std::string ConfigBase::format_path(libconfig::Setting* origin, const std::strin
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -461,7 +460,7 @@ std::string ConfigBase::get_setting_value<std::string>(const libconfig::Setting&
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -483,7 +482,7 @@ libconfig::Setting& ConfigBase::get_mandatory_config_param(libconfig::Setting& s
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -497,7 +496,7 @@ std::size_t ConfigBase::get_setting_value<std::size_t>(const libconfig::Setting&
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -571,7 +570,7 @@ std::vector<std::string> ConfigBase::get_mandatory_path_array(const std::string&
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL)
+    throw Spine::Exception::Trace(BCP, "Operation failed!")
         .addParameter("Path array variable name", theName);
   }
 }

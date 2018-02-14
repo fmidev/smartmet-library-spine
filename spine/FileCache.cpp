@@ -38,8 +38,8 @@ std::string FileCache::get(const boost::filesystem::path& thePath) const
     std::string content;
     std::ifstream in(thePath.c_str());
     if (!in)
-      throw SmartMet::Spine::Exception(
-          BCP, "Failed to open '" + std::string(thePath.c_str()) + "' for reading!");
+      throw Spine::Exception(BCP,
+                             "Failed to open '" + std::string(thePath.c_str()) + "' for reading!");
 
     content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
 
@@ -52,7 +52,7 @@ std::string FileCache::get(const boost::filesystem::path& thePath) const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -75,7 +75,7 @@ std::size_t FileCache::last_modified(const boost::filesystem::path& thePath) con
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

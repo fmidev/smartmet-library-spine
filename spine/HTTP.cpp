@@ -62,7 +62,7 @@ void parseTokens(SmartMet::Spine::HTTP::ParamMap& outputMap,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -150,7 +150,7 @@ std::string statusCodeToString(Status theStatus)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 }  // namespace StatusStrings
@@ -299,10 +299,10 @@ std::string getStockReply(Status theStatus)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
-}
+}  // namespace StockReplies
 
 Status stringToStatusCode(const std::string& theCode)
 {
@@ -393,15 +393,14 @@ Status stringToStatusCode(const std::string& theCode)
     else
     {
       // Unrecognized throws
-      throw SmartMet::Spine::Exception(BCP,
-                                       "Attempting to set Unsupported status code: " + theCode);
+      throw Spine::Exception(BCP, "Attempting to set Unsupported status code: " + theCode);
     }
 
     return returnStatus;
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -432,7 +431,7 @@ boost::optional<std::string> Message::getHeader(const std::string& headerName) c
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -464,7 +463,7 @@ void Message::setHeader(const std::string& headerName, const std::string& header
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -476,7 +475,7 @@ void Message::removeHeader(const std::string& headerName)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -485,9 +484,7 @@ std::string Message::getVersion() const
   return itsVersion;
 }
 
-Message::~Message()
-{
-}
+Message::~Message() {}
 
 Request::Request(const HeaderMap& headerMap,
                  const std::string& body,
@@ -506,9 +503,7 @@ Request::Request(const HeaderMap& headerMap,
 {
 }
 
-Request::Request() : Message(), itsHasParsedPostData(false)
-{
-}
+Request::Request() : Message(), itsHasParsedPostData(false) {}
 
 std::string Request::getContent() const
 {
@@ -582,7 +577,7 @@ std::string Request::toString() const
         case RequestMethod::GET:
           if (!itsContent.empty())
             // Body is not meaningfull in GET-Requests
-            throw SmartMet::Spine::Exception(
+            throw Spine::Exception(
                 BCP, "HTTP::Request: Attempting to serialize GET Request with body content");
         case RequestMethod::POST:
           body = itsContent;
@@ -605,28 +600,28 @@ std::string Request::toString() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
 boost::asio::const_buffers_1 Request::contentToBuffer()
 {
   // TODO
-  throw SmartMet::Spine::Exception(BCP, "Request::contentToBuffer not implemented");
+  throw Spine::Exception(BCP, "Request::contentToBuffer not implemented");
   // return boost::asio::const_buffers_1("moi",3);
 }
 
 boost::asio::const_buffers_1 Request::headersToBuffer()
 {
   // TODO
-  throw SmartMet::Spine::Exception(BCP, "Request::headersToBuffer not implemented");
+  throw Spine::Exception(BCP, "Request::headersToBuffer not implemented");
   // return boost::asio::const_buffers_1("moi",3);
 }
 
 std::string Request::headersToString() const
 {
   // TODO
-  throw SmartMet::Spine::Exception(BCP, "Request::headersToBuffer not implemented");
+  throw Spine::Exception(BCP, "Request::headersToBuffer not implemented");
   // return std::string();
 }
 
@@ -664,7 +659,7 @@ std::string Request::getMethodString() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -699,7 +694,7 @@ std::string Request::getURI() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -733,7 +728,7 @@ std::string Request::getQueryString() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -770,8 +765,8 @@ boost::optional<std::string> Request::getParameter(const std::string& paramName)
     std::size_t numParams = std::distance(params.first, params.second);
     if (numParams > 1)
     {
-      throw SmartMet::Spine::Exception(
-          BCP, "More than one parameter value for parameter \"" + paramName + "\"");
+      throw Spine::Exception(BCP,
+                             "More than one parameter value for parameter \"" + paramName + "\"");
     }
 
     else if (numParams == 0)
@@ -785,7 +780,7 @@ boost::optional<std::string> Request::getParameter(const std::string& paramName)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -799,7 +794,7 @@ void Request::setParameter(const std::string& paramName, const std::string& para
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -811,7 +806,7 @@ void Request::addParameter(const std::string& paramName, const std::string& para
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -823,7 +818,7 @@ void Request::removeParameter(const std::string& paramName)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -845,7 +840,7 @@ std::vector<std::string> Request::getParameterList(const std::string& paramName)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -854,9 +849,7 @@ std::size_t Request::getParameterCount() const
   return itsParameters.size();
 }
 
-Request::~Request()
-{
-}
+Request::~Request() {}
 
 Response::Response(const HeaderMap& headerMap,
                    const std::string& body,
@@ -890,7 +883,7 @@ std::string Response::getContent()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -902,7 +895,7 @@ std::size_t Response::getContentLength() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -914,7 +907,7 @@ void Response::appendContent(const std::string& bodyPart)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -926,7 +919,7 @@ void Response::setContent(const std::string& theContent)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -938,7 +931,7 @@ void Response::setContent(boost::shared_ptr<std::string> theContent)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -950,7 +943,7 @@ void Response::setContent(boost::shared_ptr<std::vector<char> > theContent)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -962,7 +955,7 @@ void Response::setContent(boost::shared_array<char> theContent, std::size_t cont
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -977,7 +970,7 @@ void Response::setContent(boost::shared_ptr<ContentStreamer> theContent)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -989,7 +982,7 @@ void Response::setContent(boost::shared_ptr<ContentStreamer> theContent, std::si
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1002,7 +995,7 @@ void Response::setStatus(Status newStatus)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1019,7 +1012,7 @@ void Response::setStatus(Status newStatus, bool defaultContent)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1032,7 +1025,7 @@ void Response::setStatus(const std::string& statusString)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1049,7 +1042,7 @@ void Response::setStatus(const std::string& statusString, bool defaultContent)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1063,7 +1056,7 @@ void Response::setStatus(int statusNumber)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1080,7 +1073,7 @@ void Response::setStatus(int statusNumber, bool defaultContent)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1097,7 +1090,7 @@ std::string Response::getStatusString() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1119,7 +1112,7 @@ std::string Response::toString()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1130,7 +1123,7 @@ std::string Response::headersToString() const
     // Response status must be explicitly given!
     if (itsStatus == Status::not_a_status)
     {
-      throw SmartMet::Spine::Exception(BCP, "HTTP Response status not set.");
+      throw Spine::Exception(BCP, "HTTP Response status not set.");
     }
 
     // Use a string instead of a stringstream to avoid global locale locks!
@@ -1149,7 +1142,7 @@ std::string Response::headersToString() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1163,7 +1156,7 @@ boost::asio::const_buffers_1 Response::headersToBuffer()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1175,7 +1168,7 @@ boost::asio::const_buffers_1 Response::contentToBuffer()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1187,7 +1180,7 @@ bool Response::hasStreamContent() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1196,9 +1189,7 @@ ContentStreamer::StreamerStatus Response::getStreamingStatus() const
   return itsContent.getStreamingStatus();
 }
 
-Response::~Response()
-{
-}
+Response::~Response() {}
 
 std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::string& message)
 {
@@ -1326,7 +1317,7 @@ std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::stri
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1400,7 +1391,7 @@ std::tuple<ParsingStatus, std::unique_ptr<Response>, std::string::const_iterator
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1514,7 +1505,7 @@ boost::asio::const_buffers_1 MessageContent::getBuffer()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1549,7 +1540,7 @@ std::string MessageContent::getString()
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1562,7 +1553,7 @@ std::stringstream& MessageContent::operator<<(std::stringstream& ss)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1577,14 +1568,14 @@ MessageContent& MessageContent::operator+(const std::string& moreContent)
     }
     else
     {
-      throw SmartMet::Spine::Exception(BCP, "Can't add string non-string message content");
+      throw Spine::Exception(BCP, "Can't add string non-string message content");
     }
 
     return *this;
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1619,13 +1610,11 @@ ContentStreamer::StreamerStatus MessageContent::getStreamingStatus() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
-ContentStreamer::~ContentStreamer()
-{
-}
+ContentStreamer::~ContentStreamer() {}
 
 // Decode percent encoded characters. Ignores failed conversions so control characters
 // can be sent onwards.
@@ -1673,14 +1662,14 @@ std::string urldecode(std::string const& url_path)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
 #if 0
   inline long int hex2dec(const std::string& hexString)
   {
-	return std::strtol(hexString.c_str(), NULL, 16);
+	return std::strtol(hexString.c_str(), nullptr, 16);
   }
 #endif
 
@@ -1695,7 +1684,7 @@ std::string char2hex(int dec)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1724,7 +1713,7 @@ std::string urlencode(const std::string& c)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception(BCP, "Operation failed!", NULL);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

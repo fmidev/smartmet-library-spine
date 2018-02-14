@@ -98,6 +98,7 @@ make %{_smp_mflags}
 %changelog
 * Wed Feb 14 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.2.14-1.fmi
 - Added data derived parameters 'symbol' and 'symboltext'
+- Cleaned up exception handling
 
 * Fri Feb  9 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.2.9-1.fmi
 - SmartMetEngine now has a reactor datamember to provide reactor services to engines
