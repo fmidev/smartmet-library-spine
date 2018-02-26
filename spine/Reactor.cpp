@@ -6,6 +6,7 @@
 
 #include "Reactor.h"
 #include "ConfigTools.h"
+#include "Convenience.h"
 #include "DynamicPlugin.h"
 #include "Exception.h"
 #include "Names.h"
@@ -225,8 +226,8 @@ std::vector<std::string> Reactor::findLibraries(const std::string& theName) cons
       libs.push_back(libfile);
     else if (itsOptions.verbose)
     {
-      std::cout << ANSI_FG_YELLOW << "\t  + [Ignoring " << name << " '" << module_name
-                << "' since disabled flag is true]" << ANSI_FG_DEFAULT << std::endl;
+      std::cout << Spine::log_time_str() << ANSI_FG_YELLOW << "\t  + [Ignoring " << name << " '"
+                << module_name << "' since disabled flag is true]" << ANSI_FG_DEFAULT << std::endl;
     }
   }
   return libs;
@@ -271,8 +272,9 @@ bool Reactor::addContentHandler(SmartMetPlugin* thePlugin,
     boost::shared_ptr<HandlerView> theView(new HandlerView(
         theHandler, theFilter, thePlugin, theUri, itsLoggingEnabled, itsOptions.accesslogdir));
 
-    std::cout << ANSI_BOLD_ON << ANSI_FG_GREEN << "Registered URI " << theUri << " for plugin "
-              << thePlugin->getPluginName() << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+    std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered URI "
+              << theUri << " for plugin " << thePlugin->getPluginName() << ANSI_BOLD_OFF
+              << ANSI_FG_DEFAULT << std::endl;
 
     // Set the handler and filter
     return itsHandlers.insert(Handlers::value_type(theUri, theView)).second;
@@ -832,10 +834,11 @@ void Reactor::initializeEngine(SmartMetEngine* theEngine, const std::string& the
        "] initialized in %t sec CPU, %w sec real (" + std::to_string(now_initialized) + "/" +
        std::to_string(itsEngineCount) + ")" + ANSI_FG_DEFAULT);
 
-  std::cout << timer.format(2, report) << std::endl;
+  std::cout << Spine::log_time_str() << " " << timer.format(2, report) << std::endl;
 
   if (now_initialized == itsEngineCount)
-    std::cout << std::string(ANSI_FG_GREEN) + std::string("*** All ") +
+    std::cout << log_time_str()
+              << std::string(ANSI_FG_GREEN) + std::string(" *** All ") +
                      std::to_string(itsEngineCount) + " engines initialized" + ANSI_FG_DEFAULT
               << std::endl;
 }
@@ -859,10 +862,11 @@ void Reactor::initializePlugin(DynamicPlugin* thePlugin, const std::string& theN
        "] initialized in %t sec CPU, %w sec real (" + std::to_string(now_initialized) + "/" +
        std::to_string(itsPluginCount) + ")" + ANSI_FG_DEFAULT);
 
-  std::cout << timer.format(2, report) << std::endl;
+  std::cout << Spine::log_time_str() << " " << timer.format(2, report) << std::endl;
 
   if (now_initialized == itsPluginCount)
-    std::cout << std::string(ANSI_FG_GREEN) + std::string("*** All ") +
+    std::cout << log_time_str()
+              << std::string(ANSI_FG_GREEN) + std::string(" *** All ") +
                      std::to_string(itsPluginCount) + " plugins initialized" + ANSI_FG_DEFAULT
               << std::endl;
 }

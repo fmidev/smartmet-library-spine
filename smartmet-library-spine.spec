@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 18.2.22
+Version: 18.2.26
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -96,6 +96,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon Feb 26 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.2.26-1.fmi
+- Added timestamps to engine and plugin initialization messages
+
 * Thu Feb 22 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.2.22-1.fmi
 - Symbol and SymbolText changed to SmartSymbol and SmartSymbolText
 
