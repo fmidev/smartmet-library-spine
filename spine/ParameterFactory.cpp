@@ -642,85 +642,74 @@ Parameter ParameterFactory::parse(const std::string& paramname,
     if (paramname.empty())
       throw Spine::Exception(BCP, "Empty parameters are not allowed!");
 
-    std::string name = paramname;
+    // Allow both WindChill and windchill
+    auto p = boost::algorithm::to_lower_copy(paramname);
+
+    auto name = paramname;
     Parameter::Type type = Parameter::Type::Data;
     FmiParameterName number = kFmiBadParameter;
 
-    if (paramname == "DewPoint" || paramname == "Temperature" ||
-        paramname == "MinimumTemperature06" || paramname == "MaximumTemperature06" ||
-        paramname == "MinimumTemperature24h" || paramname == "MaximumTemperature24h" ||
-        paramname == "DailyMeanTemperature" || paramname == "TemperatureF0" ||
-        paramname == "TemperatureF10" || paramname == "TemperatureF25" ||
-        paramname == "TemperatureF50" || paramname == "TemperatureF75" ||
-        paramname == "TemperatureF90" || paramname == "TemperatureF100")
+    if (p == "dewpoint" || p == "temperature" || p == "minimumtemperature06" ||
+        p == "maximumtemperature06" || p == "minimumtemperature24h" ||
+        p == "maximumtemperature24h" || p == "dailymeantemperature" || p == "temperaturef0" ||
+        p == "temperaturef10" || p == "temperaturef25" || p == "temperaturef50" ||
+        p == "temperaturef75" || p == "temperaturef90" || p == "temperaturef100")
     {
       type = Parameter::Type::Landscaped;
-      number = FmiParameterName(converter.ToEnum(paramname));
+      number = FmiParameterName(converter.ToEnum(p));
       if (number == kFmiBadParameter)
         if (!ignoreBadParameter)
           throw Spine::Exception(BCP, "Unknown parameter to be landscaped '" + paramname + "'!");
     }
 
-    else if (paramname == "country" || paramname == "covertype" || paramname == "dark" ||
-             paramname == "daylength" || paramname == "dem" || paramname == "direction" ||
-             paramname == "distance" || paramname == "elevation" || paramname == "epochtime" ||
-             paramname == "feature" || paramname == "fmisid" || paramname == "geoid" ||
-             paramname == "hour" || paramname == "iso2" || paramname == "isotime" ||
-             paramname == "lat" || paramname == "latitude" || paramname == "latlon" ||
-             paramname == "level" || paramname == "localtime" || paramname == "localtz" ||
-             paramname == "lon" || paramname == "longitude" || paramname == "lonlat" ||
-             paramname == "lpnn" || paramname == "model" || paramname == "modtime" ||
-             paramname == "mtime" ||  // aliases
-             paramname == "mon" || paramname == "month" || paramname == "moondown24h" ||
-             paramname == "moonphase" || paramname == "moonrise" || paramname == "moonrise2" ||
-             paramname == "moonrise2today" || paramname == "moonrisetoday" ||
-             paramname == "moonset" || paramname == "moonset2" || paramname == "moonset2today" ||
-             paramname == "moonsettoday" || paramname == "moonup24h" || paramname == "name" ||
-             paramname == "noon" || paramname == "origintime" || paramname == "place" ||
-             paramname == "population" || paramname == "region" || paramname == "rwsid" ||
-             paramname == "sensor_no" || paramname == "stationary" ||
-             paramname == "station_elevation" || paramname == "stationlat" ||
-             paramname == "stationlatitude" || paramname == "stationlon" ||
-             paramname == "stationlongitude" || paramname == "station_name" ||
-             paramname == "stationname" || paramname == "sunazimuth" ||
-             paramname == "sundeclination" || paramname == "sunelevation" ||
-             paramname == "sunrise" || paramname == "sunrisetoday" || paramname == "sunset" ||
-             paramname == "sunsettoday" || paramname == "time" || paramname == "timestring" ||
-             paramname == "tz" || paramname == "utctime" || paramname == "wday" ||
-             paramname == "weekday" || paramname == "wmo" || paramname == "xmltime" ||
-             paramname == "timestring" || paramname == "nearlatitude" ||
-             paramname == "nearlongitude" || paramname == "nearlatlon" || paramname == "nearlonlat")
+    else if (p == "country" || p == "covertype" || p == "dark" || p == "daylength" || p == "dem" ||
+             p == "direction" || p == "distance" || p == "elevation" || p == "epochtime" ||
+             p == "feature" || p == "fmisid" || p == "geoid" || p == "hour" || p == "iso2" ||
+             p == "isotime" || p == "lat" || p == "latitude" || p == "latlon" || p == "level" ||
+             p == "localtime" || p == "localtz" || p == "lon" || p == "longitude" ||
+             p == "lonlat" || p == "lpnn" || p == "model" || p == "modtime" || p == "mtime" ||
+             p == "mon" || p == "month" || p == "moondown24h" || p == "moonphase" ||
+             p == "moonrise" || p == "moonrise2" || p == "moonrise2today" || p == "moonrisetoday" ||
+             p == "moonset" || p == "moonset2" || p == "moonset2today" || p == "moonsettoday" ||
+             p == "moonup24h" || p == "name" || p == "noon" || p == "origintime" || p == "place" ||
+             p == "population" || p == "region" || p == "rwsid" || p == "sensor_no" ||
+             p == "stationary" || p == "station_elevation" || p == "stationlat" ||
+             p == "stationlatitude" || p == "stationlon" || p == "stationlongitude" ||
+             p == "station_name" || p == "stationname" || p == "sunazimuth" ||
+             p == "sundeclination" || p == "sunelevation" || p == "sunrise" ||
+             p == "sunrisetoday" || p == "sunset" || p == "sunsettoday" || p == "time" ||
+             p == "timestring" || p == "tz" || p == "utctime" || p == "wday" || p == "weekday" ||
+             p == "wmo" || p == "xmltime" || p == "timestring" || p == "nearlatitude" ||
+             p == "nearlongitude" || p == "nearlatlon" || p == "nearlonlat")
     {
       type = Parameter::Type::DataIndependent;
     }
-    else if (paramname == "windcompass8" || paramname == "windcompass16" ||
-             paramname == "windcompass32" || paramname == "cloudiness8th" ||
-             paramname == "windchill" || paramname == "summersimmerindex" || paramname == "ssi" ||
-             paramname == "feelslike" || paramname == "weather" || paramname == "weathersymbol" ||
-             paramname == "apparenttemperature" || paramname == "snow1hlower" ||
-             paramname == "snow1hupper" || paramname == "snow1h" || paramname == "smartsymbol" ||
-             paramname == "smartsymboltext")
+    else if (p == "windcompass8" || p == "windcompass16" || p == "windcompass32" ||
+             p == "cloudiness8th" || p == "windchill" || p == "summersimmerindex" || p == "ssi" ||
+             p == "feelslike" || p == "weather" || p == "weathersymbol" ||
+             p == "apparenttemperature" || p == "snow1hlower" || p == "snow1hupper" ||
+             p == "snow1h" || p == "smartsymbol" || p == "smartsymboltext")
     {
       type = Parameter::Type::DataDerived;
     }
 
     // Allow date(...)
-    else if (paramname.substr(0, 5) == "date(" && paramname[paramname.size() - 1] == ')')
+    else if (p.substr(0, 5) == "date(" && p[p.size() - 1] == ')')
     {
       type = Parameter::Type::DataIndependent;
     }
     else
     {
-      if (!boost::algorithm::iends_with(paramname, ".raw"))
-        number = FmiParameterName(converter.ToEnum(paramname));
+      if (!boost::algorithm::iends_with(p, ".raw"))
+        number = FmiParameterName(converter.ToEnum(p));
       else
-        number = FmiParameterName(converter.ToEnum(paramname.substr(0, paramname.size() - 4)));
+        number = FmiParameterName(converter.ToEnum(p.substr(0, p.size() - 4)));
 
       if (number == kFmiBadParameter)
       {
         // Prefer regex instead of a try..catch block
-        if (boost::regex_match(paramname, boost::regex("^[(-|+)]?[0-9]+$")))
-          number = FmiParameterName(Fmi::stol(paramname));
+        if (boost::regex_match(p, boost::regex("^[(-|+)]?[0-9]+$")))
+          number = FmiParameterName(Fmi::stol(p));
         else if (!ignoreBadParameter)
           throw Spine::Exception(BCP, "Unknown parameter '" + paramname + "'!");
       }

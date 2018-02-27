@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 18.2.26
+Version: 18.2.27
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -13,8 +13,8 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 18.1.13
-BuildRequires: smartmet-library-macgyver-devel >= 17.11.27
+BuildRequires: smartmet-library-newbase-devel >= 18.2.8
+BuildRequires: smartmet-library-macgyver-devel >= 18.2.12
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -23,16 +23,16 @@ BuildRequires: gdal-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 18.1.15
+BuildRequires: smartmet-library-gis-devel >= 18.2.8
 
 %if 0%{rhel} >= 7
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 18.1.13
-Requires: smartmet-library-macgyver >= 17.11.27
-Requires: smartmet-timezones >= 17.10.26
-Requires: smartmet-library-gis >= 18.1.15
+Requires: smartmet-library-newbase >= 18.2.8
+Requires: smartmet-library-macgyver >= 18.2.12
+Requires: smartmet-timezones >= 18.1.31
+Requires: smartmet-library-gis >= 18.2.8
 Requires: mariadb-libs
 Requires: boost-filesystem
 Requires: boost-iostreams
@@ -96,6 +96,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Feb 27 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.2.27-1.fmi
+- Meta parameters names are now case independent
+
 * Mon Feb 26 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.2.26-1.fmi
 - Added timestamps to engine and plugin initialization messages
 
