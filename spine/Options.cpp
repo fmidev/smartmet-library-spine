@@ -11,6 +11,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/program_options.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
+#include <macgyver/StringConversion.h>
 #include <iostream>
 
 namespace SmartMet
@@ -214,37 +215,63 @@ void Options::parseConfig()
     if (configfile.empty())
       return;
 
+    if (!boost::filesystem::exists(configfile))
+      throw Spine::Exception(BCP, "Configuration file missing")
+          .addParameter("configfile", configfile);
+
     if (verbose)
       std::cout << "Reading configuration file '" << configfile << "'" << std::endl;
 
-    itsConfig.readFile(configfile.c_str());
+    try
+    {
+      itsConfig.readFile(configfile.c_str());
 
-    // Read options
+      // Read options
 
-    lookupHostSetting(itsConfig, port, "port");
-    lookupHostSetting(itsConfig, username, "user");
-    lookupHostSetting(itsConfig, directory, "libdir");
-    lookupHostSetting(itsConfig, timeout, "timeout");
-    lookupHostSetting(itsConfig, locale, "locale");
-    lookupHostSetting(itsConfig, verbose, "verbose");
-    lookupHostSetting(itsConfig, debug, "debug");
-    lookupHostSetting(itsConfig, quiet, "quiet");
-    lookupHostSetting(itsConfig, logrequests, "logrequests");
-    lookupHostSetting(itsConfig, compress, "compress");
-    lookupHostSetting(itsConfig, compresslimit, "compresslimit");
-    lookupHostSetting(itsConfig, defaultlogging, "defaultlogging");
-    lookupHostSetting(itsConfig, lazylinking, "lazylinking");
-    lookupHostSetting(itsConfig, accesslogdir, "accesslogdir");
+      lookupHostSetting(itsConfig, port, "port");
+      lookupHostSetting(itsConfig, username, "user");
+      lookupHostSetting(itsConfig, directory, "libdir");
+      lookupHostSetting(itsConfig, timeout, "timeout");
+      lookupHostSetting(itsConfig, locale, "locale");
+      lookupHostSetting(itsConfig, verbose, "verbose");
+      lookupHostSetting(itsConfig, debug, "debug");
+      lookupHostSetting(itsConfig, quiet, "quiet");
+      lookupHostSetting(itsConfig, logrequests, "logrequests");
+      lookupHostSetting(itsConfig, compress, "compress");
+      lookupHostSetting(itsConfig, compresslimit, "compresslimit");
+      lookupHostSetting(itsConfig, defaultlogging, "defaultlogging");
+      lookupHostSetting(itsConfig, lazylinking, "lazylinking");
+      lookupHostSetting(itsConfig, accesslogdir, "accesslogdir");
 
-    lookupHostSetting(itsConfig, slowpool.minsize, "slowpool.maxthreads");
-    lookupHostSetting(itsConfig, slowpool.maxrequeuesize, "slowpool.maxrequeuesize");
+      lookupHostSetting(itsConfig, slowpool.minsize, "slowpool.maxthreads");
+      lookupHostSetting(itsConfig, slowpool.maxrequeuesize, "slowpool.maxrequeuesize");
 
-    lookupHostSetting(itsConfig, fastpool.minsize, "fastpool.maxthreads");
-    lookupHostSetting(itsConfig, fastpool.maxrequeuesize, "fastpool.maxrequeuesize");
+      lookupHostSetting(itsConfig, fastpool.minsize, "fastpool.maxthreads");
+      lookupHostSetting(itsConfig, fastpool.maxrequeuesize, "fastpool.maxrequeuesize");
+    }
+    catch (libconfig::ParseException& e)
+    {
+      throw Spine::Exception(BCP, "libconfig parser error")
+          .addParameter("error", std::string("'") + e.getError() + "'")
+          .addParameter("file", e.getFile())
+          .addParameter("line", Fmi::to_string(e.getLine()));
+    }
+    catch (libconfig::SettingException& e)
+    {
+      throw Spine::Exception(BCP, "libconfig setting error")
+          .addParameter("error", std::string("'") + e.what() + "'")
+          .addParameter("path", e.getPath());
+    }
+    catch (libconfig::ConfigException& e)
+    {
+      throw Spine::Exception(BCP, "libconfig configuration error")
+          .addParameter("error", std::string("'") + e.what() + "'");
+    }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Spine::Exception::Trace(BCP, "Failed to parse configuration file")
+        .addParameter("configfile", configfile);
   }
 }
 

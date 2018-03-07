@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 18.2.27
+Version: 18.3.7
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -23,7 +23,7 @@ BuildRequires: gdal-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 18.2.8
+BuildRequires: smartmet-library-gis-devel >= 18.3.7
 
 %if 0%{rhel} >= 7
 BuildRequires: mariadb-devel
@@ -32,7 +32,7 @@ BuildRequires: boost-timer
 Requires: smartmet-library-newbase >= 18.2.8
 Requires: smartmet-library-macgyver >= 18.2.12
 Requires: smartmet-timezones >= 18.1.31
-Requires: smartmet-library-gis >= 18.2.8
+Requires: smartmet-library-gis >= 18.3.7
 Requires: mariadb-libs
 Requires: boost-filesystem
 Requires: boost-iostreams
@@ -96,6 +96,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Mar  7 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.3.7-1.fmi
+- Improved error message for invalid configuration files parsed by class Options
+
 * Tue Feb 27 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.2.27-1.fmi
 - Meta parameters names are now case independent
 
