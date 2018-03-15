@@ -1616,6 +1616,51 @@ ContentStreamer::StreamerStatus MessageContent::getStreamingStatus() const
 
 ContentStreamer::~ContentStreamer() {}
 
+/**
+ * Base64 decoder copied from here with some typecasting to c++11 upgrade
+ * https://stackoverflow.com/questions/342409/how-do-i-base64-encode-decode-in-c
+ *
+ * Boost-version does not seem to work
+ */
+static const int B64index[256] = {
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  62, 63, 62, 62, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 0,  0,  0,  0,  0,
+    0,  0,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18,
+    19, 20, 21, 22, 23, 24, 25, 0,  0,  0,  0,  63, 0,  26, 27, 28, 29, 30, 31, 32, 33,
+    34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51};
+
+static std::string base64decode(std::string input)
+{
+  const char* p = input.c_str();
+  size_t len = input.size();
+
+  int pad = len > 0 && (len % 4 || p[len - 1] == '=');
+  const size_t L = ((len + 3) / 4 - pad) * 4;
+  std::string str(L / 4 * 3 + pad, '\0');
+
+  for (size_t i = 0, j = 0; i < L; i += 4)
+  {
+    int n = B64index[static_cast<int>(p[i])] << 18 | B64index[static_cast<int>(p[i + 1])] << 12 |
+            B64index[static_cast<int>(p[i + 2])] << 6 | B64index[static_cast<int>(p[i + 3])];
+    str[j++] = static_cast<unsigned char>(n >> 16);
+    str[j++] = static_cast<unsigned char>(n >> 8 & 0xFF);
+    str[j++] = static_cast<unsigned char>(n & 0xFF);
+  }
+  if (pad)
+  {
+    int n = B64index[static_cast<int>(p[L])] << 18 | B64index[static_cast<int>(p[L + 1])] << 12;
+    str[str.size() - 1] = static_cast<unsigned char>(n >> 16);
+
+    if (len > L + 2 && p[L + 2] != '=')
+    {
+      n |= B64index[static_cast<int>(p[L + 2])] << 6;
+      str.push_back(static_cast<unsigned char>(n >> 8 & 0xFF));
+    }
+  }
+  return str;
+}
+
 // Decode percent encoded characters. Ignores failed conversions so control characters
 // can be sent onwards.
 
@@ -1626,6 +1671,38 @@ std::string urldecode(std::string const& url_path)
     std::string::size_type pos = 0, next;
     std::string result;
     result.reserve(url_path.length());
+
+    if (url_path.substr(0, 5) == "data:")
+    {
+      // Special handling for data: urls
+      // Reference: https://tools.ietf.org/html/rfc2397
+      pos = url_path.find(',', pos);  // Start decoding only after ,
+      if (pos == std::string::npos)
+      {
+        // Having no , is not according to RFC but we ignore that for now and start decoding after
+        // data:
+        pos = 5;                  // This would mean no , after data?
+        result.append("data:,");  // Add , regardless to make it easier to others parsing our data
+      }
+      else
+        result.append(url_path.substr(0, ++pos));
+
+      // There might be mediatype we don't care about that right now, it is just copied
+      // verbatim. URL decoding would mangle it.
+
+      // The only important thing to know is whether data is base64 encoded or not
+      if (pos > 9)
+      {
+        // Less than 9, can't have base64
+        std::string is64 = url_path.substr(pos - 9, 7);
+        if (is64 == ";base64")
+        {
+          result.append(base64decode(url_path.substr(pos)));
+          return result;
+        }
+      }
+      // Non base64 data can go through regular decode after mimetype and we are past that with pos
+    }
 
     while ((next = url_path.find('%', pos)) != std::string::npos)
     {
