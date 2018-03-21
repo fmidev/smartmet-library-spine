@@ -12,13 +12,15 @@ namespace Spine
 SmartMetCache::SmartMetCache(std::size_t memoryCacheSize,
                              std::size_t fileCacheSize,
                              const fs::path& cacheDirectory)
-    : itsMemoryCache(memoryCacheSize),
-      itsFileCache(cacheDirectory, fileCacheSize),
-      itsShutdownRequested(false)
+    : itsMemoryCache(memoryCacheSize), itsShutdownRequested(false)
 {
   try
   {
-    itsFileThread.reset(new boost::thread(boost::bind(&SmartMetCache::operateFileCache, this)));
+    if (fileCacheSize > 0)
+    {
+      itsFileCache.reset(new Fmi::Cache::FileCache(cacheDirectory, fileCacheSize));
+      itsFileThread.reset(new boost::thread(boost::bind(&SmartMetCache::operateFileCache, this)));
+    }
   }
   catch (...)
   {
@@ -29,10 +31,14 @@ SmartMetCache::SmartMetCache(std::size_t memoryCacheSize,
 SmartMetCache::~SmartMetCache()
 {
   itsShutdownRequested = true;
-  itsCondition.notify_one();
-  boost::this_thread::sleep(boost::posix_time::milliseconds(200));
-  itsFileThread->interrupt();
-  itsFileThread->join();
+
+  if (itsFileCache)  // constructed only once, safe to test in threads
+  {
+    itsCondition.notify_one();
+    boost::this_thread::sleep(boost::posix_time::milliseconds(200));
+    itsFileThread->interrupt();
+    itsFileThread->join();
+  }
 }
 
 SmartMetCache::ValueType SmartMetCache::find(KeyType hash)
@@ -43,12 +49,14 @@ SmartMetCache::ValueType SmartMetCache::find(KeyType hash)
     auto memresult = itsMemoryCache.find(hash);
 
     if (memresult)
-    {
       return *memresult;
-    }
 
     // Next try the file cache
-    auto fileresult = itsFileCache.find(hash);
+
+    if (!itsFileCache)
+      return boost::shared_ptr<std::string>();
+
+    auto fileresult = itsFileCache->find(hash);
 
     if (fileresult)
     {
@@ -59,9 +67,7 @@ SmartMetCache::ValueType SmartMetCache::find(KeyType hash)
       itsMemoryCache.insert(hash, entry, evictedItems);
 
       if (!evictedItems.empty())
-      {
         queueFileWrites(evictedItems);
-      }
 
       return entry;
     }
@@ -85,7 +91,7 @@ void SmartMetCache::insert(KeyType hash, ValueType data)
 
     itsMemoryCache.insert(hash, data, evictedItems);
 
-    if (!evictedItems.empty())
+    if (!evictedItems.empty() && itsFileCache)
     {
       queueFileWrites(evictedItems);
     }
@@ -103,14 +109,11 @@ std::vector<std::pair<SmartMetCache::KeyType, SmartMetCache::ValueType>> SmartMe
     std::vector<std::pair<KeyType, ValueType>> results;
 
     for (const auto& item : itsMemoryCache.getContent())
-    {
       results.emplace_back(std::make_pair(item.itsKey, item.itsValue));
-    }
 
-    for (const auto& item : itsFileCache.getContent())
-    {
-      results.emplace_back(std::make_pair(item, nullptr));
-    }
+    if (itsFileCache)
+      for (const auto& item : itsFileCache->getContent())
+        results.emplace_back(std::make_pair(item, nullptr));
 
     return results;
   }
@@ -143,7 +146,7 @@ void SmartMetCache::operateFileCache()
       theLock.unlock();  // No longer operating on the stack.
 
       // This also performs filecache cleanup if needed
-      itsFileCache.insert(back.first, *back.second);
+      itsFileCache->insert(back.first, *back.second);
 
       // Above might fail, but so what. Show must go on.
     }
@@ -157,6 +160,7 @@ void SmartMetCache::operateFileCache()
 
 void SmartMetCache::queueFileWrites(const std::vector<std::pair<KeyType, ValueType>>& items)
 {
+  // never called if there is no file cache and thus no update thread
   try
   {
     boost::unique_lock<boost::mutex> theLock(itsMutex);
@@ -178,7 +182,8 @@ void SmartMetCache::queueFileWrites(const std::vector<std::pair<KeyType, ValueTy
 void SmartMetCache::shutdown()
 {
   itsShutdownRequested = true;
-  itsCondition.notify_one();
+  if (itsFileThread)
+    itsCondition.notify_one();
 }
 
 }  // namespace Spine

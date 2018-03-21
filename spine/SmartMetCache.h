@@ -82,9 +82,10 @@ class SmartMetCache : boost::noncopyable
                     Fmi::Cache::LRUEviction,
                     int,
                     Fmi::Cache::StaticExpire,
-                    BufferSizeFunction> itsMemoryCache;
+                    BufferSizeFunction>
+      itsMemoryCache;
 
-  Fmi::Cache::FileCache itsFileCache;
+  std::unique_ptr<Fmi::Cache::FileCache> itsFileCache;
 
   std::deque<std::pair<KeyType, ValueType>> itsPendingWrites;
 
@@ -94,7 +95,7 @@ class SmartMetCache : boost::noncopyable
   boost::mutex itsMutex;  // For condition variable, shared mutex won't do.
 
   boost::condition_variable itsCondition;
-  bool itsShutdownRequested;
+  boost::atomic<bool> itsShutdownRequested{false};
 };
 
 }  // namespace Spine
