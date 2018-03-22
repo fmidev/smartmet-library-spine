@@ -680,7 +680,7 @@ Parameter ParameterFactory::parse(const std::string& paramname,
              p == "sunrisetoday" || p == "sunset" || p == "sunsettoday" || p == "time" ||
              p == "timestring" || p == "tz" || p == "utctime" || p == "wday" || p == "weekday" ||
              p == "wmo" || p == "xmltime" || p == "timestring" || p == "nearlatitude" ||
-             p == "nearlongitude" || p == "nearlatlon" || p == "nearlonlat")
+             p == "nearlongitude" || p == "nearlatlon" || p == "nearlonlat" || p == "gridnorth")
     {
       type = Parameter::Type::DataIndependent;
     }

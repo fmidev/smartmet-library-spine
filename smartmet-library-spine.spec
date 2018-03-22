@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 18.3.21
+Version: 18.3.22
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -96,6 +96,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu Mar 22 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.3.22-1.fmi
+- Added parameter GridNorth to ParameterFactory
+
 * Wed Mar 21 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.3.21-1.fmi
 - SmartMetCache no longer tries to initialize FileCache if its size is set to zero
 
