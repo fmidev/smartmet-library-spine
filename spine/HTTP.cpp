@@ -1672,31 +1672,34 @@ std::string urldecode(std::string const& url_path)
     std::string result;
     result.reserve(url_path.length());
 
+    // Special handling for data: urls
     if (url_path.substr(0, 5) == "data:")
     {
-      // Special handling for data: urls
       // Reference: https://tools.ietf.org/html/rfc2397
       pos = url_path.find(',', pos);  // Start decoding only after ,
+      // There might be mediatype we don't care about that right now, it is just copied
+      // verbatim. URL decoding would mangle it.
       if (pos == std::string::npos)
       {
-        // Having no , is not according to RFC but we ignore that for now and start decoding after
-        // data:
+        // Having no , is not according to RFC but we ignore that and start decoding after data:
         pos = 5;                  // This would mean no , after data?
         result.append("data:,");  // Add , regardless to make it easier to others parsing our data
       }
       else
         result.append(url_path.substr(0, ++pos));
 
-      // There might be mediatype we don't care about that right now, it is just copied
-      // verbatim. URL decoding would mangle it.
-
+      // Pos should now have the position of first character after ,
       // The only important thing to know is whether data is base64 encoded or not
-      if (pos > 9)
+      // Less than 11 in pos could not possibly have base64 string
+      if (pos >= 11)
       {
-        // Less than 9, can't have base64
-        std::string is64 = url_path.substr(pos - 9, 7);
-        if (is64 == ";base64")
+        std::string is64 = url_path.substr(pos - 8, 6);
+        if (is64 == "base64")
         {
+          // Test for incorrect URL which seem to crop up in reference Jira issue examples
+          if (url_path.substr(pos - 9, 7) != ";base64")
+            throw Spine::Exception::Trace(BCP, "Incorrect data-url " + url_path);
+
           result.append(base64decode(url_path.substr(pos)));
           return result;
         }
