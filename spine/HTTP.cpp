@@ -1680,31 +1680,33 @@ std::string urldecode(std::string const& url_path)
       // There might be mediatype we don't care about that right now, it is just copied
       // verbatim. URL decoding would mangle it.
       if (pos == std::string::npos)
-      {
         // Having no , is not according to RFC but we ignore that and start decoding after data:
-        pos = 5;                  // This would mean no , after data?
-        result.append("data:,");  // Add , regardless to make it easier to others parsing our data
-      }
+        pos = 5;
       else
-        result.append(url_path.substr(0, ++pos));
+        ++pos;
 
+      // Strip away media-type ignoring it
+     result.append("data:,");  // Add , regardless to make it easier to others parsing our data
+    
       // Pos should now have the position of first character after ,
-      // The only important thing to know is whether data is base64 encoded or not
+      // Check whether data is base64 encoded or not
       // Less than 11 in pos could not possibly have base64 string
       if (pos >= 11)
       {
-        std::string is64 = url_path.substr(pos - 8, 6);
+        std::string is64 = url_path.substr(pos - 7, 6);
         if (is64 == "base64")
         {
           // Test for incorrect URL which seem to crop up in reference Jira issue examples
-          if (url_path.substr(pos - 9, 7) != ";base64")
+          if (url_path.substr(pos - 8, 7) != ";base64")
             throw Spine::Exception::Trace(BCP, "Incorrect data-url " + url_path);
 
-          result.append(base64decode(url_path.substr(pos)));
+	  std::string todecode=url_path.substr(pos);
+	  std::string decoded=base64decode(todecode);
+          result.append(decoded);
           return result;
         }
       }
-      // Non base64 data can go through regular decode after mimetype and we are past that with pos
+      // Non-base64 data is decoded as a normal URL after ,
     }
 
     while ((next = url_path.find('%', pos)) != std::string::npos)
