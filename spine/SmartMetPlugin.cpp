@@ -111,6 +111,11 @@ void SmartMetPlugin::callRequestHandler(SmartMet::Spine::Reactor &theReactor,
                                         const SmartMet::Spine::HTTP::Request &theRequest,
                                         SmartMet::Spine::HTTP::Response &theResponse)
 {
+  // This variable is created only to make analyzing core dumps easier.
+  // We use the variable in the exception only to silence compiler warnings
+  // on unused variables.
+  auto now = boost::posix_time::second_clock::universal_time();
+
   try
   {
     if (itsShutdownRequested || itsInitActive)
@@ -132,6 +137,7 @@ void SmartMetPlugin::callRequestHandler(SmartMet::Spine::Reactor &theReactor,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw SmartMet::Spine::Exception::Trace(BCP, "Plugin request handler failed!")
+        .addParameter("request start time (UTC)", Fmi::to_iso_string(now));
   }
 }
