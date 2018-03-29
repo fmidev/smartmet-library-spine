@@ -1686,8 +1686,8 @@ std::string urldecode(std::string const& url_path)
         ++pos;
 
       // Strip away media-type ignoring it
-     result.append("data:,");  // Add , regardless to make it easier to others parsing our data
-    
+      result.append("data:,");  // Add , regardless to make it easier to others parsing our data
+
       // Pos should now have the position of first character after ,
       // Check whether data is base64 encoded or not
       // Less than 11 in pos could not possibly have base64 string
@@ -1698,10 +1698,10 @@ std::string urldecode(std::string const& url_path)
         {
           // Test for incorrect URL which seem to crop up in reference Jira issue examples
           if (url_path.substr(pos - 8, 7) != ";base64")
-            throw Spine::Exception::Trace(BCP, "Incorrect data-url " + url_path);
+            throw Spine::Exception(BCP, "Incorrect data-url " + url_path);
 
-	  std::string todecode=url_path.substr(pos);
-	  std::string decoded=base64decode(todecode);
+          std::string todecode = url_path.substr(pos);
+          std::string decoded = base64decode(todecode);
           result.append(decoded);
           return result;
         }
