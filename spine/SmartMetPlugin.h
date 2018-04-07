@@ -9,9 +9,9 @@
 // ======================================================================
 
 #pragma once
+#include "HTTP.h"
 #include <atomic>
 #include <string>
-#include "HTTP.h"
 
 // The type definitions of the class factories
 // *** Do not touch these unless you know exactly what you are doing ***
@@ -22,7 +22,7 @@ namespace Spine
 {
 class Reactor;
 }
-}
+}  // namespace SmartMet
 
 class SmartMetPlugin
 {

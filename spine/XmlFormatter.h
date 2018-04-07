@@ -24,6 +24,7 @@ class XmlFormatter : public TableFormatter
               const TableFormatterOptions& theConfig) const;
 
   const std::string mimetype() const { return "application/xml"; }
+
  private:
   void format_attributes(std::ostream& theOutput,
                          const Table& theTable,

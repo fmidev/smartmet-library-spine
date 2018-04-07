@@ -28,7 +28,7 @@ namespace Server
 {
 class AsyncConnection;
 class SyncConnection;
-}
+}  // namespace Server
 
 namespace Spine
 {

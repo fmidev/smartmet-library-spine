@@ -5,12 +5,12 @@
 // ======================================================================
 
 #include "TimeSeriesAggregator.h"
-#include "TimeSeriesOutput.h"
 #include "TimeSeriesGenerator.h"
-#include <regression/tframe.h>
+#include "TimeSeriesOutput.h"
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/local_time/local_time.hpp>
 #include <boost/foreach.hpp>
+#include <regression/tframe.h>
 
 namespace bp = boost::posix_time;
 namespace bg = boost::gregorian;

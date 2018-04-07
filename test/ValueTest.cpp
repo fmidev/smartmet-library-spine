@@ -1,8 +1,8 @@
-#include <iostream>
-#include <macgyver/StringConversion.h>
-#include <boost/test/included/unit_test.hpp>
 #include "Exception.h"
 #include "Value.h"
+#include <boost/test/included/unit_test.hpp>
+#include <macgyver/StringConversion.h>
+#include <iostream>
 
 using namespace boost::unit_test;
 using SmartMet::Spine::Value;

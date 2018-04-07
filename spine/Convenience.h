@@ -8,16 +8,16 @@
 #include <macgyver/StringConversion.h>
 #include <macgyver/TimeParser.h>
 
+#include <boost/any.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/optional.hpp>
-#include <boost/any.hpp>
 
+#include <boost/any.hpp>
+#include <boost/optional.hpp>
 #include <functional>
 #include <locale>
 #include <stdexcept>
 #include <string>
-#include <boost/optional.hpp>
-#include <boost/any.hpp>
 
 namespace SmartMet
 {

@@ -6,9 +6,9 @@
 
 #pragma once
 
+#include <limits>
 #include <string>
 #include <vector>
-#include <limits>
 
 namespace SmartMet
 {

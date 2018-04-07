@@ -5,9 +5,9 @@
 #include <boost/spirit/include/phoenix.hpp>
 #endif
 
-#include <vector>
-#include <utility>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <boost/fusion/include/adapt_struct.hpp>
 #include <boost/fusion/include/std_pair.hpp>
@@ -110,8 +110,7 @@ struct RequestParser : qi::grammar<Iterator, RawRequest()>
                    std::cout << val("Error! Expecting ") << _4  // what failed?
                              << val(" here: \"")
                              << construct<std::string>(_3, _2)  // iterators to error-pos, end
-                             << val("\"")
-                             << std::endl);
+                             << val("\"") << std::endl);
 
     BOOST_SPIRIT_DEBUG_NODE(type);
     BOOST_SPIRIT_DEBUG_NODE(resource);
@@ -163,8 +162,7 @@ struct ResponseParser : qi::grammar<Iterator, RawResponse()>
                    std::cout << val("Error! Expecting ") << _4  // what failed?
                              << val(" here: \"")
                              << construct<std::string>(_3, _2)  // iterators to error-pos, end
-                             << val("\"")
-                             << std::endl);
+                             << val("\"") << std::endl);
 
     BOOST_SPIRIT_DEBUG_NODE(version);
     BOOST_SPIRIT_DEBUG_NODE(code);

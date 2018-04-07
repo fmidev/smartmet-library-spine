@@ -5,13 +5,13 @@
  */
 // ======================================================================
 
+#include "HTTP.h"
 #include "JsonFormatter.h"
 #include "Table.h"
 #include "TableFormatterOptions.h"
-#include "HTTP.h"
 #include <regression/tframe.h>
-#include <sstream>
 #include <cmath>
+#include <sstream>
 
 template <typename T>
 std::string tostr(const T& theValue)

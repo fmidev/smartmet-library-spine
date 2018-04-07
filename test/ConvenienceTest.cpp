@@ -79,8 +79,8 @@ BOOST_AUTO_TEST_CASE(test_str_iless)
   // BOOST_CHECK(not str_iless("Äö", "äö", locale));
 }
 
-#include <boost/locale.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/locale.hpp>
 
 BOOST_AUTO_TEST_CASE(test_str_iequal)
 {

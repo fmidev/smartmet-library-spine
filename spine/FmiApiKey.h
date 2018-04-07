@@ -15,9 +15,9 @@ namespace Spine
 {
 namespace FmiApiKey
 {
-  // Get request apikey from header or url
-  boost::optional<std::string> getFmiApiKey(const HTTP::Request& theRequest,
-                                            bool checkAccessToken = false);
+// Get request apikey from header or url
+boost::optional<std::string> getFmiApiKey(const HTTP::Request& theRequest,
+                                          bool checkAccessToken = false);
 
 }  // namespace FmiApiKey
 }  // namespace Spine

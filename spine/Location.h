@@ -6,16 +6,15 @@
 
 #pragma once
 
-#include <gis/LandCover.h>
 #include <boost/shared_ptr.hpp>
+#include <gis/LandCover.h>
+#include <iostream>
 #include <limits>
 #include <list>
-#include <string>
-#include <iostream>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <utility>
-#include <stdexcept>
 
 namespace SmartMet
 {
@@ -183,6 +182,7 @@ struct TaggedLocation
   std::string tag;
   LocationPtr loc;
   TaggedLocation(const std::string& t, LocationPtr& p) : tag(t), loc(p) {}
+
  private:
   TaggedLocation();
 };

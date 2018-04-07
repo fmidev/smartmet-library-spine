@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <sstream>
+#include <string>
 #include <vector>
 
 #include <boost/date_time/local_time/local_time.hpp>
@@ -9,9 +9,9 @@
 #include <boost/variant.hpp>
 
 #include "Table.h"
+#include "TimeSeries.h"
 #include "ValueFormatter.h"
 #include <macgyver/TimeFormatter.h>
-#include "TimeSeries.h"
 
 namespace SmartMet
 {

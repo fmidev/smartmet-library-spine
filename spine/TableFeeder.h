@@ -1,13 +1,13 @@
 #pragma once
 
+#include <list>
 #include <string>
 #include <vector>
-#include <list>
 
 #include "Table.h"
-#include "ValueFormatter.h"
 #include "TimeSeries.h"
 #include "TimeSeriesOutput.h"
+#include "ValueFormatter.h"
 
 namespace SmartMet
 {

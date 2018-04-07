@@ -7,9 +7,9 @@
 
 #include "ValueFormatter.h"
 #include <regression/tframe.h>
+#include <cmath>
 #include <limits>
 #include <sstream>
-#include <cmath>
 
 template <typename T>
 std::string tostr(const T& theValue)

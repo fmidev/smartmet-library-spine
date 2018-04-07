@@ -6,9 +6,9 @@
 
 #pragma once
 
-#include <boost/date_time/posix_time/ptime.hpp>
-#include <boost/date_time/local_time/local_time.hpp>
 #include <boost/date_time/gregorian/gregorian_types.hpp>
+#include <boost/date_time/local_time/local_time.hpp>
+#include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
@@ -24,7 +24,7 @@ namespace posix_time
 {
 std::size_t hash_value(const time_duration& theDuration);
 std::size_t hash_value(const ptime& theTime);
-}
+}  // namespace posix_time
 namespace local_time
 {
 std::size_t hash_value(const time_zone_ptr& theZone);
@@ -38,4 +38,4 @@ std::size_t hash_value(const boost::optional<T>& theObj)
   else
     return hash_value(false);
 }
-}
+}  // namespace boost

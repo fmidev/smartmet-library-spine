@@ -37,6 +37,7 @@ class ValueFormatter
   std::string format(double theValue, int thePrecision) const;
   const std::string& missing() const { return itsMissingText; }
   void setMissingText(const std::string& theMissingText) { itsMissingText = theMissingText; }
+
  private:
   ValueFormatter();
   boost::shared_ptr<std::ostringstream> itsStream;  // not safe to be used from multiple threads

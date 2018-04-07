@@ -1,6 +1,6 @@
-#include <iostream>
-#include <boost/test/included/unit_test.hpp>
 #include "IPFilter.h"
+#include <boost/test/included/unit_test.hpp>
+#include <iostream>
 
 using namespace boost::unit_test;
 
@@ -28,7 +28,7 @@ boost::shared_ptr<libconfig::Config> create_config()
   boost::shared_ptr<libconfig::Config> config(new TestConfig);
   return config;
 }
-}
+}  // namespace
 
 test_suite* init_unit_test_suite(int argc, char* argv[])
 {

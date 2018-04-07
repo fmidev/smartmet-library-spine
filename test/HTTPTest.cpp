@@ -1,6 +1,6 @@
 #include "HTTP.h"
-#include <string>
 #include <iostream>
+#include <string>
 
 #include <boost/foreach.hpp>
 
@@ -970,7 +970,7 @@ class tests : public tframe::tests
     TEST(flagparam);
   }
 };
-}
+}  // namespace HTTPTest
 
 int main()
 {

@@ -25,6 +25,7 @@ class TableFormatterOptions
   const std::string& wxmlSchema() const { return itsWxmlSchema; }
   const std::string& xmlTag() const { return itsDefaultXmlTag; }
   const std::string& formatType() const { return itsFormatType; }
+
  private:
   std::string itsDefaultWxmlVersion;
   std::string itsDefaultWxmlTimeString;

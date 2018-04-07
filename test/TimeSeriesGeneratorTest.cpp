@@ -5,13 +5,13 @@
 // ======================================================================
 
 #include "TimeSeriesGenerator.h"
-#include <regression/tframe.h>
-#include <macgyver/TimeParser.h>
-#include <macgyver/TimeZones.h>
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/local_time/local_time.hpp>
 #include <boost/foreach.hpp>
 #include <boost/make_shared.hpp>
+#include <macgyver/TimeParser.h>
+#include <macgyver/TimeZones.h>
+#include <regression/tframe.h>
 
 namespace bp = boost::posix_time;
 namespace bg = boost::gregorian;

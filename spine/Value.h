@@ -1,8 +1,8 @@
 #pragma once
 
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <libconfig.h++>
 #include <ostream>
 #include <typeinfo>
@@ -158,7 +158,8 @@ class Value
                  std::string,
                  boost::posix_time::ptime,
                  PointWrapper,
-                 BoundingBox> data;
+                 BoundingBox>
+      data;
 
  public:
   Value();

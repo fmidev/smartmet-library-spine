@@ -24,6 +24,7 @@ class WxmlFormatter : public TableFormatter
               const TableFormatterOptions& theConfig) const;
 
   const std::string mimetype() const { return "application/xml"; }
+
  private:
   void format_100(std::ostream& theOutput,
                   const Table& theTable,

@@ -7,9 +7,9 @@
 #pragma once
 
 #include <newbase/NFmiParameterName.h>
-#include <string>
 #include <array>
 #include <limits>
+#include <string>
 
 namespace SmartMet
 {

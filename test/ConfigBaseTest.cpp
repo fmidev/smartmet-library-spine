@@ -1,6 +1,6 @@
-#include <iostream>
-#include <boost/test/included/unit_test.hpp>
 #include "ConfigBase.h"
+#include <boost/test/included/unit_test.hpp>
+#include <iostream>
 
 using namespace boost::unit_test;
 
@@ -67,7 +67,7 @@ boost::shared_ptr<libconfig::Config> create_config()
   boost::shared_ptr<libconfig::Config> config(new TestConfig);
   return config;
 }
-}
+}  // namespace
 
 BOOST_AUTO_TEST_CASE(get_simple_config_entries)
 {

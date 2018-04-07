@@ -1,8 +1,8 @@
 #pragma once
 
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/archive/xml_oarchive.hpp>
 #include <boost/archive/xml_iarchive.hpp>
+#include <boost/archive/xml_oarchive.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 namespace SmartMet
 {

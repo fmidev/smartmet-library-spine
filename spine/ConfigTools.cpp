@@ -33,5 +33,5 @@ bool lookupPathSetting(const libconfig::Config& theConfig,
 
   return true;
 }
-}
-}
+}  // namespace Spine
+}  // namespace SmartMet

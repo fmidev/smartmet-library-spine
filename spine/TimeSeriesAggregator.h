@@ -6,9 +6,9 @@
 
 #pragma once
 
-#include "TimeSeries.h"
-#include "ParameterFunction.h"
 #include "Location.h"
+#include "ParameterFunction.h"
+#include "TimeSeries.h"
 
 #include <macgyver/Stat.h>
 
