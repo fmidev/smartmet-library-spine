@@ -604,18 +604,18 @@ std::string Request::toString() const
   }
 }
 
-boost::asio::const_buffers_1 Request::contentToBuffer()
+boost::asio::const_buffer Request::contentToBuffer()
 {
   // TODO
   throw Spine::Exception(BCP, "Request::contentToBuffer not implemented");
-  // return boost::asio::const_buffers_1("moi",3);
+  // return boost::asio::const_buffer("moi",3);
 }
 
-boost::asio::const_buffers_1 Request::headersToBuffer()
+boost::asio::const_buffer Request::headersToBuffer()
 {
   // TODO
   throw Spine::Exception(BCP, "Request::headersToBuffer not implemented");
-  // return boost::asio::const_buffers_1("moi",3);
+  // return boost::asio::const_buffer("moi",3);
 }
 
 std::string Request::headersToString() const
@@ -1146,7 +1146,7 @@ std::string Response::headersToString() const
   }
 }
 
-boost::asio::const_buffers_1 Response::headersToBuffer()
+boost::asio::const_buffer Response::headersToBuffer()
 {
   try
   {
@@ -1160,7 +1160,7 @@ boost::asio::const_buffers_1 Response::headersToBuffer()
   }
 }
 
-boost::asio::const_buffers_1 Response::contentToBuffer()
+boost::asio::const_buffer Response::contentToBuffer()
 {
   try
   {
@@ -1474,7 +1474,7 @@ MessageContent::MessageContent(boost::shared_ptr<ContentStreamer> theContent,
 {
 }
 
-boost::asio::const_buffers_1 MessageContent::getBuffer()
+boost::asio::const_buffer MessageContent::getBuffer()
 {
   try
   {
@@ -1489,13 +1489,13 @@ boost::asio::const_buffers_1 MessageContent::getBuffer()
         return boost::asio::buffer(stringContent);
 
       case content_type::vectorType:
-        return boost::asio::const_buffers_1(&(*vectorContent)[0], vectorContent->size());
+        return boost::asio::const_buffer(&(*vectorContent)[0], vectorContent->size());
 
       case content_type::stringPtrType:
-        return boost::asio::const_buffers_1(stringPtrContent->data(), stringPtrContent->size());
+        return boost::asio::const_buffer(stringPtrContent->data(), stringPtrContent->size());
 
       case content_type::arrayType:
-        return boost::asio::const_buffers_1(arrayContent.get(), contentSize);
+        return boost::asio::const_buffer(arrayContent.get(), contentSize);
 
 #ifndef UNREACHABLE
       default:

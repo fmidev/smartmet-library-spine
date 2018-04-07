@@ -199,7 +199,7 @@ class MessageContent
 
   MessageContent(boost::shared_ptr<ContentStreamer> theContent, std::size_t contentSize);
 
-  boost::asio::const_buffers_1 getBuffer();
+  boost::asio::const_buffer getBuffer();
 
   std::string getString();
 
@@ -287,7 +287,7 @@ class Message
    * \brief Asio::Buffer representation the message headers for socket writing
    */
   // ----------------------------------------------------------------------
-  virtual boost::asio::const_buffers_1 headersToBuffer() = 0;
+  virtual boost::asio::const_buffer headersToBuffer() = 0;
 
   // ----------------------------------------------------------------------
   /*!
@@ -295,7 +295,7 @@ class Message
    * In case of streamable content, the content will be the next chunk
    */
   // ----------------------------------------------------------------------
-  virtual boost::asio::const_buffers_1 contentToBuffer() = 0;
+  virtual boost::asio::const_buffer contentToBuffer() = 0;
 
   virtual ~Message();
 
@@ -505,7 +505,7 @@ class Request : public Message
    * \brief Asio::Buffer representation of the headers for socket writing
    */
   // ----------------------------------------------------------------------
-  virtual boost::asio::const_buffers_1 headersToBuffer();
+  virtual boost::asio::const_buffer headersToBuffer();
 
   // ----------------------------------------------------------------------
   /*!
@@ -519,7 +519,7 @@ class Request : public Message
    * \brief Asio::Buffer representation the content for socket writing
    */
   // ----------------------------------------------------------------------
-  virtual boost::asio::const_buffers_1 contentToBuffer();
+  virtual boost::asio::const_buffer contentToBuffer();
 
   virtual ~Request();
 
@@ -721,7 +721,7 @@ class Response : public Message
    * \brief Asio::Buffer representation the response headers for socket writing
    */
   // ----------------------------------------------------------------------
-  virtual boost::asio::const_buffers_1 headersToBuffer();
+  virtual boost::asio::const_buffer headersToBuffer();
 
   // ----------------------------------------------------------------------
   /*!
@@ -735,7 +735,7 @@ class Response : public Message
    * \brief Asio::Buffer representation the response content for socket writing
    */
   // ----------------------------------------------------------------------
-  virtual boost::asio::const_buffers_1 contentToBuffer();
+  virtual boost::asio::const_buffer contentToBuffer();
 
   virtual ~Response();
 
