@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 18.3.26
+Version: 18.4.7
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -13,7 +13,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 18.2.8
+BuildRequires: smartmet-library-newbase-devel >= 18.4.4
 BuildRequires: smartmet-library-macgyver-devel >= 18.2.12
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
@@ -23,16 +23,16 @@ BuildRequires: gdal-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 18.3.7
+BuildRequires: smartmet-library-gis-devel >= 18.4.6
 
 %if 0%{rhel} >= 7
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 18.2.8
+Requires: smartmet-library-newbase >= 18.4.4
 Requires: smartmet-library-macgyver >= 18.2.12
-Requires: smartmet-timezones >= 18.1.31
-Requires: smartmet-library-gis >= 18.3.7
+Requires: smartmet-timezones >= 18.4.3
+Requires: smartmet-library-gis >= 18.4.6
 Requires: mariadb-libs
 Requires: boost-filesystem
 Requires: boost-iostreams
@@ -96,6 +96,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Sat Apr  7 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.4.7-1.fmi
+- Added base64 decoding
+
 * Mon Mar 26 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.3.26-1.fmi
 - Store request start time in SmartMetPlugin::callRequestHandler to ease debugging
 
