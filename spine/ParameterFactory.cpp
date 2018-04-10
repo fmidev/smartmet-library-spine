@@ -688,7 +688,7 @@ Parameter ParameterFactory::parse(const std::string& paramname,
              p == "cloudiness8th" || p == "windchill" || p == "summersimmerindex" || p == "ssi" ||
              p == "feelslike" || p == "weather" || p == "weathersymbol" ||
              p == "apparenttemperature" || p == "snow1hlower" || p == "snow1hupper" ||
-             p == "snow1h" || p == "smartsymbol" || p == "smartsymboltext")
+             p == "snow1h" || p == "smartsymbol" || p == "smartsymboltext" || p == "windums" || p == "windvms")
     {
       type = Parameter::Type::DataDerived;
     }
