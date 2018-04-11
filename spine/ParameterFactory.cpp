@@ -647,7 +647,9 @@ Parameter ParameterFactory::parse(const std::string& paramname,
 
     auto name = paramname;
     Parameter::Type type = Parameter::Type::Data;
-    FmiParameterName number = kFmiBadParameter;
+
+    // some metaparameters may have a matching number (WindUMS, WindVMS)
+    FmiParameterName number = FmiParameterName(converter.ToEnum(p));
 
     if (p == "dewpoint" || p == "temperature" || p == "minimumtemperature06" ||
         p == "maximumtemperature06" || p == "minimumtemperature24h" ||
@@ -656,7 +658,6 @@ Parameter ParameterFactory::parse(const std::string& paramname,
         p == "temperaturef75" || p == "temperaturef90" || p == "temperaturef100")
     {
       type = Parameter::Type::Landscaped;
-      number = FmiParameterName(converter.ToEnum(p));
       if (number == kFmiBadParameter)
         if (!ignoreBadParameter)
           throw Spine::Exception(BCP, "Unknown parameter to be landscaped '" + paramname + "'!");
@@ -688,7 +689,8 @@ Parameter ParameterFactory::parse(const std::string& paramname,
              p == "cloudiness8th" || p == "windchill" || p == "summersimmerindex" || p == "ssi" ||
              p == "feelslike" || p == "weather" || p == "weathersymbol" ||
              p == "apparenttemperature" || p == "snow1hlower" || p == "snow1hupper" ||
-             p == "snow1h" || p == "smartsymbol" || p == "smartsymboltext" || p == "windums" || p == "windvms")
+             p == "snow1h" || p == "smartsymbol" || p == "smartsymboltext" || p == "windums" ||
+             p == "windvms")
     {
       type = Parameter::Type::DataDerived;
     }
