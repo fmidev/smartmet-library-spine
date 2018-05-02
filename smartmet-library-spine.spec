@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 18.4.11
+Version: 18.5.2
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -14,7 +14,7 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 18.4.7
+BuildRequires: smartmet-library-newbase-devel >= 18.5.2
 BuildRequires: smartmet-library-macgyver-devel >= 18.4.7
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
@@ -30,7 +30,7 @@ BuildRequires: smartmet-library-gis-devel >= 18.4.7
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 18.4.7
+Requires: smartmet-library-newbase >= 18.5.2
 Requires: smartmet-library-macgyver >= 18.4.7
 Requires: smartmet-timezones >= 18.4.3
 Requires: smartmet-library-gis >= 18.4.7
@@ -97,6 +97,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed May  2 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.5.2-1.fmi
+- Repackaged since newbase NFmiEnumConverter ABI changed
+
 * Wed Apr 11 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.4.11-1.fmi
 - Assign a known parameter number to meta parameters too if possible (WindUMS and WindVMS)
 
