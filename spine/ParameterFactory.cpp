@@ -666,22 +666,21 @@ Parameter ParameterFactory::parse(const std::string& paramname,
     else if (p == "country" || p == "covertype" || p == "dark" || p == "daylength" || p == "dem" ||
              p == "direction" || p == "distance" || p == "elevation" || p == "epochtime" ||
              p == "feature" || p == "fmisid" || p == "geoid" || p == "hour" || p == "iso2" ||
-             p == "isotime" || p == "lat" || p == "latitude" || p == "latlon" || p == "level" ||
-             p == "localtime" || p == "localtz" || p == "lon" || p == "longitude" ||
-             p == "lonlat" || p == "lpnn" || p == "model" || p == "modtime" || p == "mtime" ||
-             p == "mon" || p == "month" || p == "moondown24h" || p == "moonphase" ||
-             p == "moonrise" || p == "moonrise2" || p == "moonrise2today" || p == "moonrisetoday" ||
-             p == "moonset" || p == "moonset2" || p == "moonset2today" || p == "moonsettoday" ||
-             p == "moonup24h" || p == "name" || p == "noon" || p == "origintime" || p == "place" ||
-             p == "population" || p == "region" || p == "rwsid" || p == "sensor_no" ||
-             p == "stationary" || p == "station_elevation" || p == "stationlat" ||
-             p == "stationlatitude" || p == "stationlon" || p == "stationlongitude" ||
-             p == "station_name" || p == "stationname" || p == "sunazimuth" ||
-             p == "sundeclination" || p == "sunelevation" || p == "sunrise" ||
-             p == "sunrisetoday" || p == "sunset" || p == "sunsettoday" || p == "time" ||
-             p == "timestring" || p == "tz" || p == "utctime" || p == "wday" || p == "weekday" ||
-             p == "wmo" || p == "xmltime" || p == "timestring" || p == "nearlatitude" ||
-             p == "nearlongitude" || p == "nearlatlon" || p == "nearlonlat" || p == "gridnorth")
+             p == "isotime" || p == "level" || p == "localtime" || p == "localtz" || p == "lpnn" ||
+             p == "model" || p == "modtime" || p == "mtime" || p == "mon" || p == "month" ||
+             p == "moondown24h" || p == "moonphase" || p == "moonrise" || p == "moonrise2" ||
+             p == "moonrise2today" || p == "moonrisetoday" || p == "moonset" || p == "moonset2" ||
+             p == "moonset2today" || p == "moonsettoday" || p == "moonup24h" || p == "name" ||
+             p == "noon" || p == "origintime" || p == "place" || p == "population" ||
+             p == "region" || p == "rwsid" || p == "sensor_no" || p == "stationary" ||
+             p == "station_elevation" || p == "stationlat" || p == "stationlatitude" ||
+             p == "stationlon" || p == "stationlongitude" || p == "station_name" ||
+             p == "stationname" || p == "sunazimuth" || p == "sundeclination" ||
+             p == "sunelevation" || p == "sunrise" || p == "sunrisetoday" || p == "sunset" ||
+             p == "sunsettoday" || p == "time" || p == "timestring" || p == "tz" ||
+             p == "utctime" || p == "wday" || p == "weekday" || p == "wmo" || p == "xmltime" ||
+             p == "timestring" || p == "nearlatitude" || p == "nearlongitude" ||
+             p == "nearlatlon" || p == "nearlonlat" || p == "gridnorth")
     {
       type = Parameter::Type::DataIndependent;
     }
@@ -690,7 +689,8 @@ Parameter ParameterFactory::parse(const std::string& paramname,
              p == "feelslike" || p == "weather" || p == "weathersymbol" ||
              p == "apparenttemperature" || p == "snow1hlower" || p == "snow1hupper" ||
              p == "snow1h" || p == "smartsymbol" || p == "smartsymboltext" || p == "windums" ||
-             p == "windvms")
+             p == "windvms" || p == "lat" || p == "latitude" || p == "latlon" || p == "lon" ||
+             p == "longitude" || p == "lonlat")
     {
       type = Parameter::Type::DataDerived;
     }
