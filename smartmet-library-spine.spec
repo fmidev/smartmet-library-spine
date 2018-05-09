@@ -4,7 +4,7 @@
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
 Version: 18.5.9
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -97,6 +97,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed May  9 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.5.9-2.fmi
+- Frontends now log active requests
+
 * Wed May  9 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.5.9-1.fmi
 - Added class ActiveRequests
 
