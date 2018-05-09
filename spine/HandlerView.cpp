@@ -74,28 +74,32 @@ bool HandlerView::handle(Reactor& theReactor,
       }
     }
 
-    if (isLogging && !itsIsCatchNoMatch)  // Disable frontend logging always
+    
+    if (itsIsCatchNoMatch || !isLogging)
     {
-      auto before = boost::posix_time::microsec_clock::universal_time();
+      // Frontends do not log
       itsHandler(theReactor, theRequest, theResponse);
-      auto accessDuration = boost::posix_time::microsec_clock::universal_time() - before;
-
-      WriteLock lock(itsLoggingMutex);
-      if (isLogging)  // Need to check this again because it may have changed in previous request
-      {
-        // Insert new request to the logging list
-        itsRequestLog.emplace_back(LoggedRequest(theRequest.getURI(),
-                                                 boost::posix_time::microsec_clock::local_time(),
-                                                 accessDuration,
-                                                 theResponse.getStatusString(),
-                                                 theRequest.getClientIP(),
-                                                 theRequest.getMethodString(),
-                                                 theResponse.getVersion()));
-      }
     }
     else
     {
-      itsHandler(theReactor, theRequest, theResponse);
+        auto key = theReactor.insertActiveRequest(theRequest.getURI());
+        auto before = boost::posix_time::microsec_clock::universal_time();
+        itsHandler(theReactor, theRequest, theResponse);
+        auto accessDuration = boost::posix_time::microsec_clock::universal_time() - before;
+        theReactor.removeActiveRequest(key);
+        
+        WriteLock lock(itsLoggingMutex);
+        if (isLogging)  // Need to check this again because it may have changed in previous request
+        {
+          // Insert new request to the logging list
+          itsRequestLog.emplace_back(LoggedRequest(theRequest.getURI(),
+                                                   boost::posix_time::microsec_clock::local_time(),
+                                                   accessDuration,
+                                                   theResponse.getStatusString(),
+                                                   theRequest.getClientIP(),
+                                                   theRequest.getMethodString(),
+                                                   theResponse.getVersion()));
+        }
     }
 
     return true;

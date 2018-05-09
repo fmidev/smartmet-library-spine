@@ -411,6 +411,39 @@ Reactor::AccessLogStruct Reactor::getLoggedRequests() const
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Get a copy of active requests
+ */
+// ----------------------------------------------------------------------
+
+ActiveRequests::Requests Reactor::getActiveRequests() const
+{
+  return itsActiveRequests.requests();
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Add a new active request
+ */
+// ----------------------------------------------------------------------
+
+std::size_t Reactor::insertActiveRequest(const std::string& theURI)
+{
+  return itsActiveRequests.insert(theURI);
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Remove an old active request
+ */
+// ----------------------------------------------------------------------
+
+void Reactor::removeActiveRequest(std::size_t theKey)
+{
+  itsActiveRequests.remove(theKey);
+}
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Get registered URIs
  */
 // ----------------------------------------------------------------------

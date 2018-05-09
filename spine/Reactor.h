@@ -13,6 +13,7 @@
 #pragma once
 
 #include "ConfigBase.h"
+#include "ActiveRequests.h"
 #include "HTTP.h"
 #include "HandlerView.h"
 #include "IPFilter.h"
@@ -78,6 +79,10 @@ class Reactor
   bool lazyLinking() const;
   AccessLogStruct getLoggedRequests() const;
 
+  ActiveRequests::Requests getActiveRequests() const;
+  std::size_t insertActiveRequest(const std::string& theURI);
+  void removeActiveRequest(std::size_t theKey);
+  
   // Only construct with options
   Reactor(Options& options);
 
@@ -88,9 +93,6 @@ class Reactor
 
   int getRequiredAPIVersion() const;
   URIMap getURIMap() const;
-  bool handle(HTTP::Request& theRequest,
-              HTTP::Response& theResponse,
-              const HandlerView& theHandlerView);
   boost::optional<HandlerView&> getHandlerView(const HTTP::Request& theRequest);
   bool addContentHandler(SmartMetPlugin* thePlugin,
                          const std::string& theDir,
@@ -197,6 +199,8 @@ class Reactor
   boost::shared_ptr<boost::thread> itsLogCleanerThread;
   bool itsShutdownRequested = false;
 
+  ActiveRequests itsActiveRequests;
+  
  private:
   std::size_t itsEngineCount = 0;
   std::size_t itsPluginCount = 0;
