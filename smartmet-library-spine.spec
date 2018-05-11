@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 18.5.9
-Release: 2%{?dist}.fmi
+Version: 18.5.11
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -32,7 +32,7 @@ BuildRequires: boost-chrono
 BuildRequires: boost-timer
 Requires: smartmet-library-newbase >= 18.5.2
 Requires: smartmet-library-macgyver >= 18.4.7
-Requires: smartmet-timezones >= 18.4.3
+Requires: smartmet-timezones >= 18.5.9
 Requires: smartmet-library-gis >= 18.4.7
 Requires: mariadb-libs
 Requires: boost-filesystem
@@ -97,6 +97,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Fri May 11 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.5.11-1.fmi
+- Create access log directory if it does not exist already
+
 * Wed May  9 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.5.9-2.fmi
 - Frontends now log active requests
 

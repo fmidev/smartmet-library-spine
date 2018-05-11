@@ -1,4 +1,5 @@
 #include "AccessLogger.h"
+#include "Convenience.h"
 #include "Exception.h"
 
 #include <boost/filesystem.hpp>
@@ -37,6 +38,19 @@ std::unique_ptr<std::ofstream> makeAccessLogFile(const std::string& resource,
 {
   try
   {
+    // Create the log directory if it is missing
+    if (!boost::filesystem::exists(accessLogDir))
+    {
+      std::cout << SmartMet::Spine::log_time_str() << " creating access log directory "
+                << accessLogDir << std::endl;
+      boost::filesystem::create_directories(accessLogDir);
+    }
+
+    // Error if the path is not a directory
+    if (!boost::filesystem::is_directory(accessLogDir))
+      throw std::runtime_error("Access log path '" + accessLogDir + "' is not a directory");
+
+    // Otherwise create a log file in the directory
     std::string path = ::makeAccessLogFileName(resource, accessLogDir);
 
     std::unique_ptr<std::ofstream> file(new std::ofstream());
