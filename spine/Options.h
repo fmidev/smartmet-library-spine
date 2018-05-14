@@ -44,6 +44,8 @@ struct Options
   bool defaultlogging;
   bool lazylinking;
 
+  unsigned int maxactiverequests;  // 0 means no limit is set
+
   std::string accesslogdir;
 
   PoolOptions slowpool;

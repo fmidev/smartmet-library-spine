@@ -411,6 +411,23 @@ Reactor::AccessLogStruct Reactor::getLoggedRequests() const
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Return true if the load is high
+ */
+// ----------------------------------------------------------------------
+
+bool Reactor::isLoadHigh() const
+{
+  // Load is high if there are too many active requests
+  if (itsOptions.maxactiverequests > 0)
+    if (itsActiveRequests.size() > itsOptions.maxactiverequests)
+      return true;
+
+  // No other conditions implemented yet
+  return false;
+}
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Get a copy of active requests
  */
 // ----------------------------------------------------------------------

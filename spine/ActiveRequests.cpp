@@ -46,5 +46,17 @@ ActiveRequests::Requests ActiveRequests::requests() const
   return ret;
 }
 
+// ----------------------------------------------------------------------
+/*!
+ * \brief Return the number of active requests
+ */
+// ----------------------------------------------------------------------
+
+std::size_t ActiveRequests::size() const
+{
+  WriteLock lock(itsMutex);
+  return itsRequests.size();
+}
+
 }  // namespace Spine
 }  // namespace SmartMet

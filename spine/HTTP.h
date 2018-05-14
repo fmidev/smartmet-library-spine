@@ -100,8 +100,8 @@ enum Status
   not_implemented = 501,
   bad_gateway = 502,
   service_unavailable = 503,
-  // Internal shutdown response code is intentionally 4 digits to avoid clashes with official (now
-  // or future) codes
+  // 4 digit local error codes to avoid clashes with official codes
+  high_load = 1234,
   shutdown = 3210
 };
 

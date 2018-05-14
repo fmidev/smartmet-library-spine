@@ -24,7 +24,6 @@ namespace Spine
 class ActiveRequests : private boost::noncopyable
 {
  public:
-
   // Storage for the request information
   struct Info
   {
@@ -38,9 +37,9 @@ class ActiveRequests : private boost::noncopyable
   std::size_t insert(const std::string& theURI);
   void remove(std::size_t theKey);
   Requests requests() const;
-  
- private:
+  std::size_t size() const;
 
+ private:
   mutable MutexType itsMutex;
   std::size_t itsCounter = 0;
   Requests itsRequests;

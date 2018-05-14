@@ -12,8 +12,8 @@
 
 #pragma once
 
-#include "ConfigBase.h"
 #include "ActiveRequests.h"
+#include "ConfigBase.h"
 #include "HTTP.h"
 #include "HandlerView.h"
 #include "IPFilter.h"
@@ -79,10 +79,12 @@ class Reactor
   bool lazyLinking() const;
   AccessLogStruct getLoggedRequests() const;
 
+  bool isLoadHigh() const;
+
   ActiveRequests::Requests getActiveRequests() const;
   std::size_t insertActiveRequest(const std::string& theURI);
   void removeActiveRequest(std::size_t theKey);
-  
+
   // Only construct with options
   Reactor(Options& options);
 
@@ -199,8 +201,9 @@ class Reactor
   boost::shared_ptr<boost::thread> itsLogCleanerThread;
   bool itsShutdownRequested = false;
 
+  std::size_t itsActiveRequstLimit = 0;  // by default there is no limit
   ActiveRequests itsActiveRequests;
-  
+
  private:
   std::size_t itsEngineCount = 0;
   std::size_t itsPluginCount = 0;

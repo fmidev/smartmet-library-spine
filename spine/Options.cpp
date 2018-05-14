@@ -29,6 +29,7 @@ const unsigned int default_maxthreads = 10;
 const unsigned int default_timeout = 60;
 const unsigned int default_maxrequeuesize = 100;
 const unsigned int default_compresslimit = 1000;
+const unsigned int default_maxactiverequests = 0;  // no limit
 }  // namespace
 
 // ----------------------------------------------------------------------
@@ -59,6 +60,7 @@ Options::Options()
       compresslimit(default_compresslimit),
       defaultlogging(true),
       lazylinking(true),
+      maxactiverequests(default_maxactiverequests),
       accesslogdir(default_accesslogdir)
 {
 }
@@ -133,17 +135,15 @@ bool Options::parseOptions(int argc, char* argv[])
     const char* msgfastthreads = "set the initial number of fast queries";
     const char* msgfastrequeue = "set the maximum requeue size for fast queries";
 
+    const char* msgmaxactiverequests = "set the maximum number of simultaneous active requests";
+
+    // clang-format off
     desc.add_options()("help,h", msghelp)("version,V", msgversion)(
-        "slowthreads,N",
-        po::value(&slowpool.minsize)->default_value(slowpool.minsize),
-        msgslowthreads)("maxslowrequeuesize,Q",
-                        po::value(&slowpool.maxrequeuesize)->default_value(fastpool.maxrequeuesize),
-                        msgslowrequeue)(
-        "fastthreads,n",
-        po::value(&fastpool.minsize)->default_value(fastpool.minsize),
-        msgfastthreads)("maxfastrequeuesize,q",
-                        po::value(&fastpool.maxrequeuesize)->default_value(fastpool.maxrequeuesize),
-                        msgfastrequeue)(
+        "slowthreads,N", po::value(&slowpool.minsize)->default_value(slowpool.minsize), msgslowthreads)(
+        "maxslowrequeuesize,Q", po::value(&slowpool.maxrequeuesize)->default_value(fastpool.maxrequeuesize), msgslowrequeue)(
+        "fastthreads,n", po::value(&fastpool.minsize)->default_value(fastpool.minsize), msgfastthreads)(
+        "maxfastrequeuesize,q", po::value(&fastpool.maxrequeuesize)->default_value(fastpool.maxrequeuesize), msgfastrequeue)(
+        "maxactiverequests,q", po::value(&maxactiverequests)->default_value(maxactiverequests), msgmaxactiverequests)(
         "debug,d", po::bool_switch(&debug)->default_value(debug), msgdebug)(
         "verbose,v", po::bool_switch(&verbose)->default_value(verbose), msgverbose)(
         "quiet", po::bool_switch(&quiet)->default_value(quiet), msgquiet)(
@@ -156,10 +156,9 @@ bool Options::parseOptions(int argc, char* argv[])
         "user,u", po::value(&username)->default_value(username), msguser)(
         "compress,z", po::bool_switch(&compress)->default_value(compress), msgzip)(
         "compresslimit,Z", po::value(&compresslimit)->default_value(compresslimit), msgziplimit)(
-        "defaultlogging,e",
-        po::bool_switch(&defaultlogging)->default_value(defaultlogging),
-        msgdefaultlog)(
+        "defaultlogging,e", po::bool_switch(&defaultlogging)->default_value(defaultlogging), msgdefaultlog)(
         "accesslogdir,a", po::value(&accesslogdir)->default_value(accesslogdir), msgaccesslogdir);
+    // clang-format on
 
     po::variables_map opt;
     po::store(po::command_line_parser(argc, argv).options(desc).run(), opt);
@@ -242,6 +241,7 @@ void Options::parseConfig()
       lookupHostSetting(itsConfig, defaultlogging, "defaultlogging");
       lookupHostSetting(itsConfig, lazylinking, "lazylinking");
       lookupHostSetting(itsConfig, accesslogdir, "accesslogdir");
+      lookupHostSetting(itsConfig, maxactiverequests, "maxactiverequests");
 
       lookupHostSetting(itsConfig, slowpool.minsize, "slowpool.maxthreads");
       lookupHostSetting(itsConfig, slowpool.maxrequeuesize, "slowpool.maxrequeuesize");
@@ -294,6 +294,7 @@ void Options::report() const
               << "Max fast queue size\t\t= " << fastpool.maxrequeuesize << std::endl
               << "Max slow threads\t\t= " << slowpool.minsize << std::endl
               << "Max slow queue size\t\t= " << slowpool.maxrequeuesize << std::endl
+              << "Max active requests\t\t= " << maxactiverequests << std::endl
               << "Port\t\t\t\t= " << port << std::endl
               << "Timeout\t\t\t\t= " << timeout << std::endl
               << "Access log directory\t\t= " << accesslogdir << std::endl
