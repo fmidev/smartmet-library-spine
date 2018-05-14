@@ -143,7 +143,7 @@ bool Options::parseOptions(int argc, char* argv[])
         "maxslowrequeuesize,Q", po::value(&slowpool.maxrequeuesize)->default_value(fastpool.maxrequeuesize), msgslowrequeue)(
         "fastthreads,n", po::value(&fastpool.minsize)->default_value(fastpool.minsize), msgfastthreads)(
         "maxfastrequeuesize,q", po::value(&fastpool.maxrequeuesize)->default_value(fastpool.maxrequeuesize), msgfastrequeue)(
-        "maxactiverequests,q", po::value(&maxactiverequests)->default_value(maxactiverequests), msgmaxactiverequests)(
+        "maxactiverequests", po::value(&maxactiverequests)->default_value(maxactiverequests), msgmaxactiverequests)(
         "debug,d", po::bool_switch(&debug)->default_value(debug), msgdebug)(
         "verbose,v", po::bool_switch(&verbose)->default_value(verbose), msgverbose)(
         "quiet", po::bool_switch(&quiet)->default_value(quiet), msgquiet)(

@@ -4,7 +4,7 @@
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
 Version: 18.5.14
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -97,6 +97,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon May 14 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.5.14-2.fmi
+- Fixed --maxactiverequests not to have alias -q which is already in use
+
 * Mon May 14 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.5.14-1.fmi
 - Added possibility to limit the number of active requests
 
