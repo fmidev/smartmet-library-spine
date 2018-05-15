@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: BrainStorm Spinal Cord
 Name: %{SPECNAME}
-Version: 18.5.14
-Release: 2%{?dist}.fmi
+Version: 18.5.15
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -97,6 +97,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue May 15 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.5.15-1.fmi
+- Added option --maxrequestsize with default value 131072 (the previously hard coded value)
+
 * Mon May 14 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.5.14-2.fmi
 - Fixed --maxactiverequests not to have alias -q which is already in use
 

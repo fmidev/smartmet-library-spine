@@ -29,7 +29,8 @@ const unsigned int default_maxthreads = 10;
 const unsigned int default_timeout = 60;
 const unsigned int default_maxrequeuesize = 100;
 const unsigned int default_compresslimit = 1000;
-const unsigned int default_maxactiverequests = 0;  // no limit
+const unsigned int default_maxactiverequests = 0;    // 0=unlimited
+const unsigned int default_maxrequestsize = 131072;  // 0=unlimited
 }  // namespace
 
 // ----------------------------------------------------------------------
@@ -61,6 +62,7 @@ Options::Options()
       defaultlogging(true),
       lazylinking(true),
       maxactiverequests(default_maxactiverequests),
+      maxrequestsize(default_maxrequestsize),
       accesslogdir(default_accesslogdir)
 {
 }
@@ -136,6 +138,7 @@ bool Options::parseOptions(int argc, char* argv[])
     const char* msgfastrequeue = "set the maximum requeue size for fast queries";
 
     const char* msgmaxactiverequests = "set the maximum number of simultaneous active requests";
+    const char* msgmaxrequestsize = "set the maximum allowed size for requests";
 
     // clang-format off
     desc.add_options()("help,h", msghelp)("version,V", msgversion)(
@@ -144,6 +147,7 @@ bool Options::parseOptions(int argc, char* argv[])
         "fastthreads,n", po::value(&fastpool.minsize)->default_value(fastpool.minsize), msgfastthreads)(
         "maxfastrequeuesize,q", po::value(&fastpool.maxrequeuesize)->default_value(fastpool.maxrequeuesize), msgfastrequeue)(
         "maxactiverequests", po::value(&maxactiverequests)->default_value(maxactiverequests), msgmaxactiverequests)(
+        "maxrequestsize", po::value(&maxrequestsize)->default_value(maxrequestsize), msgmaxrequestsize)(
         "debug,d", po::bool_switch(&debug)->default_value(debug), msgdebug)(
         "verbose,v", po::bool_switch(&verbose)->default_value(verbose), msgverbose)(
         "quiet", po::bool_switch(&quiet)->default_value(quiet), msgquiet)(

@@ -44,7 +44,8 @@ struct Options
   bool defaultlogging;
   bool lazylinking;
 
-  unsigned int maxactiverequests;  // 0 means no limit is set
+  unsigned int maxactiverequests;  // 0 means unlimited
+  unsigned int maxrequestsize;     // Limit incoming request sizes, 0 means unlimited
 
   std::string accesslogdir;
 
