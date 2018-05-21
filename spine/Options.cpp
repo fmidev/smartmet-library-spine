@@ -143,7 +143,7 @@ bool Options::parseOptions(int argc, char* argv[])
     // clang-format off
     desc.add_options()("help,h", msghelp)("version,V", msgversion)(
         "slowthreads,N", po::value(&slowpool.minsize)->default_value(slowpool.minsize), msgslowthreads)(
-        "maxslowrequeuesize,Q", po::value(&slowpool.maxrequeuesize)->default_value(fastpool.maxrequeuesize), msgslowrequeue)(
+        "maxslowrequeuesize,Q", po::value(&slowpool.maxrequeuesize)->default_value(slowpool.maxrequeuesize), msgslowrequeue)(
         "fastthreads,n", po::value(&fastpool.minsize)->default_value(fastpool.minsize), msgfastthreads)(
         "maxfastrequeuesize,q", po::value(&fastpool.maxrequeuesize)->default_value(fastpool.maxrequeuesize), msgfastrequeue)(
         "maxactiverequests", po::value(&maxactiverequests)->default_value(maxactiverequests), msgmaxactiverequests)(
