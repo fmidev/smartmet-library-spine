@@ -61,6 +61,8 @@ boost::posix_time::ptime required_time(const char* theValue, const char* theErro
 boost::posix_time::ptime required_time(const boost::optional<std::string>& theValue,
                                        const char* theError);
 
+std::string htmlescape(const std::string& theValue);
+
 /**
  *  @brief Returns content of boost::any as string
  */

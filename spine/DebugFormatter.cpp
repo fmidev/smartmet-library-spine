@@ -79,7 +79,7 @@ void DebugFormatter::format(std::ostream& theOutput,
     for (Table::Indexes::const_iterator nam = cols.begin(); nam != cols.end(); ++nam)
     {
       const std::string& name = theNames[*nam];
-      theOutput << "<th>" << name << "</th>";
+      theOutput << "<th>" << htmlescape(name) << "</th>";
     }
     theOutput << "</tr>";
 
@@ -88,7 +88,7 @@ void DebugFormatter::format(std::ostream& theOutput,
       theOutput << "<tr>" << std::endl;
       for (Table::Indexes::const_iterator i = cols.begin(); i != cols.end(); ++i)
       {
-        std::string value = theTable.get(*i, *j);
+        std::string value = htmlescape(theTable.get(*i, *j));
         theOutput << "<td>" << (value.empty() ? miss : value) << "</td>";
       }
       theOutput << "</tr>";

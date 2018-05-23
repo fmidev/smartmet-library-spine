@@ -432,6 +432,39 @@ boost::posix_time::ptime required_time(const boost::optional<std::string>& theVa
   }
 }
 
+// https://stackoverflow.com/questions/5665231/most-efficient-way-to-escape-xml-html-in-c-string
+std::string htmlescape(const std::string& theValue)
+{
+  std::string buffer;
+  auto n = theValue.size();
+  buffer.reserve(n);
+  for (std::size_t pos = 0; pos < n; ++pos)
+  {
+    switch (theValue[pos])
+    {
+      case '&':
+        buffer += "&amp;";
+        break;
+      case '\"':
+        buffer += "&quot;";
+        break;
+      case '\'':
+        buffer += "&apos;";
+        break;
+      case '<':
+        buffer += "&lt;";
+        break;
+      case '>':
+        buffer += "&gt;";
+        break;
+      default:
+        buffer += theValue[pos];
+        break;
+    }
+  }
+  return buffer;
+}
+
 bool str_iless(const std::string& a, const std::string& b, const std::locale& locale)
 {
   try
