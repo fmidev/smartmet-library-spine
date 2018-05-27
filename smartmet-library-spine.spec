@@ -1,9 +1,9 @@
 %define DIRNAME spine
 %define LIBNAME smartmet-spine
 %define SPECNAME smartmet-library-%{DIRNAME}
-Summary: BrainStorm Spinal Cord
+Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.5.23
+Version: 18.5.27
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -97,6 +97,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Sun May 27 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.5.27-1.fmi
+- Added request start time to default file logs
+
 * Wed May 23 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.5.23-1.fmi
 - format=debug and format=html now escape special HTML characters
 

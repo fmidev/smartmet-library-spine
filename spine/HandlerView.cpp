@@ -12,7 +12,7 @@ namespace
 {
 bool isNotOld(const boost::posix_time::ptime& target, const SmartMet::Spine::LoggedRequest& compare)
 {
-  return compare.getRequestTime() > target;
+  return compare.getRequestEndTime() > target;
 }
 }  // namespace
 

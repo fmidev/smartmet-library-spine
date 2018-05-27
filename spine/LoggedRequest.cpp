@@ -10,14 +10,14 @@ namespace Spine
  */
 // ----------------------------------------------------------------------
 LoggedRequest::LoggedRequest(const std::string& theRequestString,
-                             const boost::posix_time::ptime& requestTime,
+                             const boost::posix_time::ptime& requestEndTime,
                              const boost::posix_time::time_duration& accessDuration,
                              const std::string& theStatus,
                              const std::string& theIP,
                              const std::string& theMethod,
                              const std::string& theVersion)
     : itsRequestString(theRequestString),
-      itsRequestTime(requestTime),
+      itsRequestEndTime(requestEndTime),
       itsAccessDuration(accessDuration),
       itsStatus(theStatus),
       itsIP(theIP),
@@ -28,14 +28,26 @@ LoggedRequest::LoggedRequest(const std::string& theRequestString,
 
 // ----------------------------------------------------------------------
 /*!
- * \brief Get request timestamp
+ * \brief Get request end timestamp
  */
 // ----------------------------------------------------------------------
 
-boost::posix_time::ptime LoggedRequest::getRequestTime() const
+boost::posix_time::ptime LoggedRequest::getRequestEndTime() const
 {
-  return itsRequestTime;
+  return itsRequestEndTime;
 }
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Get request start timestamp
+ */
+// ----------------------------------------------------------------------
+
+boost::posix_time::ptime LoggedRequest::getRequestStartTime() const
+{
+  return itsRequestEndTime - itsAccessDuration;
+}
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Get request RequestString

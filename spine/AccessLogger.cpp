@@ -123,10 +123,11 @@ void AccessLogger::log(const LoggedRequest& theRequest)
     }
 
     *itsFileHandle << theRequest.getIP() << " - - ["
-                   << Fmi::to_iso_extended_string(theRequest.getRequestTime()) << "]"
-                   << " \"" << theRequest.getMethod() << " " << theRequest.getRequestString()
-                   << " HTTP/" << theRequest.getVersion() << "\" " << theRequest.getStatus() << " ("
-                   << theRequest.getAccessDuration().total_milliseconds() << " ms)" << std::endl;
+                   << Fmi::to_iso_extended_string(theRequest.getRequestEndTime()) << "] \""
+                   << theRequest.getMethod() << ' ' << theRequest.getRequestString() << " HTTP/"
+                   << theRequest.getVersion() << "\" " << theRequest.getStatus() << " ["
+                   << Fmi::to_iso_extended_string(theRequest.getRequestStartTime()) << "] "
+                   << theRequest.getAccessDuration().total_milliseconds() << std::endl;
   }
   catch (...)
   {
