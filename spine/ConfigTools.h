@@ -205,6 +205,16 @@ bool lookupHostStringSettings(const libconfig::Config& theConfig,
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Lookup a config setting (.configfile or .configpath)
+ */
+// ----------------------------------------------------------------------
+
+bool lookupConfigSetting(const libconfig::Config& theConfig,
+                         std::string& theValue,
+                         const std::string& theVariable);
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Lookup a path setting
  */
 // ----------------------------------------------------------------------

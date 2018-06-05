@@ -624,7 +624,7 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool verbose)
     std::string pluginname = Names::plugin_name(theFilename);
 
     std::string configfile;
-    lookupPathSetting(itsOptions.itsConfig, configfile, "plugins." + pluginname + ".configfile");
+    lookupConfigSetting(itsOptions.itsConfig, configfile, "plugins." + pluginname);
 
     if (!configfile.empty())
     {
@@ -799,7 +799,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     std::string enginename = Names::engine_name(theFilename);
 
     std::string configfile;
-    lookupPathSetting(itsOptions.itsConfig, configfile, "engines." + enginename + ".configfile");
+    lookupConfigSetting(itsOptions.itsConfig, configfile, "engines." + enginename);
 
     if (configfile != "")
     {
