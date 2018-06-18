@@ -100,7 +100,7 @@ namespace Spine
 Reactor::~Reactor()
 {
   // Debug output
-  std::cout << "SmartMet Frontend stopping..." << std::endl;
+  std::cout << "SmartMet Server stopping..." << std::endl;
 }
 
 // ----------------------------------------------------------------------
