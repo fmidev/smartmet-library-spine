@@ -523,11 +523,13 @@ std::string Request::toString() const
 {
   try
   {
-    std::stringstream ss;
+    std::string ret;
 
     std::string body;
 
-    ss << getMethodString() << " " << itsResource;
+    ret += getMethodString();
+    ret += ' ';
+    ret += itsResource;
 
     if (!itsParameters.empty())
     {
@@ -542,18 +544,23 @@ std::string Request::toString() const
           auto nextToLast = itsParameters.end();
           std::advance(nextToLast, -1);
 
-          ss << "?";
+          ret += '?';
 
           for (auto it = itsParameters.begin(); it != nextToLast; ++it)
           {
             paramValue = it->second;
             paramValue = urlencode(paramValue);
-            ss << it->first << "=" << paramValue << "&";
+            ret += it->first;
+            ret += '=';
+            ret += paramValue;
+            ret += '&';
           }
 
           paramValue = nextToLast->second;
           paramValue = urlencode(paramValue);
-          ss << nextToLast->first << "=" << paramValue;
+          ret += nextToLast->first;
+          ret += '=';
+          ret += paramValue;
           break;
         }
 
@@ -583,19 +590,24 @@ std::string Request::toString() const
       }
     }
 
-    ss << " HTTP/" << itsVersion << "\r\n";
+    ret += " HTTP/";
+    ret += itsVersion;
+    ret += "\r\n";
 
     for (auto iter_pair = itsHeaders.begin(); iter_pair != itsHeaders.end(); ++iter_pair)
     {
-      ss << iter_pair->first << ": " << iter_pair->second << "\r\n";
+      ret += iter_pair->first;
+      ret += ": ";
+      ret += iter_pair->second;
+      ret += "\r\n";
     }
 
     // Header-body delimiter
-    ss << "\r\n";
+    ret += "\r\n";
 
-    ss << body;  // Body is empty in case of GET - requests
+    ret += body;  // Body is empty in case of GET - requests
 
-    return ss.str();
+    return ret;
   }
   catch (...)
   {
