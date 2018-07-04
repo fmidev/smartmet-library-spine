@@ -5,7 +5,6 @@
 #include <boost/foreach.hpp>
 #include <boost/shared_array.hpp>
 #include <macgyver/StringConversion.h>
-
 #include <cstdlib>
 #include <iostream>
 #include <list>
@@ -667,30 +666,36 @@ std::string Request::getURI() const
 {
   try
   {
-    std::ostringstream ss;
+    std::string ret;
 
-    ss << itsResource;
+    ret += itsResource;
+
     if (!itsParameters.empty())
     {
       auto nextToLast = itsParameters.end();
       std::advance(nextToLast, -1);
 
-      ss << "?";
+      ret += '?';
 
       std::string paramValue;
       for (auto it = itsParameters.begin(); it != nextToLast; ++it)
       {
         paramValue = it->second;
         paramValue = urlencode(paramValue);
-        ss << it->first << "=" << paramValue << "&";
+        ret += it->first;
+        ret += '=';
+        ret += paramValue;
+        ret += '&';
       }
 
       paramValue = nextToLast->second;
       paramValue = urlencode(paramValue);
-      ss << nextToLast->first << "=" << paramValue;
+      ret += nextToLast->first;
+      ret += '=';
+      ret += paramValue;
     }
 
-    return ss.str();
+    return ret;
   }
   catch (...)
   {
@@ -702,29 +707,34 @@ std::string Request::getQueryString() const
 {
   try
   {
-    std::ostringstream ss;
+    std::string ret;
 
     if (!itsParameters.empty())
     {
       auto nextToLast = itsParameters.end();
       std::advance(nextToLast, -1);
 
-      ss << "?";
+      ret += '?';
 
       std::string paramValue;
       for (auto it = itsParameters.begin(); it != nextToLast; ++it)
       {
         paramValue = it->second;
         paramValue = urlencode(paramValue);
-        ss << it->first << "=" << paramValue << "&";
+        ret += it->first;
+        ret += '=';
+        ret += paramValue;
+        ret += '&';
       }
 
       paramValue = nextToLast->second;
       paramValue = urlencode(paramValue);
-      ss << nextToLast->first << "=" << paramValue;
+      ret += nextToLast->first;
+      ret += '=';
+      ret += paramValue;
     }
 
-    return ss.str();
+    return ret;
   }
   catch (...)
   {

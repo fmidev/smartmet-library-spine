@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.6.18
+Version: 18.7.4
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -97,6 +97,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Jul  4 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.7.4-1.fmi
+- Avoid using ostringstream in HTTP code to avoid global locale locks
+
 * Mon Jun 18 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.6.18-1.fmi
 - Fixed shutdown message not to be Frontend specific
 
