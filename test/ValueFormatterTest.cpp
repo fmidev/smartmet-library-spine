@@ -60,7 +60,7 @@ void nan()
     req.setParameter("floatfield", "none");
     SmartMet::Spine::ValueFormatter fmt(req);
     if ((result = fmt.format(nan, precision)) != "nan")
-      TEST_FAILED("Failed to return 'nan' for NaN value");
+      TEST_FAILED("Failed to return 'nan' for NaN value, result = " + result);
   }
 
   {
@@ -69,7 +69,7 @@ void nan()
     req.setParameter("missingtext", "NULL");
     SmartMet::Spine::ValueFormatter fmt(req);
     if ((result = fmt.format(nan, precision)) != "NULL")
-      TEST_FAILED("Failed to return 'NULL' for NaN value");
+      TEST_FAILED("Failed to return 'NULL' for NaN value, result = " + result);
   }
 
   TEST_PASSED();

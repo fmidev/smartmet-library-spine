@@ -97,6 +97,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Upcoming
+- Use libfmt instead of string streams in ValueFormatter to avoid global locale locks
+
 * Wed Jul  4 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.7.4-1.fmi
 - Avoid using ostringstream in HTTP code to avoid global locale locks
 
