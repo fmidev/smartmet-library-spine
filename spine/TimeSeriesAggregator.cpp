@@ -192,8 +192,8 @@ LonLat StatCalculator::getLonLatStatValue(const ParameterFunction& func) const
     }
     else if (fid == FunctionId::Sum || fid == FunctionId::Integ)
     {
-      double lon_sum = std::accumulate(lon_vector.begin(), lon_vector.end(), 0);
-      double lat_sum = std::accumulate(lat_vector.begin(), lat_vector.end(), 0);
+      double lon_sum = std::accumulate(lon_vector.begin(), lon_vector.end(), 0.0);
+      double lat_sum = std::accumulate(lat_vector.begin(), lat_vector.end(), 0.0);
 
       while (abs(lon_sum) > 180)
         lon_sum -= 180;
