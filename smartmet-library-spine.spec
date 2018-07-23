@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.7.4
+Version: 18.7.23
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -14,8 +14,8 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 18.5.2
-BuildRequires: smartmet-library-macgyver-devel >= 18.4.11
+BuildRequires: smartmet-library-newbase-devel >= 18.6.13
+BuildRequires: smartmet-library-macgyver-devel >= 18.6.7
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -30,8 +30,8 @@ BuildRequires: smartmet-library-gis-devel >= 18.4.7
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 18.5.2
-Requires: smartmet-library-macgyver >= 18.4.11
+Requires: smartmet-library-newbase >= 18.6.13
+Requires: smartmet-library-macgyver >= 18.6.7
 Requires: smartmet-timezones >= 18.5.9
 Requires: smartmet-library-gis >= 18.4.7
 Requires: mariadb-libs
@@ -97,7 +97,7 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
-* Upcoming
+* Mon Jul 23 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.7.23-1.fmi
 - Use libfmt instead of string streams in ValueFormatter to avoid global locale locks
 
 * Wed Jul  4 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.7.4-1.fmi
