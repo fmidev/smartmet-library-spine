@@ -98,6 +98,7 @@ make %{_smp_mflags}
 
 %changelog
 * Mon Jul 23 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.7.23-2.fmi
+- Silenced CodeChecker warnings
 - Fixed accumulation initial value to be double instead of int
 
 * Mon Jul 23 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.7.23-1.fmi

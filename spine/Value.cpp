@@ -771,10 +771,10 @@ boost::posix_time::ptime parse_xml_time(const std::string& value)
 
     const std::string tmp = ba::trim_copy(value);
 
-    char tz_off_sign;
-    short unsigned year, month, day;
-    unsigned hours, minutes, seconds;
-    unsigned off_hours, off_min;
+    char tz_off_sign = ' ';
+    short unsigned year = 0, month = 0, day = 0;
+    unsigned hours = 0, minutes = 0, seconds = 0;
+    unsigned off_hours = 0, off_min = 0;
 
     qi::uint_parser<int, 10, 4, 4> uint4_p;
     qi::uint_parser<unsigned, 10, 2, 2> uint2_p;
