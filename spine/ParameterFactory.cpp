@@ -518,7 +518,7 @@ std::string ParameterFactory::parse_parameter_functions(
 
       agg_interval_behind = duration_string_to_minutes(aggregation_interval_string_behind);
 
-      if (agg_interval_ahead < 0 || agg_interval_ahead < 0)
+      if (agg_interval_behind < 0 || agg_interval_ahead < 0)
       {
         throw Spine::Exception(BCP,
                                "The 'interval' option for '" + paramname + "' must be positive!");
