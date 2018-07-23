@@ -421,10 +421,8 @@ string parse_parameter_name(const string& param_name)
 
     for (unsigned int i = 0; strlen(names[i]) > 0; i++)
     {
-      if (param_name.compare(names[i]) == 0)
-      {
+      if (param_name == names[i])
         return parameters[i];
-      }
     }
 
     return param_name;
