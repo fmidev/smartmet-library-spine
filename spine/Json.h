@@ -17,7 +17,7 @@ namespace SmartMet
 {
 namespace Spine
 {
-class FileCache;
+class JsonCache;
 
 namespace JSON
 {
@@ -31,7 +31,7 @@ void replaceReferences(Json::Value& theJson,
 void preprocess(Json::Value& theJson,
                 const std::string& theRootPath,
                 const std::string& thePath,
-                const FileCache& theFileCache);
+                const JsonCache& theJsonCache);
 
 // expand references in the Json ("path:name1.name2[0].parameter")
 void dereference(Json::Value& theJson);

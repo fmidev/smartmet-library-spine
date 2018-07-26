@@ -1,7 +1,7 @@
 #include "Json.h"
 #include "Exception.h"
-#include "FileCache.h"
 #include "HTTP.h"
+#include "JsonCache.h"
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/foreach.hpp>
@@ -123,7 +123,7 @@ QidMap collect_qids(Json::Value& theJson)
 void JSON::preprocess(Json::Value& theJson,
                       const std::string& theRootPath,
                       const std::string& thePath,
-                      const FileCache& theFileCache)
+                      const JsonCache& theJsonCache)
 {
   try
   {
@@ -138,15 +138,11 @@ void JSON::preprocess(Json::Value& theJson,
         else
           json_file = theRootPath + "/" + tmp.substr(6, std::string::npos);
 
-        Json::Reader reader;
-        std::string json_text = theFileCache.get(json_file);
-        // parse directly over old contents
-        bool json_ok = reader.parse(json_text, theJson);
-        if (!json_ok)
-          throw Spine::Exception(
-              BCP, "Failed to parse '" + json_file + "': " + reader.getFormattedErrorMessages());
+        // Replace old contents
+        theJson = theJsonCache.get(json_file);
+
         // TODO: should we prevent infinite recursion?
-        preprocess(theJson, theRootPath, thePath, theFileCache);
+        preprocess(theJson, theRootPath, thePath, theJsonCache);
       }
     }
 
@@ -154,7 +150,7 @@ void JSON::preprocess(Json::Value& theJson,
     else if (theJson.isArray())
     {
       for (unsigned int i = 0; i < theJson.size(); i++)
-        preprocess(theJson[i], theRootPath, thePath, theFileCache);
+        preprocess(theJson[i], theRootPath, thePath, theJsonCache);
     }
     // Seek deeper in objects
     else if (theJson.isObject())
@@ -162,7 +158,7 @@ void JSON::preprocess(Json::Value& theJson,
       const auto members = theJson.getMemberNames();
       BOOST_FOREACH (auto& name, members)
       {
-        preprocess(theJson[name], theRootPath, thePath, theFileCache);
+        preprocess(theJson[name], theRootPath, thePath, theJsonCache);
       }
     }
   }
