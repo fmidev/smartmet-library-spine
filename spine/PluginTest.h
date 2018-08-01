@@ -15,14 +15,11 @@
 #include "HTTP.h"
 #include "Options.h"
 #include "Reactor.h"
-#include <dtl/dtl.hpp>
-
 #include <boost/algorithm/string.hpp>
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/foreach.hpp>
 #include <boost/range/iterator_range.hpp>
-
+#include <dtl/dtl.hpp>
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
@@ -62,14 +59,14 @@ void printRequest(SmartMet::Spine::HTTP::Request& request)
 
     auto params = request.getParameterMap();
 
-    BOOST_FOREACH (const auto& value, params)
+    for (const auto& value : params)
     {
       std::cout << value.first << "=" << value.second << std::endl;
     }
 
     auto headers = request.getHeaders();
 
-    BOOST_FOREACH (const auto& value, headers)
+    for (const auto& value : headers)
     {
       std::cout << value.first << ":" << value.second << std::endl;
     }
@@ -362,7 +359,7 @@ int test(SmartMet::Spine::Options& options, PreludeFunction prelude, bool proces
     std::list<boost::filesystem::path> inputfiles = recursive_directory_contents("input");
 
     const std::size_t padding = 90;
-    BOOST_FOREACH (const boost::filesystem::path& fn, inputfiles)
+    for (const boost::filesystem::path& fn : inputfiles)
     {
       using boost::filesystem::path;
       using std::cout;

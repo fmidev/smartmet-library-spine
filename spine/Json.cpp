@@ -4,7 +4,6 @@
 #include "JsonCache.h"
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/foreach.hpp>
 #include <boost/regex.hpp>
 #include <macgyver/StringConversion.h>
 
@@ -156,7 +155,7 @@ void JSON::preprocess(Json::Value& theJson,
     else if (theJson.isObject())
     {
       const auto members = theJson.getMemberNames();
-      BOOST_FOREACH (auto& name, members)
+      for (auto& name : members)
       {
         preprocess(theJson[name], theRootPath, thePath, theJsonCache);
       }
@@ -213,7 +212,7 @@ void deref(Json::Value& theJson, Json::Value& theRoot)
     else if (theJson.isObject())
     {
       const auto members = theJson.getMemberNames();
-      BOOST_FOREACH (auto& name, members)
+      for (auto& name : members)
       {
         deref(theJson[name], theRoot);
       }

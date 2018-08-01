@@ -10,7 +10,6 @@
 #include "Table.h"
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/foreach.hpp>
 #include <algorithm>
 #include <iostream>
 #include <list>
@@ -96,7 +95,7 @@ void format_plain(std::ostream& theOutput,
     theOutput << "array(\n";
 
     bool jfirst = true;
-    BOOST_FOREACH (std::size_t j, theRows)
+    for (std::size_t j : theRows)
     {
       if (!jfirst)
         theOutput << ",\n";
@@ -105,7 +104,7 @@ void format_plain(std::ostream& theOutput,
       theOutput << "array(\n";
 
       bool ifirst = true;
-      BOOST_FOREACH (std::size_t i, theCols)
+      for (std::size_t i : theCols)
       {
         if (!ifirst)
           theOutput << ",\n";
@@ -156,14 +155,14 @@ void format_attributes(std::ostream& theOutput,
         theOutput << "array(";
       bool jfirst = true;
 
-      BOOST_FOREACH (std::size_t j, theRows)
+      for (std::size_t j : theRows)
       {
         if (!jfirst)
           theOutput << "),\narray(\n";
         jfirst = false;
 
         bool ifirst = true;
-        BOOST_FOREACH (std::size_t i, theCols)
+        for (std::size_t i : theCols)
         {
           if (!ifirst)
             theOutput << ",\n";
@@ -187,7 +186,7 @@ void format_attributes(std::ostream& theOutput,
       // Collect unique values in the attribute column
 
       std::set<std::string> values;
-      BOOST_FOREACH (std::size_t j, theRows)
+      for (std::size_t j : theRows)
       {
         std::string value = theTable.get(nam, j);
         if (!value.empty())
@@ -204,14 +203,14 @@ void format_attributes(std::ostream& theOutput,
       bool vfirst = true;
 
       theOutput << "array(\n";
-      BOOST_FOREACH (const std::string& value, values)
+      for (const std::string& value : values)
       {
         if (!vfirst)
           theOutput << ",\n";
         vfirst = false;
 
         Table::Indexes rows;
-        BOOST_FOREACH (std::size_t j, theRows)
+        for (std::size_t j : theRows)
         {
           if (theTable.get(nam, j) == value)
             rows.insert(j);

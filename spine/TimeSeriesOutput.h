@@ -1,17 +1,14 @@
 #pragma once
 
-#include <sstream>
-#include <string>
-#include <vector>
-
-#include <boost/date_time/local_time/local_time.hpp>
-#include <boost/foreach.hpp>
-#include <boost/variant.hpp>
-
 #include "Table.h"
 #include "TimeSeries.h"
 #include "ValueFormatter.h"
+#include <boost/date_time/local_time/local_time.hpp>
+#include <boost/variant.hpp>
 #include <macgyver/TimeFormatter.h>
+#include <sstream>
+#include <string>
+#include <vector>
 
 namespace SmartMet
 {

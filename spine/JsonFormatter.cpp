@@ -10,7 +10,6 @@
 #include "Table.h"
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/foreach.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <algorithm>
 #include <iomanip>
@@ -146,7 +145,7 @@ void format_recursively(std::ostream& theOutput,
       // Format the json always as an array
       theOutput << '[';
       std::size_t row = 0;
-      BOOST_FOREACH (std::size_t j, theRows)
+      for (std::size_t j : theRows)
       {
         if (row++ > 0)
           theOutput << ',';
@@ -154,7 +153,7 @@ void format_recursively(std::ostream& theOutput,
         theOutput << "{";
 
         std::size_t col = 0;
-        BOOST_FOREACH (std::size_t i, theCols)
+        for (std::size_t i : theCols)
         {
           if (col++ > 0)
             theOutput << ',';
@@ -189,7 +188,7 @@ void format_recursively(std::ostream& theOutput,
       // Collect unique values in the attribute column
 
       std::set<std::string> values;
-      BOOST_FOREACH (std::size_t j, theRows)
+      for (std::size_t j : theRows)
       {
         std::string value = theTable.get(nam, j);
         if (!value.empty())
@@ -206,12 +205,12 @@ void format_recursively(std::ostream& theOutput,
       theOutput << '{';
 
       int att = 0;
-      BOOST_FOREACH (const std::string& v, values)
+      for (const std::string& v : values)
       {
         if (att++ > 0)
           theOutput << ',';
         Table::Indexes rows;
-        BOOST_FOREACH (std::size_t j, theRows)
+        for (std::size_t j : theRows)
         {
           if (theTable.get(nam, j) == v)
             rows.insert(j);

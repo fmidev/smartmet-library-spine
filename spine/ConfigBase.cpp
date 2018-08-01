@@ -347,7 +347,7 @@ libconfig::Setting* ConfigBase::find_setting(libconfig::Setting& search_start,
 
     std::vector<std::string> parts;
     ba::split(parts, path, ba::is_any_of(".:/"), ba::token_compress_on);
-    BOOST_FOREACH (const auto& name, parts)
+    for (const auto& name : parts)
     {
       int ind = 0;
 

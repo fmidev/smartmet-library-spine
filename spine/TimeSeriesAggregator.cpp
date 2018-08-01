@@ -3,16 +3,12 @@
 #include "Exception.h"
 #include "TimeSeries.h"
 #include "TimeSeriesOutput.h"
-
+#include <newbase/NFmiGlobals.h>
 #include <cmath>
 #include <iostream>
 #include <numeric>
 #include <sstream>
 #include <stdexcept>
-
-#include <boost/foreach.hpp>
-
-#include <newbase/NFmiGlobals.h>
 
 using namespace std;
 using namespace boost::posix_time;
@@ -106,7 +102,7 @@ std::string StatCalculator::getStringStatValue(const ParameterFunction& func) co
     {
       std::stringstream ss;
       ss << "[";
-      BOOST_FOREACH (const TimedValue& tv, itsTimeSeries)
+      for (const TimedValue& tv : itsTimeSeries)
       {
         if (ss.str().size() > 1)
           ss << " ";
@@ -163,7 +159,7 @@ LonLat StatCalculator::getLonLatStatValue(const ParameterFunction& func) const
     std::vector<double> lon_vector;
     std::vector<double> lat_vector;
 
-    BOOST_FOREACH (const TimedValue& tv, itsTimeSeries)
+    for (const TimedValue& tv : itsTimeSeries)
     {
       Value value(tv.value);
       lon_vector.push_back((boost::get<LonLat>(value)).lon);

@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.7.26
+Version: 18.8.1
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -14,8 +14,8 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 18.6.13
-BuildRequires: smartmet-library-macgyver-devel >= 18.6.7
+BuildRequires: smartmet-library-newbase-devel >= 18.8.1
+BuildRequires: smartmet-library-macgyver-devel >= 18.8.1
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -24,16 +24,16 @@ BuildRequires: gdal-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 18.4.7
+BuildRequires: smartmet-library-gis-devel >= 18.8.1
 
 %if 0%{rhel} >= 7
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 18.6.13
-Requires: smartmet-library-macgyver >= 18.6.7
+Requires: smartmet-library-newbase >= 18.8.1
+Requires: smartmet-library-macgyver >= 18.8.1
 Requires: smartmet-timezones >= 18.5.9
-Requires: smartmet-library-gis >= 18.4.7
+Requires: smartmet-library-gis >= 18.8.1
 Requires: mariadb-libs
 Requires: boost-filesystem
 Requires: boost-iostreams
@@ -97,6 +97,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Aug  1 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.8.1-1.fmi
+- Use C++11 for-loops instead of BOOST_FOREACH
+
 * Thu Jul 26 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.7.26-1.fmi
 - Added JsonCache to store parsed JSON files with a modification time check
 

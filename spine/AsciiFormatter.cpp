@@ -8,7 +8,6 @@
 #include "Convenience.h"
 #include "Exception.h"
 #include "Table.h"
-#include <boost/foreach.hpp>
 #include <iostream>
 
 namespace SmartMet
@@ -52,10 +51,10 @@ void AsciiFormatter::format(std::ostream& theOutput,
     Table::Indexes cols = theTable.columns();
     Table::Indexes rows = theTable.rows();
 
-    BOOST_FOREACH (std::size_t j, rows)
+    for (std::size_t j : rows)
     {
       bool ifirst = true;
-      BOOST_FOREACH (std::size_t i, cols)
+      for (std::size_t i : cols)
       {
         if (!ifirst)
           theOutput << sep;

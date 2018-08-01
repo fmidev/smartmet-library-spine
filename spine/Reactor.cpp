@@ -19,27 +19,21 @@
 #include "Convenience.h"
 #endif
 
-#include <macgyver/StringConversion.h>
-
-#include <mysql.h>
-
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/path.hpp>
-#include <boost/foreach.hpp>
 #include <boost/locale.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/timer/timer.hpp>
-
 #include <macgyver/AnsiEscapeCodes.h>
-
-#include <dlfcn.h>
-
+#include <macgyver/StringConversion.h>
 #include <algorithm>
+#include <dlfcn.h>
 #include <functional>
 #include <iostream>
+#include <mysql.h>
 #include <stdexcept>
 #include <string>
 
@@ -472,7 +466,7 @@ URIMap Reactor::getURIMap() const
     ReadLock lock(itsContentMutex);
     URIMap theMap;
 
-    BOOST_FOREACH (auto& handlerPair, itsHandlers)
+    for (auto& handlerPair : itsHandlers)
     {
       theMap.insert(std::make_pair(handlerPair.first, handlerPair.second->getPluginName()));
     }
@@ -505,7 +499,7 @@ URIMap Reactor::getURIMap() const
       boost::this_thread::sleep(boost::posix_time::seconds(5));
 
       auto firstValidTime = boost::posix_time::second_clock::local_time() - maxAge;
-      BOOST_FOREACH (auto& handlerPair, itsHandlers)
+      for (auto& handlerPair : itsHandlers)
       {
         if (itsShutdownRequested)
           return;
@@ -571,7 +565,7 @@ void Reactor::setLogging(bool loggingEnabled)
     }
 
     // Set logging status for ALL plugins
-    BOOST_FOREACH (auto& handlerPair, itsHandlers)
+    for (auto& handlerPair : itsHandlers)
     {
       handlerPair.second->setLogging(itsLoggingEnabled);
     }
@@ -995,7 +989,7 @@ void Reactor::callClientConnectionStartedHooks(const std::string& theClientIP)
   {
     ReadLock lock(itsHookMutex);
 
-    BOOST_FOREACH (auto& pair, itsClientConnectionStartedHooks)
+    for (auto& pair : itsClientConnectionStartedHooks)
     {
       pair.second(theClientIP);
     }
@@ -1015,7 +1009,7 @@ void Reactor::callBackendConnectionFinishedHooks(
   {
     ReadLock lock(itsHookMutex);
 
-    BOOST_FOREACH (auto& pair, itsBackendConnectionFinishedHooks)
+    for (auto& pair : itsBackendConnectionFinishedHooks)
     {
       pair.second(theHostName, thePort, theStatus);
     }
@@ -1032,7 +1026,7 @@ void Reactor::callClientConnectionFinishedHooks(const std::string& theClientIP,
   try
   {
     ReadLock lock(itsHookMutex);
-    BOOST_FOREACH (auto& pair, itsClientConnectionFinishedHooks)
+    for (auto& pair : itsClientConnectionFinishedHooks)
     {
       pair.second(theClientIP, theError);
     }

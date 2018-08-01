@@ -10,7 +10,6 @@
 #include "Table.h"
 #include "TableFormatterOptions.h"
 #include <boost/algorithm/string/replace.hpp>
-#include <boost/foreach.hpp>
 #include <boost/math/special_functions/fpclassify.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <macgyver/StringConversion.h>
@@ -115,7 +114,7 @@ void WxmlFormatter::format_100(std::ostream& theOutput,
 
     // Establish latest origintime
     std::string origintime = "";
-    BOOST_FOREACH (std::size_t j, rows)
+    for (std::size_t j : rows)
     {
       if (theTable.get(col_origintime, j) > origintime)
         origintime = theTable.get(col_origintime, j);
@@ -126,7 +125,7 @@ void WxmlFormatter::format_100(std::ostream& theOutput,
 
     std::string current_geoid = "ABCDEFGHIJKLMNOPQRSTUWXYZ";
 
-    BOOST_FOREACH (std::size_t j, rows)
+    for (std::size_t j : rows)
     {
       if (theTable.get(col_geoid, j) != current_geoid)
       {
@@ -143,7 +142,7 @@ void WxmlFormatter::format_100(std::ostream& theOutput,
       theOutput << "<forecast time=\"" << theTable.get(col_xmltime, j) << "\" day=\""
                 << theTable.get(col_weekday, j) << "\">" << std::endl;
 
-      BOOST_FOREACH (std::size_t i, wcols)
+      for (std::size_t i : wcols)
       {
         const std::string& name = theNames[i];
         std::string value = theTable.get(i, j);
@@ -228,7 +227,7 @@ void WxmlFormatter::format_200(std::ostream& theOutput,
     wcols.pop_back();
     // Establish latest origintime
     std::string origintime = "";
-    BOOST_FOREACH (std::size_t j, rows)
+    for (std::size_t j : rows)
     {
       if (theTable.get(col_origintime, j) > origintime)
         origintime = theTable.get(col_origintime, j);
@@ -237,7 +236,7 @@ void WxmlFormatter::format_200(std::ostream& theOutput,
     theOutput << "<updated>" << origintime << "</updated>" << std::endl;
     theOutput << "</meta>" << std::endl;
     std::string current_geoid = "ABCDEFGHIJKLMNOPQRSTUWXYZ";
-    BOOST_FOREACH (std::size_t j, rows)
+    for (std::size_t j : rows)
     {
       if (theTable.get(col_geoid, j) != current_geoid)
       {
@@ -266,7 +265,7 @@ void WxmlFormatter::format_200(std::ostream& theOutput,
 
       theOutput << ">" << std::endl;
 
-      BOOST_FOREACH (std::size_t i, wcols)
+      for (std::size_t i : wcols)
       {
         const std::string& name = theNames[i];
         std::string value = theTable.get(i, j);

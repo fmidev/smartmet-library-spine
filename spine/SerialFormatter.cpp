@@ -10,7 +10,6 @@
 #include "Table.h"
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/foreach.hpp>
 #include <algorithm>
 #include <iostream>
 #include <list>
@@ -96,11 +95,11 @@ void format_plain(std::ostream& theOutput,
     theOutput << "a:" << theRows.size() << ":{";
 
     std::size_t row = 0;
-    BOOST_FOREACH (std::size_t j, theRows)
+    for (std::size_t j : theRows)
     {
       theOutput << "i:" << row++ << ";a:" << theCols.size() << ":{";
 
-      BOOST_FOREACH (std::size_t i, theCols)
+      for (std::size_t i : theCols)
       {
         const std::string& name = theNames[i];
         std::string value = theTable.get(i, j);
@@ -153,14 +152,14 @@ void format_attributes(std::ostream& theOutput,
         theOutput << "a:" << theRows.size() << ":{";
 
       std::size_t row = 0;
-      BOOST_FOREACH (std::size_t j, theRows)
+      for (std::size_t j : theRows)
       {
         if (theRows.size() > 1)
           theOutput << "i:" << row++ << ";";
 
         theOutput << "a:" << theCols.size() << ":{";
 
-        BOOST_FOREACH (std::size_t i, theCols)
+        for (std::size_t i : theCols)
         {
           const std::string& name = theNames[i];
           theOutput << "s:" << name.size() << ":\"" << name << "\";";
@@ -186,7 +185,7 @@ void format_attributes(std::ostream& theOutput,
       // Collect unique values in the attribute column
 
       std::set<std::string> values;
-      BOOST_FOREACH (std::size_t j, theRows)
+      for (std::size_t j : theRows)
       {
         std::string value = theTable.get(nam, j);
         if (!value.empty())
@@ -202,10 +201,10 @@ void format_attributes(std::ostream& theOutput,
 
       theOutput << "a:" << values.size() << ":{";
 
-      BOOST_FOREACH (const std::string& value, values)
+      for (const std::string& value : values)
       {
         Table::Indexes rows;
-        BOOST_FOREACH (std::size_t j, theRows)
+        for (std::size_t j : theRows)
         {
           if (theTable.get(nam, j) == value)
             rows.insert(j);

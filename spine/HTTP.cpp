@@ -2,7 +2,6 @@
 #include "Exception.h"
 #include "HTTPParsers.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/foreach.hpp>
 #include <boost/shared_array.hpp>
 #include <macgyver/StringConversion.h>
 #include <cstdlib>
@@ -1233,7 +1232,7 @@ std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::stri
     if (success && (startIt == stopIt))  // Parse was succesfull and entire input was consumed
     {
       // Build header and param maps
-      BOOST_FOREACH (const auto& pair, target.params)
+      for (const auto& pair : target.params)
       {
         std::string first = urldecode(pair.first);
         if (!first.empty())  // Ignore any empty parameters
@@ -1246,7 +1245,7 @@ std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::stri
       }
 
       // Build header and param maps
-      BOOST_FOREACH (const auto& pair, target.headers)
+      for (const auto& pair : target.headers)
       {
         headerMap.insert(pair);
       }
@@ -1363,7 +1362,7 @@ std::tuple<ParsingStatus, std::unique_ptr<Response>, std::string::const_iterator
     if (success)  // Parse was succesfull
     {
       // Build header map
-      BOOST_FOREACH (const auto& pair, target.headers)
+      for (const auto& pair : target.headers)
       {
         headerMap.insert(pair);
       }

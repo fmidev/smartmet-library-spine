@@ -11,7 +11,6 @@
 #include "TableFormatterOptions.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
-#include <boost/foreach.hpp>
 #include <iostream>
 #include <stdexcept>
 
@@ -112,10 +111,10 @@ void XmlFormatter::format_attributes(std::ostream& theOutput,
 
     theOutput << "<" << theTag << ">" << std::endl;
 
-    BOOST_FOREACH (std::size_t j, rows)
+    for (std::size_t j : rows)
     {
       theOutput << "<row";
-      BOOST_FOREACH (std::size_t i, cols)
+      for (std::size_t i : cols)
       {
         theOutput << ' ';
         const std::string& name = theNames[i];
@@ -160,10 +159,10 @@ void XmlFormatter::format_tags(std::ostream& theOutput,
 
     theOutput << "<" << theTag << ">" << std::endl;
 
-    BOOST_FOREACH (std::size_t j, rows)
+    for (std::size_t j : rows)
     {
       theOutput << "<row>" << std::endl;
-      BOOST_FOREACH (std::size_t i, cols)
+      for (std::size_t i : cols)
       {
         const std::string& name = theNames[i];
         std::string value = theTable.get(i, j);
@@ -217,10 +216,10 @@ void XmlFormatter::format_mixed(std::ostream& theOutput,
 
     theOutput << "<" << theTag << ">" << std::endl;
 
-    BOOST_FOREACH (std::size_t j, rows)
+    for (std::size_t j : rows)
     {
       theOutput << "<row";
-      BOOST_FOREACH (std::size_t i, cols)
+      for (std::size_t i : cols)
       {
         const std::string& name = theNames[i];
         if (atts.find(name) != atts.end())
@@ -232,7 +231,7 @@ void XmlFormatter::format_mixed(std::ostream& theOutput,
       }
       theOutput << ">" << std::endl;
 
-      BOOST_FOREACH (std::size_t i, cols)
+      for (std::size_t i : cols)
       {
         const std::string& name = theNames[i];
         if (atts.find(name) == atts.end())

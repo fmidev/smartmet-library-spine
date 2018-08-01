@@ -6,8 +6,6 @@
 
 #include "TimeSeriesGenerator.h"
 #include "Exception.h"
-
-#include <boost/foreach.hpp>
 #include <macgyver/TimeParser.h>
 
 namespace bp = boost::posix_time;
@@ -46,7 +44,7 @@ void generate_fixedtimes(std::set<bl::local_date_time>& theTimes,
 
     while (true)
     {
-      BOOST_FOREACH (unsigned int hhmm, theOptions.timeList)
+      for (unsigned int hhmm : theOptions.timeList)
       {
         unsigned int hh = hhmm / 100;
         unsigned int mm = hhmm % 100;

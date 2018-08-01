@@ -1,9 +1,7 @@
 
 #include "IPFilter.h"
 #include "Exception.h"
-
 #include <boost/algorithm/string.hpp>
-#include <boost/foreach.hpp>
 #include <boost/spirit/include/qi.hpp>
 
 #include <vector>
@@ -135,7 +133,7 @@ AddressFilter::AddressFilter(const std::string& formatString)
     }
 
     unsigned int index = 0;
-    BOOST_FOREACH (auto& token, tokens)
+    for (auto& token : tokens)
     {
       itsFilters[index] = makeFilter(token);
       ++index;
@@ -154,7 +152,7 @@ bool AddressFilter::match(const std::vector<std::string>& ipTokens) const
     // If for some reason ip has more than 4 fields, the following will segfault.
     // IPs however come from an boost-asio, so we assume they are OK
     unsigned int index = 0;
-    BOOST_FOREACH (auto& token, ipTokens)
+    for (auto& token : ipTokens)
     {
       bool success = itsFilters[index]->match(token);
       if (!success)
@@ -250,7 +248,7 @@ IPFilter::IPFilter(const std::string& configFile, const std::string& root)
   try
   {
     const auto theTokens = itsConfig->getTokens();
-    BOOST_FOREACH (auto& formatToken, theTokens)
+    for (auto& formatToken : theTokens)
     {
       itsFilters.emplace_back(formatToken);
     }
@@ -267,7 +265,7 @@ IPFilter::IPFilter(boost::shared_ptr<libconfig::Config> configPtr, const std::st
   try
   {
     const auto theTokens = itsConfig->getTokens();
-    BOOST_FOREACH (auto& formatToken, theTokens)
+    for (auto& formatToken : theTokens)
     {
       itsFilters.emplace_back(formatToken);
     }
@@ -282,7 +280,7 @@ IPFilter::IPFilter(const std::vector<std::string>& formatTokens) : itsConfig()
 {
   try
   {
-    BOOST_FOREACH (auto& formatToken, formatTokens)
+    for (auto& formatToken : formatTokens)
     {
       itsFilters.emplace_back(formatToken);
     }
@@ -304,7 +302,7 @@ bool IPFilter::match(const std::string& ip) const
     // Here is an implicit assumption that ipTokens.size() == 4
 
     // See if given ip matches ANY of the given rules
-    BOOST_FOREACH (auto& filter, itsFilters)
+    for (auto& filter : itsFilters)
     {
       if (filter.match(ipTokens))
       {

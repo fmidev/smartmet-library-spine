@@ -6,7 +6,6 @@
 
 #include "Table.h"
 #include "Exception.h"
-#include <boost/foreach.hpp>
 #include <boost/format.hpp>
 #include <macgyver/TypeName.h>
 #include <sstream>
@@ -193,7 +192,7 @@ void Table::build_array() const
     // Assign pointers to valid array elements, the
     // rest will still point to empty
 
-    BOOST_FOREACH (const element& e, itsList)
+    for (const element& e : itsList)
     {
       const std::size_t pos = (e.j - itsMinJ) * w + (e.i - itsMinI);
       itsArray[pos] = &(e.value);
