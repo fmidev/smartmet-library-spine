@@ -68,8 +68,8 @@ bool string2bool(const std::string src);
  */
 struct Point
 {
-  double x;
-  double y;
+  double x = 0.0;
+  double y = 0.0;
   std::string crs;
 
   inline Point() {}
@@ -87,10 +87,10 @@ struct Point
  */
 struct BoundingBox
 {
-  double xMin;
-  double yMin;
-  double xMax;
-  double yMax;
+  double xMin = 0.0;
+  double yMin = 0.0;
+  double xMax = 0.0;
+  double yMax = 0.0;
   std::string crs;
 
   inline BoundingBox() {}
