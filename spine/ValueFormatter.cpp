@@ -7,6 +7,7 @@
 #include "ValueFormatter.h"
 #include "Convenience.h"
 #include "Exception.h"
+#include <boost/optional.hpp>
 #include <fmt/format.h>
 #include <cmath>
 #include <stdexcept>
@@ -92,7 +93,7 @@ void ValueFormatter::buildFormat(const ValueFormatterParam& param)
   if (param.width > 0)
     fmt += fmt::sprintf("%d", param.width);
 
-  char ntype;
+  boost::optional<char> ntype;
 
   if (param.floatField == "fixed")
   {
@@ -116,8 +117,16 @@ void ValueFormatter::buildFormat(const ValueFormatterParam& param)
       ntype = 'g';
   }
 
-  itsFormat = fmt + ntype + '}';
-  itsPrecisionFormat = fmt + ".{}" + ntype + '}';
+  if (ntype)
+  {
+    itsFormat = fmt + *ntype + '}';
+    itsPrecisionFormat = fmt + ".{}" + *ntype + '}';
+  }
+  else
+  {
+    itsFormat = fmt + '}';
+    itsPrecisionFormat = fmt + ".{}" + '}';
+  }
 }
 
 // ----------------------------------------------------------------------
