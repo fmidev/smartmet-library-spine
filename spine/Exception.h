@@ -107,7 +107,10 @@ class Exception : public std::exception
   bool mStackTraceDisabled = false;
 };
 
-#define BCP __FILE__, __LINE__, __PRETTY_FUNCTION__
+// Next is to be replaced later on with std::source_location, which is currently experimental
+// Static cast explanation: https://github.com/isocpp/CppCoreGuidelines/issues/765
+
+#define BCP __FILE__, __LINE__, static_cast<const char*>(__PRETTY_FUNCTION__)
 
 }  // namespace Spine
 }  // namespace SmartMet
