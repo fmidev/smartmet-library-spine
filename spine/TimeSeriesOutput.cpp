@@ -181,7 +181,7 @@ std::string StringVisitor::operator()(const boost::local_time::local_date_time& 
 }
 
 /* OStreamVisitor */
-void OStreamVisitor::operator()(const None& none) const
+void OStreamVisitor::operator()(const None& /* none */) const
 {
   try
   {
@@ -256,7 +256,7 @@ void OStreamVisitor::operator()(const boost::local_time::local_date_time& ldt) c
 
 /* TableVisitor */
 
-void TableVisitor::operator()(const None& none)
+void TableVisitor::operator()(const None& /* none */)
 {
   try
   {
