@@ -30,7 +30,7 @@ class SmartMetPlugin
   SmartMetPlugin();
 
   // Virtual destructor declaration (otherwise runtime relocation will fail)
-  virtual ~SmartMetPlugin();
+  virtual ~SmartMetPlugin() = default;
 
   // Method to get name and description of this dynamic module
   virtual const std::string &getPluginName() const = 0;

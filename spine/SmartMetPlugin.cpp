@@ -11,13 +11,6 @@ SmartMetPlugin::SmartMetPlugin()
 
 // ----------------------------------------------------------------------
 /*!
- * \brief Destructor
- */
-// ----------------------------------------------------------------------
-
-SmartMetPlugin::~SmartMetPlugin() {}
-// ----------------------------------------------------------------------
-/*!
  * \brief Default performance query implementation. If not overrided in
  * the actual plugin, handler calls are scheduled to the slow pool
  */
