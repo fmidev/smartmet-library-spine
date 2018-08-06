@@ -105,7 +105,7 @@ std::ostream& operator<<(std::ostream& os, const TimeSeriesVector& tsv)
 
 // StringVisitor
 
-std::string StringVisitor::operator()(const None& none) const
+std::string StringVisitor::operator()(const None& /* none */) const
 {
   try
   {
