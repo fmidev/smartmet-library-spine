@@ -18,9 +18,9 @@ std::size_t hash_value(const date& theDate)
 
     if (!theDate.is_special())
     {
-      hash_combine(seed, static_cast<short>(theDate.year()));
-      hash_combine(seed, static_cast<short>(theDate.month()));
-      hash_combine(seed, static_cast<short>(theDate.day()));
+      hash_combine(seed, static_cast<unsigned short>(theDate.year()));
+      hash_combine(seed, static_cast<unsigned short>(theDate.month()));
+      hash_combine(seed, static_cast<unsigned short>(theDate.day()));
     }
     else
     {

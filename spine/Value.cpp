@@ -664,7 +664,6 @@ boost::posix_time::ptime string2ptime(const std::string& value,
 {
   try
   {
-    namespace ba = boost::algorithm;
     namespace bl = boost::lambda;
     namespace ns = boost::spirit::standard;
     namespace qi = boost::spirit::qi;
