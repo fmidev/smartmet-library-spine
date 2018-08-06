@@ -163,7 +163,7 @@ void format_recursively(std::ostream& theOutput,
 
           theOutput << ":";
 
-          std::string value = theTable.get(i, j);
+          const auto& value = theTable.get(i, j);
           if (value.empty())
             theOutput << miss;
           else if (value == "nan" || value == "NaN")  // nan is not allowed in JSON
@@ -190,7 +190,7 @@ void format_recursively(std::ostream& theOutput,
       std::set<std::string> values;
       for (std::size_t j : theRows)
       {
-        std::string value = theTable.get(nam, j);
+        const auto& value = theTable.get(nam, j);
         if (!value.empty())
           values.insert(value);
       }
