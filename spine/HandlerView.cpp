@@ -64,7 +64,7 @@ bool HandlerView::handle(Reactor& theReactor,
   {
     if (!itsIsCatchNoMatch)
     {
-      if (itsIpFilter != 0)
+      if (itsIpFilter != nullptr)
       {
         if (!itsIpFilter->match(theRequest.getClientIP()))
         {

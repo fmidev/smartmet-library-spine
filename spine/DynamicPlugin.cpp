@@ -143,7 +143,7 @@ void DynamicPlugin::pluginOpen()
     else
       itsHandle = dlopen(itsFilename.c_str(), RTLD_NOW);
 
-    if (itsHandle == 0)
+    if (itsHandle == nullptr)
     {
       // Error occurred while opening the dynamic library
       throw Spine::Exception(BCP,
@@ -157,7 +157,7 @@ void DynamicPlugin::pluginOpen()
     plugin_destroy_func = reinterpret_cast<plugin_destroy_t*>(dlsym(itsHandle, "destroy"));
 
     // Check that pointers to function were loaded succesfully
-    if (plugin_create_func == 0 || plugin_destroy_func == 0)
+    if (plugin_create_func == nullptr || plugin_destroy_func == nullptr)
     {
       throw Spine::Exception(BCP, "Cannot load symbols: " + std::string(dlerror()));
     }
@@ -166,7 +166,7 @@ void DynamicPlugin::pluginOpen()
 
     itsPlugin = plugin_create_func(&itsReactorClass, itsConfigFile.c_str());
 
-    if (itsPlugin == 0)
+    if (itsPlugin == nullptr)
     {
       throw Spine::Exception(BCP, "Unable to create a new instance of plugin class");
     }
@@ -200,7 +200,7 @@ void DynamicPlugin::pluginClose()
     // If there is an instance of this module created,
     // and pointer to destroy function is valid.
 
-    if (itsPlugin != 0 && plugin_destroy_func != 0)
+    if (itsPlugin != nullptr && plugin_destroy_func != nullptr)
     {
       // Call the destroy function of the dynamic module.
       plugin_destroy_func(itsPlugin);
@@ -209,10 +209,10 @@ void DynamicPlugin::pluginClose()
       dlclose(itsHandle);
 
       // Reset all the pointers to zero, because these may be recycled.
-      itsPlugin = 0;
-      itsHandle = 0;
-      plugin_create_func = 0;
-      plugin_destroy_func = 0;
+      itsPlugin = nullptr;
+      itsHandle = nullptr;
+      plugin_create_func = nullptr;
+      plugin_destroy_func = nullptr;
     }
   }
   catch (...)
