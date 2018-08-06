@@ -44,44 +44,42 @@ std::string formatLocation(const Location& loc, const std::string& key)
 
     if (key == "name")
       return loc.name;
-    else if (key == "iso2")
+    if (key == "iso2")
       return loc.iso2;
-    else if (key == "region")
+    if (key == "region")
     {
       // Region may be empty, if it is return name instead
       if (loc.area.empty())
         return (loc.name.empty() ? nanstring : loc.name);
-      else
-        return loc.area;
+      return loc.area;
     }
-    else if (key == "feature")
+    if (key == "feature")
       return loc.feature;
-    else if (key == "country")
+    if (key == "country")
       return loc.country;
-    else if (key == "tz")
+    if (key == "tz")
       return loc.timezone;
-    else if (key == "latitude")
+    if (key == "latitude")
       return (isnan(loc.latitude) ? nanstring : Fmi::to_string(loc.latitude));
-    else if (key == "longitude")
+    if (key == "longitude")
       return (isnan(loc.longitude) ? nanstring : Fmi::to_string(loc.longitude));
-    else if (key == "geoid")
+    if (key == "geoid")
       return Fmi::to_string(loc.geoid);
-    else if (key == "municipality")
+    if (key == "municipality")
       return Fmi::to_string(loc.municipality);
-    else if (key == "population")
+    if (key == "population")
       return (isnan(loc.population) ? nanstring : Fmi::to_string(loc.population));
-    else if (key == "elevation")
+    if (key == "elevation")
       return (isnan(loc.elevation) ? nanstring : Fmi::to_string(loc.elevation));
-    else if (key == "dem")
+    if (key == "dem")
       return (isnan(loc.dem) ? nanstring : Fmi::to_string(loc.dem));
-    else if (key == "covertype")
+    if (key == "covertype")
       return Fmi::to_string(static_cast<int>(loc.covertype));
-    else if (key == "priority")
+    if (key == "priority")
       return (isnan(loc.priority) ? nanstring : Fmi::to_string(loc.priority));
-    else if (key == "type")
+    if (key == "type")
       return (isnan(loc.type) ? nanstring : type_string(loc.type));
-    else
-      throw Spine::Exception(BCP, "Unsupported location parameter name '" + key + "'!");
+    throw Spine::Exception(BCP, "Unsupported location parameter name '" + key + "'!");
   }
   catch (...)
   {
