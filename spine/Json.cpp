@@ -323,7 +323,7 @@ void JSON::extract_set(const std::string& theName,
 
 void replaceFromQueryString(Json::Value& theJson,
                             const HTTP::ParamMap& theParams,
-                            const std::string& thePrefix,
+                            const std::string& /* thePrefix */,
                             const QidMap& theQids,
                             bool theCaseIsInsensitive,
                             bool replaceReferences)
