@@ -59,7 +59,7 @@ void AsciiFormatter::format(std::ostream& theOutput,
         if (!ifirst)
           theOutput << sep;
         ifirst = false;
-        std::string value = theTable.get(i, j);
+        const auto& value = theTable.get(i, j);
 
         if (value.empty())
           theOutput << miss;

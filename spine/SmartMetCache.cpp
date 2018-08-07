@@ -89,7 +89,7 @@ void SmartMetCache::insert(KeyType hash, ValueType data)
     // Insert into in-memory cache
     std::vector<std::pair<KeyType, ValueType>> evictedItems;
 
-    itsMemoryCache.insert(hash, data, evictedItems);
+    itsMemoryCache.insert(hash, std::move(data), evictedItems);
 
     if (!evictedItems.empty() && itsFileCache)
     {
