@@ -27,13 +27,8 @@ TimeSeriesGeneratorOptions::TimeSeriesGeneratorOptions(const boost::posix_time::
     : mode(Mode::TimeSteps),
       startTime(now),
       endTime(now),
-      startTimeUTC(true)  // use UTC time by default, in particular when nothing is given
-      ,
-      endTimeUTC(true)  // as the start time
-      ,
-      timeSteps(),
-      timeStep(),
-      timeList(),
+      startTimeUTC(true),
+      endTimeUTC(true),
       dataTimes(new TimeList::element_type()),
       startTimeData(false),
       endTimeData(false),
