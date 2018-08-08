@@ -16,7 +16,7 @@ SmartMetPlugin::SmartMetPlugin()
  */
 // ----------------------------------------------------------------------
 
-bool SmartMetPlugin::queryIsFast(const SmartMet::Spine::HTTP::Request &) const
+bool SmartMetPlugin::queryIsFast(const SmartMet::Spine::HTTP::Request & /* theRequest */) const
 {
   return false;
 }
