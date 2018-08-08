@@ -60,25 +60,25 @@ std::string formatLocation(const Location& loc, const std::string& key)
     if (key == "tz")
       return loc.timezone;
     if (key == "latitude")
-      return (isnan(loc.latitude) ? nanstring : Fmi::to_string(loc.latitude));
+      return (std::isnan(loc.latitude) ? nanstring : Fmi::to_string(loc.latitude));
     if (key == "longitude")
-      return (isnan(loc.longitude) ? nanstring : Fmi::to_string(loc.longitude));
+      return (std::isnan(loc.longitude) ? nanstring : Fmi::to_string(loc.longitude));
     if (key == "geoid")
       return Fmi::to_string(loc.geoid);
     if (key == "municipality")
       return Fmi::to_string(loc.municipality);
     if (key == "population")
-      return (isnan(loc.population) ? nanstring : Fmi::to_string(loc.population));
+      return (std::isnan(loc.population) ? nanstring : Fmi::to_string(loc.population));
     if (key == "elevation")
-      return (isnan(loc.elevation) ? nanstring : Fmi::to_string(loc.elevation));
+      return (std::isnan(loc.elevation) ? nanstring : Fmi::to_string(loc.elevation));
     if (key == "dem")
-      return (isnan(loc.dem) ? nanstring : Fmi::to_string(loc.dem));
+      return (std::isnan(loc.dem) ? nanstring : Fmi::to_string(loc.dem));
     if (key == "covertype")
       return Fmi::to_string(static_cast<int>(loc.covertype));
     if (key == "priority")
-      return (isnan(loc.priority) ? nanstring : Fmi::to_string(loc.priority));
+      return (std::isnan(loc.priority) ? nanstring : Fmi::to_string(loc.priority));
     if (key == "type")
-      return (isnan(loc.type) ? nanstring : type_string(loc.type));
+      return type_string(loc.type);
     throw Spine::Exception(BCP, "Unsupported location parameter name '" + key + "'!");
   }
   catch (...)
