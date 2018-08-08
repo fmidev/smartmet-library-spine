@@ -79,7 +79,7 @@ struct Point
 
   std::string as_string() const;
 
-  bool operator==(const Point& x) const;
+  bool operator==(const Point& p) const;
 };
 
 /**
@@ -105,7 +105,7 @@ struct BoundingBox
 
   std::string as_string() const;
 
-  bool operator==(const BoundingBox& x) const;
+  bool operator==(const BoundingBox& b) const;
 };
 
 /**
@@ -285,7 +285,7 @@ class Value
   /**
    *   @brief Write to C++ stream in debug format (include actual type)
    */
-  void print_on(std::ostream& ost) const;
+  void print_on(std::ostream& output) const;
 
   /**
    *   @brief Format as string without any additional data included

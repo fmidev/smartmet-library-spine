@@ -71,15 +71,15 @@ std::string Parameter::typestring() const
  */
 // ----------------------------------------------------------------------
 
-std::size_t hash_value(const Parameter& theNumber)
+std::size_t hash_value(const Parameter& theParam)
 {
   try
   {
     std::size_t seed = 0;
-    boost::hash_combine(seed, theNumber.itsName);
-    boost::hash_combine(seed, theNumber.itsAlias);
-    boost::hash_combine(seed, theNumber.itsType);
-    boost::hash_combine(seed, theNumber.itsNumber);
+    boost::hash_combine(seed, theParam.itsName);
+    boost::hash_combine(seed, theParam.itsAlias);
+    boost::hash_combine(seed, theParam.itsType);
+    boost::hash_combine(seed, theParam.itsNumber);
     return seed;
   }
   catch (...)

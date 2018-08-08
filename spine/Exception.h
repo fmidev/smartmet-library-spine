@@ -21,7 +21,7 @@ class Exception : public std::exception
 {
  public:
   Exception();
-  Exception(const Exception& _exception);
+  Exception(const Exception& other);
 
   // Use the following constructor when there is no previous exception in place
 

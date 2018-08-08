@@ -32,7 +32,7 @@ class Parameter
             FmiParameterName theNumber = kFmiBadParameter);
 
   Parameter(const std::string& theName,
-            const std::string& theNameExt,
+            const std::string& theAlias,
             Type theType,
             FmiParameterName theNumber = kFmiBadParameter);
 
