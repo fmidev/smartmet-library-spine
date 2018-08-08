@@ -113,7 +113,7 @@ void WxmlFormatter::format_100(std::ostream& theOutput,
     wcols.pop_back();
 
     // Establish latest origintime
-    std::string origintime = "";
+    std::string origintime;
     for (std::size_t j : rows)
     {
       if (theTable.get(col_origintime, j) > origintime)
@@ -226,7 +226,7 @@ void WxmlFormatter::format_200(std::ostream& theOutput,
     std::size_t col_origintime = wcols.back();
     wcols.pop_back();
     // Establish latest origintime
-    std::string origintime = "";
+    std::string origintime;
     for (std::size_t j : rows)
     {
       if (theTable.get(col_origintime, j) > origintime)

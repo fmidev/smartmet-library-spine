@@ -30,7 +30,7 @@ NumType check_limits_impl(NumType arg,
     }
     else
     {
-      std::string sep = "";
+      std::string sep;
       std::ostringstream msg;
       msg << "Value '" << arg << "' is out of the allowed range (";
       if (lower_limit)
