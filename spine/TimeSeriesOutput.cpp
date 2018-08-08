@@ -349,12 +349,12 @@ void TableVisitor::operator()(const boost::local_time::local_date_time& ldt)
 
     if (ldt.is_not_a_date_time())
       res = itsValueFormatter.missing();
-    else if (itsTimeFormatter.get())
+    else if (itsTimeFormatter != nullptr)
     {
       if (itsTimeZonePtr)
-        res = itsTimeFormatter.get()->format(ldt.local_time_in(itsTimeZonePtr.get()));
+        res = itsTimeFormatter->format(ldt.local_time_in(itsTimeZonePtr.get()));
       else
-        res = itsTimeFormatter.get()->format(ldt.utc_time());
+        res = itsTimeFormatter->format(ldt.utc_time());
     }
     else
     {
