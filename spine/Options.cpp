@@ -178,7 +178,7 @@ bool Options::parseOptions(int argc, char* argv[])
       return false;
     }
 
-    if (opt.count("help"))
+    if (opt.count("help") != 0)
     {
       std::cout << "Usage: " << argv[0] << " [options]" << std::endl
                 << std::endl

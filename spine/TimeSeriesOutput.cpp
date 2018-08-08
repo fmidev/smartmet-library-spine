@@ -19,24 +19,24 @@ std::ostream& operator<<(std::ostream& os, const Value& val)
 {
   try
   {
-    if (boost::get<double>(&val))
+    if (boost::get<double>(&val) != nullptr)
       os << *(boost::get<double>(&val));
-    else if (boost::get<int>(&val))
+    else if (boost::get<int>(&val) != nullptr)
       os << *(boost::get<int>(&val));
-    else if (boost::get<std::string>(&val))
+    else if (boost::get<std::string>(&val) != nullptr)
       os << *(boost::get<std::string>(&val));
-    else if (boost::get<LonLat>(&val))
+    else if (boost::get<LonLat>(&val) != nullptr)
     {
       LonLat coord = *(boost::get<LonLat>(&val));
       os << coord;
     }
-    else if (boost::get<boost::local_time::local_date_time>(&val))
+    else if (boost::get<boost::local_time::local_date_time>(&val) != nullptr)
     {
       boost::local_time::local_date_time ldt =
           *(boost::get<boost::local_time::local_date_time>(&val));
       os << ldt;
     }
-    else if (boost::get<None>(&val))
+    else if (boost::get<None>(&val) != nullptr)
     {
       os << "nan";
     }
@@ -376,18 +376,18 @@ TableVisitor& operator<<(TableVisitor& tf, const Value& val)
 {
   try
   {
-    if (boost::get<int>(&val))
+    if (boost::get<int>(&val) != nullptr)
       tf << *(boost::get<int>(&val));
-    else if (boost::get<double>(&val))
+    else if (boost::get<double>(&val) != nullptr)
       tf << *(boost::get<double>(&val));
-    else if (boost::get<std::string>(&val))
+    else if (boost::get<std::string>(&val) != nullptr)
       tf << *(boost::get<std::string>(&val));
-    else if (boost::get<LonLat>(&val))
+    else if (boost::get<LonLat>(&val) != nullptr)
     {
       LonLat coord = *(boost::get<LonLat>(&val));
       tf << coord;
     }
-    else if (boost::get<boost::local_time::local_date_time>(&val))
+    else if (boost::get<boost::local_time::local_date_time>(&val) != nullptr)
     {
       boost::local_time::local_date_time ldt =
           *(boost::get<boost::local_time::local_date_time>(&val));

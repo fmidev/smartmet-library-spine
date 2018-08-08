@@ -721,7 +721,7 @@ boost::posix_time::ptime string2ptime(const std::string& value,
       int offset = static_cast<int>(num_units * unit_coeff);
       pt::ptime t2 = t1 + pt::seconds(direction * offset);
 
-      if (rounded_min)
+      if (rounded_min != 0)
       {
         unsigned rounded_sec = 60 * rounded_min;
         long off = rounded_up ? rounded_sec - 1 : 0;
