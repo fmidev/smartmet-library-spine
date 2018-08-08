@@ -162,7 +162,7 @@ class Value
       data;
 
  public:
-  Value();
+  Value() = default;
 
   inline explicit Value(bool x) { set_bool(x); }
   inline explicit Value(signed char x) { set_int(x); }
@@ -187,7 +187,7 @@ class Value
     data = tmp;
   }
   inline explicit Value(const BoundingBox& x) { data = x; }
-  virtual ~Value();
+  virtual ~Value() = default;
   Value(const Value& other) = default;
 
   inline bool operator==(const Value& x) const { return data == x.data; }

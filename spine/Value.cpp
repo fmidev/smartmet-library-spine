@@ -74,10 +74,6 @@ namespace SmartMet
 {
 namespace Spine
 {
-Value::Value() : data() {}
-
-Value::~Value() {}
-
 void Value::reset()
 {
   try
