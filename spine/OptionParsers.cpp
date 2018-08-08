@@ -200,7 +200,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
 
       if (startstep < 0)
         throw Spine::Exception(BCP, "The 'startstep' option cannot be negative!");
-      else if (startstep > 10000)
+      if (startstep > 10000)
         throw Spine::Exception(BCP, "Too large 'startstep' value!");
 
       int timestep = (options.timeStep ? *options.timeStep : default_timestep);

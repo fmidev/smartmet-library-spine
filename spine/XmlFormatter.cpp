@@ -209,8 +209,8 @@ void XmlFormatter::format_mixed(std::ostream& theOutput,
     auto attr = theReq.getParameter("attributes");
     if (!attr)
       throw Spine::Exception(BCP, "attribute list is required in mixed style formatting");
-    else
-      attribstring = *attr;
+
+    attribstring = *attr;
 
     std::set<std::string> atts = parse_xml_attributes(attribstring);
 

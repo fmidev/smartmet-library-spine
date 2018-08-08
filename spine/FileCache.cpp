@@ -70,8 +70,7 @@ std::size_t FileCache::last_modified(const boost::filesystem::path& thePath) con
     std::time_t modtime = boost::filesystem::last_write_time(thePath, ec);
     if (ec.value() == boost::system::errc::success)
       return modtime;
-    else
-      return 0;
+    return 0;
   }
   catch (...)
   {

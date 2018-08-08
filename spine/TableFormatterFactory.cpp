@@ -34,22 +34,22 @@ TableFormatter* create(const std::string& theName)
   {
     if (theName == "ascii")
       return new AsciiFormatter();
-    else if (theName == "xml")
+    if (theName == "xml")
       return new XmlFormatter();
-    else if (theName == "wxml")
+    if (theName == "wxml")
       return new WxmlFormatter();
-    else if (theName == "serial")
+    if (theName == "serial")
       return new SerialFormatter();
-    else if (theName == "json")
+    if (theName == "json")
       return new JsonFormatter();
-    else if (theName == "php")
+    if (theName == "php")
       return new PhpFormatter();
-    else if (theName == "html")
+    if (theName == "html")
       return new HtmlFormatter();
-    else if (theName == "debug")
+    if (theName == "debug")
       return new DebugFormatter();
-    else
-      throw Spine::Exception(BCP, "Unknown data format request '" + theName + "'");
+
+    throw Spine::Exception(BCP, "Unknown data format request '" + theName + "'");
   }
   catch (...)
   {

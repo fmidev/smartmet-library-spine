@@ -58,23 +58,19 @@ SmartMetCache::ValueType SmartMetCache::find(KeyType hash)
 
     auto fileresult = itsFileCache->find(hash);
 
-    if (fileresult)
-    {
-      // Promote result to memcache and return
-      auto entry = boost::make_shared<std::string>(std::move(*fileresult));
-
-      std::vector<std::pair<KeyType, ValueType>> evictedItems;
-      itsMemoryCache.insert(hash, entry, evictedItems);
-
-      if (!evictedItems.empty())
-        queueFileWrites(evictedItems);
-
-      return entry;
-    }
-    else
-    {
+    if (!fileresult)
       return boost::shared_ptr<std::string>();
-    }
+
+    // Promote result to memcache and return
+    auto entry = boost::make_shared<std::string>(std::move(*fileresult));
+
+    std::vector<std::pair<KeyType, ValueType>> evictedItems;
+    itsMemoryCache.insert(hash, entry, evictedItems);
+
+    if (!evictedItems.empty())
+      queueFileWrites(evictedItems);
+
+    return entry;
   }
   catch (...)
   {
