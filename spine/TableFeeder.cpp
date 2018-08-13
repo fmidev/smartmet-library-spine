@@ -50,6 +50,8 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeriesGroup& ts_group)
       std::stringstream ss;
       OStreamVisitor ostream_visitor(
           ss, itsValueFormatter, itsPrecisions[itsTableVisitor.getCurrentColumn()]);
+      ostream_visitor << itsLonLatFormat;
+
       // get values of the same timestep from all locations and concatenate them into one string
       ss << "[";
       // iterate through locations
@@ -145,6 +147,7 @@ TableFeeder& TableFeeder::operator<<(LonLatFormat newformat)
 {
   try
   {
+    itsLonLatFormat = newformat;
     this->itsTableVisitor << newformat;
     return *this;
   }

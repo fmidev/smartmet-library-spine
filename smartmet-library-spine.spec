@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.8.9
+Version: 18.8.13
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -97,6 +97,11 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+
+* Mon Aug 13 2018 Anssi Reponen <anssi.reponen@fmi.fi> - 18.8.13-1.fmi
+- Support for 'wkt' parameter added
+- Fixed formatting of LonLat-data in OStreamVisitor
+
 * Thu Aug  9 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.8.9-1.fmi
 - Silenced more CodeChecker warnings
 

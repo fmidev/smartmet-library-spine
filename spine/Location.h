@@ -31,7 +31,8 @@ class Location
     Area,
     Path,
     BoundingBox,
-    CoordinatePoint
+    CoordinatePoint,
+    Wkt
   };
 
  private:

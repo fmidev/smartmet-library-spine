@@ -56,6 +56,9 @@ class OStreamVisitor : public boost::static_visitor<>
   void operator()(int i) const;
   void operator()(const LonLat& lonlat) const;
   void operator()(const boost::local_time::local_date_time& ldt) const;
+
+  // Set LonLat - value formatting
+  OStreamVisitor& operator<<(LonLatFormat newformat);
 };
 
 // format Value into string

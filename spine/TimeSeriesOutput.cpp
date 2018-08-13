@@ -254,6 +254,19 @@ void OStreamVisitor::operator()(const boost::local_time::local_date_time& ldt) c
   }
 }
 
+OStreamVisitor& OStreamVisitor::operator<<(LonLatFormat newformat)
+{
+  try
+  {
+    itsLonLatFormat = newformat;
+    return *this;
+  }
+  catch (...)
+  {
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
 /* TableVisitor */
 
 void TableVisitor::operator()(const None& /* none */)
@@ -406,7 +419,7 @@ TableVisitor& TableVisitor::operator<<(LonLatFormat newformat)
 {
   try
   {
-    this->itsLonLatFormat = newformat;
+    itsLonLatFormat = newformat;
     return *this;
   }
   catch (...)
