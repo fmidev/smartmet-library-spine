@@ -25,6 +25,7 @@ class TableFeeder
   const ValueFormatter& itsValueFormatter;
   const std::vector<int>& itsPrecisions;
   TableVisitor itsTableVisitor;
+  LonLatFormat itsLonLatFormat;
 
  public:
   TableFeeder(Table& table,
@@ -33,7 +34,9 @@ class TableFeeder
               unsigned int currentcolumn = 0)
       : itsValueFormatter(valueformatter),
         itsPrecisions(precisions),
-        itsTableVisitor(table, valueformatter, precisions, currentcolumn, currentcolumn)
+        itsTableVisitor(table, valueformatter, precisions, currentcolumn, currentcolumn),
+        itsLonLatFormat(LonLatFormat::LONLAT)
+
   {
   }
 

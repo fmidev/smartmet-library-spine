@@ -24,6 +24,8 @@ std::string type_string(const Location::LocationType& type)
         return "Path";
       case Location::BoundingBox:
         return "BoundingBox";
+      case Location::Wkt:
+        return "Wkt";
 #ifndef UNREACHABLE
       default:
         return "";
