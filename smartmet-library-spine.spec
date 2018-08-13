@@ -3,6 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
+
 Version: 18.11.1
 Release: 1%{?dist}.fmi
 License: MIT
