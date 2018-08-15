@@ -523,6 +523,7 @@ std::string Request::toString() const
   try
   {
     std::string ret;
+    ret.reserve(200);  // a reasonable guess for max size to avoid reallocations
 
     std::string body;
 
@@ -677,7 +678,9 @@ std::string Request::getURI() const
 {
   try
   {
+    // Allocate enough memory straight away to avoid smaller allocations while appending parts
     std::string ret;
+    ret.reserve(200);  // 200 is a reasonable guess for most queries
 
     ret += itsResource;
 
