@@ -111,6 +111,36 @@ int optional_int(const boost::optional<std::string>& theValue, int theDefault)
   }
 }
 
+std::size_t optional_size(const char* theValue, std::size_t theDefault)
+{
+  try
+  {
+    if (theValue == nullptr || theValue == 0)
+      return theDefault;
+    else
+      return Fmi::stoul(theValue);
+  }
+  catch (...)
+  {
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+std::size_t optional_size(const boost::optional<std::string>& theValue, std::size_t theDefault)
+{
+  try
+  {
+    if (!theValue)
+      return theDefault;
+    else
+      return Fmi::stoul(*theValue);
+  }
+  catch (...)
+  {
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
 unsigned long optional_unsigned_long(const char* theValue, unsigned long theDefault)
 {
   try
@@ -303,6 +333,36 @@ int required_int(const boost::optional<std::string>& theValue, const char* theEr
       throw Spine::Exception(BCP, theError);
     else
       return Fmi::stoi(*theValue);
+  }
+  catch (...)
+  {
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+std::size_t required_size(const char* theValue, const char* theError)
+{
+  try
+  {
+    if (theValue == nullptr || theValue == 0)
+      throw Spine::Exception(BCP, theError);
+    else
+      return Fmi::stoul(theValue);
+  }
+  catch (...)
+  {
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+std::size_t required_size(const boost::optional<std::string>& theValue, const char* theError)
+{
+  try
+  {
+    if (!theValue)
+      throw Spine::Exception(BCP, theError);
+    else
+      return Fmi::stoul(*theValue);
   }
   catch (...)
   {

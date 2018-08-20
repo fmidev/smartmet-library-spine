@@ -44,6 +44,12 @@ BOOST_AUTO_TEST_CASE(test_optional)
   BOOST_CHECK_EQUAL(10.0, optional_double("10", 100));
   BOOST_CHECK_EQUAL(100.0, optional_double(null, 100));
   BOOST_CHECK_THROW(optional_double("100a", 100), SmartMet::Spine::Exception);
+
+  BOOST_CHECK_EQUAL(100ul, optional_unsigned_long(null, 100ul));
+  BOOST_CHECK_EQUAL(10ul, optional_unsigned_long("10", 100ul));
+
+  BOOST_CHECK_EQUAL(100ul, optional_size(null, 100ul));
+  BOOST_CHECK_EQUAL(10ul, optional_size("10", 100ul));
 }
 
 // ----------------------------------------------------------------------
@@ -57,6 +63,8 @@ BOOST_AUTO_TEST_CASE(test_required)
   const char* null = NULL;
 
   BOOST_CHECK_EQUAL(10, required_int("10", "error"));
+  BOOST_CHECK_EQUAL(10ul, required_unsigned_long("10", "error"));
+  BOOST_CHECK_EQUAL(10ul, required_size("10", "error"));
   BOOST_CHECK_EQUAL(10.0, required_double("10", "error"));
   BOOST_CHECK_THROW(required_int(null, "error"), SmartMet::Spine::Exception);
   BOOST_CHECK_THROW(required_double("100a", "error"), SmartMet::Spine::Exception);
