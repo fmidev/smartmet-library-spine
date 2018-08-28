@@ -25,6 +25,7 @@ BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
 BuildRequires: smartmet-library-gis-devel >= 18.8.2
+BuildRequires: fmt-devel
 
 %if 0%{rhel} >= 7
 BuildRequires: mariadb-devel
@@ -54,6 +55,7 @@ Requires: gdal
 Requires: hdf5
 Requires: jsoncpp
 Requires: libconfig
+Requires: fmt
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
