@@ -164,8 +164,11 @@ bool Options::parseOptions(int argc, char* argv[])
         "accesslogdir,a", po::value(&accesslogdir)->default_value(accesslogdir), msgaccesslogdir);
     // clang-format on
 
+    // We except no positional arguments
+    po::positional_options_description p;
+
     po::variables_map opt;
-    po::store(po::command_line_parser(argc, argv).options(desc).run(), opt);
+    po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), opt);
 
     po::notify(opt);
 
