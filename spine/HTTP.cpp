@@ -437,13 +437,9 @@ boost::optional<std::string> Message::getHeader(const std::string& headerName) c
   {
     auto iterator = itsHeaders.find(headerName);
     if (iterator == itsHeaders.end())
-    {
       return boost::optional<std::string>();
-    }
-    else
-    {
-      return boost::optional<std::string>(iterator->second);
-    }
+
+    return boost::optional<std::string>(iterator->second);
   }
   catch (...)
   {
@@ -805,19 +801,13 @@ boost::optional<std::string> Request::getParameter(const std::string& paramName)
     auto params = itsParameters.equal_range(paramName);
     std::size_t numParams = std::distance(params.first, params.second);
     if (numParams > 1)
-    {
       throw Spine::Exception(BCP,
                              "More than one parameter value for parameter \"" + paramName + "\"");
-    }
 
-    else if (numParams == 0)
-    {
+    if (numParams == 0)
       return boost::optional<std::string>();
-    }
-    else
-    {
-      return boost::optional<std::string>(params.first->second);
-    }
+
+    return boost::optional<std::string>(params.first->second);
   }
   catch (...)
   {
@@ -1302,7 +1292,7 @@ std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::stri
           // Message is incomplete, return unfinished status
           return std::make_pair(ParsingStatus::INCOMPLETE, std::unique_ptr<Request>());
         }
-        else if (target.body.size() > decLen)
+        if (target.body.size() > decLen)
         {
           // More data than declared, return fail
           return std::make_pair(ParsingStatus::FAILED, std::unique_ptr<Request>());
@@ -1423,11 +1413,9 @@ std::tuple<ParsingStatus, std::unique_ptr<Response>, std::string::const_iterator
         return std::make_tuple(
             ParsingStatus::INCOMPLETE, std::unique_ptr<Response>(), message.end());
       }
-      else
-      {
-        // Delimiter is found but failed parse. Message is garbled.
-        return std::make_tuple(ParsingStatus::FAILED, std::unique_ptr<Response>(), message.end());
-      }
+
+      // Delimiter is found but failed parse. Message is garbled.
+      return std::make_tuple(ParsingStatus::FAILED, std::unique_ptr<Response>(), message.end());
     }
   }
   catch (...)
