@@ -421,7 +421,7 @@ Status stringToStatusCode(const std::string& theCode)
 }
 
 Message::Message(const HeaderMap& headerMap, const std::string& version, bool isChunked)
-    : itsHeaders(headerMap), itsHeaderString(), itsVersion(version), itsIsChunked(isChunked)
+    : itsHeaders(headerMap), itsVersion(version), itsIsChunked(isChunked)
 {
 }
 
@@ -514,7 +514,6 @@ Request::Request(const HeaderMap& headerMap,
       itsParameters(theParameters),
       itsMethod(method),
       itsResource(resource),
-      itsClientIP(),
       itsHasParsedPostData(hasParsedPostData)
 {
 }
@@ -1438,67 +1437,33 @@ std::tuple<ParsingStatus, std::unique_ptr<Response>, std::string::const_iterator
 }
 
 // Empty constructor means empty string content
-MessageContent::MessageContent()
-    : stringContent(),
-      vectorContent(),
-      arrayContent(),
-      stringPtrContent(),
-      contentSize(0),
-      itsType(content_type::stringType)
-{
-}
+MessageContent::MessageContent() : contentSize(0), itsType(content_type::stringType) {}
 
 MessageContent::MessageContent(const std::string& theContent)
-    : stringContent(theContent),
-      vectorContent(),
-      arrayContent(),
-      streamContent(),
-      stringPtrContent(),
-      contentSize(theContent.size()),
-      itsType(content_type::stringType)
+    : stringContent(theContent), contentSize(theContent.size()), itsType(content_type::stringType)
 {
 }
 
 MessageContent::MessageContent(boost::shared_ptr<std::string> theContent)
-    : stringContent(),
-      vectorContent(),
-      arrayContent(),
-      streamContent(),
-      stringPtrContent(theContent),
+    : stringPtrContent(theContent),
       contentSize(theContent->size()),
       itsType(content_type::stringPtrType)
 {
 }
 
 MessageContent::MessageContent(boost::shared_ptr<std::vector<char> > theContent)
-    : stringContent(),
-      vectorContent(theContent),
-      arrayContent(),
-      streamContent(),
-      stringPtrContent(),
-      contentSize(theContent->size()),
-      itsType(content_type::vectorType)
+    : vectorContent(theContent), contentSize(theContent->size()), itsType(content_type::vectorType)
 {
 }
 
 MessageContent::MessageContent(boost::shared_array<char> theContent, std::size_t theSize)
-    : stringContent(),
-      vectorContent(),
-      arrayContent(theContent),
-      streamContent(),
-      stringPtrContent(),
-      contentSize(theSize),
-      itsType(content_type::arrayType)
+    : arrayContent(theContent), contentSize(theSize), itsType(content_type::arrayType)
 
 {
 }
 
 MessageContent::MessageContent(boost::shared_ptr<ContentStreamer> theContent)
-    : stringContent(),
-      vectorContent(),
-      arrayContent(),
-      streamContent(theContent),
-      stringPtrContent(),
+    : streamContent(theContent),
       contentSize(std::numeric_limits<std::size_t>::max()),
       itsType(content_type::streamType)
 {
@@ -1506,13 +1471,7 @@ MessageContent::MessageContent(boost::shared_ptr<ContentStreamer> theContent)
 
 MessageContent::MessageContent(boost::shared_ptr<ContentStreamer> theContent,
                                std::size_t contentSize)
-    : stringContent(),
-      vectorContent(),
-      arrayContent(),
-      streamContent(theContent),
-      stringPtrContent(),
-      contentSize(contentSize),
-      itsType(content_type::streamType)
+    : streamContent(theContent), contentSize(contentSize), itsType(content_type::streamType)
 {
 }
 
