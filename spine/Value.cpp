@@ -28,23 +28,21 @@ NumType check_limits_impl(NumType arg,
     {
       return arg;
     }
-    else
+
+    std::string sep;
+    std::ostringstream msg;
+    msg << "Value '" << arg << "' is out of the allowed range (";
+    if (lower_limit)
     {
-      std::string sep;
-      std::ostringstream msg;
-      msg << "Value '" << arg << "' is out of the allowed range (";
-      if (lower_limit)
-      {
-        msg << sep << "lowerLimit=" << ((*lower_limit).*getter)();
-        sep = ", ";
-      }
-      if (upper_limit)
-      {
-        msg << sep << "upperLimit=" << ((*upper_limit).*getter)();
-      }
-      msg << ")";
-      throw SmartMet::Spine::Exception(BCP, msg.str());
+      msg << sep << "lowerLimit=" << ((*lower_limit).*getter)();
+      sep = ", ";
     }
+    if (upper_limit)
+    {
+      msg << sep << "upperLimit=" << ((*upper_limit).*getter)();
+    }
+    msg << ")";
+    throw SmartMet::Spine::Exception(BCP, msg.str());
   }
   catch (...)
   {
@@ -353,20 +351,12 @@ Point Value::get_point() const
   {
     int ind = data.which();
     if (ind == TI_POINT)
-    {
-      const PointWrapper& p = boost::get<PointWrapper>(data);
-      return p;
-    }
-    else if (ind == TI_STRING)
-    {
-      const std::string& src = boost::get<std::string>(data);
-      Point p(src);
-      return p;
-    }
-    else
-    {
-      bad_value_type(METHOD_NAME, typeid(Point));
-    }
+      return boost::get<PointWrapper>(data);
+
+    if (ind == TI_STRING)
+      return Point(boost::get<std::string>(data));
+
+    bad_value_type(METHOD_NAME, typeid(Point));
   }
   catch (...)
   {
@@ -380,19 +370,14 @@ BoundingBox Value::get_bbox() const
   {
     int ind = data.which();
     if (ind == TI_BBOX)
-    {
       return boost::get<BoundingBox>(data);
-    }
-    else if (ind == TI_STRING)
+
+    if (ind == TI_STRING)
     {
       const std::string& src = boost::get<std::string>(data);
-      BoundingBox b(src);
-      return b;
+      return BoundingBox(src);
     }
-    else
-    {
-      bad_value_type(METHOD_NAME, typeid(Point));
-    }
+    bad_value_type(METHOD_NAME, typeid(Point));
   }
   catch (...)
   {
@@ -736,13 +721,8 @@ boost::posix_time::ptime string2ptime(const std::string& value,
     {
       auto t2 = parse_xml_time(tmp);
       if (t2.is_not_a_date_time())
-      {
         return Fmi::TimeParser::parse(value);
-      }
-      else
-      {
-        return t2;
-      }
+      return t2;
     }
   }
   catch (...)
@@ -838,19 +818,14 @@ bool string2bool(const std::string src)
     ba::trim(arg);
 
     if ((arg == "true") || (arg == "1"))
-    {
       return true;
-    }
-    else if ((arg == "false") || (arg == "0"))
-    {
+
+    if ((arg == "false") || (arg == "0"))
       return false;
-    }
-    else
-    {
-      std::ostringstream msg;
-      msg << "Cannot convert '" << src << "' to bool.";
-      throw Spine::Exception(BCP, msg.str());
-    }
+
+    std::ostringstream msg;
+    msg << "Cannot convert '" << src << "' to bool.";
+    throw Spine::Exception(BCP, msg.str());
   }
   catch (...)
   {
@@ -989,12 +964,10 @@ void Point::parse_string(const std::string& src)
       msg << "Invalid point format in '" << src << "' (x,y[,crs]) expected)";
       throw Spine::Exception(BCP, msg.str());
     }
-    else
-    {
-      crs = parts.size() == 2 ? std::string("") : ba::trim_copy(parts[2]);
-      x = Fmi::stod(boost::algorithm::trim_copy(parts[0]));
-      y = Fmi::stod(boost::algorithm::trim_copy(parts[1]));
-    }
+
+    crs = parts.size() == 2 ? std::string("") : ba::trim_copy(parts[2]);
+    x = Fmi::stod(boost::algorithm::trim_copy(parts[0]));
+    y = Fmi::stod(boost::algorithm::trim_copy(parts[1]));
   }
   catch (...)
   {
@@ -1044,14 +1017,12 @@ void BoundingBox::parse_string(const std::string& src)
       msg << "Invalid bounding box format in '" << src << "' (xMin,yMin,xMax,yMax[,crs]) expected)";
       throw Spine::Exception(BCP, msg.str());
     }
-    else
-    {
-      crs = parts.size() == 4 ? std::string("") : ba::trim_copy(parts[4]);
-      xMin = Fmi::stod(boost::algorithm::trim_copy(parts[0]));
-      yMin = Fmi::stod(boost::algorithm::trim_copy(parts[1]));
-      xMax = Fmi::stod(boost::algorithm::trim_copy(parts[2]));
-      yMax = Fmi::stod(boost::algorithm::trim_copy(parts[3]));
-    }
+
+    crs = parts.size() == 4 ? std::string("") : ba::trim_copy(parts[4]);
+    xMin = Fmi::stod(boost::algorithm::trim_copy(parts[0]));
+    yMin = Fmi::stod(boost::algorithm::trim_copy(parts[1]));
+    xMax = Fmi::stod(boost::algorithm::trim_copy(parts[2]));
+    yMax = Fmi::stod(boost::algorithm::trim_copy(parts[3]));
   }
   catch (...)
   {

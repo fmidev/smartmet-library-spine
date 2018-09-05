@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.8.13
-Release: 1%{?dist}.fmi
+Version: 18.8.30
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -14,8 +14,8 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 18.8.6
-BuildRequires: smartmet-library-macgyver-devel >= 18.8.4
+BuildRequires: smartmet-library-newbase-devel >= 18.8.28
+BuildRequires: smartmet-library-macgyver-devel >= 18.8.20
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -24,16 +24,17 @@ BuildRequires: gdal-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 18.8.2
+BuildRequires: smartmet-library-gis-devel >= 18.8.15
+BuildRequires: fmt-devel
 
 %if 0%{rhel} >= 7
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 18.8.6
-Requires: smartmet-library-macgyver >= 18.8.4
+Requires: smartmet-library-newbase >= 18.8.28
+Requires: smartmet-library-macgyver >= 18.8.20
 Requires: smartmet-timezones >= 18.5.9
-Requires: smartmet-library-gis >= 18.8.2
+Requires: smartmet-library-gis >= 18.8.15
 Requires: mariadb-libs
 Requires: boost-filesystem
 Requires: boost-iostreams
@@ -54,6 +55,7 @@ Requires: gdal
 Requires: hdf5
 Requires: jsoncpp
 Requires: libconfig
+Requires: fmt
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -97,6 +99,17 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu Aug 30 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.8.30-2.fmi
+- Silenced CodeChecker warnings
+
+* Thu Aug 30 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.8.30-1.fmi
+- Options now checks there are no positional arguments
+
+* Mon Aug 20 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.8.20-1.fmi
+- Added optional_size and required_size, optional_unsigned_int and required_unsigned_int should be avoided
+
+* Wed Aug 15 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.8.15-1.fmi
+- Try to avoid reallocations while building request strings
 
 * Mon Aug 13 2018 Anssi Reponen <anssi.reponen@fmi.fi> - 18.8.13-1.fmi
 - Support for 'wkt' parameter added

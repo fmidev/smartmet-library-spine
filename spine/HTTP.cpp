@@ -155,88 +155,106 @@ std::string statusCodeToString(Status theStatus)
 
 namespace StockReplies
 {
-const std::string ok = "";
+const std::string ok;
+
 const std::string created =
     "<html>"
     "<head><title>Created</title></head>"
     "<body><h1>201 Created</h1></body>"
     "</html>";
+
 const std::string accepted =
     "<html>"
     "<head><title>Accepted</title></head>"
     "<body><h1>202 Accepted</h1></body>"
     "</html>";
-const std::string no_content = "";
+
+const std::string no_content;
+
 const std::string multiple_choices =
     "<html>"
     "<head><title>Multiple Choices</title></head>"
     "<body><h1>300 Multiple Choices</h1></body>"
     "</html>";
+
 const std::string moved_permanently =
     "<html>"
     "<head><title>Moved Permanently</title></head>"
     "<body><h1>301 Moved Permanently</h1></body>"
     "</html>";
+
 const std::string moved_temporarily =
     "<html>"
     "<head><title>Moved Temporarily</title></head>"
     "<body><h1>302 Moved Temporarily</h1></body>"
     "</html>";
+
 const std::string not_modified =
     "<html>"
     "<head><title>Not Modified</title></head>"
     "<body><h1>304 Not Modified</h1></body>"
     "</html>";
+
 const std::string bad_request =
     "<html>"
     "<head><title>Bad Request</title></head>"
     "<body><h1>400 Bad Request</h1></body>"
     "</html>";
+
 const std::string unauthorized =
     "<html>"
     "<head><title>Unauthorized</title></head>"
     "<body><h1>401 Unauthorized</h1></body>"
     "</html>";
+
 const std::string forbidden =
     "<html>"
     "<head><title>Forbidden</title></head>"
     "<body><h1>403 Forbidden</h1></body>"
     "</html>";
+
 const std::string not_found =
     "<html>"
     "<head><title>Not Found</title></head>"
     "<body><h1>404 Not Found</h1></body>"
     "</html>";
+
 const std::string internal_server_error =
     "<html>"
     "<head><title>Internal Server Error</title></head>"
     "<body><h1>500 Internal Server Error</h1></body>"
     "</html>";
+
 const std::string not_implemented =
     "<html>"
     "<head><title>Not Implemented</title></head>"
     "<body><h1>501 Not Implemented</h1></body>"
     "</html>";
+
 const std::string bad_gateway =
     "<html>"
     "<head><title>Bad Gateway</title></head>"
     "<body><h1>502 Bad Gateway</h1></body>"
     "</html>";
+
 const std::string service_unavailable =
     "<html>"
     "<head><title>Service Unavailable</title></head>"
     "<body><h1>503 Service Unavailable</h1></body>"
     "</html>";
+
 const std::string length_required =
     "<html>"
     "<head><title>Service Unavailable</title></head>"
     "<body><h1>503 Service Unavailable</h1></body>"
     "</html>";
+
 const std::string request_entity_too_large =
     "<html>"
     "<head><title>Request Entity Too Large</title></head>"
     "<body><h1>413 Request Entity Too Large</h1></body>"
     "</html>";
+
 const std::string request_timeout =
     "<html>"
     "<head><title>Request Timeout</title></head>"
@@ -403,7 +421,7 @@ Status stringToStatusCode(const std::string& theCode)
 }
 
 Message::Message(const HeaderMap& headerMap, const std::string& version, bool isChunked)
-    : itsHeaders(headerMap), itsHeaderString(), itsVersion(version), itsIsChunked(isChunked)
+    : itsHeaders(headerMap), itsVersion(version), itsIsChunked(isChunked)
 {
 }
 
@@ -419,13 +437,9 @@ boost::optional<std::string> Message::getHeader(const std::string& headerName) c
   {
     auto iterator = itsHeaders.find(headerName);
     if (iterator == itsHeaders.end())
-    {
       return boost::optional<std::string>();
-    }
-    else
-    {
-      return boost::optional<std::string>(iterator->second);
-    }
+
+    return boost::optional<std::string>(iterator->second);
   }
   catch (...)
   {
@@ -496,7 +510,6 @@ Request::Request(const HeaderMap& headerMap,
       itsParameters(theParameters),
       itsMethod(method),
       itsResource(resource),
-      itsClientIP(),
       itsHasParsedPostData(hasParsedPostData)
 {
 }
@@ -523,6 +536,7 @@ std::string Request::toString() const
   try
   {
     std::string ret;
+    ret.reserve(200);  // a reasonable guess for max size to avoid reallocations
 
     std::string body;
 
@@ -677,7 +691,9 @@ std::string Request::getURI() const
 {
   try
   {
+    // Allocate enough memory straight away to avoid smaller allocations while appending parts
     std::string ret;
+    ret.reserve(200);  // 200 is a reasonable guess for most queries
 
     ret += itsResource;
 
@@ -785,19 +801,13 @@ boost::optional<std::string> Request::getParameter(const std::string& paramName)
     auto params = itsParameters.equal_range(paramName);
     std::size_t numParams = std::distance(params.first, params.second);
     if (numParams > 1)
-    {
       throw Spine::Exception(BCP,
                              "More than one parameter value for parameter \"" + paramName + "\"");
-    }
 
-    else if (numParams == 0)
-    {
+    if (numParams == 0)
       return boost::optional<std::string>();
-    }
-    else
-    {
-      return boost::optional<std::string>(params.first->second);
-    }
+
+    return boost::optional<std::string>(params.first->second);
   }
   catch (...)
   {
@@ -1282,7 +1292,7 @@ std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::stri
           // Message is incomplete, return unfinished status
           return std::make_pair(ParsingStatus::INCOMPLETE, std::unique_ptr<Request>());
         }
-        else if (target.body.size() > decLen)
+        if (target.body.size() > decLen)
         {
           // More data than declared, return fail
           return std::make_pair(ParsingStatus::FAILED, std::unique_ptr<Request>());
@@ -1403,11 +1413,9 @@ std::tuple<ParsingStatus, std::unique_ptr<Response>, std::string::const_iterator
         return std::make_tuple(
             ParsingStatus::INCOMPLETE, std::unique_ptr<Response>(), message.end());
       }
-      else
-      {
-        // Delimiter is found but failed parse. Message is garbled.
-        return std::make_tuple(ParsingStatus::FAILED, std::unique_ptr<Response>(), message.end());
-      }
+
+      // Delimiter is found but failed parse. Message is garbled.
+      return std::make_tuple(ParsingStatus::FAILED, std::unique_ptr<Response>(), message.end());
     }
   }
   catch (...)
@@ -1417,67 +1425,33 @@ std::tuple<ParsingStatus, std::unique_ptr<Response>, std::string::const_iterator
 }
 
 // Empty constructor means empty string content
-MessageContent::MessageContent()
-    : stringContent(),
-      vectorContent(),
-      arrayContent(),
-      stringPtrContent(),
-      contentSize(0),
-      itsType(content_type::stringType)
-{
-}
+MessageContent::MessageContent() : contentSize(0), itsType(content_type::stringType) {}
 
 MessageContent::MessageContent(const std::string& theContent)
-    : stringContent(theContent),
-      vectorContent(),
-      arrayContent(),
-      streamContent(),
-      stringPtrContent(),
-      contentSize(theContent.size()),
-      itsType(content_type::stringType)
+    : stringContent(theContent), contentSize(theContent.size()), itsType(content_type::stringType)
 {
 }
 
 MessageContent::MessageContent(boost::shared_ptr<std::string> theContent)
-    : stringContent(),
-      vectorContent(),
-      arrayContent(),
-      streamContent(),
-      stringPtrContent(theContent),
+    : stringPtrContent(theContent),
       contentSize(theContent->size()),
       itsType(content_type::stringPtrType)
 {
 }
 
 MessageContent::MessageContent(boost::shared_ptr<std::vector<char> > theContent)
-    : stringContent(),
-      vectorContent(theContent),
-      arrayContent(),
-      streamContent(),
-      stringPtrContent(),
-      contentSize(theContent->size()),
-      itsType(content_type::vectorType)
+    : vectorContent(theContent), contentSize(theContent->size()), itsType(content_type::vectorType)
 {
 }
 
 MessageContent::MessageContent(boost::shared_array<char> theContent, std::size_t theSize)
-    : stringContent(),
-      vectorContent(),
-      arrayContent(theContent),
-      streamContent(),
-      stringPtrContent(),
-      contentSize(theSize),
-      itsType(content_type::arrayType)
+    : arrayContent(theContent), contentSize(theSize), itsType(content_type::arrayType)
 
 {
 }
 
 MessageContent::MessageContent(boost::shared_ptr<ContentStreamer> theContent)
-    : stringContent(),
-      vectorContent(),
-      arrayContent(),
-      streamContent(theContent),
-      stringPtrContent(),
+    : streamContent(theContent),
       contentSize(std::numeric_limits<std::size_t>::max()),
       itsType(content_type::streamType)
 {
@@ -1485,13 +1459,7 @@ MessageContent::MessageContent(boost::shared_ptr<ContentStreamer> theContent)
 
 MessageContent::MessageContent(boost::shared_ptr<ContentStreamer> theContent,
                                std::size_t contentSize)
-    : stringContent(),
-      vectorContent(),
-      arrayContent(),
-      streamContent(theContent),
-      stringPtrContent(),
-      contentSize(contentSize),
-      itsType(content_type::streamType)
+    : streamContent(theContent), contentSize(contentSize), itsType(content_type::streamType)
 {
 }
 

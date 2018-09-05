@@ -32,6 +32,8 @@ bool optional_bool(const char* theValue, bool theDefault);
 bool optional_bool(const boost::optional<std::string>& theValue, bool theDefault);
 int optional_int(const char* theValue, int theDefault);
 int optional_int(const boost::optional<std::string>& theValue, int theDefault);
+std::size_t optional_size(const char* theValue, std::size_t theDefault);
+std::size_t optional_size(const boost::optional<std::string>& theValue, std::size_t theDefault);
 unsigned long optional_unsigned_long(const char* theValue, unsigned long theDefault);
 unsigned long optional_unsigned_long(const boost::optional<std::string>& theValue,
                                      unsigned long theDefault);
@@ -50,6 +52,8 @@ bool required_bool(const char* theValue, const char* theError);
 bool required_bool(const boost::optional<std::string>& theValue, const char* theError);
 int required_int(const char* theValue, const char* theError);
 int required_int(const boost::optional<std::string>& theValue, const char* theError);
+std::size_t required_size(const char* theValue, const char* theError);
+std::size_t required_size(const boost::optional<std::string>& theValue, const char* theError);
 unsigned long required_unsigned_long(const char* theValue, const char* theError);
 unsigned long required_unsigned_long(const boost::optional<std::string>& theValue,
                                      const char* theError);
