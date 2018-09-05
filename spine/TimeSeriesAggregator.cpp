@@ -113,9 +113,22 @@ std::string StatCalculator::getStringStatValue(const ParameterFunction& func) co
     }
     else if (fid == FunctionId::Median)
       return boost::get<std::string>(itsTimeSeries[itsTimeSeries.size() / 2].value);
+    else if (fid == FunctionId::Count)
+    {
+      // Fmi::Stat::Count functions can not be applid to strings, so
+      // first add timesteps into data vector with double value 1.0,
+      // then call Fmi::Stat::count-function
+      Fmi::Stat::DataVector dataVector;
+      for (auto item : itsTimeSeries)
+        dataVector.push_back(Fmi::Stat::DataItem(item.time.utc_time(), 1.0));
+      Fmi::Stat::Stat stat(dataVector, kFloatMissing);
+      return Fmi::to_string(stat.count(func.lowerLimit(), func.upperLimit()));
+    }
     else
     {
-      throw Spine::Exception(BCP, "Invalid string aggregation");
+      std::stringstream ss;
+      ss << "Function " << func.hash() << " can not be applied for a string!";
+      throw Spine::Exception(BCP, ss.str().c_str());
     }
   }
   catch (...)
