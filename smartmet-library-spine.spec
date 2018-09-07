@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.8.30
+Version: 18.9.5
 Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -99,6 +99,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Sep 5 2018 Anssi Reponen <anssi.reponen@fmi.fi> - 18.9.5-1.fmi
+- Count-function supports now also string fields (BRAINSTORM-1131)
+
 * Thu Aug 30 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.8.30-2.fmi
 - Silenced CodeChecker warnings
 
