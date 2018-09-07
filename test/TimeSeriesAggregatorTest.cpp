@@ -498,7 +498,7 @@ void percentage_t()
 
 void count_t()
 {
-  // not count doesn't make much sense when aggergatin over time, since weigths are used
+  // not count doesn't make much sense when aggregating over time, since weigths are used
   std::string test_result =
       to_string(*execute_time_aggregation_function(SmartMet::Spine::FunctionId::Count, 120, 0));
 
@@ -506,8 +506,8 @@ void count_t()
       "2015-Sep-03 00:00:00 EET -> 0\n"
       "2015-Sep-03 01:00:00 EET -> 0\n"
       "2015-Sep-03 02:00:00 EET -> 1\n"
-      "2015-Sep-03 03:00:00 EET -> 3\n"
-      "2015-Sep-03 04:00:00 EET -> 3\n";
+      "2015-Sep-03 03:00:00 EET -> 2\n"
+      "2015-Sep-03 04:00:00 EET -> 2\n";
 
   if (expected_result != test_result)
     TEST_FAILED("Count-function test failed. Expected result should be:\n" + expected_result +
