@@ -12,13 +12,13 @@ bool operator==(const LonLat& lonlat1, const LonLat& lonlat2)
 }
 
 template <class T>
-bool None::operator==(const T& other) const
+bool None::operator==(const T& /* other */) const
 {
   return false;
 }
 
 template <>
-bool None::operator==(const None& other) const
+bool None::operator==(const None& /* other */) const
 {
   return true;
 }
