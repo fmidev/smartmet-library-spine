@@ -630,21 +630,21 @@ std::string Request::toString() const
 
 boost::asio::const_buffer Request::contentToBuffer()
 {
-  // TODO
+  // TODO(mheiskan)
   throw Spine::Exception(BCP, "Request::contentToBuffer not implemented");
   // return boost::asio::const_buffer("moi",3);
 }
 
 boost::asio::const_buffer Request::headersToBuffer()
 {
-  // TODO
+  // TODO(mheiskan)
   throw Spine::Exception(BCP, "Request::headersToBuffer not implemented");
   // return boost::asio::const_buffer("moi",3);
 }
 
 std::string Request::headersToString() const
 {
-  // TODO
+  // TODO(mheiskan)
   throw Spine::Exception(BCP, "Request::headersToBuffer not implemented");
   // return std::string();
 }

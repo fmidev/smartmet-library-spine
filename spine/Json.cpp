@@ -140,7 +140,7 @@ void JSON::preprocess(Json::Value& theJson,
         // Replace old contents
         theJson = theJsonCache.get(json_file);
 
-        // TODO: should we prevent infinite recursion?
+        // TODO(mheiskan): should we prevent infinite recursion?
         preprocess(theJson, theRootPath, thePath, theJsonCache);
       }
     }

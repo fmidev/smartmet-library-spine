@@ -94,7 +94,7 @@ void WxmlFormatter::format_100(std::ostream& theOutput,
 
     std::vector<std::size_t> wcols;
     std::copy(cols.begin(), cols.end(), std::back_inserter(wcols));
-    // TODO: Why not just do wcols = cols ???
+    // TODO(mheiskan): Why not just do wcols = cols ???
 
     std::size_t col_latitude = wcols.back();
     wcols.pop_back();
@@ -208,7 +208,7 @@ void WxmlFormatter::format_200(std::ostream& theOutput,
     }
     std::vector<std::size_t> wcols;
     std::copy(cols.begin(), cols.end(), std::back_inserter(wcols));
-    // TODO: Why not just do wcols = cols???
+    // TODO(mheiskan): Why not just do wcols = cols???
 
     std::size_t col_latitude = wcols.back();
     wcols.pop_back();
