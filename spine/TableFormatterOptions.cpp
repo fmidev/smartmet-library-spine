@@ -8,8 +8,6 @@
 #include "Exception.h"
 #include <stdexcept>
 
-using namespace std;
-
 static const char* default_wxml_version = "2.00";
 static const char* default_wxml_schema =
     "http://services.weatherproof.fi/schemas/pointweather_{version}.xsd";
