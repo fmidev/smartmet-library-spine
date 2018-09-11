@@ -148,8 +148,8 @@ void JSON::preprocess(Json::Value& theJson,
     // Seek deeper in arrays
     else if (theJson.isArray())
     {
-      for (unsigned int i = 0; i < theJson.size(); i++)
-        preprocess(theJson[i], theRootPath, thePath, theJsonCache);
+      for (auto& json : theJson)
+        preprocess(json, theRootPath, thePath, theJsonCache);
     }
     // Seek deeper in objects
     else if (theJson.isObject())
@@ -205,8 +205,8 @@ void deref(Json::Value& theJson, Json::Value& theRoot)
     // Seek deeper in arrays
     else if (theJson.isArray())
     {
-      for (unsigned int i = 0; i < theJson.size(); i++)
-        deref(theJson[i], theRoot);
+      for (auto& json : theJson)
+        deref(json, theRoot);
     }
     // Seek deeper in objects
     else if (theJson.isObject())
@@ -254,9 +254,8 @@ void JSON::extract_set(const std::string& theName,
       theSet.insert(theJson.asString());
     else if (theJson.isArray())
     {
-      for (unsigned int i = 0; i < theJson.size(); i++)
+      for (const auto& json : theJson)
       {
-        const Json::Value& json = theJson[i];
         if (json.isString())
           theSet.insert(json.asString());
         else
@@ -291,9 +290,8 @@ void JSON::extract_set(const std::string& theName,
       theSet.insert(theJson.asInt());
     else if (theJson.isArray())
     {
-      for (unsigned int i = 0; i < theJson.size(); i++)
+      for (const auto& json : theJson)
       {
-        const Json::Value& json = theJson[i];
         if (json.isInt())
           theSet.insert(json.asInt());
         else

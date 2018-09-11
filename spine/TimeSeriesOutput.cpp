@@ -53,8 +53,8 @@ std::ostream& operator<<(std::ostream& os, const TimeSeries& ts)
 {
   try
   {
-    for (unsigned int i = 0; i < ts.size(); i++)
-      os << ts[i].time << " -> " << ts[i].value << std::endl;
+    for (const auto& t : ts)
+      os << t.time << " -> " << t.value << std::endl;
 
     return os;
   }
