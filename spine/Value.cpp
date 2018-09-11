@@ -789,9 +789,7 @@ boost::posix_time::ptime parse_xml_time(const std::string& value)
       }
     }
     else
-    {
-      return pt::ptime();
-    }
+      return {};
   }
   catch (...)
   {
