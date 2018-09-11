@@ -70,7 +70,7 @@ void WxmlFormatter::format_100(std::ostream& theOutput,
 {
   try
   {
-    theOutput << "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" << std::endl;
+    theOutput << R"(<?xml version="1.0" encoding="UTF-8" ?>)" << std::endl;
 
     std::string schema = theConfig.wxmlSchema();
 
@@ -187,7 +187,8 @@ void WxmlFormatter::format_200(std::ostream& theOutput,
   try
   {
     std::string formatType = theConfig.formatType();
-    theOutput << "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" << std::endl;
+    theOutput << R"(<?xml version="1.0" encoding="UTF-8" ?>)" << std::endl;
+
     std::string schema = theConfig.wxmlSchema();
 
     boost::algorithm::replace_first(schema, "{version}", "2.00");

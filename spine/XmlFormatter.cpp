@@ -52,7 +52,7 @@ void XmlFormatter::format(std::ostream& theOutput,
 {
   try
   {
-    theOutput << "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>" << std::endl;
+    theOutput << R"(<?xml version="1.0" encoding="UTF-8" ?>)" << std::endl;
 
     const std::string tag = theConfig.xmlTag();
 
