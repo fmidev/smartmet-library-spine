@@ -557,7 +557,6 @@ std::string Value::to_string() const
   try
   {
     namespace pt = boost::posix_time;
-    namespace ba = boost::algorithm;
 
     char buffer[128];
 
