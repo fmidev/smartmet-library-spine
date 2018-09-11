@@ -7,7 +7,7 @@ namespace SmartMet
 namespace Spine
 {
 // Defined here to avoid a weak vtable
-TableFormatter::~TableFormatter() {}
+TableFormatter::~TableFormatter() = default;
 }  // namespace Spine
 }  // namespace SmartMet
 

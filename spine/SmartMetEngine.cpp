@@ -13,7 +13,7 @@ namespace SmartMet
 {
 namespace Spine
 {
-SmartMetEngine::~SmartMetEngine() {}
+SmartMetEngine::~SmartMetEngine() = default;
 
 void SmartMetEngine::construct(const std::string& engineName, Reactor* reactor)
 {

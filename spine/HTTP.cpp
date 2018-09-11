@@ -496,7 +496,7 @@ std::string Message::getVersion() const
   return itsVersion;
 }
 
-Message::~Message() {}
+Message::~Message() = default;
 
 Request::Request(const HeaderMap& headerMap,
                  const std::string& body,
@@ -880,7 +880,7 @@ std::size_t Request::getParameterCount() const
   return itsParameters.size();
 }
 
-Request::~Request() {}
+Request::~Request() = default;
 
 Response::Response(const HeaderMap& headerMap,
                    const std::string& body,
@@ -1220,7 +1220,7 @@ ContentStreamer::StreamerStatus Response::getStreamingStatus() const
   return itsContent.getStreamingStatus();
 }
 
-Response::~Response() {}
+Response::~Response() = default;
 
 std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::string& message)
 {

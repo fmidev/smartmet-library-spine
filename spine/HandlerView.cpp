@@ -54,7 +54,7 @@ HandlerView::HandlerView(ContentHandler theHandler)
 {
 }
 
-HandlerView::~HandlerView() {}
+HandlerView::~HandlerView() = default;
 
 bool HandlerView::handle(Reactor& theReactor,
                          const HTTP::Request& theRequest,
