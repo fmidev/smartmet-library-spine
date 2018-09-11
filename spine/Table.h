@@ -31,7 +31,7 @@ class Table : private boost::noncopyable
   std::size_t maxi() const { return itsMaxI; }
   std::size_t minj() const { return itsMinJ; }
   std::size_t maxj() const { return itsMaxJ; }
-  typedef std::set<std::size_t> Indexes;
+  using Indexes = std::set<std::size_t>;
   Indexes columns() const;
   Indexes rows() const;
 

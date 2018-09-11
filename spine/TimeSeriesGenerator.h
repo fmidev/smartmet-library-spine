@@ -18,7 +18,7 @@ namespace Spine
 {
 namespace TimeSeriesGenerator
 {
-typedef std::list<boost::local_time::local_date_time> LocalTimeList;
+using LocalTimeList = std::list<boost::local_time::local_date_time>;
 
 LocalTimeList generate(const TimeSeriesGeneratorOptions& theOptions,
                        const boost::local_time::time_zone_ptr& theZone);

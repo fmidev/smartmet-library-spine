@@ -33,7 +33,7 @@ class SequenceFilter
   virtual bool match(const std::string& sequence) const = 0;
 };
 
-typedef boost::shared_ptr<SequenceFilter> SequenceFilterPtr;
+using SequenceFilterPtr = boost::shared_ptr<SequenceFilter>;
 
 // Matches any ip token (*)
 class AnyFilter : public SequenceFilter

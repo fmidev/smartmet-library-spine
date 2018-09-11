@@ -17,7 +17,7 @@ namespace Spine
 class TimeSeriesGeneratorCache
 {
  public:
-  typedef std::shared_ptr<TimeSeriesGenerator::LocalTimeList> TimeList;
+  using TimeList = std::shared_ptr<TimeSeriesGenerator::LocalTimeList>;
 
   void resize(std::size_t theSize) const;
 

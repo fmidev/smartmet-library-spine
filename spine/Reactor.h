@@ -47,30 +47,31 @@ typedef std::map<std::string, std::string> URIMap;
 class Reactor
 {
  public:
-  typedef std::map<std::string, LogListType> LoggedRequests;
-  typedef std::tuple<bool, LoggedRequests, boost::posix_time::ptime>
-      AccessLogStruct;  // Fields are: Logging enabled flag, the logged requests, last cleanup time
+  using LoggedRequests = std::map<std::string, LogListType>;
+  using AccessLogStruct =
+      std::tuple<bool, LoggedRequests, boost::posix_time::ptime>;  // Fields are: Logging enabled
+                                                                   // flag, the logged requests,
+                                                                   // last cleanup time
 
   // These hooks are called when certain events occur with the server
 
   // This hook is called when a connection finishes
   // Free arguments are the backend host name, port and the final connection status code
-  typedef boost::function<void(
-      const std::string&, int, SmartMet::Spine::HTTP::ContentStreamer::StreamerStatus)>
-      BackendConnectionFinishedHook;
+  using BackendConnectionFinishedHook = boost::function<void(
+      const std::string&, int, SmartMet::Spine::HTTP::ContentStreamer::StreamerStatus)>;
 
   // This hook is called when a connection starts
   // Free argument is the client ip address
-  typedef boost::function<void(const std::string&)> ClientConnectionStartedHook;
+  using ClientConnectionStartedHook = boost::function<void(const std::string&)>;
 
   // This hook is called when a connection to the client fails
   // Free arguments are the client IP address and client connection status code
-  typedef boost::function<void(const std::string&, const boost::system::error_code&)>
-      ClientConnectionFinishedHook;
+  using ClientConnectionFinishedHook =
+      boost::function<void(const std::string&, const boost::system::error_code&)>;
 
   // Typedef for new instance of requested class.
   // Must be casted with reinterpret_cast<> to correct type in users code!
-  typedef void* EngineInstance;
+  using EngineInstance = void*;
 
   // Logging
 
@@ -149,14 +150,14 @@ class Reactor
 
   // Content handling
   mutable MutexType itsContentMutex;
-  typedef std::map<std::string, boost::shared_ptr<HandlerView> > Handlers;
+  using Handlers = std::map<std::string, boost::shared_ptr<HandlerView> >;
   Handlers itsHandlers;
   bool itsCatchNoMatch = false;
   boost::shared_ptr<HandlerView> itsCatchNoMatchHandler;
 
   // Filters are determined at construction, an will be stored here until inserted into the handler
   // views
-  typedef std::map<std::string, boost::shared_ptr<IPFilter::IPFilter> > FilterMap;
+  using FilterMap = std::map<std::string, boost::shared_ptr<IPFilter::IPFilter> >;
   FilterMap itsIPFilters;
 
   // Event hooks
@@ -171,7 +172,7 @@ class Reactor
 
   // Plugins
 
-  typedef std::list<boost::shared_ptr<DynamicPlugin> > PluginList;
+  using PluginList = std::list<boost::shared_ptr<DynamicPlugin> >;
   PluginList itsPlugins;
 
   // Engines
@@ -181,16 +182,16 @@ class Reactor
   typedef void* (*EngineInstanceCreator)(const char*, void*);
 
   // List of class names and pointer-to-functions to creator functions
-  typedef std::map<std::string, EngineInstanceCreator> EngineList;
+  using EngineList = std::map<std::string, EngineInstanceCreator>;
   EngineList itsEngines;
 
-  typedef std::map<std::string, EngineInstance> SingletonList;
+  using SingletonList = std::map<std::string, EngineInstance>;
   SingletonList itsSingletons;
 
-  typedef std::map<std::string, std::string> ConfigList;
+  using ConfigList = std::map<std::string, std::string>;
   ConfigList itsEngineConfigs;
 
-  typedef std::list<boost::shared_ptr<boost::thread> > InitThreadList;
+  using InitThreadList = std::list<boost::shared_ptr<boost::thread> >;
   InitThreadList itsInitThreads;
 
   // Logging

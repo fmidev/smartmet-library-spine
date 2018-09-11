@@ -14,11 +14,11 @@ namespace Spine
 {
 // scoped read/write lock types
 
-typedef boost::shared_mutex MutexType;
-typedef boost::shared_lock<MutexType> ReadLock;
-typedef boost::unique_lock<MutexType> WriteLock;
-typedef boost::upgrade_lock<MutexType> UpgradeReadLock;
-typedef boost::upgrade_to_unique_lock<MutexType> UpgradeWriteLock;
+using MutexType = boost::shared_mutex;
+using ReadLock = boost::shared_lock<MutexType>;
+using WriteLock = boost::unique_lock<MutexType>;
+using UpgradeReadLock = boost::upgrade_lock<MutexType>;
+using UpgradeWriteLock = boost::upgrade_to_unique_lock<MutexType>;
 
 }  // namespace Spine
 }  // namespace SmartMet

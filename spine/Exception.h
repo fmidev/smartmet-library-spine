@@ -13,7 +13,7 @@ namespace SmartMet
 namespace Spine
 {
 using TimeStamp = boost::posix_time::ptime;
-typedef std::vector<std::pair<std::string, std::string>> ParameterVector;
+using ParameterVector = std::vector<std::pair<std::string, std::string>>;
 using DetailVector = std::vector<std::string>;
 using DetailList = std::list<std::string>;
 

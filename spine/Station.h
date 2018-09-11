@@ -111,7 +111,7 @@ class Station
 
 };  // class Station
 
-typedef std::vector<Station> Stations;
+using Stations = std::vector<Station>;
 
 }  // namespace Spine
 }  // namespace SmartMet

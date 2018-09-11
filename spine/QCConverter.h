@@ -64,7 +64,7 @@ class QCConverter
   // Key of an elemet in the container express
   // the first character of an old key. The value
   // is the new key.
-  typedef std::map<int, std::string> Entry;
+  using Entry = std::map<int, std::string>;
   // Position of an element in the container express
   // the length of an old key.
   std::vector<Entry> m_keys;

@@ -21,7 +21,7 @@ class TableFormatterOptions;
 class TableFormatter
 {
  public:
-  typedef std::vector<std::string> Names;
+  using Names = std::vector<std::string>;
 
   virtual ~TableFormatter();
   virtual void format(std::ostream& theOutput,

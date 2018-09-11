@@ -39,8 +39,8 @@ struct None
 };
 
 // data variable for qengine, obsengine
-typedef boost::variant<None, std::string, double, int, LonLat, boost::local_time::local_date_time>
-    Value;
+using Value =
+    boost::variant<None, std::string, double, int, LonLat, boost::local_time::local_date_time>;
 
 // time series variable for a point
 struct TimedValue
@@ -54,8 +54,8 @@ struct TimedValue
 };
 
 // one time series
-typedef std::vector<TimedValue> TimeSeries;
-typedef boost::shared_ptr<TimeSeries> TimeSeriesPtr;
+using TimeSeries = std::vector<TimedValue>;
+using TimeSeriesPtr = boost::shared_ptr<TimeSeries>;
 
 // time series result variable for an area
 struct LonLatTimeSeries
@@ -66,12 +66,12 @@ struct LonLatTimeSeries
 };
 
 // several coordinate-time series pairs
-typedef std::vector<LonLatTimeSeries> TimeSeriesGroup;
-typedef boost::shared_ptr<TimeSeriesGroup> TimeSeriesGroupPtr;
+using TimeSeriesGroup = std::vector<LonLatTimeSeries>;
+using TimeSeriesGroupPtr = boost::shared_ptr<TimeSeriesGroup>;
 
 // time series vector
-typedef std::vector<TimeSeries> TimeSeriesVector;
-typedef boost::shared_ptr<TimeSeriesVector> TimeSeriesVectorPtr;
+using TimeSeriesVector = std::vector<TimeSeries>;
+using TimeSeriesVectorPtr = boost::shared_ptr<TimeSeriesVector>;
 
 template <>
 bool None::operator==(const None& other) const;

@@ -19,7 +19,7 @@ namespace Spine
 class Reactor;
 class AccessLogger;
 
-typedef boost::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)> ContentHandler;
+using ContentHandler = boost::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)>;
 
 class HandlerView : private boost::noncopyable
 {
@@ -64,7 +64,7 @@ class HandlerView : private boost::noncopyable
 
   // Get logged requests
   LogListType getLoggedRequests();
-  
+
  private:
   // The actual handler functor
   ContentHandler itsHandler;
@@ -95,7 +95,6 @@ class HandlerView : private boost::noncopyable
 
   // Handle for access log file
   std::unique_ptr<AccessLogger> itsAccessLog;
-
 };
 
 }  // namespace Spine

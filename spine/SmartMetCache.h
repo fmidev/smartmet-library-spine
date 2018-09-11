@@ -27,9 +27,9 @@ struct BufferSizeFunction
       */
 class SmartMetCache : boost::noncopyable
 {
-  typedef std::size_t KeyType;
+  using KeyType = std::size_t;
 
-  typedef boost::shared_ptr<std::string> ValueType;
+  using ValueType = boost::shared_ptr<std::string>;
 
  public:
   /*

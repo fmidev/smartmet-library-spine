@@ -20,7 +20,7 @@ namespace SmartMet
 {
 namespace Spine
 {
-typedef int GeoId;
+using GeoId = int;
 
 class Location
 {
@@ -168,8 +168,8 @@ class Location
   }
 };  // class Location
 
-typedef boost::shared_ptr<const Location> LocationPtr;
-typedef std::list<LocationPtr> LocationList;
+using LocationPtr = boost::shared_ptr<const Location>;
+using LocationList = std::list<LocationPtr>;
 
 std::string formatLocation(const Location& loc, const std::string& key);
 std::string formatLocation(const Location& loc);
@@ -188,7 +188,7 @@ struct TaggedLocation
   TaggedLocation();
 };
 
-typedef std::list<TaggedLocation> TaggedLocationList;
+using TaggedLocationList = std::list<TaggedLocation>;
 
 }  // namespace Spine
 }  // namespace SmartMet

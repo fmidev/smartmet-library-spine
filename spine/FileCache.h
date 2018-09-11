@@ -41,7 +41,7 @@ class FileCache
     }
   };
 
-  typedef std::map<boost::filesystem::path, FileContents> Cache;
+  using Cache = std::map<boost::filesystem::path, FileContents>;
   mutable MutexType itsMutex;
   mutable Cache itsCache;
 

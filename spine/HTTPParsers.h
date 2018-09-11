@@ -23,8 +23,8 @@ namespace Spine
 {
 namespace HTTP
 {
-typedef std::pair<std::string, std::string> StringPair;
-typedef std::pair<unsigned int, unsigned int> VersionPair;
+using StringPair = std::pair<std::string, std::string>;
+using VersionPair = std::pair<unsigned int, unsigned int>;
 
 struct RawRequest
 {

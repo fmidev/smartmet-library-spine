@@ -644,7 +644,7 @@ boost::posix_time::ptime string2ptime(const std::string& value,
     namespace qi = boost::spirit::qi;
     namespace pt = boost::posix_time;
 
-    typedef qi::rule<std::string::const_iterator, std::string()> qi_rule;
+    using qi_rule = qi::rule<std::string::const_iterator, std::string()>;
 
     unsigned unit_coeff = 1;
     unsigned num_units = 1;
@@ -734,7 +734,7 @@ boost::posix_time::ptime parse_xml_time(const std::string& value)
     namespace bg = boost::gregorian;
     namespace pt = boost::posix_time;
 
-    typedef qi::rule<std::string::const_iterator, std::string()> qi_rule;
+    using qi_rule = qi::rule<std::string::const_iterator, std::string()>;
 
     const std::string tmp = ba::trim_copy(value);
 

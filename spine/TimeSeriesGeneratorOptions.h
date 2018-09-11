@@ -30,7 +30,7 @@ struct TimeSeriesGeneratorOptions
   };
 
   // Timesteps established from the outside
-  typedef boost::shared_ptr<std::list<boost::posix_time::ptime>> TimeList;
+  using TimeList = boost::shared_ptr<std::list<boost::posix_time::ptime>>;
 
   // Methods
 

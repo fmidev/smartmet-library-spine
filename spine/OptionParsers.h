@@ -14,8 +14,8 @@ namespace Spine
 {
 namespace OptionParsers
 {
-typedef std::vector<Parameter> ParameterList;
-typedef std::vector<ParameterAndFunctions> ParameterFunctionList;
+using ParameterList = std::vector<Parameter>;
+using ParameterFunctionList = std::vector<ParameterAndFunctions>;
 
 class ParameterOptions
 {
