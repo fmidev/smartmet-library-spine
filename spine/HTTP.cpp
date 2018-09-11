@@ -1335,15 +1335,11 @@ std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::stri
       auto result = boost::algorithm::find_first(iterRange, "\r\n\r\n");
 
       if (!result)
-      {
         // Token is still underway, wait for it
         return std::make_pair(ParsingStatus::INCOMPLETE, std::unique_ptr<Request>());
-      }
-      else
-      {
-        // Token has arrived, so the message is garbled
-        return std::make_pair(ParsingStatus::FAILED, std::unique_ptr<Request>());
-      }
+
+      // Token has arrived, so the message is garbled
+      return std::make_pair(ParsingStatus::FAILED, std::unique_ptr<Request>());
     }
   }
   catch (...)
@@ -1588,14 +1584,10 @@ ContentStreamer::StreamerStatus MessageContent::getStreamingStatus() const
   try
   {
     if (itsType == content_type::streamType)
-    {
       return streamContent->getStatus();
-    }
-    else
-    {
-      // This may be stupid, but you shouldn't ask for that which does not exist
-      return ContentStreamer::StreamerStatus::OK;
-    }
+
+    // This may be stupid, but you shouldn't ask for that which does not exist
+    return ContentStreamer::StreamerStatus::OK;
   }
   catch (...)
   {

@@ -473,14 +473,9 @@ Value Value::from_config(libconfig::Config& config,
 {
   try
   {
-    if (config.exists(path))
-    {
-      return from_config(config, path);
-    }
-    else
-    {
+    if (!config.exists(path))
       return default_value;
-    }
+    return from_config(config, path);
   }
   catch (...)
   {
@@ -717,13 +712,11 @@ boost::posix_time::ptime string2ptime(const std::string& value,
 
       return t2;
     }
-    else
-    {
-      auto t2 = parse_xml_time(tmp);
-      if (t2.is_not_a_date_time())
-        return Fmi::TimeParser::parse(value);
-      return t2;
-    }
+
+    auto t2 = parse_xml_time(tmp);
+    if (t2.is_not_a_date_time())
+      return Fmi::TimeParser::parse(value);
+    return t2;
   }
   catch (...)
   {

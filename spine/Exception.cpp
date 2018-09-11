@@ -138,8 +138,7 @@ Exception::Exception(const char* _filename, int _line, const char* _function, st
 
 Exception::~Exception()
 {
-  if (prevException != nullptr)
-    delete prevException;
+  delete prevException;
 }
 
 std::string Exception::getFilename() const

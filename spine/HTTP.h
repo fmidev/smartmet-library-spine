@@ -762,7 +762,7 @@ class Response : public Message
  */
 // ----------------------------------------------------------------------
 
-std::string urlencode(const std::string& url_path);
+std::string urlencode(const std::string& url);
 
 // ----------------------------------------------------------------------
 /*!
@@ -770,7 +770,7 @@ std::string urlencode(const std::string& url_path);
  */
 // ----------------------------------------------------------------------
 
-std::string urldecode(const std::string& url_path);
+std::string urldecode(const std::string& url);
 
 // ----------------------------------------------------------------------
 /*!
