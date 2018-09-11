@@ -69,7 +69,7 @@ void collect_qids(Json::Value& theJson, QidMap& theQids, const std::string& theP
         if (qid.empty())
           throw Spine::Exception(BCP, "The 'qid' value must not be empty!");
 
-        auto dotpos = qid.find(".");
+        auto dotpos = qid.find('.');
         if (dotpos != std::string::npos)
           throw Spine::Exception(BCP, "The 'qid' value must not contain dots!");
 

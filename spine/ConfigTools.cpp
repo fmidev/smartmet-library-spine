@@ -80,7 +80,7 @@ bool lookupConfigSetting(const libconfig::Config& theConfig,
 
     // Remove next .suffix from hostname
 
-    auto lastpos = hostname.find_last_of(".");
+    auto lastpos = hostname.find_last_of('.');
     if (lastpos == std::string::npos)
       return false;
 
