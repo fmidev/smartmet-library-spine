@@ -1636,7 +1636,7 @@ static std::string base64decode(std::string input)
     str[j++] = static_cast<unsigned char>(n >> 8 & 0xFF);
     str[j++] = static_cast<unsigned char>(n & 0xFF);
   }
-  if (pad)
+  if (pad != 0)
   {
     int n = B64index[static_cast<int>(p[L])] << 18 | B64index[static_cast<int>(p[L + 1])] << 12;
     str[str.size() - 1] = static_cast<unsigned char>(n >> 16);
@@ -1715,7 +1715,7 @@ std::string urldecode(std::string const& url)
           char hex[3] = {url[next + 1], url[next + 2], '\0'};
           char* end_ptr;
           char res = static_cast<char>(std::strtol(hex, &end_ptr, 16));
-          if (*end_ptr)
+          if (*end_ptr != 0)
           {
             result += "%";
             pos = next + 1;
