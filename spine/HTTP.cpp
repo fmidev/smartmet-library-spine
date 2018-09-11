@@ -1653,19 +1653,19 @@ static std::string base64decode(std::string input)
 // Decode percent encoded characters. Ignores failed conversions so control characters
 // can be sent onwards.
 
-std::string urldecode(std::string const& url_path)
+std::string urldecode(std::string const& url)
 {
   try
   {
     std::string::size_type pos = 0, next;
     std::string result;
-    result.reserve(url_path.length());
+    result.reserve(url.length());
 
     // Special handling for data: urls
-    if (url_path.substr(0, 5) == "data:")
+    if (url.substr(0, 5) == "data:")
     {
       // Reference: https://tools.ietf.org/html/rfc2397
-      pos = url_path.find(',', pos);  // Start decoding only after ,
+      pos = url.find(',', pos);  // Start decoding only after ,
       // There might be mediatype we don't care about that right now, it is just copied
       // verbatim. URL decoding would mangle it.
       if (pos == std::string::npos)
@@ -1682,14 +1682,14 @@ std::string urldecode(std::string const& url_path)
       // Less than 11 in pos could not possibly have base64 string
       if (pos >= 11)
       {
-        std::string is64 = url_path.substr(pos - 7, 6);
+        std::string is64 = url.substr(pos - 7, 6);
         if (is64 == "base64")
         {
           // Test for incorrect URL which seem to crop up in reference Jira issue examples
-          if (url_path.substr(pos - 8, 7) != ";base64")
-            throw Spine::Exception(BCP, "Incorrect data-url " + url_path);
+          if (url.substr(pos - 8, 7) != ";base64")
+            throw Spine::Exception(BCP, "Incorrect data-url " + url);
 
-          std::string todecode = url_path.substr(pos);
+          std::string todecode = url.substr(pos);
           std::string decoded = base64decode(todecode);
           result.append(decoded);
           return result;
@@ -1698,21 +1698,21 @@ std::string urldecode(std::string const& url_path)
       // Non-base64 data is decoded as a normal URL after ,
     }
 
-    while ((next = url_path.find('%', pos)) != std::string::npos)
+    while ((next = url.find('%', pos)) != std::string::npos)
     {
-      result.append(url_path, pos, next - pos);
+      result.append(url, pos, next - pos);
       pos = next;
-      switch (url_path[pos])
+      switch (url[pos])
       {
         case '%':
         {
-          if (url_path.length() - next < 3)
+          if (url.length() - next < 3)
           {
-            result.append(url_path, pos, url_path.length() - next);
-            pos = url_path.length();
+            result.append(url, pos, url.length() - next);
+            pos = url.length();
             break;
           }
-          char hex[3] = {url_path[next + 1], url_path[next + 2], '\0'};
+          char hex[3] = {url[next + 1], url[next + 2], '\0'};
           char* end_ptr;
           char res = static_cast<char>(std::strtol(hex, &end_ptr, 16));
           if (*end_ptr)
@@ -1728,7 +1728,7 @@ std::string urldecode(std::string const& url_path)
       }
     }
 
-    result.append(url_path, pos, url_path.length());
+    result.append(url, pos, url.length());
     return result;
   }
   catch (...)
@@ -1759,25 +1759,25 @@ std::string char2hex(int dec)
   }
 }
 
-std::string urlencode(const std::string& c)
+std::string urlencode(const std::string& url)
 {
   try
   {
     std::string escaped;
-    std::size_t max = c.length();
+    std::size_t max = url.length();
     for (std::size_t i = 0; i < max; i++)
     {
-      if ((48 <= c[i] && c[i] <= 57) ||   // 0-9
-          (65 <= c[i] && c[i] <= 90) ||   // ABC...XYZ
-          (97 <= c[i] && c[i] <= 122) ||  // abc...xyz
-          (c[i] == '~' || c[i] == '-' || c[i] == '_' || c[i] == '.'))
+      if ((48 <= url[i] && url[i] <= 57) ||   // 0-9
+          (65 <= url[i] && url[i] <= 90) ||   // ABC...XYZ
+          (97 <= url[i] && url[i] <= 122) ||  // abc...xyz
+          (url[i] == '~' || url[i] == '-' || url[i] == '_' || url[i] == '.'))
       {
-        escaped.append(&c[i], 1);
+        escaped.append(&url[i], 1);
       }
       else
       {
         escaped.append("%");
-        escaped.append(char2hex(static_cast<int>(c[i])));  // converts char 255 to string "FF"
+        escaped.append(char2hex(static_cast<int>(url[i])));  // converts char 255 to string "FF"
       }
     }
     return escaped;
