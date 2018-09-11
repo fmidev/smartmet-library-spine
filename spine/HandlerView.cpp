@@ -203,14 +203,14 @@ void HandlerView::cleanLog(const boost::posix_time::ptime& minTime)
       return;
     }
 
-    LogListType::iterator it = std::find_if(
+    auto it = std::find_if(
         itsRequestLog.begin(), itsRequestLog.end(), boost::bind(isNotOld, minTime, _1));
 
     // Update disk flush iterator accordingly
 
     // Find distance between flushed request iterator and purge iterator
 
-    LogListType::iterator iter = itsLastFlushedRequest;
+    auto iter = itsLastFlushedRequest;
 
     while (iter != itsRequestLog.end())
     {
