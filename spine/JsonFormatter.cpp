@@ -198,6 +198,7 @@ void format_recursively(std::ostream& theOutput,
       // Remove the attribute column temporarily
 
       theCols.erase(nam);
+      // NOLINTNEXTLINE(bugprone-unused-return-value)
       std::remove(theAttributes.begin(), theAttributes.end(), attribute);
 
       // Process unique attribute values one at a time
