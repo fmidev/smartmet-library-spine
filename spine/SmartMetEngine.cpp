@@ -2,12 +2,11 @@
 #include "Convenience.h"
 #include "Exception.h"
 #include "Reactor.h"
+#include <boost/timer/timer.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <sys/types.h>
+#include <csignal>
 #include <iostream>
-#include <signal.h>
-
-#include <boost/timer/timer.hpp>
 
 namespace SmartMet
 {

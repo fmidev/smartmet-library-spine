@@ -8,15 +8,12 @@
 #include "Convenience.h"
 #include "Exception.h"
 #include "Reactor.h"
-
-#include <macgyver/AnsiEscapeCodes.h>
-
 #include <boost/bind.hpp>
 #include <boost/timer/timer.hpp>
-
+#include <macgyver/AnsiEscapeCodes.h>
 #include <sys/types.h>
+#include <csignal>
 #include <iostream>
-#include <signal.h>
 #include <stdexcept>
 #include <string>
 
