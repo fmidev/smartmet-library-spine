@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.9.5
-Release: 2%{?dist}.fmi
+Version: 18.9.11
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -14,7 +14,7 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 18.9.6
+BuildRequires: smartmet-library-newbase-devel >= 18.9.11
 BuildRequires: smartmet-library-macgyver-devel >= 18.9.5
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
@@ -31,9 +31,9 @@ BuildRequires: fmt-devel
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 18.9.6
+Requires: smartmet-library-newbase >= 18.9.11
 Requires: smartmet-library-macgyver >= 18.9.5
-Requires: smartmet-timezones >= 18.5.9
+Requires: smartmet-timezones >= 18.9.10
 Requires: smartmet-library-gis >= 18.8.15
 Requires: mariadb-libs
 Requires: boost-filesystem
@@ -99,6 +99,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Sep 11 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.9.11-1.fmi
+- Added parameter 'weathernumber' to ParameterFactory
+
 * Wed Sep 5 2018 Anssi Reponen <anssi.reponen@fmi.fi> - 18.9.5-1.fmi
 - Count-function supports now also string fields (BRAINSTORM-1131)
 
