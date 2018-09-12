@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.9.11
-Release: 2%{?dist}.fmi
+Version: 18.9.12
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -24,7 +24,7 @@ BuildRequires: gdal-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 18.8.15
+BuildRequires: smartmet-library-gis-devel >= 18.9.11
 BuildRequires: fmt-devel
 
 %if 0%{rhel} >= 7
@@ -34,7 +34,7 @@ BuildRequires: boost-timer
 Requires: smartmet-library-newbase >= 18.9.11
 Requires: smartmet-library-macgyver >= 18.9.5
 Requires: smartmet-timezones >= 18.9.10
-Requires: smartmet-library-gis >= 18.8.15
+Requires: smartmet-library-gis >= 18.9.11
 Requires: mariadb-libs
 Requires: boost-filesystem
 Requires: boost-iostreams
@@ -99,6 +99,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Sep 12 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.9.12-1.fmi
+- Added new_handler to Options
+
 * Tue Sep 11 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.9.11-2.fmi
 - Silenced several CodeChecker warnings
 

@@ -24,6 +24,7 @@ const char* default_configfile = "/etc/smartmet/smartmet.conf";
 const char* default_libdir = "/usr/share/smartmet";
 const char* default_locale = "fi_FI.UTF-8";
 const char* default_accesslogdir = "/var/log/smartmet";
+const char* default_new_handler = "default";
 const unsigned int default_port = 8080;
 const unsigned int default_maxthreads = 10;
 const unsigned int default_timeout = 60;
@@ -53,6 +54,7 @@ Options::Options()
       directory(default_libdir),
       configfile(default_configfile),
       locale(default_locale),
+      new_handler(default_new_handler),
       verbose(false),
       quiet(false),
       debug(false),
@@ -128,6 +130,7 @@ bool Options::parseOptions(int argc, char* argv[])
     const char* msgziplimit = "compression size limit in bytes";
     const char* msgdefaultlog = "make request logs by default";
     const char* msglocale = "default locale";
+    const char* msgnewhandler = "new_handler for OOM situations (default/bad_alloc/terminate)";
 
     const char* msgaccesslogdir = "access log directory";
 
@@ -161,7 +164,9 @@ bool Options::parseOptions(int argc, char* argv[])
         "compress,z", po::bool_switch(&compress)->default_value(compress), msgzip)(
         "compresslimit,Z", po::value(&compresslimit)->default_value(compresslimit), msgziplimit)(
         "defaultlogging,e", po::bool_switch(&defaultlogging)->default_value(defaultlogging), msgdefaultlog)(
-        "accesslogdir,a", po::value(&accesslogdir)->default_value(accesslogdir), msgaccesslogdir);
+        "accesslogdir,a", po::value(&accesslogdir)->default_value(accesslogdir), msgaccesslogdir)(
+        "new-handler", po::value(&new_handler)->default_value(new_handler), msgnewhandler);
+
     // clang-format on
 
     // We except no positional arguments
@@ -255,6 +260,8 @@ void Options::parseConfig()
 
       lookupHostSetting(itsConfig, fastpool.minsize, "fastpool.maxthreads");
       lookupHostSetting(itsConfig, fastpool.maxrequeuesize, "fastpool.maxrequeuesize");
+
+      lookupHostSetting(itsConfig, new_handler, "new_handler");
     }
     catch (libconfig::ParseException& e)
     {

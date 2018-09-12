@@ -35,6 +35,7 @@ struct Options
   std::string configfile;
   std::string username;
   std::string locale;
+  std::string new_handler;
   bool verbose;
   bool quiet;
   bool debug;
