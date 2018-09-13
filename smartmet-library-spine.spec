@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.9.12
+Version: 18.9.13
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -99,6 +99,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu Sep 13 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.9.13-1.fmi
+- Options::report now prints the OOM handler
+
 * Wed Sep 12 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.9.12-1.fmi
 - Added new_handler to Options
 

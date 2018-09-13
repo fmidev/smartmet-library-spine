@@ -314,6 +314,7 @@ void Options::report() const
               << "Access log directory\t\t= " << accesslogdir << std::endl
               << "Logs requests by default\t= " << defaultlogging << ANSI_ITALIC_OFF << std::endl
               << "Lazy linking\t\t\t= " << (lazylinking ? "ON" : "OFF") << std::endl
+              << "Out of memory handler\t\t= " << new_handler << std::endl
               << std::endl;
   }
   catch (...)
