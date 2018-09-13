@@ -312,10 +312,10 @@ void Options::report() const
               << "Port\t\t\t\t= " << port << std::endl
               << "Timeout\t\t\t\t= " << timeout << std::endl
               << "Access log directory\t\t= " << accesslogdir << std::endl
-              << "Logs requests by default\t= " << defaultlogging << ANSI_ITALIC_OFF << std::endl
+              << "Logs requests by default\t= " << defaultlogging << std::endl
               << "Lazy linking\t\t\t= " << (lazylinking ? "ON" : "OFF") << std::endl
               << "Out of memory handler\t\t= " << new_handler << std::endl
-              << std::endl;
+              << ANSI_ITALIC_OFF << std::endl;
   }
   catch (...)
   {
