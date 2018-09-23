@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.9.13
+Version: 18.9.23
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -24,7 +24,7 @@ BuildRequires: gdal-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 18.9.11
+BuildRequires: smartmet-library-gis-devel >= 18.9.17
 BuildRequires: fmt-devel
 
 %if 0%{rhel} >= 7
@@ -34,7 +34,7 @@ BuildRequires: boost-timer
 Requires: smartmet-library-newbase >= 18.9.11
 Requires: smartmet-library-macgyver >= 18.9.5
 Requires: smartmet-timezones >= 18.9.10
-Requires: smartmet-library-gis >= 18.9.11
+Requires: smartmet-library-gis >= 18.9.17
 Requires: mariadb-libs
 Requires: boost-filesystem
 Requires: boost-iostreams
@@ -99,6 +99,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Sun Sep 23 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.9.23-1.fmi
+- Silenced CodeChecker warnings
+
 * Thu Sep 13 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.9.13-1.fmi
 - Options::report now prints the OOM handler
 
