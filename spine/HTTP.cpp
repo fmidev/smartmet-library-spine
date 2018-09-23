@@ -1616,8 +1616,8 @@ static std::string base64decode(const std::string& input)
   const char* p = input.c_str();
   size_t len = input.size();
 
-  int pad = len > 0 && (len % 4 || p[len - 1] == '=');
-  const size_t L = ((len + 3) / 4 - pad) * 4;
+  int pad = static_cast<int>(len > 0 && ((len % 4 != 0) || p[len - 1] == '='));
+  const std::size_t L = ((len + 3) / 4 - pad) * 4;
   std::string str(L / 4 * 3 + pad, '\0');
 
   for (size_t i = 0, j = 0; i < L; i += 4)

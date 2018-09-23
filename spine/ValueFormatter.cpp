@@ -181,7 +181,7 @@ std::string ValueFormatter::format(double theValue, int thePrecision) const
 {
   try
   {
-    if (isnan(theValue))
+    if (std::isnan(theValue))
       return itsMissingText;
 
     if (thePrecision < 0)
