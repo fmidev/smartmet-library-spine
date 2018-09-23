@@ -1327,20 +1327,18 @@ std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::stri
                                                                  enumMethod,
                                                                  hasParsedPostData)));
     }
-    else
-    {
-      // Incomplete parse
-      // See if the \r\n\r\n token has been received. It is mandatory
-      auto iterRange = boost::make_iterator_range(startIt, stopIt);
-      auto result = boost::algorithm::find_first(iterRange, "\r\n\r\n");
 
-      if (!result)
-        // Token is still underway, wait for it
-        return std::make_pair(ParsingStatus::INCOMPLETE, std::unique_ptr<Request>());
+    // Incomplete parse
+    // See if the \r\n\r\n token has been received. It is mandatory
+    auto iterRange = boost::make_iterator_range(startIt, stopIt);
+    auto result = boost::algorithm::find_first(iterRange, "\r\n\r\n");
 
-      // Token has arrived, so the message is garbled
-      return std::make_pair(ParsingStatus::FAILED, std::unique_ptr<Request>());
-    }
+    if (!result)
+      // Token is still underway, wait for it
+      return std::make_pair(ParsingStatus::INCOMPLETE, std::unique_ptr<Request>());
+
+    // Token has arrived, so the message is garbled
+    return std::make_pair(ParsingStatus::FAILED, std::unique_ptr<Request>());
   }
   catch (...)
   {
@@ -1396,23 +1394,20 @@ std::tuple<ParsingStatus, std::unique_ptr<Response>, std::string::const_iterator
                                  headerMap, "", os, responseStatus, target.reason, false, false)),
                              startIt);
     }
-    else
+
+    // Failed or incomplete parse
+    // See if header-body delimiter has come through
+    auto iterRange = boost::make_iterator_range(startIt, stopIt);
+    auto result = boost::algorithm::find_first(iterRange, "\r\n\r\n");
+
+    if (!result)
     {
-      // Failed or incomplete parse
-      // See if header-body delimiter has come through
-      auto iterRange = boost::make_iterator_range(startIt, stopIt);
-      auto result = boost::algorithm::find_first(iterRange, "\r\n\r\n");
-
-      if (!result)
-      {
-        // Delimiter not found, headers are still on the way
-        return std::make_tuple(
-            ParsingStatus::INCOMPLETE, std::unique_ptr<Response>(), message.end());
-      }
-
-      // Delimiter is found but failed parse. Message is garbled.
-      return std::make_tuple(ParsingStatus::FAILED, std::unique_ptr<Response>(), message.end());
+      // Delimiter not found, headers are still on the way
+      return std::make_tuple(ParsingStatus::INCOMPLETE, std::unique_ptr<Response>(), message.end());
     }
+
+    // Delimiter is found but failed parse. Message is garbled.
+    return std::make_tuple(ParsingStatus::FAILED, std::unique_ptr<Response>(), message.end());
   }
   catch (...)
   {
