@@ -797,7 +797,8 @@ boost::posix_time::ptime parse_xml_time(const std::string& value)
   }
 }
 
-bool string2bool(const std::string& src)
+// TODO(mheiskan) Fix the API to use a const reference
+bool string2bool(const std::string src)
 {
   try
   {
