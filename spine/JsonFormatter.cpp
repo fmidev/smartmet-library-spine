@@ -34,16 +34,12 @@ namespace
 void escape_json(std::ostream& out, const std::string& s)
 {
   out << '"';
-  for (auto c = s.cbegin(); c != s.cend(); c++)
+  for (auto c : s)
   {
-    if (*c == '"' || *c == '\\' || ('\x00' <= *c && *c <= '\x1f'))
-    {
-      out << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(*c);
-    }
+    if (c == '"' || c == '\\' || ('\x00' <= c && c <= '\x1f'))
+      out << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c);
     else
-    {
-      out << *c;
-    }
+      out << c;
   }
   out << '"';
 }

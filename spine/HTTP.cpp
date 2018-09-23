@@ -29,11 +29,11 @@ void parseTokens(SmartMet::Spine::HTTP::ParamMap& outputMap,
     boost::algorithm::split(getTokens, get_range, boost::is_any_of(delimiter));
     if (convert_linebreaks)
     {
-      for (auto it = getTokens.begin(); it != getTokens.end(); ++it)
+      for (const auto& token : getTokens)
       {
-        auto delimiter_range = boost::algorithm::find_first(*it, "=");
-        auto first = std::string(it->begin(), delimiter_range.begin());
-        auto second = std::string(delimiter_range.end(), it->end());
+        auto delimiter_range = boost::algorithm::find_first(token, "=");
+        auto first = std::string(token.begin(), delimiter_range.begin());
+        auto second = std::string(delimiter_range.end(), token.end());
 
         boost::algorithm::replace_all(second, "+", " ");      // replace plusses with spaces
         boost::algorithm::replace_all(second, "\r\n", "\n");  // Replace line breaks
@@ -45,11 +45,11 @@ void parseTokens(SmartMet::Spine::HTTP::ParamMap& outputMap,
     else
     {
       // Same as above, but no line break conversion
-      for (auto it = getTokens.begin(); it != getTokens.end(); ++it)
+      for (const auto& token : getTokens)
       {
-        auto delimiter_range = boost::algorithm::find_first(*it, "=");
-        auto first = std::string(it->begin(), delimiter_range.begin());
-        auto second = std::string(delimiter_range.end(), it->end());
+        auto delimiter_range = boost::algorithm::find_first(token, "=");
+        auto first = std::string(token.begin(), delimiter_range.begin());
+        auto second = std::string(delimiter_range.end(), token.end());
 
         boost::algorithm::replace_all(second, "+", " ");  // replace plusses with spaces
         second = SmartMet::Spine::HTTP::urldecode(second);
@@ -607,11 +607,11 @@ std::string Request::toString() const
     ret += itsVersion;
     ret += "\r\n";
 
-    for (auto iter_pair = itsHeaders.begin(); iter_pair != itsHeaders.end(); ++iter_pair)
+    for (const auto& header : itsHeaders)
     {
-      ret += iter_pair->first;
+      ret += header.first;
       ret += ": ";
-      ret += iter_pair->second;
+      ret += header.second;
       ret += "\r\n";
     }
 
