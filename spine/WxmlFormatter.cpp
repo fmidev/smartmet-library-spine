@@ -145,7 +145,7 @@ void WxmlFormatter::format_100(std::ostream& theOutput,
       for (std::size_t i : wcols)
       {
         const std::string& name = theNames[i];
-        std::string value = theTable.get(i, j);
+        const auto& value = theTable.get(i, j);
         theOutput << "<param name=\"" << name << "\"";
         if (!value.empty())
         {
@@ -186,7 +186,7 @@ void WxmlFormatter::format_200(std::ostream& theOutput,
 {
   try
   {
-    std::string formatType = theConfig.formatType();
+    const auto& formatType = theConfig.formatType();
     theOutput << R"(<?xml version="1.0" encoding="UTF-8" ?>)" << std::endl;
 
     std::string schema = theConfig.wxmlSchema();
@@ -269,7 +269,7 @@ void WxmlFormatter::format_200(std::ostream& theOutput,
       for (std::size_t i : wcols)
       {
         const std::string& name = theNames[i];
-        std::string value = theTable.get(i, j);
+        const auto& value = theTable.get(i, j);
         theOutput << "<param name=\"" << name << "\"";
         if (!value.empty())
         {

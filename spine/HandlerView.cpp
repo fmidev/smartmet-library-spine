@@ -26,8 +26,8 @@ HandlerView::HandlerView(ContentHandler theHandler,
                          const std::string& theResource,
                          bool loggingStatus,
                          const std::string& accessLogDir)
-    : itsHandler(theHandler),
-      itsIpFilter(theIpFilter),
+    : itsHandler(std::move(theHandler)),
+      itsIpFilter(std::move(theIpFilter)),
       itsPlugin(thePlugin),
       itsResource(theResource),
       itsIsCatchNoMatch(false),
@@ -47,7 +47,7 @@ HandlerView::HandlerView(ContentHandler theHandler,
 }
 
 HandlerView::HandlerView(ContentHandler theHandler)
-    : itsHandler(theHandler),
+    : itsHandler(std::move(theHandler)),
       itsIsCatchNoMatch(true),
       isLogging(false),
       itsLastFlushedRequest(itsRequestLog.begin())

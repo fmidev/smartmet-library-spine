@@ -54,7 +54,7 @@ void XmlFormatter::format(std::ostream& theOutput,
   {
     theOutput << R"(<?xml version="1.0" encoding="UTF-8" ?>)" << std::endl;
 
-    const std::string tag = theConfig.xmlTag();
+    const auto& tag = theConfig.xmlTag();
 
     std::string style;
     auto givenstyle = theReq.getParameter("xmlstyle");

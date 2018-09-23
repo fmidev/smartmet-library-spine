@@ -37,7 +37,7 @@ Exception Exception::Trace(const char* _filename,
                            const char* _function,
                            std::string _message)
 {
-  return Exception(_filename, _line, _function, _message, nullptr);
+  return Exception(_filename, _line, _function, std::move(_message), nullptr);
 }
 
 Exception::Exception(const char* _filename,
@@ -50,7 +50,7 @@ Exception::Exception(const char* _filename,
   filename = _filename;
   line = _line;
   function = _function;
-  message = _message;
+  message = std::move(_message);
   prevException = nullptr;
   if (_prevException != nullptr)
   {
@@ -132,7 +132,7 @@ Exception::Exception(const char* _filename, int _line, const char* _function, st
   filename = _filename;
   line = _line;
   function = _function;
-  message = _message;
+  message = std::move(_message);
   prevException = nullptr;
 }
 
@@ -218,7 +218,7 @@ void Exception::setTimeStamp(TimeStamp _timestamp)
 
 Exception& Exception::addDetail(std::string _detailStr)
 {
-  detailVector.push_back(_detailStr);
+  detailVector.emplace_back(_detailStr);
   return *this;
 }
 

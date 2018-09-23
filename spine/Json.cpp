@@ -194,7 +194,7 @@ void deref(Json::Value& theJson, Json::Value& theRoot)
       {
         std::string path = "." + tmp.substr(4, std::string::npos);
         Json::Path json_path(path);
-        Json::Value value = json_path.resolve(theRoot);
+        const auto& value = json_path.resolve(theRoot);
         if (value.isNull())
           throw Spine::Exception(BCP, "Failed to dereference '" + tmp + "'!");
         // We will not dereference the dereferenced value!
