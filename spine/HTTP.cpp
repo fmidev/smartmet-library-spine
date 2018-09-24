@@ -958,7 +958,7 @@ void Response::setContent(boost::shared_ptr<std::string> theContent)
 {
   try
   {
-    itsContent = MessageContent(std::move(theContent));
+    itsContent = MessageContent(theContent);
   }
   catch (...)
   {
