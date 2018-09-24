@@ -970,7 +970,7 @@ void Response::setContent(boost::shared_ptr<std::vector<char> > theContent)
 {
   try
   {
-    itsContent = MessageContent(std::move(theContent));
+    itsContent = MessageContent(theContent);
   }
   catch (...)
   {
@@ -982,7 +982,7 @@ void Response::setContent(boost::shared_array<char> theContent, std::size_t cont
 {
   try
   {
-    itsContent = MessageContent(std::move(theContent), contentSize);
+    itsContent = MessageContent(theContent, contentSize);
   }
   catch (...)
   {
@@ -995,7 +995,7 @@ void Response::setContent(boost::shared_ptr<ContentStreamer> theContent)
   try
   {
     // Unknown content length implies chunked send
-    itsContent = MessageContent(std::move(theContent));
+    itsContent = MessageContent(theContent);
     itsVersion = "1.1";  // Chunked transfer encoding only available in 1.1
     itsIsChunked = true;
   }
@@ -1009,7 +1009,7 @@ void Response::setContent(boost::shared_ptr<ContentStreamer> theContent, std::si
 {
   try
   {
-    itsContent = MessageContent(std::move(theContent), contentSize);
+    itsContent = MessageContent(theContent, contentSize);
   }
   catch (...)
   {
@@ -1431,9 +1431,7 @@ MessageContent::MessageContent(boost::shared_ptr<std::string> theContent)
 }
 
 MessageContent::MessageContent(boost::shared_ptr<std::vector<char> > theContent)
-    : vectorContent(std::move(theContent)),
-      contentSize(theContent->size()),
-      itsType(content_type::vectorType)
+    : vectorContent(theContent), contentSize(theContent->size()), itsType(content_type::vectorType)
 {
 }
 
@@ -1444,7 +1442,7 @@ MessageContent::MessageContent(boost::shared_array<char> theContent, std::size_t
 }
 
 MessageContent::MessageContent(boost::shared_ptr<ContentStreamer> theContent)
-    : streamContent(std::move(theContent)),
+    : streamContent(theContent),
       contentSize(std::numeric_limits<std::size_t>::max()),
       itsType(content_type::streamType)
 {
@@ -1452,9 +1450,7 @@ MessageContent::MessageContent(boost::shared_ptr<ContentStreamer> theContent)
 
 MessageContent::MessageContent(boost::shared_ptr<ContentStreamer> theContent,
                                std::size_t contentSize)
-    : streamContent(std::move(theContent)),
-      contentSize(contentSize),
-      itsType(content_type::streamType)
+    : streamContent(theContent), contentSize(contentSize), itsType(content_type::streamType)
 {
 }
 
