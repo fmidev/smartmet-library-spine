@@ -9,6 +9,7 @@
 #include "Exception.h"
 #include <boost/optional.hpp>
 #include <fmt/format.h>
+#include <fmt/printf.h>
 #include <cmath>
 #include <stdexcept>
 
