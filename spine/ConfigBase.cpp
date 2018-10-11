@@ -20,10 +20,9 @@ ConfigBase::ConfigBase(const std::string& file_name, const std::string& name)
   {
     if (file_name.empty())
     {
-      Spine::Exception exception(BCP, "Configuration not provided!");
-      if (name != "")
-        exception.addParameter("Name", name);
-      throw exception;
+      throw Spine::Exception(BCP, "Configuration not provided!")
+          .addParameter("Name", name)
+          .addParameter("Filename", file_name);
     }
 
     try
@@ -48,11 +47,9 @@ ConfigBase::ConfigBase(boost::shared_ptr<libconfig::Config> config, const std::s
   {
     if (not config)
     {
-      Spine::Exception exception(BCP, "Configuration not provided!");
-      exception.addDetail("Empty boost::shared_ptr<>");
-      if (name != "")
-        exception.addParameter("Name", name);
-      throw exception;
+      throw Spine::Exception(BCP, "Configuration not provided!")
+          .addDetail("Empty boost::shared_ptr<>")
+          .addParameter("Name", name);
     }
   }
   catch (...)
@@ -71,34 +68,31 @@ void ConfigBase::handle_libconfig_exceptions(const std::string& location) const
   }
   catch (const libconfig::SettingException& err)
   {
-    Spine::Exception exception(BCP, "Configuration file setting error!");
-    exception.addParameter("Name", name);
-    exception.addParameter("Exception type", Fmi::current_exception_type());
-    exception.addParameter("Configuration file", file_name);
-    exception.addParameter("Path", err.getPath());
-    exception.addParameter("Location", location);
-    exception.addParameter("Error description", err.what());
-    throw exception;
+    throw Spine::Exception(BCP, "Configuration file setting error!")
+        .addParameter("Name", name)
+        .addParameter("Exception type", Fmi::current_exception_type())
+        .addParameter("Configuration file", file_name)
+        .addParameter("Path", err.getPath())
+        .addParameter("Location", location)
+        .addParameter("Error description", err.what());
   }
   catch (libconfig::ParseException& err)
   {
-    Spine::Exception exception(BCP, "Configuration file parsing failed!");
-    exception.addParameter("Name", name);
-    exception.addParameter("Exception type", Fmi::current_exception_type());
-    exception.addParameter("Configuration file", file_name);
-    exception.addParameter("Error line", std::to_string(err.getLine()));
-    exception.addParameter("Error description", err.getError());
-    throw exception;
+    throw Spine::Exception(BCP, "Configuration file parsing failed!")
+        .addParameter("Name", name)
+        .addParameter("Exception type", Fmi::current_exception_type())
+        .addParameter("Configuration file", file_name)
+        .addParameter("Error line", std::to_string(err.getLine()))
+        .addParameter("Error description", err.getError());
   }
   catch (const libconfig::ConfigException& err)
   {
-    Spine::Exception exception(BCP, "Configuration exception!");
-    exception.addParameter("Name", name);
-    exception.addParameter("Exception type", Fmi::current_exception_type());
-    exception.addParameter("Configuration file", file_name);
-    exception.addParameter("Location", location);
-    exception.addParameter("Error description", err.what());
-    throw exception;
+    throw Spine::Exception(BCP, "Configuration exception!")
+        .addParameter("Name", name)
+        .addParameter("Exception type", Fmi::current_exception_type())
+        .addParameter("Configuration file", file_name)
+        .addParameter("Location", location)
+        .addParameter("Error description", err.what());
   }
   catch (...)
   {
@@ -273,10 +267,9 @@ libconfig::Setting& ConfigBase::assert_is_list(libconfig::Setting& setting, int 
       std::ostringstream msg2;
       dump_setting(msg2, setting);
 
-      Spine::Exception exception(BCP, msg.str());
-      exception.addParameter("Configuration file", file_name);
-      exception.addDetail(msg2.str());
-      throw exception;
+      throw Spine::Exception(BCP, msg.str())
+          .addParameter("Configuration file", file_name)
+          .addDetail(msg2.str());
     }
 
     if (setting.getLength() < min_size)
@@ -290,10 +283,9 @@ libconfig::Setting& ConfigBase::assert_is_list(libconfig::Setting& setting, int 
       std::ostringstream msg2;
       dump_setting(msg2, setting);
 
-      Spine::Exception exception(BCP, msg.str());
-      exception.addParameter("Configuration file", file_name);
-      exception.addDetail(msg2.str());
-      throw exception;
+      throw Spine::Exception(BCP, msg.str())
+          .addParameter("Configuration file", file_name)
+          .addDetail(msg2.str());
     }
 
     return setting;
@@ -321,9 +313,7 @@ libconfig::Setting& ConfigBase::assert_is_group(libconfig::Setting& setting)
       std::ostringstream msg2;
       dump_setting(msg2, setting);
 
-      Spine::Exception exception(BCP, msg.str());
-      exception.addDetail(msg2.str());
-      throw exception;
+      throw Spine::Exception(BCP, msg.str()).addDetail(msg2.str());
     }
   }
   catch (...)
@@ -353,11 +343,10 @@ libconfig::Setting* ConfigBase::find_setting(libconfig::Setting& search_start,
 
       if (curr->isScalar())
       {
-        Spine::Exception exception(BCP, "Incorrect path!");
-        exception.addParameter("Configuration file", file_name);
-        exception.addParameter("Path", format_path(&search_start, path));
-        exception.addDetail(curr->getPath() + "' is scalar");
-        throw exception;
+        throw Spine::Exception(BCP, "Incorrect path!")
+            .addParameter("Configuration file", file_name)
+            .addParameter("Path", format_path(&search_start, path))
+            .addDetail(curr->getPath() + "' is scalar");
       }
 
       if (qi::phrase_parse(name.begin(),
@@ -367,21 +356,19 @@ libconfig::Setting* ConfigBase::find_setting(libconfig::Setting& search_start,
       {
         if (curr->isGroup())
         {
-          Spine::Exception exception(BCP, "Incorrect path!");
-          exception.addParameter("Path", format_path(&search_start, path));
-          exception.addDetail(curr->getPath() + "' is group when array or list is expected");
-          throw exception;
+          throw Spine::Exception(BCP, "Incorrect path!")
+              .addParameter("Path", format_path(&search_start, path))
+              .addDetail(curr->getPath() + "' is group when array or list is expected");
         }
         else if (ind < 0 or ind >= curr->getLength())
         {
           if (mandatory)
           {
-            Spine::Exception exception(BCP, "Index in path is out of range!");
-            exception.addParameter("Configuration file", file_name);
-            exception.addParameter("Path", format_path(&search_start, path));
-            exception.addParameter("Index", std::to_string(ind));
-            exception.addParameter("Range", "0 .. " + std::to_string(curr->getLength() - 1));
-            throw exception;
+            throw Spine::Exception(BCP, "Index in path is out of range!")
+                .addParameter("Configuration file", file_name)
+                .addParameter("Path", format_path(&search_start, path))
+                .addParameter("Index", std::to_string(ind))
+                .addParameter("Range", "0 .. " + std::to_string(curr->getLength() - 1));
           }
           else
           {
@@ -403,10 +390,9 @@ libconfig::Setting* ConfigBase::find_setting(libconfig::Setting& search_start,
           }
           else if (mandatory)
           {
-            Spine::Exception exception(BCP, "Path not found!");
-            exception.addParameter("Configuration file", file_name);
-            exception.addParameter("Path", format_path(curr, name));
-            throw exception;
+            throw Spine::Exception(BCP, "Path not found!")
+                .addParameter("Configuration file", file_name)
+                .addParameter("Path", format_path(curr, name));
           }
           else
           {
@@ -415,11 +401,10 @@ libconfig::Setting* ConfigBase::find_setting(libconfig::Setting& search_start,
         }
         else
         {
-          Spine::Exception exception(BCP, "Incorrect path!");
-          exception.addParameter("Configuration file", file_name);
-          exception.addParameter("Path", format_path(curr, name));
-          exception.addDetail(curr->getPath() + "' is not a group");
-          throw exception;
+          throw Spine::Exception(BCP, "Incorrect path!")
+              .addParameter("Configuration file", file_name)
+              .addParameter("Path", format_path(curr, name))
+              .addDetail(curr->getPath() + "' is not a group");
         }
       }
     }
