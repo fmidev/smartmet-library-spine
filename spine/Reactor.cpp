@@ -275,7 +275,7 @@ bool Reactor::addContentHandler(SmartMetPlugin* thePlugin,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Spine::Exception::Trace(BCP, "Operation failed!").addParameter("URI", theUri);
   }
 }
 
@@ -516,7 +516,7 @@ URIMap Reactor::getURIMap() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Spine::Exception::Trace(BCP, "cleanLog operation failed!");
   }
 }
 
@@ -677,7 +677,7 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool verbose)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Spine::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
   }
 }
 
@@ -720,7 +720,7 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Spine::Exception::Trace(BCP, "Operation failed!").addParameter("Class", theClassName);
   }
 }
 
@@ -773,7 +773,7 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Spine::Exception::Trace(BCP, "Operation failed!").addParameter("ClassName", theClassName);
   }
 }
 
@@ -855,7 +855,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Spine::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
   }
 }
 
@@ -1111,7 +1111,7 @@ void Reactor::shutdown()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Spine::Exception::Trace(BCP, "Shutdown operation failed!");
   }
 }
 
