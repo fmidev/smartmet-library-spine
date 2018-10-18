@@ -14,6 +14,56 @@ namespace Spine
 {
 namespace OptionParsers
 {
+namespace
+{
+int get_parameter_index(const ParameterList& parameters, const std::string& paramname)
+{
+  for (unsigned int i = 0; i < parameters.size(); i++)
+    if (parameters.at(i).name() == paramname)
+      return i;
+
+  return -1;
+}
+}  // anonymous namespace
+
+void ParameterOptions::expandParameter(const std::string& paramname)
+{
+  int parameterIndex = get_parameter_index(itsParameters, paramname);
+
+  while (parameterIndex > -1)
+  {
+    std::vector<std::string> dataParameterNames;
+    for (auto p : itsParameters)
+    {
+      if (p.type() == SmartMet::Spine::Parameter::Type::Data ||
+          p.type() == SmartMet::Spine::Parameter::Type::Landscaped)
+        dataParameterNames.push_back(p.name());
+    }
+    const Parameter& originalDataParameter = itsParameters.at(parameterIndex);
+    const ParameterAndFunctions& originalDataParameterAndFunctions =
+        itsParameterFunctions.at(parameterIndex);
+    std::vector<Parameter> dataSourceParams;
+    std::vector<ParameterAndFunctions> dataSourceParameterFunctions;
+    for (auto p : dataParameterNames)
+    {
+      std::string name = p + "_" + originalDataParameter.name();
+      Parameter param(name, originalDataParameter.type(), originalDataParameter.number());
+      ParameterAndFunctions paramfunc(param, originalDataParameterAndFunctions.functions);
+      dataSourceParams.push_back(param);
+      dataSourceParameterFunctions.push_back(paramfunc);
+    }
+    // Replace the original parameter with expanded list of parameters
+    itsParameters.erase(itsParameters.begin() + parameterIndex);
+    itsParameters.insert(
+        itsParameters.begin() + parameterIndex, dataSourceParams.begin(), dataSourceParams.end());
+    itsParameterFunctions.erase(itsParameterFunctions.begin() + parameterIndex);
+    itsParameterFunctions.insert(itsParameterFunctions.begin() + parameterIndex,
+                                 dataSourceParameterFunctions.begin(),
+                                 dataSourceParameterFunctions.end());
+    parameterIndex = get_parameter_index(itsParameters, paramname);
+  }
+}
+
 void ParameterOptions::add(const Parameter& theParam)
 {
   itsParameters.push_back(theParam);

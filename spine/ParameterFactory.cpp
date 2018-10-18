@@ -688,7 +688,8 @@ Parameter ParameterFactory::parse(const std::string& paramname,
              p == "apparenttemperature" || p == "snow1hlower" || p == "snow1hupper" ||
              p == "snow1h" || p == "smartsymbol" || p == "smartsymboltext" ||
              p == "weathernumber" || p == "windums" || p == "windvms" || p == "lat" ||
-             p == "latitude" || p == "latlon" || p == "lon" || p == "longitude" || p == "lonlat")
+             p == "latitude" || p == "latlon" || p == "lon" || p == "longitude" || p == "lonlat" ||
+             p == "data_source")
     {
       type = Parameter::Type::DataDerived;
     }
