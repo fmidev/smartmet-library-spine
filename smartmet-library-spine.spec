@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.11.1
+Version: 18.10.18
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -99,7 +99,10 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
-* Thu Oct 11 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.11.1-1.fmi
+* Thu Oct 18 2018 Anssi Reponen <anssi.reponen@fmi.fi> - 18.10.18-1.fmi
+- Support for data_source-field added (BRAINSTORM-1233)
+
+* Thu Oct 11 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.10.11-1.fmi
 - Improved error messages for configuration file errors
 
 * Sat Sep 29 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.9.29-1.fmi
