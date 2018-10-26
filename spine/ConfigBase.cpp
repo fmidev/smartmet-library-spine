@@ -31,7 +31,7 @@ ConfigBase::ConfigBase(const std::string& file_name, const std::string& name)
     }
     catch (const libconfig::ConfigException&)
     {
-      handle_libconfig_exceptions(METHOD_NAME);
+      handle_libconfig_exceptions(BOOST_CURRENT_FUNCTION);
     }
   }
   catch (...)
@@ -100,7 +100,7 @@ void ConfigBase::handle_libconfig_exceptions(const std::string& location) const
   }
 
   // Not supposed to be here
-  // std::cerr << "INTERNAL ERROR in " << METHOD_NAME << ": not supposed to be here" << std::endl;
+  // std::cerr << "INTERNAL ERROR in " << BOOST_CURRENT_FUNCTION << ": not supposed to be here" << std::endl;
   // abort();
 }
 
@@ -462,7 +462,7 @@ libconfig::Setting& ConfigBase::get_mandatory_config_param(libconfig::Setting& s
     }
     catch (const libconfig::ConfigException&)
     {
-      handle_libconfig_exceptions(METHOD_NAME);
+      handle_libconfig_exceptions(BOOST_CURRENT_FUNCTION);
     }
   }
   catch (...)

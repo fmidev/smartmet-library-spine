@@ -2,6 +2,7 @@
 
 #include "Exception.h"
 #include <boost/shared_ptr.hpp>
+#include <boost/current_function.hpp>
 #include <macgyver/TypeName.h>
 #include <libconfig.h++>
 #include <limits>
@@ -128,7 +129,7 @@ class ConfigBase
       }
       catch (const libconfig::ConfigException&)
       {
-        handle_libconfig_exceptions(METHOD_NAME);
+        handle_libconfig_exceptions(BOOST_CURRENT_FUNCTION);
       }
 
       return result;
@@ -195,7 +196,7 @@ class ConfigBase
         }
         catch (const libconfig::ConfigException&)
         {
-          handle_libconfig_exceptions(METHOD_NAME);
+          handle_libconfig_exceptions(BOOST_CURRENT_FUNCTION);
         }
       }
       return result;
@@ -331,7 +332,7 @@ class ConfigBase
       }
       catch (const libconfig::ConfigException&)
       {
-        handle_libconfig_exceptions(METHOD_NAME);
+        handle_libconfig_exceptions(BOOST_CURRENT_FUNCTION);
       }
     }
     catch (...)

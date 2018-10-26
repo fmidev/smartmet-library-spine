@@ -3,6 +3,7 @@
 #include "Exception.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/lambda/lambda.hpp>
+#include <boost/current_function.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TimeParser.h>
@@ -182,7 +183,7 @@ bool Value::get_bool() const
         return string2bool(boost::get<std::string>(data));
 
       default:
-        bad_value_type(METHOD_NAME, typeid(bool));
+        bad_value_type(BOOST_CURRENT_FUNCTION, typeid(bool));
     }
   }
   catch (...)
@@ -225,7 +226,7 @@ int64_t Value::get_int() const
         }
 
       default:
-        bad_value_type(METHOD_NAME, typeid(int64_t));
+        bad_value_type(BOOST_CURRENT_FUNCTION, typeid(int64_t));
     }
   }
   catch (...)
@@ -269,7 +270,7 @@ uint64_t Value::get_uint() const
         }
 
       default:
-        bad_value_type(METHOD_NAME, typeid(uint64_t));
+        bad_value_type(BOOST_CURRENT_FUNCTION, typeid(uint64_t));
     }
   }
   catch (...)
@@ -307,7 +308,7 @@ double Value::get_double() const
         }
 
       default:
-        bad_value_type(METHOD_NAME, typeid(double));
+        bad_value_type(BOOST_CURRENT_FUNCTION, typeid(double));
     }
   }
   catch (...)
@@ -336,7 +337,7 @@ boost::posix_time::ptime Value::get_ptime(bool use_extensions) const
         }
 
       default:
-        bad_value_type(METHOD_NAME, typeid(boost::posix_time::ptime));
+        bad_value_type(BOOST_CURRENT_FUNCTION, typeid(boost::posix_time::ptime));
     }
   }
   catch (...)
@@ -356,7 +357,7 @@ Point Value::get_point() const
     if (ind == TI_STRING)
       return Point(boost::get<std::string>(data));
 
-    bad_value_type(METHOD_NAME, typeid(Point));
+    bad_value_type(BOOST_CURRENT_FUNCTION, typeid(Point));
   }
   catch (...)
   {
@@ -377,7 +378,7 @@ BoundingBox Value::get_bbox() const
       const std::string& src = boost::get<std::string>(data);
       return BoundingBox(src);
     }
-    bad_value_type(METHOD_NAME, typeid(Point));
+    bad_value_type(BOOST_CURRENT_FUNCTION, typeid(Point));
   }
   catch (...)
   {
@@ -397,7 +398,7 @@ std::string Value::get_string() const
         // FIXME: Do we need conversions from other types back to string?
 
       default:
-        bad_value_type(METHOD_NAME, typeid(std::string));
+        bad_value_type(BOOST_CURRENT_FUNCTION, typeid(std::string));
     }
   }
   catch (...)
