@@ -5,19 +5,17 @@ namespace SmartMet
 {
 namespace Spine
 {
+
 // ----------------------------------------------------------------------
 /*!
- * \brief Lookup a path setting
+ * \brief Fix a path value setting
  */
 // ----------------------------------------------------------------------
 
-bool lookupPathSetting(const libconfig::Config& theConfig,
-                       std::string& theValue,
-                       const std::string& theVariable)
+bool fixPathSetting(const libconfig::Config& theConfig,
+                    std::string& theValue,
+                    const std::string& theVariable)
 {
-  if (!theConfig.lookupValue(theVariable, theValue))
-    return false;
-
   if (theValue.empty())
     return false;
 
@@ -36,6 +34,21 @@ bool lookupPathSetting(const libconfig::Config& theConfig,
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Lookup a path setting
+ */
+// ----------------------------------------------------------------------
+
+bool lookupPathSetting(const libconfig::Config& theConfig,
+                       std::string& theValue,
+                       const std::string& theVariable)
+{
+  if (!theConfig.lookupValue(theVariable, theValue))
+    return false;
+  return fixPathSetting(theConfig, theValue, theVariable);
+}
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Lookup a config path setting
  */
 // ----------------------------------------------------------------------
@@ -44,16 +57,16 @@ bool lookupConfigSetting(const libconfig::Config& theConfig,
                          std::string& theValue,
                          const std::string& theVariable)
 {
-  // Try variable.configfile first
   std::string configvar = theVariable + ".configfile";
 
-  if (theConfig.exists(configvar))
-    return lookupPathSetting(theConfig, theValue, configvar);
+  if(lookupHostSetting(theConfig, theValue, configvar))
+    return fixPathSetting(theConfig, theValue, configvar);
 
   // Then try finding variable.configpath and then host specific
   // configuration files from there
 
   configvar = theVariable + ".configpath";
+  
   std::string configpath;
   if (!lookupPathSetting(theConfig, configpath, configvar))
     return false;
