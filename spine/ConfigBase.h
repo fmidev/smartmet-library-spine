@@ -129,7 +129,7 @@ class ConfigBase
       }
       catch (const libconfig::ConfigException&)
       {
-        handle_libconfig_exceptions(BOOST_CURRENT_FUNCTION);
+        handle_libconfig_exceptions(METHOD_NAME);
       }
 
       return result;
@@ -196,7 +196,7 @@ class ConfigBase
         }
         catch (const libconfig::ConfigException&)
         {
-          handle_libconfig_exceptions(BOOST_CURRENT_FUNCTION);
+          handle_libconfig_exceptions(METHOD_NAME);
         }
       }
       return result;
@@ -332,7 +332,7 @@ class ConfigBase
       }
       catch (const libconfig::ConfigException&)
       {
-        handle_libconfig_exceptions(BOOST_CURRENT_FUNCTION);
+        handle_libconfig_exceptions(METHOD_NAME);
       }
     }
     catch (...)
