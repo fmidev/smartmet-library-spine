@@ -468,6 +468,12 @@ URIMap Reactor::getURIMap() const
 
     for (auto& handlerPair : itsHandlers)
     {
+      // Getting plugin names during shutdown may throw due to a call to a pure virtual method.
+      // This mitigates the problem, but does not solve it. The shutdown flag should be
+      // locked for the duration of this loop.
+      if (itsShutdownRequested)
+        return {};
+
       theMap.insert(std::make_pair(handlerPair.first, handlerPair.second->getPluginName()));
     }
 

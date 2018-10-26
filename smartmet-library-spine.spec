@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.11.1
+Version: 18.10.26
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -99,6 +99,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Fri Oct 26 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.10.26-1.fmi
+- Check for shutdown requests more often
+
 * Thu Oct 11 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.11.1-1.fmi
 - Improved error messages for configuration file errors
 
