@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.10.26
-Release: 3%{?dist}.fmi
+Version: 18.11.4
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -99,6 +99,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Sun Nov  4 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.11.4-1.fmi
+- Added handling of shutdown (3210) and high_load (4321) response codes
+
 * Fri Oct 26 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.10.26-3.fmi
 - Use portable BOOST_CURRENT_FUNCTION instead of gcc METHOD_NAME
 
