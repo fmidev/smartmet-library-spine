@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include "ActiveBackends.h"
 #include "ActiveRequests.h"
 #include "ConfigBase.h"
 #include "HTTP.h"
@@ -82,9 +83,17 @@ class Reactor
 
   bool isLoadHigh() const;
 
+  // Monitoring active requests
+
   ActiveRequests::Requests getActiveRequests() const;
   std::size_t insertActiveRequest(const std::string& theURI);
   void removeActiveRequest(std::size_t theKey);
+
+  // Monitoring active requests to backends
+  void startBackendRequest(const std::string& theHost, int thePort);
+  void stopBackendRequest(const std::string& theHost, int thePort);
+  void resetBackendRequest(const std::string& theHost, int thePort);
+  ActiveBackends::Status getBackendRequestStatus() const;
 
   // Only construct with options
   Reactor(Options& options);
@@ -204,6 +213,8 @@ class Reactor
 
   std::size_t itsActiveRequstLimit = 0;  // by default there is no limit
   ActiveRequests itsActiveRequests;
+
+  ActiveBackends itsActiveBackends;
 
  private:
   std::size_t itsEngineCount = 0;

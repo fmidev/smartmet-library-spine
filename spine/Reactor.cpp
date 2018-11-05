@@ -455,6 +455,50 @@ void Reactor::removeActiveRequest(std::size_t theKey)
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Start a new active request to a backend
+ */
+// ----------------------------------------------------------------------
+
+void Reactor::startBackendRequest(const std::string& theHost, int thePort)
+{
+  itsActiveBackends.start(theHost, thePort);
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Stop a request to a backend
+ */
+// ----------------------------------------------------------------------
+
+void Reactor::stopBackendRequest(const std::string& theHost, int thePort)
+{
+  itsActiveBackends.stop(theHost, thePort);
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Reset request count to a backend
+ */
+// ----------------------------------------------------------------------
+
+void Reactor::resetBackendRequest(const std::string& theHost, int thePort)
+{
+  itsActiveBackends.reset(theHost, thePort);
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Get the counts for active backend requests
+ */
+// ----------------------------------------------------------------------
+
+ActiveBackends::Status Reactor::getBackendRequestStatus() const
+{
+  return itsActiveBackends.status();
+}
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Get registered URIs
  */
 // ----------------------------------------------------------------------

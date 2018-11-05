@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.11.4
+Version: 18.11.5
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -99,6 +99,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon Nov  5 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.11.5-1.fmi
+- Added tracking of the number active requests to backends to enable faster load balancing
+
 * Sun Nov  4 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.11.4-1.fmi
 - Added handling of shutdown (3210) and high_load (4321) response codes
 
