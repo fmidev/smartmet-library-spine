@@ -567,10 +567,13 @@ std::string Request::toString() const
       switch (itsMethod)
       {
         case RequestMethod::GET:
+        {
           if (!itsContent.empty())
             // Body is not meaningfull in GET-Requests
             throw Spine::Exception(
                 BCP, "HTTP::Request: Attempting to serialize GET Request with body content");
+        }
+        // fall through
         case RequestMethod::POST:
           body = itsContent;
       }
