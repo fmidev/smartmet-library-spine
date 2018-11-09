@@ -455,6 +455,50 @@ void Reactor::removeActiveRequest(std::size_t theKey)
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Start a new active request to a backend
+ */
+// ----------------------------------------------------------------------
+
+void Reactor::startBackendRequest(const std::string& theHost, int thePort)
+{
+  itsActiveBackends.start(theHost, thePort);
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Stop a request to a backend
+ */
+// ----------------------------------------------------------------------
+
+void Reactor::stopBackendRequest(const std::string& theHost, int thePort)
+{
+  itsActiveBackends.stop(theHost, thePort);
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Reset request count to a backend
+ */
+// ----------------------------------------------------------------------
+
+void Reactor::resetBackendRequest(const std::string& theHost, int thePort)
+{
+  itsActiveBackends.reset(theHost, thePort);
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Get the counts for active backend requests
+ */
+// ----------------------------------------------------------------------
+
+ActiveBackends::Status Reactor::getBackendRequestStatus() const
+{
+  return itsActiveBackends.status();
+}
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Get registered URIs
  */
 // ----------------------------------------------------------------------
@@ -468,6 +512,12 @@ URIMap Reactor::getURIMap() const
 
     for (auto& handlerPair : itsHandlers)
     {
+      // Getting plugin names during shutdown may throw due to a call to a pure virtual method.
+      // This mitigates the problem, but does not solve it. The shutdown flag should be
+      // locked for the duration of this loop.
+      if (itsShutdownRequested)
+        return {};
+
       theMap.insert(std::make_pair(handlerPair.first, handlerPair.second->getPluginName()));
     }
 

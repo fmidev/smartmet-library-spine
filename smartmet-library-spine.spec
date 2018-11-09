@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.10.18
+Version: 18.11.9
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -99,10 +99,25 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
-* Thu Oct 18 2018 Anssi Reponen <anssi.reponen@fmi.fi> - 18.10.18-1.fmi
+* Fri Nov  9 2018 Anssi Reponen <anssi.reponen@fmi.fi> - 18.11.9-1.fmi
 - Support for data_source-field added (BRAINSTORM-1233)
 
-* Thu Oct 11 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.10.11-1.fmi
+* Mon Nov  5 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.11.5-1.fmi
+- Added tracking of the number active requests to backends to enable faster load balancing
+
+* Sun Nov  4 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.11.4-1.fmi
+- Added handling of shutdown (3210) and high_load (4321) response codes
+
+* Fri Oct 26 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.10.26-3.fmi
+- Use portable BOOST_CURRENT_FUNCTION instead of gcc METHOD_NAME
+
+* Fri Oct 26 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.10.26-2.fmi
+- configfile settings can now be overridden in the overrides-section
+
+* Fri Oct 26 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.10.26-1.fmi
+- Check for shutdown requests more often
+
+* Thu Oct 11 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.11.1-1.fmi
 - Improved error messages for configuration file errors
 
 * Sat Sep 29 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.9.29-1.fmi
