@@ -26,6 +26,7 @@ class ParameterOptions
   ParameterList::size_type size() const { return itsParameters.size(); }
   void add(const Parameter& theParam);
   void add(const Parameter& theParam, const ParameterFunctions& theParamFunctions);
+  void expandParameter(const std::string& paramname);
 
  private:
   ParameterList itsParameters;
