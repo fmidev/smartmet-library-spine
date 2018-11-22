@@ -53,6 +53,8 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeriesGroup& ts_group)
       ostream_visitor << itsLonLatFormat;
 
       // get values of the same timestep from all locations and concatenate them into one string
+      std::cout << "HERE\n";
+      std::vector<TimeSeriesValueType> valueTypes;
       ss << "[";
       // iterate through locations
       for (size_t k = 0; k < n_locations; k++)
@@ -67,6 +69,8 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeriesGroup& ts_group)
         Value val = timeseries[i].value;
         // append value to the ostream
         boost::apply_visitor(ostream_visitor, val);
+        // Store value types
+        valueTypes.push_back(valueType(val));
       }
       // if no data added (timestep not included)
       if (ss.str().size() == 1)
@@ -80,9 +84,29 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeriesGroup& ts_group)
       while (str_value[str_value.size() - 2] == ' ')
         str_value.erase(str_value.size() - 2, 1);
 
+      Table::CellDataType dataType = Table::CellDataType::StringArray;
+      for (auto t : valueTypes)
+      {
+        if (t == TimeSeriesValueType::Double || t == TimeSeriesValueType::Int)
+        {
+          dataType = Table::CellDataType::NumericArray;
+          std::cout << "HERE NumericArray\n";
+
+          break;
+        }
+      }
+      std::cout << "HERE2: " << itsTableVisitor.getCurrentColumn() << ", "
+                << itsTableVisitor.getCurrentRow() << " -> " << str_value << std::endl;
+      itsTable.setCellDataType(
+          itsTableVisitor.getCurrentColumn(), itsTableVisitor.getCurrentRow(), dataType);
+      std::cout << "HERE3\n";
+
       Value dv = str_value;
       boost::apply_visitor(itsTableVisitor, dv);
+      std::cout << "HERE4\n";
     }
+
+    std::cout << "HERE5\n";
 
     return *this;
   }

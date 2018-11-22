@@ -42,6 +42,16 @@ struct None
 using Value =
     boost::variant<None, std::string, double, int, LonLat, boost::local_time::local_date_time>;
 
+enum class TimeSeriesValueType
+{
+  None,
+  String,
+  Double,
+  Int,
+  LonLat,
+  DateTime
+};
+
 // time series variable for a point
 struct TimedValue
 {
@@ -75,6 +85,9 @@ using TimeSeriesVectorPtr = boost::shared_ptr<TimeSeriesVector>;
 
 template <>
 bool None::operator==(const None& other) const;
+
+TimeSeriesValueType valueType(const TimeSeries& ts);
+TimeSeriesValueType valueType(const Value& val);
 
 }  // namespace TimeSeries
 }  // namespace Spine

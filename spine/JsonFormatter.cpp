@@ -8,6 +8,7 @@
 #include "Convenience.h"
 #include "Exception.h"
 #include "Table.h"
+#include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/spirit/include/qi.hpp>
@@ -159,13 +160,29 @@ void format_recursively(std::ostream& theOutput,
 
           theOutput << ":";
 
-          const auto& value = theTable.get(i, j);
+          std::cout << "JsonFormatter: " << i << "," << j << std::endl;
+          auto value = theTable.get(i, j);
           if (value.empty())
             theOutput << miss;
           else if (value == "nan" || value == "NaN")  // nan is not allowed in JSON
             theOutput << "null";
           else if (looks_number(value))
             theOutput << value;
+          else if (theTable.getCellDataType(i, j) == Table::CellDataType::NumericArray)
+          {
+            std::cout << "CELL " << i << "," << j
+                      << " contains Table::CellDataType::NumericArray\n";
+            boost::replace_all(value, " ", ", ");
+            theOutput << value;
+          }
+          else if (theTable.getCellDataType(i, j) == Table::CellDataType::StringArray)
+          {
+            std::cout << "CELL " << i << "," << j << " contains Table::CellDataType::StringArray\n";
+            boost::replace_all(value, " ", "\", \"");
+            boost::replace_all(value, "[", "[\"");
+            boost::replace_all(value, "]", "\"]");
+            theOutput << value;
+          }
           else
             escape_json(theOutput, value);
         }

@@ -284,5 +284,20 @@ void Table::setMissingText(const std::string& missingText)
   itsMissingText = missingText;
 }
 
+void Table::setCellDataType(std::size_t theColumn, std::size_t theRow, Table::CellDataType theType)
+{
+  std::pair<std::size_t, std::size_t> key(theColumn, theRow);
+  itsCellDataType.insert(std::make_pair(key, theType));
+}
+
+Table::CellDataType Table::getCellDataType(std::size_t theColumn, std::size_t theRow) const
+{
+  std::pair<std::size_t, std::size_t> key(theColumn, theRow);
+  if (itsCellDataType.find(key) != itsCellDataType.end())
+    return itsCellDataType.at(key);
+
+  return Table::CellDataType::String;
+}
+
 }  // namespace Spine
 }  // namespace SmartMet

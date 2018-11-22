@@ -9,6 +9,7 @@
 #include <boost/utility.hpp>
 
 #include <list>
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -38,6 +39,16 @@ class Table : private boost::noncopyable
   void setMissingText(const std::string& missingText);
   const std::string& getMissingText() const;
 
+  enum class CellDataType
+  {
+    String,
+    Numeric,
+    StringArray,
+    NumericArray
+  };
+  void setCellDataType(std::size_t theColumn, std::size_t theRow, CellDataType theType);
+  CellDataType getCellDataType(std::size_t theColumn, std::size_t theRow) const;
+
  private:
   void build_array() const;
 
@@ -54,6 +65,7 @@ class Table : private boost::noncopyable
     }
   };
 
+  std::map<std::pair<std::size_t, std::size_t>, CellDataType> itsCellDataType;
   // array limits
   std::size_t itsMinI;
   std::size_t itsMaxI;

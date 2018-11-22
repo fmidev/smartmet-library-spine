@@ -22,6 +22,7 @@ namespace TimeSeries
 class TableFeeder
 {
  private:
+  Table& itsTable;
   const ValueFormatter& itsValueFormatter;
   const std::vector<int>& itsPrecisions;
   TableVisitor itsTableVisitor;
@@ -32,7 +33,8 @@ class TableFeeder
               const ValueFormatter& valueformatter,
               const std::vector<int>& precisions,
               unsigned int currentcolumn = 0)
-      : itsValueFormatter(valueformatter),
+      : itsTable(table),
+        itsValueFormatter(valueformatter),
         itsPrecisions(precisions),
         itsTableVisitor(table, valueformatter, precisions, currentcolumn, currentcolumn),
         itsLonLatFormat(LonLatFormat::LONLAT)
@@ -46,7 +48,8 @@ class TableFeeder
               boost::shared_ptr<Fmi::TimeFormatter> timeformatter,
               boost::optional<boost::local_time::time_zone_ptr> timezoneptr,
               unsigned int currentcolumn = 0)
-      : itsValueFormatter(valueformatter),
+      : itsTable(table),
+        itsValueFormatter(valueformatter),
         itsPrecisions(precisions),
         itsTableVisitor(table,
                         valueformatter,

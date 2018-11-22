@@ -8,6 +8,7 @@
 #include "AsciiFormatter.h"
 #include "DebugFormatter.h"
 #include "Exception.h"
+#include "HighChartsFormatter.h"
 #include "HtmlFormatter.h"
 #include "JsonFormatter.h"
 #include "PhpFormatter.h"
@@ -46,6 +47,8 @@ TableFormatter* create(const std::string& theName)
       return new PhpFormatter();
     if (theName == "html")
       return new HtmlFormatter();
+    if (theName == "highcharts")
+      return new HighChartsFormatter();
     if (theName == "debug")
       return new DebugFormatter();
 

@@ -101,6 +101,8 @@ std::string StatCalculator::getStringStatValue(const ParameterFunction& func) co
     else if (fid == FunctionId::Sum || fid == FunctionId::Integ)
     {
       std::stringstream ss;
+      std::cout << "HERE2\n";
+
       ss << "[";
       for (const TimedValue& tv : itsTimeSeries)
       {
@@ -109,6 +111,7 @@ std::string StatCalculator::getStringStatValue(const ParameterFunction& func) co
         ss << boost::get<std::string>(tv.value);
       }
       ss << "]";
+      std::cout << "HERE2.1: " << ss.str() << std::endl;
       return ss.str();
     }
     else if (fid == FunctionId::Median)
