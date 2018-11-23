@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.11.9
+Version: 18.11.23
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -66,6 +66,7 @@ FMI BrainStorm Spinal Cord Library
 %package -n %{SPECNAME}-devel
 Summary: SmartMet Spine development files
 Group: SmartMet/Development
+Requires: boost-devel
 Requires: dtl
 Requires: smartmet-library-macgyver-devel
 Requires: smartmet-library-gis-devel
@@ -99,6 +100,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Fri Nov 23 2018 Heikki Pernu <heikki.pernu@fmi.fi> - 18.11.23-1.fmi
+- Added boost-devel to devel package requirements due to needed headers
+
 * Fri Nov  9 2018 Anssi Reponen <anssi.reponen@fmi.fi> - 18.11.9-1.fmi
 - Support for data_source-field added (BRAINSTORM-1233)
 
