@@ -18,3 +18,6 @@ server/smartmetd
 server/test/results
 server/test/results_diff
 spserver/spserver-0.9.3/spserver/*.o
+/.settings/
+.cproject
+.project
