@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.11.23
+Version: 18.11.27
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -100,6 +100,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Nov 27 2018 Heikki Pernu <heinkki.pernu@fmi.fi> - 18.11.27-1.fmi
+- Set PluginTest.h directory list ordering to alphabetical
+
 * Fri Nov 23 2018 Heikki Pernu <heikki.pernu@fmi.fi> - 18.11.23-1.fmi
 - Added boost-devel to devel package requirements due to needed headers
 

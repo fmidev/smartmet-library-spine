@@ -203,6 +203,7 @@ std::list<fs::path> recursive_directory_contents(const fs::path& top, unsigned m
     std::for_each(fs::recursive_directory_iterator(top),
                   fs::recursive_directory_iterator(),
                   bind(&add_to_path_list, ::_1, &result, &top_parts, max_files));
+    result.sort();
     return result;
   }
   catch (...)
