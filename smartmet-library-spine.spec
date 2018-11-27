@@ -58,6 +58,12 @@ Requires: libconfig
 Requires: fmt >= 5.2.0
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
+#TestRequires: bzip2-devel
+#TestRequires: make
+#TestRequires: gcc-c++
+#TestRequires: jsoncpp-devel
+#TestRequires: smartmet-library-regression
+#TestRequires: zlib-devel
 
 Summary: BrainStorm common utilities
 %description
