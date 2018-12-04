@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.11.27
+Version: 18.12.4
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -14,8 +14,8 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 18.10.23
-BuildRequires: smartmet-library-macgyver-devel >= 18.9.29
+BuildRequires: smartmet-library-newbase-devel >= 18.12.4
+BuildRequires: smartmet-library-macgyver-devel >= 18.11.24
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -31,8 +31,8 @@ BuildRequires: fmt-devel >= 5.2.0
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 18.10.23
-Requires: smartmet-library-macgyver >= 18.9.29
+Requires: smartmet-library-newbase >= 18.12.4
+Requires: smartmet-library-macgyver >= 18.11.24
 Requires: smartmet-timezones >= 18.11.8
 Requires: smartmet-library-gis >= 18.9.29
 Requires: mariadb-libs
@@ -106,6 +106,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Dec  4 2018 Pertti Kinnia <pertti.kinnia@fmi.fi> - 18.12.4-1.fmi
+- Added paging to Table (BS-1430)
+
 * Tue Nov 27 2018 Heikki Pernu <heinkki.pernu@fmi.fi> - 18.11.27-1.fmi
 - Set PluginTest.h directory list ordering to alphabetical
 

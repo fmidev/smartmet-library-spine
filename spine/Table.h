@@ -38,6 +38,8 @@ class Table : private boost::noncopyable
   void setMissingText(const std::string& missingText);
   const std::string& getMissingText() const;
 
+  void setPaging(std::size_t startRow, std::size_t maxResults);
+
  private:
   void build_array() const;
 
@@ -72,6 +74,10 @@ class Table : private boost::noncopyable
   mutable bool itsBuildingDone;
 
   const std::string itsEmptyValue;
+
+  // paging
+  std::size_t itsStartRow;	// 0 == first
+  std::size_t itsMaxResults;	// 0 == all
 };
 
 }  // namespace Spine

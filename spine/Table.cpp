@@ -30,7 +30,9 @@ Table::Table()
       itsList(),
       itsArray(),
       itsBuildingDone(false),
-      itsEmptyValue()
+      itsEmptyValue(),
+      itsStartRow(0),
+      itsMaxResults(0)
 {
 }
 
@@ -251,8 +253,14 @@ Table::Indexes Table::rows() const
     if (itsList.empty())
       return ret;
 
-    for (std::size_t j = itsMinJ; j <= itsMaxJ; j++)
-      ret.insert(j);
+    for (std::size_t j = itsMinJ, row = 0, nRows = 0; j <= itsMaxJ; j++, row++)
+      if (row >= itsStartRow)
+      {
+        ret.insert(j);
+
+        if ((itsMaxResults > 0) && (++nRows >= itsMaxResults))
+          break;
+      }
 
     return ret;
   }
@@ -282,6 +290,17 @@ const std::string& Table::getMissingText() const
 void Table::setMissingText(const std::string& missingText)
 {
   itsMissingText = missingText;
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Set paging
+ */
+// ----------------------------------------------------------------------
+void Table::setPaging(std::size_t startRow, std::size_t maxResults)
+{
+  itsStartRow = startRow;
+  itsMaxResults = maxResults;
 }
 
 }  // namespace Spine
