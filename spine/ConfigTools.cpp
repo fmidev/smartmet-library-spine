@@ -5,7 +5,6 @@ namespace SmartMet
 {
 namespace Spine
 {
-
 // ----------------------------------------------------------------------
 /*!
  * \brief Fix a path value setting
@@ -59,14 +58,14 @@ bool lookupConfigSetting(const libconfig::Config& theConfig,
 {
   std::string configvar = theVariable + ".configfile";
 
-  if(lookupHostSetting(theConfig, theValue, configvar))
+  if (lookupHostSetting(theConfig, theValue, configvar))
     return fixPathSetting(theConfig, theValue, configvar);
 
   // Then try finding variable.configpath and then host specific
   // configuration files from there
 
   configvar = theVariable + ".configpath";
-  
+
   std::string configpath;
   if (!lookupPathSetting(theConfig, configpath, configvar))
     return false;
@@ -81,6 +80,8 @@ bool lookupConfigSetting(const libconfig::Config& theConfig,
   //   name.host.conf
   //   name.conf
 
+  std::string failed_filenames;
+
   std::string hostname = boost::asio::ip::host_name();
   while (!hostname.empty())
   {
@@ -91,16 +92,28 @@ bool lookupConfigSetting(const libconfig::Config& theConfig,
       return true;
     }
 
+    if (!failed_filenames.empty())
+      failed_filenames += ", ";
+    failed_filenames += tmp;
+
     // Remove next .suffix from hostname
 
     auto lastpos = hostname.find_last_of('.');
     if (lastpos == std::string::npos)
-      return false;
+      break;
 
     hostname = hostname.substr(0, lastpos);
   }
 
-  return false;
+  // If configpath is used, there really should be a host specific
+  // configuration file. Hence we do not just return false, but
+  // throw instead in order to provide a good error message.
+
+  throw Exception(BCP, "Host specific configuration file not found")
+      .addParameter("component", theVariable)
+      .addParameter("configpath", configpath)
+      .addParameter("hostname", boost::asio::ip::host_name())
+      .addDetail("Tested filenames: " + failed_filenames);
 }
 
 }  // namespace Spine
