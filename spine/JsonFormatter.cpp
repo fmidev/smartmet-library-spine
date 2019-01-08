@@ -11,11 +11,14 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/spirit/include/qi.hpp>
+#include <boost/regex.hpp>
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
 #include <list>
 #include <set>
+
+namespace { boost::regex number_array_re(R"(\[(?>\s*(?>(?>[-+]?\d*\.?\d+(?>[eE][-+]?\d+)?)|null))*\s*\])"); }
 
 namespace SmartMet
 {
@@ -31,17 +34,24 @@ namespace
  */
 // ----------------------------------------------------------------------
 
-void escape_json(std::ostream& out, const std::string& s)
+void escape_json(std::ostream& out, const std::string& s, bool stringize = true)
 {
-  out << '"';
+  char prec = '\0';
+  if (stringize)
+    out << '"';
   for (auto c : s)
   {
     if (c == '"' || c == '\\' || ('\x00' <= c && c <= '\x1f'))
       out << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c);
+    else if ((!stringize) && (c == ' '))
+      out << ((prec == ' ') ? "null," : ",");
     else
       out << c;
+
+    prec = c;
   }
-  out << '"';
+  if (stringize)
+    out << '"';
 }
 
 // ----------------------------------------------------------------------
@@ -62,6 +72,24 @@ bool looks_number(const std::string& theValue)
         return true;
     }
     return false;
+  }
+  catch (...)
+  {
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Test if string looks like an array of space separated numbers
+ */
+// ----------------------------------------------------------------------
+
+bool looks_number_array(const std::string& theValue)
+{
+  try
+  {
+    return boost::regex_match(theValue, number_array_re);
   }
   catch (...)
   {
@@ -167,7 +195,7 @@ void format_recursively(std::ostream& theOutput,
           else if (looks_number(value))
             theOutput << value;
           else
-            escape_json(theOutput, value);
+            escape_json(theOutput, value, !looks_number_array(value));
         }
         theOutput << "}";
       }
