@@ -48,6 +48,7 @@ class Table : private boost::noncopyable
   };
   void setCellDataType(std::size_t theColumn, std::size_t theRow, CellDataType theType);
   CellDataType getCellDataType(std::size_t theColumn, std::size_t theRow) const;
+  void setPaging(std::size_t startRow, std::size_t maxResults);
 
  private:
   void build_array() const;
@@ -84,6 +85,10 @@ class Table : private boost::noncopyable
   mutable bool itsBuildingDone;
 
   const std::string itsEmptyValue;
+
+  // paging
+  std::size_t itsStartRow;	// 0 == first
+  std::size_t itsMaxResults;	// 0 == all
 };
 
 }  // namespace Spine

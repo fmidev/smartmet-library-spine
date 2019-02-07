@@ -441,7 +441,18 @@ void Exception::printError() const
   if (!stackTraceDisabled())
     std::cerr << getStackTrace() << std::flush;
   else
+  {
     std::cerr << Spine::log_time_str() << " Error: " << what() << std::endl;
+
+    // Print parameters for top level exception, if there are any. Usually
+    // plugins set the URI to the top level exception.
+    
+    if (!parameterVector.empty())
+    {
+      for(const auto & param_value : parameterVector)
+        std::cerr << "   - " << param_value.first << " = " << param_value.second << std::endl;
+    }
+  }
 }
 
 }  // namespace Spine

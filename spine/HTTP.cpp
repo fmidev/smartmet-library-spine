@@ -93,6 +93,8 @@ const std::string service_unavailable = "Service Unavailable";
 const std::string length_required = "Length Required";
 const std::string request_entity_too_large = "Request Entity Too Large";
 const std::string request_timeout = "Request Timeout";
+const std::string high_load = "High Load in Backend Server";
+const std::string shutdown = "Shutdown in progress";
 
 std::string statusCodeToString(Status theStatus)
 {
@@ -140,6 +142,10 @@ std::string statusCodeToString(Status theStatus)
         return request_timeout;
       case Status::not_a_status:
         return internal_server_error;
+      case Status::high_load:
+        return high_load;
+      case Status::shutdown:
+        return shutdown;
 #ifndef UNREACHABLE
       default:
         return internal_server_error;
@@ -261,6 +267,18 @@ const std::string request_timeout =
     "<body><h1>408 Request Timeout</h1></body>"
     "</html>";
 
+const std::string high_load =
+    "<html>"
+    "<head><title>High Load</title></head>"
+    "<body><h1>1234 High Load</h1></body>"
+    "</html>";
+
+const std::string shutdown =
+    "<html>"
+    "<head><title>Shutdown In Progress</title></head>"
+    "<body><h1>3210 Shutdown In Progress</h1></body>"
+    "</html>";
+
 std::string getStockReply(Status theStatus)
 {
   try
@@ -307,6 +325,10 @@ std::string getStockReply(Status theStatus)
         return request_timeout;
       case Status::not_a_status:
         return internal_server_error;
+      case Status::high_load:
+        return high_load;
+      case Status::shutdown:
+        return shutdown;
 #ifndef UNREACHABLE
       default:
         return internal_server_error;
@@ -322,102 +344,53 @@ std::string getStockReply(Status theStatus)
 
 Status stringToStatusCode(const std::string& theCode)
 {
-  try
-  {
-    Status returnStatus;
+  if (theCode == "200")
+    return Status::ok;
+  if (theCode == "201")
+    return Status::created;
+  if (theCode == "202")
+    return Status::accepted;
+  if (theCode == "204")
+    return Status::no_content;
+  if (theCode == "300")
+    return Status::multiple_choices;
+  if (theCode == "301")
+    return Status::moved_permanently;
+  if (theCode == "302")
+    return Status::moved_temporarily;
+  if (theCode == "304")
+    return Status::not_modified;
+  if (theCode == "400")
+    return Status::bad_request;
+  if (theCode == "401")
+    return Status::unauthorized;
+  if (theCode == "403")
+    return Status::forbidden;
+  if (theCode == "404")
+    return Status::not_found;
+  if (theCode == "404")
+    return Status::not_found;
+  if (theCode == "404")
+    return Status::not_found;
+  if (theCode == "408")
+    return Status::request_timeout;
+  if (theCode == "411")
+    return Status::length_required;
+  if (theCode == "413")
+    return Status::request_entity_too_large;
+  if (theCode == "500")
+    return Status::internal_server_error;
+  if (theCode == "502")
+    return Status::bad_gateway;
+  if (theCode == "503")
+    return Status::service_unavailable;
+  if (theCode == "1234")
+    return Status::high_load;
+  if (theCode == "3210")
+    return Status::shutdown;
 
-    if (theCode == "200")
-    {
-      returnStatus = Status::ok;
-    }
-    else if (theCode == "201")
-    {
-      returnStatus = Status::created;
-    }
-    else if (theCode == "202")
-    {
-      returnStatus = Status::accepted;
-    }
-    else if (theCode == "204")
-    {
-      returnStatus = Status::no_content;
-    }
-    else if (theCode == "300")
-    {
-      returnStatus = Status::multiple_choices;
-    }
-    else if (theCode == "301")
-    {
-      returnStatus = Status::moved_permanently;
-    }
-    else if (theCode == "302")
-    {
-      returnStatus = Status::moved_temporarily;
-    }
-    else if (theCode == "304")
-    {
-      returnStatus = Status::not_modified;
-    }
-    else if (theCode == "400")
-    {
-      returnStatus = Status::bad_request;
-    }
-    else if (theCode == "401")
-    {
-      returnStatus = Status::unauthorized;
-    }
-    else if (theCode == "403")
-    {
-      returnStatus = Status::forbidden;
-    }
-    else if (theCode == "404")
-    {
-      returnStatus = Status::not_found;
-    }
-    else if (theCode == "404")
-    {
-      returnStatus = Status::not_found;
-    }
-    else if (theCode == "404")
-    {
-      returnStatus = Status::not_found;
-    }
-    else if (theCode == "408")
-    {
-      returnStatus = Status::request_timeout;
-    }
-    else if (theCode == "411")
-    {
-      returnStatus = Status::length_required;
-    }
-    else if (theCode == "413")
-    {
-      returnStatus = Status::request_entity_too_large;
-    }
-    else if (theCode == "500")
-    {
-      returnStatus = Status::internal_server_error;
-    }
-    else if (theCode == "502")
-    {
-      returnStatus = Status::bad_gateway;
-    }
-    else if (theCode == "503")
-    {
-      returnStatus = Status::service_unavailable;
-    }
-    else
-    {
-      // Unrecognized throws
-      throw Spine::Exception(BCP, "Attempting to set Unsupported status code: " + theCode);
-    }
-
-    return returnStatus;
-  }
-  catch (...)
-  {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
-  }
+  // Unrecognized throws
+  throw Spine::Exception(BCP, "Attempting to set Unsupported status code: " + theCode);
 }
 
 Message::Message(const HeaderMap& headerMap, const std::string& version, bool isChunked)
@@ -594,10 +567,13 @@ std::string Request::toString() const
       switch (itsMethod)
       {
         case RequestMethod::GET:
+        {
           if (!itsContent.empty())
             // Body is not meaningfull in GET-Requests
             throw Spine::Exception(
                 BCP, "HTTP::Request: Attempting to serialize GET Request with body content");
+        }
+        // fall through
         case RequestMethod::POST:
           body = itsContent;
       }

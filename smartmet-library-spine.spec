@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 18.10.18
-Release: 1%{?dist}.fmi
+Version: 18.12.13
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -14,8 +14,8 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 18.9.29
-BuildRequires: smartmet-library-macgyver-devel >= 18.9.29
+BuildRequires: smartmet-library-newbase-devel >= 18.12.4
+BuildRequires: smartmet-library-macgyver-devel >= 18.11.24
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -31,9 +31,9 @@ BuildRequires: fmt-devel >= 5.2.0
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 18.9.29
-Requires: smartmet-library-macgyver >= 18.9.29
-Requires: smartmet-timezones >= 18.9.10
+Requires: smartmet-library-newbase >= 18.12.4
+Requires: smartmet-library-macgyver >= 18.11.24
+Requires: smartmet-timezones >= 18.11.8
 Requires: smartmet-library-gis >= 18.9.29
 Requires: mariadb-libs
 Requires: boost-filesystem
@@ -58,6 +58,12 @@ Requires: libconfig
 Requires: fmt >= 5.2.0
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
+#TestRequires: bzip2-devel
+#TestRequires: make
+#TestRequires: gcc-c++
+#TestRequires: jsoncpp-devel
+#TestRequires: smartmet-library-regression
+#TestRequires: zlib-devel
 
 Summary: BrainStorm common utilities
 %description
@@ -66,6 +72,7 @@ FMI BrainStorm Spinal Cord Library
 %package -n %{SPECNAME}-devel
 Summary: SmartMet Spine development files
 Group: SmartMet/Development
+Requires: boost-devel
 Requires: dtl
 Requires: smartmet-library-macgyver-devel
 Requires: smartmet-library-gis-devel
@@ -99,6 +106,39 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu Dec 13 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.12.13-2.fmi
+- Improved error reporting if host specific configpath file is not found
+
+* Thu Dec 13 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.12.13-1.fmi
+- Improved error reporting when stack traces have been disabled
+
+* Tue Dec  4 2018 Pertti Kinnia <pertti.kinnia@fmi.fi> - 18.12.4-1.fmi
+- Added paging to Table (BS-1430)
+
+* Tue Nov 27 2018 Heikki Pernu <heinkki.pernu@fmi.fi> - 18.11.27-1.fmi
+- Set PluginTest.h directory list ordering to alphabetical
+
+* Fri Nov 23 2018 Heikki Pernu <heikki.pernu@fmi.fi> - 18.11.23-1.fmi
+- Added boost-devel to devel package requirements due to needed headers
+
+* Fri Nov  9 2018 Anssi Reponen <anssi.reponen@fmi.fi> - 18.11.9-1.fmi
+- Support for data_source-field added (BRAINSTORM-1233)
+
+* Mon Nov  5 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.11.5-1.fmi
+- Added tracking of the number active requests to backends to enable faster load balancing
+
+* Sun Nov  4 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.11.4-1.fmi
+- Added handling of shutdown (3210) and high_load (4321) response codes
+
+* Fri Oct 26 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.10.26-3.fmi
+- Use portable BOOST_CURRENT_FUNCTION instead of gcc METHOD_NAME
+
+* Fri Oct 26 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.10.26-2.fmi
+- configfile settings can now be overridden in the overrides-section
+
+* Fri Oct 26 2018 Mika Heiskanen <mika.heiskanen@fmi.fi> - 18.10.26-1.fmi
+- Check for shutdown requests more often
+
 * Thu Oct 18 2018 Anssi Reponen <anssi.reponen@fmi.fi> - 18.10.18-1.fmi
 - Support for data_source-field added (BRAINSTORM-1233)
 

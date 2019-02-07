@@ -2,6 +2,7 @@
 
 #include "Exception.h"
 #include <boost/shared_ptr.hpp>
+#include <boost/current_function.hpp>
 #include <macgyver/TypeName.h>
 #include <libconfig.h++>
 #include <limits>
