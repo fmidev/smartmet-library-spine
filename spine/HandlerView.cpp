@@ -77,13 +77,13 @@ bool HandlerView::handle(Reactor& theReactor,
     if (itsIsCatchNoMatch || !isLogging)
     {
       // Frontends do not log finished requests
-      auto key = theReactor.insertActiveRequest(theRequest.getURI());
+      auto key = theReactor.insertActiveRequest(theRequest);
       itsHandler(theReactor, theRequest, theResponse);
       theReactor.removeActiveRequest(key);
     }
     else
     {
-      auto key = theReactor.insertActiveRequest(theRequest.getURI());
+      auto key = theReactor.insertActiveRequest(theRequest);
       auto before = boost::posix_time::microsec_clock::universal_time();
       itsHandler(theReactor, theRequest, theResponse);
       auto accessDuration = boost::posix_time::microsec_clock::universal_time() - before;

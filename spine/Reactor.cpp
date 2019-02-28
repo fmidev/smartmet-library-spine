@@ -437,9 +437,9 @@ ActiveRequests::Requests Reactor::getActiveRequests() const
  */
 // ----------------------------------------------------------------------
 
-std::size_t Reactor::insertActiveRequest(const std::string& theURI)
+std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
 {
-  return itsActiveRequests.insert(theURI);
+  return itsActiveRequests.insert(theRequest);
 }
 
 // ----------------------------------------------------------------------

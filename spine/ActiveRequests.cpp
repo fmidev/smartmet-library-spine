@@ -10,11 +10,11 @@ namespace Spine
  */
 // ----------------------------------------------------------------------
 
-std::size_t ActiveRequests::insert(const std::string& theURI)
+std::size_t ActiveRequests::insert(const HTTP::Request& theRequest)
 {
   WriteLock lock(itsMutex);
   auto key = ++itsCounter;
-  Info info{theURI, boost::posix_time::microsec_clock::universal_time()};
+  Info info{theRequest, boost::posix_time::microsec_clock::universal_time()};
   itsRequests.insert(Requests::value_type{key, info});
   return key;
 }

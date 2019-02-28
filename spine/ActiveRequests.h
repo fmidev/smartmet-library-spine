@@ -1,5 +1,6 @@
 #pragma once
 
+#include "HTTP.h"
 #include "Thread.h"
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <boost/noncopyable.hpp>
@@ -27,14 +28,14 @@ class ActiveRequests : private boost::noncopyable
   // Storage for the request information
   struct Info
   {
-    std::string uri;
+    HTTP::Request request;
     boost::posix_time::ptime time;
   };
 
   using Requests = std::map<std::size_t, Info>;
 
  public:
-  std::size_t insert(const std::string& theURI);
+  std::size_t insert(const HTTP::Request& theRequest);
   void remove(std::size_t theKey);
   Requests requests() const;
   std::size_t size() const;
