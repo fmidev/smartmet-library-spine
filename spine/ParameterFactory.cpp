@@ -373,7 +373,7 @@ string parse_parameter_name(const string& param_name)
         "Precipitation1h",          // "Precipitation"
         "Precipitation1h",          // "Precipitation1h"
         "Precipitation1h",          // "rr1h"
-        "Precipitation1h",          // "radarprecipitation1h"
+        "RadarPrecipitation1h",     // "radarprecipitation1h"
         "PrecipitationType",        // "PrecipitationType"
         "PrecipitationType",        // "rtype"
         "PrecipitationForm",        // "PrecipitationForm"

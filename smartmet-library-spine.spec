@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.2.28
+Version: 19.3.14
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -14,7 +14,7 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 18.12.4
+BuildRequires: smartmet-library-newbase-devel >= 19.3.14
 BuildRequires: smartmet-library-macgyver-devel >= 18.11.24
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
@@ -24,17 +24,17 @@ BuildRequires: gdal-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 18.9.29
+BuildRequires: smartmet-library-gis-devel >= 19.3.5
 BuildRequires: fmt-devel >= 5.2.0
 
 %if 0%{rhel} >= 7
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 18.12.4
+Requires: smartmet-library-newbase >= 19.3.14
 Requires: smartmet-library-macgyver >= 18.11.24
-Requires: smartmet-timezones >= 18.11.8
-Requires: smartmet-library-gis >= 18.9.29
+Requires: smartmet-timezones >= 19.1.25
+Requires: smartmet-library-gis >= 19.3.5
 Requires: mariadb-libs
 Requires: boost-filesystem
 Requires: boost-iostreams
@@ -106,6 +106,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu Mar 14 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.3.14-1.fmi
+- Fixed RadarPrecipitation1h name conversion
+
 * Thu Feb 28 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.2.28-1.fmi
 - ActiveRequests object now stores the entire request for improved reports
 
