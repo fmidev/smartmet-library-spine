@@ -268,5 +268,15 @@ LogListType HandlerView::getLoggedRequests()
   return itsRequestLog;
 }
 
+bool HandlerView::usesPlugin(const SmartMetPlugin* plugin) const
+{
+  return plugin == itsPlugin;
+}
+
+const std::string&  HandlerView::getResource() const
+{
+  return itsResource;
+}
+
 }  // namespace Spine
 }  // namespace SmartMet

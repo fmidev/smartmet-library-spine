@@ -65,6 +65,12 @@ class HandlerView : private boost::noncopyable
   // Get logged requests
   LogListType getLoggedRequests();
 
+  // Check whether handler uses specified plugin
+  bool usesPlugin(const SmartMetPlugin* plugin) const;
+
+  // Get URI
+  const std::string& getResource() const;
+
  private:
   // The actual handler functor
   ContentHandler itsHandler;
