@@ -110,6 +110,7 @@ class Reactor
                          const std::string& theDir,
                          ContentHandler theCallBackFunction);
   bool setNoMatchHandler(ContentHandler theHandler);
+  std::size_t removeContentHandlers(SmartMetPlugin* thePlugin);
 
   // Plugins
 

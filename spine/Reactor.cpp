@@ -315,6 +315,31 @@ bool Reactor::setNoMatchHandler(ContentHandler theHandler)
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Removes all handlers that use specified plugin.
+ */
+// ----------------------------------------------------------------------
+std::size_t Reactor::removeContentHandlers(SmartMetPlugin* thePlugin)
+{
+  std::size_t count = 0;
+  WriteLock lock(itsContentMutex);
+  for (auto it = itsHandlers.begin(); it != itsHandlers.end();) {
+    auto curr = it++;
+    if (curr->second and curr->second->usesPlugin(thePlugin)) {
+      const std::string uri = curr->second->getResource();
+      const std::string name = curr->second->getPluginName();
+      itsHandlers.erase(curr);
+      count++;
+      WriteLock lock2(itsLoggingMutex);
+      std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Removed URI "
+		<< uri << " handled by plugin " << name << ANSI_BOLD_OFF
+		<< ANSI_FG_DEFAULT << std::endl;
+    }
+  }
+  return count;
+}
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Obtain the Handler view corresponding to the given request
  */
 // ----------------------------------------------------------------------
