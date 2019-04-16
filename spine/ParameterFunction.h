@@ -55,8 +55,8 @@ struct ParameterFunction
   }
   ParameterFunction(FunctionId theFunctionId,
                     FunctionType theFunctionType,
-                    double theLowerLimit,
-                    double theUpperLimit)
+                    double theLowerLimit = std::numeric_limits<double>::min(),
+                    double theUpperLimit = std::numeric_limits<double>::max())
       : itsFunctionId(theFunctionId),
         itsFunctionType(theFunctionType),
         itsLowerLimit(theLowerLimit),
@@ -73,6 +73,11 @@ struct ParameterFunction
   FunctionType type() const { return itsFunctionType; }
   double lowerLimit() const { return itsLowerLimit; }
   double upperLimit() const { return itsUpperLimit; }
+  bool lowerOrUpperLimitGiven() const
+  {
+    return itsLowerLimit != std::numeric_limits<double>::min() ||
+           itsUpperLimit != std::numeric_limits<double>::max();
+  }
   unsigned int getAggregationIntervalBehind() const { return itsAggregationIntervalBehind; }
   unsigned int getAggregationIntervalAhead() const { return itsAggregationIntervalAhead; }
   void setAggregationIntervalBehind(unsigned int theIntervalBehind)
@@ -85,6 +90,11 @@ struct ParameterFunction
   }
   bool isNanFunction() const { return itsNaNFunction; }
   std::string hash() const;
+  void setLimits(double theLowerLimit, double theUpperLimit)
+  {
+    itsLowerLimit = theLowerLimit;
+    itsUpperLimit = theUpperLimit;
+  }
 
   friend std::ostream& operator<<(std::ostream& out, const ParameterFunction& paramfunc);
 

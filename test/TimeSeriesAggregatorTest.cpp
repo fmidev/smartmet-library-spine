@@ -232,6 +232,29 @@ std::string to_string(const T& result_set)
   return ret_ss.str();
 }
 
+ts::TimeSeriesPtr execute_time_aggregation_function_with_range(SmartMet::Spine::FunctionId fid,
+                                                               unsigned int aggIntervalBehind,
+                                                               unsigned int aggIntervalAhead,
+                                                               double lowerLimit,
+                                                               double upperLimit,
+                                                               bool add_missing_value = false)
+{
+  using namespace SmartMet::Spine;
+
+  ts::TimeSeries timeseries(generate_timeseries(add_missing_value));
+
+  ParameterFunction pf(fid, FunctionType::TimeFunction, lowerLimit, upperLimit);
+  pf.setAggregationIntervalBehind(aggIntervalBehind);
+  pf.setAggregationIntervalAhead(aggIntervalAhead);
+  ParameterFunctions pfs;
+  pfs.innerFunction = pf;
+  ts::Value missing_value("nan");
+
+  ts::TimeSeriesPtr aggregated_timeseries = ts::aggregate(timeseries, pfs);
+
+  return aggregated_timeseries;
+}
+
 ts::TimeSeriesPtr execute_time_aggregation_function(SmartMet::Spine::FunctionId fid,
                                                     unsigned int aggIntervalBehind,
                                                     unsigned int aggIntervalAhead,
@@ -241,10 +264,12 @@ ts::TimeSeriesPtr execute_time_aggregation_function(SmartMet::Spine::FunctionId 
 
   ts::TimeSeries timeseries(generate_timeseries(add_missing_value));
 
-  // lower limit (3) and upper limit (4) are used by Percentage and Count functions
-  ParameterFunction pf(fid, FunctionType::TimeFunction, 3.0, 4.0);
+  ParameterFunction pf(fid, FunctionType::TimeFunction);
   pf.setAggregationIntervalBehind(aggIntervalBehind);
   pf.setAggregationIntervalAhead(aggIntervalAhead);
+  // lower limit (3) and upper limit (4) are used by Percentage and Count functions
+  if (fid == SmartMet::Spine::FunctionId::Percentage || fid == SmartMet::Spine::FunctionId::Count)
+    pf.setLimits(3.0, 4.0);
   ParameterFunctions pfs;
   pfs.innerFunction = pf;
   ts::Value missing_value("nan");
@@ -260,8 +285,29 @@ ts::TimeSeriesGroupPtr execute_area_aggregation_function(SmartMet::Spine::Functi
 
   ts::TimeSeriesGroup timeseries_grp(generate_timeseries_group());
 
+  ParameterFunction pf(fid, FunctionType::AreaFunction);
   // lower limit (14) and upper limit (22) are used by Percentage and Count functions
-  ParameterFunction pf(fid, FunctionType::AreaFunction, 14.0, 22.0);
+  if (fid == SmartMet::Spine::FunctionId::Percentage || fid == SmartMet::Spine::FunctionId::Count)
+    pf.setLimits(14.0, 22.0);
+
+  ParameterFunctions pfs;
+  pfs.innerFunction = pf;
+  ts::Value missing_value("nan");
+
+  ts::TimeSeriesGroupPtr aggregated_timeseries_grp = ts::aggregate(timeseries_grp, pfs);
+
+  return aggregated_timeseries_grp;
+}
+
+ts::TimeSeriesGroupPtr execute_area_aggregation_function_with_range(SmartMet::Spine::FunctionId fid,
+                                                                    double lowerLimit,
+                                                                    double upperLimit)
+{
+  using namespace SmartMet::Spine;
+
+  ts::TimeSeriesGroup timeseries_grp(generate_timeseries_group());
+
+  ParameterFunction pf(fid, FunctionType::AreaFunction, lowerLimit, upperLimit);
   ParameterFunctions pfs;
   pfs.innerFunction = pf;
   ts::Value missing_value("nan");
@@ -277,8 +323,27 @@ ts::TimeSeriesGroupPtr execute_area_aggregation_function_nans(SmartMet::Spine::F
 
   ts::TimeSeriesGroup timeseries_grp(generate_timeseries_group_nans());
 
+  ParameterFunction pf(fid, FunctionType::AreaFunction);
   // lower limit (14) and upper limit (22) are used by Percentage and Count functions
-  ParameterFunction pf(fid, FunctionType::AreaFunction, 14.0, 22.0);
+  if (fid == SmartMet::Spine::FunctionId::Percentage || fid == SmartMet::Spine::FunctionId::Count)
+    pf.setLimits(14.0, 22.0);
+  ParameterFunctions pfs;
+  pfs.innerFunction = pf;
+  ts::Value missing_value("nan");
+
+  ts::TimeSeriesGroupPtr aggregated_timeseries_grp = ts::aggregate(timeseries_grp, pfs);
+
+  return aggregated_timeseries_grp;
+}
+
+ts::TimeSeriesGroupPtr execute_area_aggregation_function_with_range_nans(
+    SmartMet::Spine::FunctionId fid, double lowerLimit, double upperLimit)
+{
+  using namespace SmartMet::Spine;
+
+  ts::TimeSeriesGroup timeseries_grp(generate_timeseries_group_nans());
+
+  ParameterFunction pf(fid, FunctionType::AreaFunction, lowerLimit, upperLimit);
   ParameterFunctions pfs;
   pfs.innerFunction = pf;
   ts::Value missing_value("nan");
@@ -297,17 +362,25 @@ ts::TimeSeriesGroupPtr execute_time_area_aggregation_function(SmartMet::Spine::F
 
   ts::TimeSeriesGroup timeseries_grp(generate_timeseries_group());
 
-  // lower limit (3) and upper limit (4) are used by Percentage and Count functions
-  ParameterFunction time_pf(time_fid, FunctionType::TimeFunction, 3.0, 4.0);
+  ParameterFunction time_pf(time_fid, FunctionType::TimeFunction);
   time_pf.setAggregationIntervalBehind(aggIntervalBehind);
   time_pf.setAggregationIntervalAhead(aggIntervalAhead);
+  // lower limit (3) and upper limit (4) are used by Percentage and Count functions
+  if (time_fid == SmartMet::Spine::FunctionId::Percentage ||
+      time_fid == SmartMet::Spine::FunctionId::Count)
+    time_pf.setLimits(3.0, 4.0);
+
   ParameterFunctions time_pfs;
   time_pfs.innerFunction = time_pf;
   ts::Value missing_value("nan");
 
   ts::TimeSeriesGroupPtr time_aggregated_grp = ts::aggregate(timeseries_grp, time_pfs);
 
-  ParameterFunction area_pf(area_fid, FunctionType::AreaFunction, 14.0, 22.0);
+  ParameterFunction area_pf(area_fid, FunctionType::AreaFunction);
+  // lower limit (14) and upper limit (22) are used by Percentage and Count functions
+  if (area_fid == SmartMet::Spine::FunctionId::Percentage ||
+      area_fid == SmartMet::Spine::FunctionId::Count)
+    area_pf.setLimits(14.0, 22.0);
   ParameterFunctions area_pfs;
   area_pfs.innerFunction = area_pf;
 
@@ -326,14 +399,23 @@ ts::TimeSeriesGroupPtr execute_area_time_aggregation_function(SmartMet::Spine::F
   ts::TimeSeriesGroup timeseries_grp(generate_timeseries_group());
   ts::Value missing_value("nan");
 
-  ParameterFunction area_pf(area_fid, FunctionType::AreaFunction, 14.0, 22.0);
+  ParameterFunction area_pf(area_fid, FunctionType::AreaFunction);
+  // lower limit (14) and upper limit (22) are used by Percentage and Count functions
+  if (area_fid == SmartMet::Spine::FunctionId::Percentage ||
+      area_fid == SmartMet::Spine::FunctionId::Count)
+    area_pf.setLimits(14.0, 22.0);
+
   ParameterFunctions area_pfs;
   area_pfs.innerFunction = area_pf;
 
   ts::TimeSeriesGroupPtr area_aggregated_grp = ts::aggregate(timeseries_grp, area_pfs);
 
   // lower limit (3) and upper limit (4) are used by Percentage and Count functions
-  ParameterFunction time_pf(time_fid, FunctionType::TimeFunction, 3.0, 4.0);
+  ParameterFunction time_pf(time_fid, FunctionType::TimeFunction);
+  if (time_fid == SmartMet::Spine::FunctionId::Percentage ||
+      time_fid == SmartMet::Spine::FunctionId::Count)
+    time_pf.setLimits(3.0, 4.0);
+
   time_pf.setAggregationIntervalBehind(aggIntervalBehind);
   time_pf.setAggregationIntervalAhead(aggIntervalAhead);
   ParameterFunctions time_pfs;
@@ -363,6 +445,26 @@ void min_t()
   TEST_PASSED();
 }
 
+void min_t_with_range()
+{
+  // Include 2,3
+  std::string test_result = to_string(*execute_time_aggregation_function_with_range(
+      SmartMet::Spine::FunctionId::Minimum, 120, 0, 2.0, 3.0));
+
+  std::string expected_result =
+      "2015-Sep-03 00:00:00 EET -> nan\n"
+      "2015-Sep-03 01:00:00 EET -> 2\n"
+      "2015-Sep-03 02:00:00 EET -> 2\n"
+      "2015-Sep-03 03:00:00 EET -> 2\n"
+      "2015-Sep-03 04:00:00 EET -> 3\n";
+
+  if (test_result != expected_result)
+    TEST_FAILED("Minimum-function with range test failed. Result should be:\n" + expected_result +
+                "\n not \n" + test_result);
+
+  TEST_PASSED();
+}
+
 void max_t()
 {
   std::string test_result =
@@ -378,6 +480,26 @@ void max_t()
   if (expected_result != test_result)
     TEST_FAILED("Max-function test failed. Result should be:\n" + expected_result + "\n not \n" +
                 test_result);
+
+  TEST_PASSED();
+}
+
+void max_t_with_range()
+{
+  // Incluee 3,4
+  std::string test_result = to_string(*execute_time_aggregation_function_with_range(
+      SmartMet::Spine::FunctionId::Maximum, 0, 120, 3, 4));
+
+  std::string expected_result =
+      "2015-Sep-03 00:00:00 EET -> 3\n"
+      "2015-Sep-03 01:00:00 EET -> 4\n"
+      "2015-Sep-03 02:00:00 EET -> 4\n"
+      "2015-Sep-03 03:00:00 EET -> 4\n"
+      "2015-Sep-03 04:00:00 EET -> nan\n";
+
+  if (expected_result != test_result)
+    TEST_FAILED("Max-function with range test failed. Result should be:\n" + expected_result +
+                "\n not \n" + test_result);
 
   TEST_PASSED();
 }
@@ -401,6 +523,26 @@ void mean_t()
   TEST_PASSED();
 }
 
+void mean_t_with_range()
+{
+  // Include 2,3,4
+  std::string test_result = to_string(*execute_time_aggregation_function_with_range(
+      SmartMet::Spine::FunctionId::Mean, 120, 0, 2.0, 4.0));
+
+  std::string expected_result =
+      "2015-Sep-03 00:00:00 EET -> nan\n"
+      "2015-Sep-03 01:00:00 EET -> 2\n"
+      "2015-Sep-03 02:00:00 EET -> 2.5\n"
+      "2015-Sep-03 03:00:00 EET -> 3\n"
+      "2015-Sep-03 04:00:00 EET -> 3.5\n";
+
+  if (expected_result != test_result)
+    TEST_FAILED("Mean-function with range test failed. Result should be:\n" + expected_result +
+                "\n not \n" + test_result);
+
+  TEST_PASSED();
+}
+
 void median_t()
 {
   std::string test_result =
@@ -416,6 +558,26 @@ void median_t()
   if (expected_result != test_result)
     TEST_FAILED("Median-function test failed. Result should be:\n" + expected_result + "\n not \n" +
                 test_result);
+
+  TEST_PASSED();
+}
+
+void median_t_with_range()
+{
+  // Include 2,3,4
+  std::string test_result = to_string(*execute_time_aggregation_function_with_range(
+      SmartMet::Spine::FunctionId::Median, 240, 0, 2, 4));
+
+  std::string expected_result =
+      "2015-Sep-03 00:00:00 EET -> nan\n"
+      "2015-Sep-03 01:00:00 EET -> 2\n"
+      "2015-Sep-03 02:00:00 EET -> 2.5\n"
+      "2015-Sep-03 03:00:00 EET -> 3\n"
+      "2015-Sep-03 04:00:00 EET -> 3\n";
+
+  if (expected_result != test_result)
+    TEST_FAILED("Median-function with range test failed. Result should be:\n" + expected_result +
+                "\n not \n" + test_result);
 
   TEST_PASSED();
 }
@@ -611,6 +773,26 @@ void max_a_nan()
   TEST_PASSED();
 }
 
+void max_a_with_range_nan()
+{
+  // Include values between 5.0 and 15.0
+  std::string test_result = to_string(*execute_area_aggregation_function_with_range_nans(
+      SmartMet::Spine::FunctionId::Maximum, 4.0, 22.0));
+
+  std::string expected_result =
+      "2015-Sep-03 00:00:00 EET -> 5\n"
+      "2015-Sep-03 01:00:00 EET -> 10\n"
+      "2015-Sep-03 02:00:00 EET -> nan\n"
+      "2015-Sep-03 03:00:00 EET -> nan\n"
+      "2015-Sep-03 04:00:00 EET -> 22\n";
+
+  if (test_result != expected_result)
+    TEST_FAILED("Maximum-function with range test for area failed. Result should be:\n" +
+                expected_result + "\n not \n" + test_result);
+
+  TEST_PASSED();
+}
+
 void mean_a()
 {
   std::string test_result =
@@ -626,6 +808,26 @@ void mean_a()
   if (test_result != expected_result)
     TEST_FAILED("Mean-function test for area failed. Result should be:\n" + expected_result +
                 "\n not \n" + test_result);
+
+  TEST_PASSED();
+}
+
+void mean_a_with_range()
+{
+  // Inclue values between 3.0 and 15.0
+  std::string test_result = to_string(
+      *execute_area_aggregation_function_with_range(SmartMet::Spine::FunctionId::Mean, 3.0, 15.0));
+
+  std::string expected_result =
+      "2015-Sep-03 00:00:00 EET -> 4\n"
+      "2015-Sep-03 01:00:00 EET -> 8\n"
+      "2015-Sep-03 02:00:00 EET -> 13\n"
+      "2015-Sep-03 03:00:00 EET -> nan\n"
+      "2015-Sep-03 04:00:00 EET -> nan\n";
+
+  if (test_result != expected_result)
+    TEST_FAILED("Mean-function with_range test for area failed. Result should be:\n" +
+                expected_result + "\n not \n" + test_result);
 
   TEST_PASSED();
 }
@@ -863,6 +1065,13 @@ class tests : public tframe::tests
     TEST(min_max_at);
     // missing value in time series
     TEST(min_t_missing_value);
+    // tests functions with inclusive ranges
+    TEST(min_t_with_range);
+    TEST(max_t_with_range);
+    TEST(mean_t_with_range);
+    TEST(median_t_with_range);
+    TEST(mean_a_with_range);
+    TEST(max_a_with_range_nan);
   }
 };
 
