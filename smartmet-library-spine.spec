@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.4.12
+Version: 19.4.16
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -106,6 +106,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Apr 16 2019 Anssi Reponen <anssi.reponen@fmi.fi> - 19.4.16-1.fmi
+- Filter data in aggregation functions (BRAINSTORM-1546)
+
 * Fri Apr 12 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.4.12-1.fmi
 - Added generic HTTP authentication class
 

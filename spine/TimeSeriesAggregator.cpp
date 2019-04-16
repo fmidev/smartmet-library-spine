@@ -372,7 +372,28 @@ TimeSeries area_aggregate(const TimeSeriesGroup& ts_group, const ParameterFuncti
       // iterate through locations
       for (size_t k = 0; k < ts_group.size(); k++)
       {
-        statcalculator(ts_group[k].timeseries[i]);
+        const TimedValue& tv = ts_group[k].timeseries[i];
+        bool value_included = true;
+
+        if (func.lowerOrUpperLimitGiven() && func.id() != FunctionId::Percentage &&
+            func.id() != FunctionId::Count)
+        {
+          boost::optional<double> double_value;
+          if (boost::get<double>(&(tv.value)))
+          {
+            double_value = boost::get<double>(tv.value);
+          }
+          else if (boost::get<int>(&(tv.value)))
+          {
+            double_value = boost::get<int>(tv.value);
+          }
+
+          if (double_value &&
+              (*double_value < func.lowerLimit() || *double_value > func.upperLimit()))
+            value_included = false;
+        }
+        if (value_included)
+          statcalculator(tv);
       }
       // take timestamps from first location (they are same for all locations inside area)
       boost::local_time::local_date_time timestamp(ts_group[0].timeseries[i].time);
@@ -410,7 +431,27 @@ TimeSeriesPtr time_aggregate(const TimeSeries& ts, const ParameterFunction& func
       StatCalculator statcalculator;
       for (int k = agg_index_start; k <= agg_index_end; k++)
       {
-        statcalculator(ts[k]);
+        const TimedValue& tv = ts.at(k);
+        bool value_included = true;
+        if (func.lowerOrUpperLimitGiven() && func.id() != FunctionId::Percentage &&
+            func.id() != FunctionId::Count)
+        {
+          boost::optional<double> double_value;
+          if (boost::get<double>(&(tv.value)))
+          {
+            double_value = boost::get<double>(tv.value);
+          }
+          else if (boost::get<int>(&(tv.value)))
+          {
+            double_value = boost::get<int>(tv.value);
+          }
+
+          if (double_value &&
+              (*double_value < func.lowerLimit() || *double_value > func.upperLimit()))
+            value_included = false;
+        }
+        if (value_included)
+          statcalculator(tv);
       }
       ret->push_back(TimedValue(ts[i].time, statcalculator.getStatValue(func, true)));
     }
