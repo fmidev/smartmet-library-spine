@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.4.16
+Version: 19.4.23
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -14,8 +14,8 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 19.3.21
-BuildRequires: smartmet-library-macgyver-devel >= 18.11.24
+BuildRequires: smartmet-library-newbase-devel >= 19.4.23
+BuildRequires: smartmet-library-macgyver-devel >= 19.4.23
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -31,8 +31,8 @@ BuildRequires: fmt-devel >= 5.2.0
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 19.3.21
-Requires: smartmet-library-macgyver >= 18.11.24
+Requires: smartmet-library-newbase >= 19.4.23
+Requires: smartmet-library-macgyver >= 19.4.23
 Requires: smartmet-timezones >= 19.4.2
 Requires: smartmet-library-gis >= 19.3.14
 Requires: mariadb-libs
@@ -106,7 +106,7 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
-* Tue Apr 16 2019 Anssi Reponen <anssi.reponen@fmi.fi> - 19.4.16-1.fmi
+* Tue Apr 23 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.4.23-1.fmi
 - Filter data in aggregation functions (BRAINSTORM-1546)
 
 * Fri Apr 12 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.4.12-1.fmi
