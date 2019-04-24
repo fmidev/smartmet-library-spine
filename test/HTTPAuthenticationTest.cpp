@@ -20,7 +20,7 @@ namespace HTTPTest {
       AuthenticationExtTest() : HTTP::Authentication(true) {}
 
     protected:
-      virtual unsigned getAutheticationGroup(const HTTP::Request& request) const
+      unsigned getAuthenticationGroup(const HTTP::Request& request) const override
       {
 	if (request.getResource() == "/foo") {
 	  return 2;
@@ -39,7 +39,7 @@ namespace HTTPTest {
     HTTP::Authentication auth(true);
     auth.addUser("user", "password");
     HTTP::Response response;
-    if (auth.autheticateRequest(request, response)) {
+    if (auth.authenticateRequest(request, response)) {
       TEST_FAILED("Auth missing: authentication should not pass");
     } else if (response.getStatus() == 401) {
       TEST_PASSED();
@@ -60,7 +60,7 @@ namespace HTTPTest {
     auth.addUser("user_a", "password_a");
     auth.addUser("user_b", "password_b");
     HTTP::Response response;
-    if (auth.autheticateRequest(request, response)) {
+    if (auth.authenticateRequest(request, response)) {
       TEST_PASSED();
     } else {
       std::cout << "Request:\n" << request.toString() << std::endl;
@@ -81,7 +81,7 @@ namespace HTTPTest {
     auth.addUser("user_a", "password_a");
     auth.addUser("user_b", "password_b");
     HTTP::Response response;
-    if (auth.autheticateRequest(request, response)) {
+    if (auth.authenticateRequest(request, response)) {
       TEST_FAILED("Bad password accepted");
     } else {
       TEST_PASSED();
@@ -100,7 +100,7 @@ namespace HTTPTest {
     auth.addUser("user_a", "password_a");
     auth.addUser("user_b", "password_b");
     HTTP::Response response;
-    if (auth.autheticateRequest(request, response)) {
+    if (auth.authenticateRequest(request, response)) {
       TEST_FAILED("Incorrect user name accepted");
     } else {
       TEST_PASSED();
@@ -121,13 +121,13 @@ namespace HTTPTest {
     auth.addUser("user", "password", 2);
     HTTP::Response response;
 
-    if (auth.autheticateRequest(request1, response)) {
+    if (auth.authenticateRequest(request1, response)) {
       TEST_FAILED("Access incorrectly allowed for this user");
     } else {
       TEST_PASSED();
     }
 
-    if (auth.autheticateRequest(request2, response)) {
+    if (auth.authenticateRequest(request2, response)) {
       TEST_PASSED();
     } else {
       TEST_FAILED("Access incorrectly denied for this user");

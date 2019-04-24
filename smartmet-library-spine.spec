@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.4.23
+Version: 19.4.25
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -106,6 +106,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu Apr 25 2019 Andris Pavenis <andris.pavenis@fmi.fi> - 19.4.25-1.fmi
+- Fixed typos in method names in SmartMet::Spine::HTTP::Authentification
+
 * Tue Apr 23 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.4.23-1.fmi
 - Filter data in aggregation functions (BRAINSTORM-1546)
 

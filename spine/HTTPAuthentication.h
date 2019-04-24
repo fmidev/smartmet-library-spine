@@ -40,24 +40,24 @@ namespace SmartMet {
 	/**
 	 *  @brief Verify authentication of the request
 	 *
-	 *  @retval true authetication pass. Response is unchanged and user may fill it
+	 *  @retval true authentication pass. Response is unchanged and user may fill it
 	 *  @retval false authentication rejected. Response if filled accordingly (401 unauthorized)
 	 */
-	bool autheticateRequest(const Request& request, Response& response);
+	bool authenticateRequest(const Request& request, Response& response);
 
       protected:
 
 	/**
-	 *  @brief Check whether authetication is required for a specified request
+	 *  @brief Check whether authentication is required for a specified request
 	 *
 	 *  Implementation of this base class always returns true
 	 */
-	virtual bool isAutheticationRequired(const Request& request) const;
+	virtual bool isAuthenticationRequired(const Request& request) const;
 
 	/**
 	 *  @brief Returns bit mask of user groups for which a specific request is permitted
 	 */
-	virtual unsigned getAutheticationGroup(const Request& request) const;
+	virtual unsigned getAuthenticationGroup(const Request& request) const;
 
 	virtual std::string getRealm() const;
 

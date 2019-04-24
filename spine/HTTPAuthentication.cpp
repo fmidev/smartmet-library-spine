@@ -24,7 +24,7 @@ void Authentication::addUser(const std::string& name,
   userMap[name] = std::make_pair(password, groupMask);
 }
 
-bool Authentication::autheticateRequest(const Request& request, Response& response)
+bool Authentication::authenticateRequest(const Request& request, Response& response)
 {
   try
   {
@@ -46,7 +46,7 @@ bool Authentication::autheticateRequest(const Request& request, Response& respon
       if (ba::iequals(splitHeader.at(0), "basic"))
       {
         auto givenDigest = splitHeader.at(1);
-        unsigned groupMask = getAutheticationGroup(request);
+        unsigned groupMask = getAuthenticationGroup(request);
         for (auto& item : userMap)
         {
           if ((item.second.second & groupMask) != 0)
@@ -70,9 +70,9 @@ bool Authentication::autheticateRequest(const Request& request, Response& respon
     }
     else
     {
-      printf("No credetials available\n");
+      printf("No credentials available\n");
       // Ask whether authentication is required for request if not provided there
-      if (not isAutheticationRequired(request))
+      if (not isAuthenticationRequired(request))
       {
         return true;
       }
@@ -92,13 +92,13 @@ bool Authentication::autheticateRequest(const Request& request, Response& respon
   }
 }
 
-bool Authentication::isAutheticationRequired(const Request& request) const
+bool Authentication::isAuthenticationRequired(const Request& request) const
 {
   (void)request;
   return true;
 }
 
-unsigned Authentication::getAutheticationGroup(const Request& request) const
+unsigned Authentication::getAuthenticationGroup(const Request& request) const
 {
   (void)request;
   return static_cast<unsigned>(-1);
