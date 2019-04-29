@@ -232,6 +232,58 @@ std::string to_string(const T& result_set)
   return ret_ss.str();
 }
 
+ts::TimeSeriesPtr execute_time_area_aggregation_function_with_range(
+    SmartMet::Spine::FunctionId fid_time,
+    SmartMet::Spine::FunctionId fid_area,
+    unsigned int aggIntervalBehind,
+    unsigned int aggIntervalAhead,
+    double lowerLimit,
+    double upperLimit,
+    bool add_missing_value = false)
+{
+  using namespace SmartMet::Spine;
+
+  ts::TimeSeries timeseries(generate_timeseries(add_missing_value));
+
+  ParameterFunction pfInner(fid_time, FunctionType::TimeFunction, lowerLimit, upperLimit);
+  pfInner.setAggregationIntervalBehind(aggIntervalBehind);
+  pfInner.setAggregationIntervalAhead(aggIntervalAhead);
+  ParameterFunctions pfs;
+  pfs.innerFunction = pfInner;
+  ParameterFunction pfOuter(fid_area, FunctionType::AreaFunction);
+  pfs.outerFunction = pfOuter;
+
+  ts::TimeSeriesPtr aggregated_timeseries = ts::aggregate(timeseries, pfs);
+
+  return aggregated_timeseries;
+}
+
+ts::TimeSeriesPtr execute_area_time_aggregation_function_with_range(
+    SmartMet::Spine::FunctionId fid_time,
+    SmartMet::Spine::FunctionId fid_area,
+    unsigned int aggIntervalBehind,
+    unsigned int aggIntervalAhead,
+    double lowerLimit,
+    double upperLimit,
+    bool add_missing_value = false)
+{
+  using namespace SmartMet::Spine;
+
+  ts::TimeSeries timeseries(generate_timeseries(add_missing_value));
+
+  ParameterFunction pfInner(fid_area, FunctionType::AreaFunction, lowerLimit, upperLimit);
+  ParameterFunctions pfs;
+  pfs.innerFunction = pfInner;
+  ParameterFunction pfOuter(fid_time, FunctionType::TimeFunction);
+  pfOuter.setAggregationIntervalBehind(aggIntervalBehind);
+  pfOuter.setAggregationIntervalAhead(aggIntervalAhead);
+  pfs.outerFunction = pfOuter;
+
+  ts::TimeSeriesPtr aggregated_timeseries = ts::aggregate(timeseries, pfs);
+
+  return aggregated_timeseries;
+}
+
 ts::TimeSeriesPtr execute_time_aggregation_function_with_range(SmartMet::Spine::FunctionId fid,
                                                                unsigned int aggIntervalBehind,
                                                                unsigned int aggIntervalAhead,
@@ -539,6 +591,46 @@ void mean_t_with_range()
   if (expected_result != test_result)
     TEST_FAILED("Mean-function with range test failed. Result should be:\n" + expected_result +
                 "\n not \n" + test_result);
+
+  TEST_PASSED();
+}
+
+void mean_a_t_with_range()
+{
+  // Include 1,2,3
+  std::string test_result = to_string(*execute_time_area_aggregation_function_with_range(
+      SmartMet::Spine::FunctionId::Mean, SmartMet::Spine::FunctionId::Mean, 120, 0, 1.0, 3.0));
+
+  std::string expected_result =
+      "2015-Sep-03 00:00:00 EET -> 1\n"
+      "2015-Sep-03 01:00:00 EET -> 1.5\n"
+      "2015-Sep-03 02:00:00 EET -> 2\n"
+      "2015-Sep-03 03:00:00 EET -> 2.5\n"
+      "2015-Sep-03 04:00:00 EET -> 3\n";
+
+  if (expected_result != test_result)
+    TEST_FAILED("Mean area and time function with range test failed. Result should be:\n" +
+                expected_result + "\n not \n" + test_result);
+
+  TEST_PASSED();
+}
+
+void mean_t_a_with_range()
+{
+  // Include 1,2,3
+  std::string test_result = to_string(*execute_area_time_aggregation_function_with_range(
+      SmartMet::Spine::FunctionId::Mean, SmartMet::Spine::FunctionId::Mean, 120, 0, 1.0, 3.0));
+
+  std::string expected_result =
+      "2015-Sep-03 00:00:00 EET -> 1\n"
+      "2015-Sep-03 01:00:00 EET -> 1.5\n"
+      "2015-Sep-03 02:00:00 EET -> 2\n"
+      "2015-Sep-03 03:00:00 EET -> nan\n"
+      "2015-Sep-03 04:00:00 EET -> nan\n";
+
+  if (expected_result != test_result)
+    TEST_FAILED("Mean time and area function with range test failed. Result should be:\n" +
+                expected_result + "\n not \n" + test_result);
 
   TEST_PASSED();
 }
@@ -1072,6 +1164,10 @@ class tests : public tframe::tests
     TEST(median_t_with_range);
     TEST(mean_a_with_range);
     TEST(max_a_with_range_nan);
+
+    TEST(mean_a_t_with_range);
+
+    TEST(mean_t_a_with_range);
   }
 };
 
