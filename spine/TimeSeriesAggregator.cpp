@@ -300,6 +300,28 @@ Value StatCalculator::getStatValue(const ParameterFunction& func, bool useWeight
   }
 }
 
+bool include_value(const TimedValue& tv, const ParameterFunction& func)
+{
+  bool ret = true;
+  if (func.lowerOrUpperLimitGiven() && func.id() != FunctionId::Percentage &&
+      func.id() != FunctionId::Count)
+  {
+    boost::optional<double> double_value;
+    if (boost::get<double>(&(tv.value)))
+    {
+      double_value = boost::get<double>(tv.value);
+    }
+    else if (boost::get<int>(&(tv.value)))
+    {
+      double_value = boost::get<int>(tv.value);
+    }
+
+    if (double_value && (*double_value < func.lowerLimit() || *double_value > func.upperLimit()))
+      ret = false;
+  }
+  return ret;
+}
+
 // returns aggregation indexes for each timestep
 // first member in std::pair contains index behind the timestep
 // second member in std::pair contains index ahead/after the timestep
@@ -373,26 +395,7 @@ TimeSeries area_aggregate(const TimeSeriesGroup& ts_group, const ParameterFuncti
       for (size_t k = 0; k < ts_group.size(); k++)
       {
         const TimedValue& tv = ts_group[k].timeseries[i];
-        bool value_included = true;
-
-        if (func.lowerOrUpperLimitGiven() && func.id() != FunctionId::Percentage &&
-            func.id() != FunctionId::Count)
-        {
-          boost::optional<double> double_value;
-          if (boost::get<double>(&(tv.value)))
-          {
-            double_value = boost::get<double>(tv.value);
-          }
-          else if (boost::get<int>(&(tv.value)))
-          {
-            double_value = boost::get<int>(tv.value);
-          }
-
-          if (double_value &&
-              (*double_value < func.lowerLimit() || *double_value > func.upperLimit()))
-            value_included = false;
-        }
-        if (value_included)
+        if (include_value(tv, func))
           statcalculator(tv);
       }
       // take timestamps from first location (they are same for all locations inside area)
@@ -432,25 +435,7 @@ TimeSeriesPtr time_aggregate(const TimeSeries& ts, const ParameterFunction& func
       for (int k = agg_index_start; k <= agg_index_end; k++)
       {
         const TimedValue& tv = ts.at(k);
-        bool value_included = true;
-        if (func.lowerOrUpperLimitGiven() && func.id() != FunctionId::Percentage &&
-            func.id() != FunctionId::Count)
-        {
-          boost::optional<double> double_value;
-          if (boost::get<double>(&(tv.value)))
-          {
-            double_value = boost::get<double>(tv.value);
-          }
-          else if (boost::get<int>(&(tv.value)))
-          {
-            double_value = boost::get<int>(tv.value);
-          }
-
-          if (double_value &&
-              (*double_value < func.lowerLimit() || *double_value > func.upperLimit()))
-            value_included = false;
-        }
-        if (value_included)
+        if (include_value(tv, func))
           statcalculator(tv);
       }
       ret->push_back(TimedValue(ts[i].time, statcalculator.getStatValue(func, true)));
@@ -486,17 +471,49 @@ TimeSeriesGroupPtr time_aggregate(const TimeSeriesGroup& ts_group, const Paramet
   }
 }
 
-// only time-aggregation possible here
+// Before only time-aggregation was possible here, but since
+// filtering was added also 'area aggregation' may happen
 TimeSeriesPtr aggregate(const TimeSeries& ts, const ParameterFunctions& pf)
 {
   try
   {
     TimeSeriesPtr ret(new TimeSeries);
 
-    if (pf.innerFunction.type() == FunctionType::TimeFunction)
+    if (pf.innerFunction.type() == FunctionType::AreaFunction)
+    {
+      TimeSeries local_ts;
+      // Do filtering
+      for (auto tv : ts)
+      {
+        if (include_value(tv, pf.innerFunction))
+          local_ts.push_back(tv);
+        else
+          local_ts.push_back(TimedValue(tv.time, Spine::TimeSeries::None()));
+      }
+
+      // Do time aggregationn
+      if (pf.outerFunction.type() == FunctionType::TimeFunction)
+        ret = time_aggregate(local_ts, pf.outerFunction);
+      else
+        *ret = local_ts;
+    }
+    else if (pf.innerFunction.type() == FunctionType::TimeFunction)
+    {
       ret = time_aggregate(ts, pf.innerFunction);
-    else if (pf.outerFunction.type() == FunctionType::TimeFunction)
-      ret = time_aggregate(ts, pf.outerFunction);
+      if (pf.outerFunction.type() == FunctionType::AreaFunction)
+      {
+        // Do filtering
+        TimeSeries local_ts = *ret;
+        ret->clear();
+        for (auto tv : local_ts)
+        {
+          if (include_value(tv, pf.outerFunction))
+            ret->push_back(tv);
+          else
+            ret->push_back(TimedValue(tv.time, Spine::TimeSeries::None()));
+        }
+      }
+    }
     else
       *ret = ts;
 
