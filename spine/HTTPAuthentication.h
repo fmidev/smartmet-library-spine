@@ -38,6 +38,20 @@ namespace SmartMet {
 	void addUser(const std::string& name, const std::string& password, unsigned groupMask = 1);
 
 	/**
+	 *   @brief Removes user with specified name
+	 *
+	 *   @param name the user name
+	 *   @retval false user name not found
+	 *   @retval true user removed
+	 */
+	bool removeUser(const std::string& name);
+
+	/**
+	 *   @brief Clear all user data
+	 */
+	void clearUsers();
+
+	/**
 	 *  @brief Verify authentication of the request
 	 *
 	 *  @retval true authentication pass. Response is unchanged and user may fill it

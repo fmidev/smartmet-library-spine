@@ -67,6 +67,20 @@ namespace HTTPTest {
       std::cout << "Response:\n" << response.toString() << std::endl;
       TEST_FAILED("Correct authentication rejected");
     }
+
+    if (auth.removeUser("user_a")) {
+      TEST_PASSED();
+    } else {
+      TEST_FAILED("Removing existing user returned false");
+    }
+
+    if (auth.authenticateRequest(request, response)) {
+      TEST_PASSED();
+    } else {
+      std::cout << "Request:\n" << request.toString() << std::endl;
+      std::cout << "Response:\n" << response.toString() << std::endl;
+      TEST_FAILED("Correct authentication rejected");
+    }
   }
 
   void bad_user_password()

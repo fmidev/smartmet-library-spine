@@ -24,6 +24,16 @@ void Authentication::addUser(const std::string& name,
   userMap[name] = std::make_pair(password, groupMask);
 }
 
+bool Authentication::removeUser(const std::string& name)
+{
+  return userMap.erase(name) > 0;
+}
+
+void Authentication::clearUsers()
+{
+  userMap.clear();
+}
+
 bool Authentication::authenticateRequest(const Request& request, Response& response)
 {
   try
