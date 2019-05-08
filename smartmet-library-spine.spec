@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.5.7
+Version: 19.5.8
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -14,7 +14,7 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 19.4.23
+BuildRequires: smartmet-library-newbase-devel >= 19.5.6
 BuildRequires: smartmet-library-macgyver-devel >= 19.4.23
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
@@ -31,7 +31,7 @@ BuildRequires: fmt-devel >= 5.2.0
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 19.4.23
+Requires: smartmet-library-newbase >= 19.5.6
 Requires: smartmet-library-macgyver >= 19.4.23
 Requires: smartmet-timezones >= 19.4.2
 Requires: smartmet-library-gis >= 19.3.14
@@ -106,6 +106,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed May  8 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.5.8-1.fmi
+- Json::expand case insensitivity now applies to the qid too, not just the querystring parameters
+
 * Tue May  7 2019 Andris Pavenis <andris.pavenis@fmi.fi> - 19.5.7-1.fmi
 - SmartMet::Spine::HTTP::Authentification: new methods clearUsers and removeUser
 

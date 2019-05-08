@@ -23,7 +23,7 @@ const char* text1 = R"EOF({
      },
      "p":
      {
-         "qid": "p",
+         "qid": "Test",
          "crs": "data",
          "xsize": 500
      },
@@ -91,7 +91,8 @@ void expand()
       {"projection.xsize", "666"},
       {"projection.ysize", "666"},
       {"time", "2014-09-05"},
-      {"ysize", "777"}};
+      {"ysize", "777"},
+      {"Test.xsize", "400"}};
 
   SmartMet::Spine::JSON::expand(json, params);
 
@@ -121,8 +122,8 @@ void expand()
 	"p" : 
 	{
 		"crs" : "data",
-		"qid" : "p",
-		"xsize" : 500
+		"qid" : "Test",
+		"xsize" : 400
 	},
 	"producer" : "pal_skandinavia",
 	"projection" : 
@@ -221,7 +222,7 @@ void replaceReferences()
 	"p" : 
 	{
 		"crs" : "data",
-		"qid" : "p",
+		"qid" : "Test",
 		"xsize" : 500
 	},
 	"producer" : "pal_skandinavia",

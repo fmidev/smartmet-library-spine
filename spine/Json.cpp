@@ -46,14 +46,18 @@ std::string extract_qid(const std::string& theName)
 // map from qid to respective JSON object
 using QidMap = std::map<std::string, Json::Value*>;
 
-void collect_qids(Json::Value& theJson, QidMap& theQids, const std::string& thePrefix)
+void collect_qids(Json::Value& theJson,
+                  bool theCaseIsInsensitive,
+                  QidMap& theQids,
+                  const std::string& thePrefix)
 {
   try
   {
     if (theJson.isArray())
     {
       for (unsigned int i = 0; i < theJson.size(); i++)
-        collect_qids(theJson[i], theQids, thePrefix + "[" + Fmi::to_string(i) + "]");
+        collect_qids(
+            theJson[i], theCaseIsInsensitive, theQids, thePrefix + "[" + Fmi::to_string(i) + "]");
     }
     else if (theJson.isObject())
     {
@@ -73,6 +77,9 @@ void collect_qids(Json::Value& theJson, QidMap& theQids, const std::string& theP
         if (dotpos != std::string::npos)
           throw Spine::Exception(BCP, "The 'qid' value must not contain dots!");
 
+        if (theCaseIsInsensitive)
+          Fmi::ascii_tolower(qid);
+
         theQids[qid] = &theJson;
       }
 
@@ -82,9 +89,9 @@ void collect_qids(Json::Value& theJson, QidMap& theQids, const std::string& theP
       for (const auto& name : members)
       {
         if (thePrefix.empty())
-          collect_qids(theJson[name], theQids, name);
+          collect_qids(theJson[name], theCaseIsInsensitive, theQids, name);
         else
-          collect_qids(theJson[name], theQids, thePrefix + "." + name);
+          collect_qids(theJson[name], theCaseIsInsensitive, theQids, thePrefix + "." + name);
       }
     }
   }
@@ -94,10 +101,10 @@ void collect_qids(Json::Value& theJson, QidMap& theQids, const std::string& theP
   }
 }
 
-QidMap collect_qids(Json::Value& theJson)
+QidMap collect_qids(Json::Value& theJson, bool theCaseIsInsensitive)
 {
   QidMap qids;
-  collect_qids(theJson, qids, "");
+  collect_qids(theJson, theCaseIsInsensitive, qids, "");
   return qids;
 }
 
@@ -433,7 +440,7 @@ void JSON::expand(Json::Value& theJson,
                   bool theCaseIsInsensitive)
 {
   const bool replace_references = false;
-  auto qids = collect_qids(theJson);
+  auto qids = collect_qids(theJson, theCaseIsInsensitive);
   replaceFromQueryString(
       theJson, theParams, thePrefix, qids, theCaseIsInsensitive, replace_references);
 }
@@ -451,7 +458,7 @@ void JSON::replaceReferences(Json::Value& theJson,
                              bool theCaseIsInsensitive)
 {
   const bool replace_references = true;
-  auto qids = collect_qids(theJson);
+  auto qids = collect_qids(theJson, theCaseIsInsensitive);
   replaceFromQueryString(
       theJson, theParams, thePrefix, qids, theCaseIsInsensitive, replace_references);
 }
