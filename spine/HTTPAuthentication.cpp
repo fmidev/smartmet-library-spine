@@ -4,6 +4,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <macgyver/Base64.h>
+#include <macgyver/TypeName.h>
 
 namespace ba = boost::algorithm;
 
@@ -44,7 +45,7 @@ bool Authentication::authenticateRequest(const Request& request, Response& respo
     {
       std::vector<std::string> splitHeader;
       ba::split(splitHeader, *credentials, ba::is_any_of(" "), ba::token_compress_on);
-      printf("Got credentials: %s\n", credentials->c_str());
+      //printf("%s: Got credentials: %s\n", METHOD_NAME.c_str(), credentials->c_str());
 
       if (splitHeader.size() < 2)
       {
@@ -80,12 +81,13 @@ bool Authentication::authenticateRequest(const Request& request, Response& respo
     }
     else
     {
-      printf("No credentials available\n");
       // Ask whether authentication is required for request if not provided there
       if (not isAuthenticationRequired(request))
       {
         return true;
       }
+
+      printf("%s: No credentials available\n", METHOD_NAME.c_str());
 
       if (userMap.empty() and not denyByDefault)
       {

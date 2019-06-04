@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.5.8
+Version: 19.6.4
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -106,6 +106,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Jun  4 2019 Andris Pavenis <andris.pavenis@fmi.fi> - 19.6.4-1.fmi
+- SmartMet::Spine::HTTP::Authentification: logging improvements
+
 * Wed May  8 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.5.8-1.fmi
 - Json::expand case insensitivity now applies to the qid too, not just the querystring parameters
 
