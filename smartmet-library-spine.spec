@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.6.4
+Version: 19.6.28
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -106,6 +106,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Fri Jun 28 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.6.28-1.fmi
+- Fixed WxmlFormatter to skip origin times which do not look like ISO timestamps
+
 * Tue Jun  4 2019 Andris Pavenis <andris.pavenis@fmi.fi> - 19.6.4-1.fmi
 - SmartMet::Spine::HTTP::Authentification: logging improvements
 

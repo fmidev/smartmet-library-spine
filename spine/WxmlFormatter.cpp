@@ -13,6 +13,7 @@
 #include <boost/math/special_functions/fpclassify.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <macgyver/StringConversion.h>
+#include <macgyver/TimeParser.h>
 #include <iostream>
 #include <stdexcept>
 
@@ -49,6 +50,19 @@ bool looks_number(const std::string& theValue)
   {
     throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Test if a string looks like a time stamp
+ */
+// ----------------------------------------------------------------------
+
+bool looks_time(const std::string& theValue)
+{
+  bool utc;
+  boost::posix_time::ptime t = Fmi::TimeParser::try_parse_iso(theValue, &utc);
+  return !t.is_not_a_date_time();
 }
 
 }  // namespace
@@ -116,8 +130,9 @@ void WxmlFormatter::format_100(std::ostream& theOutput,
     std::string origintime;
     for (std::size_t j : rows)
     {
-      if (theTable.get(col_origintime, j) > origintime)
-        origintime = theTable.get(col_origintime, j);
+      auto t = theTable.get(col_origintime, j);
+      if (looks_time(t) && t > origintime)
+        origintime = t;
     }
     theOutput << "<meta>" << std::endl;
     theOutput << "<updated>" << origintime << "</updated>" << std::endl;
@@ -230,8 +245,9 @@ void WxmlFormatter::format_200(std::ostream& theOutput,
     std::string origintime;
     for (std::size_t j : rows)
     {
-      if (theTable.get(col_origintime, j) > origintime)
-        origintime = theTable.get(col_origintime, j);
+      auto t = theTable.get(col_origintime, j);
+      if (looks_time(t) && t > origintime)
+        origintime = t;
     }
     theOutput << "<meta>" << std::endl;
     theOutput << "<updated>" << origintime << "</updated>" << std::endl;
