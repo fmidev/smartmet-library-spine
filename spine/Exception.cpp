@@ -56,7 +56,7 @@ Exception::Exception(const char* _filename,
   {
     prevException = new Exception(*_prevException);
   }
-  else
+  else if (std::current_exception())
   {
     try
     {
