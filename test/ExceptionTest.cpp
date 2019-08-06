@@ -32,9 +32,19 @@ void throw_spine_exception_in_async_call()
   try {
     f.get();
     TEST_FAILED("Exception must be thrown");
-  } catch (const std::exception& e) {
-    std::cerr << "f.get() -> exception: "<< e.what() << std::endl;
+  } catch (const SmartMet::Spine::Exception& e) {
+    if (e.getWhat() != std::string("Some error")) {
+      TEST_FAILED("Unexpected value of exception message");
+    }
+    const SmartMet::Spine::Exception* prev = e.getPrevException();
+    if (prev) {
+      TEST_FAILED("There should be no previous exception");
+    }
+    //std::cout << "f.get() -> exception:\n";
+    //e.printError();
     TEST_PASSED();
+  } catch (...) {
+    TEST_FAILED("Unexpected exception type");
   }
 }
 
@@ -44,8 +54,24 @@ void throw_nested_spine_exception_in_async_call()
   try {
     f.get();
     TEST_FAILED("Exception must be thrown");
-  } catch (const std::exception& e) {
-    std::cerr << "f.get() -> exception: "<< e.what() << std::endl;
+  } catch (const SmartMet::Spine::Exception& e) {
+    //std::cout << "f.get() -> exception:\n";
+    //e.printError();
+    if (e.getWhat() != std::string("Failed")) {
+      TEST_FAILED("Unexpected value of exception message");
+    }
+    const SmartMet::Spine::Exception* prev = e.getPrevException();
+    if (prev) {
+      if (prev->getWhat() != std::string("Some error")) {
+	TEST_FAILED("Unexpected value of exception message");
+      }
+      prev = prev->getPrevException();
+      if (prev) {
+	TEST_FAILED("There should be only 2 exception levels");
+      }
+    } else {
+      TEST_FAILED("There should be no previous exception");
+    }
     TEST_PASSED();
   }
 }
