@@ -1,6 +1,7 @@
 #include "Exception.h"
 #include "Convenience.h"
 #include <macgyver/AnsiEscapeCodes.h>
+#include <macgyver/TypeName.h>
 #include <iostream>
 #include <sstream>
 
@@ -8,6 +9,23 @@ namespace SmartMet
 {
 namespace Spine
 {
+
+namespace
+{
+  static const std::map<std::string, std::string> exception_name_map =
+    {
+      {"std::out_of_range", "Out of range"}
+      , {"std::invalid_argument", "Invalid argument"}
+      , {"std::length_error", "Length error"}
+      , {"std::domain_error", "Domain error"}
+      , {"std::range_error", "Range error"}
+      , {"std::overflow_error", "Overflow error"}
+      , {"std::underflow_error", "Underflow error"}
+      , {"std::runtime_error", "Runtime error"}
+      , {"std::logic_error", "Logic error"}
+    };
+}
+
 Exception::Exception()
 {
   timestamp = boost::posix_time::second_clock::local_time();
@@ -69,59 +87,19 @@ Exception::Exception(const char* _filename,
       mStackTraceDisabled = e.mStackTraceDisabled;
       mLoggingDisabled = e.mLoggingDisabled;
     }
-    catch (std::out_of_range& e)
-    {
-      prevException =
-          new Exception(_filename, _line, _function, std::string("[Out of range] ") + e.what());
-    }
-    catch (std::invalid_argument& e)
-    {
-      prevException =
-          new Exception(_filename, _line, _function, std::string("[Invalid argument] ") + e.what());
-    }
-    catch (std::length_error& e)
-    {
-      prevException =
-          new Exception(_filename, _line, _function, std::string("[Length error] ") + e.what());
-    }
-    catch (std::domain_error& e)
-    {
-      prevException =
-          new Exception(_filename, _line, _function, std::string("[Domain error] ") + e.what());
-    }
-    catch (std::range_error& e)
-    {
-      prevException =
-          new Exception(_filename, _line, _function, std::string("[Range error] ") + e.what());
-    }
-    catch (std::overflow_error& e)
-    {
-      prevException =
-          new Exception(_filename, _line, _function, std::string("[Overflow error] ") + e.what());
-    }
-    catch (std::underflow_error& e)
-    {
-      prevException =
-          new Exception(_filename, _line, _function, std::string("[Underflow error] ") + e.what());
-    }
-    catch (std::runtime_error& e)
-    {
-      prevException =
-          new Exception(_filename, _line, _function, std::string("[Runtime error] ") + e.what());
-    }
-    catch (std::logic_error& e)
-    {
-      prevException =
-          new Exception(_filename, _line, _function, std::string("[Logic error] ") + e.what());
-    }
     catch (std::exception& e)
     {
+      const std::string cxx_name = Fmi::get_type_name(&e);
+      auto it = exception_name_map.find(cxx_name);
+      const std::string print_name = it == exception_name_map.end() ? cxx_name : it->second;
       prevException =
-          new Exception(_filename, _line, _function, std::string("[Exception] ") + e.what());
+	new Exception(_filename, _line, _function, std::string("[") + print_name + "] " + e.what());
     }
     catch (...)
     {
-      prevException = new Exception(_filename, _line, _function, "Unknown exception");
+      prevException =
+	new Exception(_filename, _line, _function,
+		      std::string("[") + Fmi::current_exception_type() + "]");
     }
   }
 }
