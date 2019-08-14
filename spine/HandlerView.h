@@ -3,6 +3,7 @@
 #include "AccessLogger.h"
 #include "HTTP.h"
 #include "IPFilter.h"
+#include "LogRange.h"
 #include "SmartMetPlugin.h"
 #include "Thread.h"
 #include <boost/function.hpp>
@@ -63,7 +64,13 @@ class HandlerView : private boost::noncopyable
   void flushLog();
 
   // Get logged requests
-  LogListType getLoggedRequests();
+  LogRange getLoggedRequests();
+
+  // Relase a log range
+  void releaseLogRange();
+
+  // Lock a log range
+  void lockLogRange();
 
   // Check whether handler uses specified plugin
   bool usesPlugin(const SmartMetPlugin* plugin) const;
@@ -95,6 +102,9 @@ class HandlerView : private boost::noncopyable
 
   // Flag to see if logging is on
   bool isLogging;
+
+  // How many LogRanges are in use
+  std::atomic<int> itsLogReaderCount{0};
 
   // Iterator to point to the last request flushed to disk
   LogListType::iterator itsLastFlushedRequest;

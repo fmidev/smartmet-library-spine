@@ -46,5 +46,7 @@ class LoggedRequest
   std::string itsVersion;
 };
 
+using LogListType = std::list<LoggedRequest>;
+
 }  // namespace Spine
 }  // namespace SmartMet

@@ -1,12 +1,11 @@
 #include "HandlerView.h"
+#include "Convenience.h"
 #include "Exception.h"
 #include "Reactor.h"
-
-#include <macgyver/StringConversion.h>
-
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem.hpp>
+#include <macgyver/StringConversion.h>
 
 namespace
 {
@@ -203,6 +202,15 @@ void HandlerView::cleanLog(const boost::posix_time::ptime& minTime)
       return;
     }
 
+    // Ignore cleaning operation if someone is reading the log right now
+
+    if (itsLogReaderCount != 0)
+    {
+      std::cout << log_time_str() << " not cleaning logs since someone is reading them"
+                << std::endl;
+      return;
+    }
+
     auto it = std::find_if(
         itsRequestLog.begin(), itsRequestLog.end(), boost::bind(isNotOld, minTime, _1));
 
@@ -262,10 +270,21 @@ void HandlerView::flushLog()
   }
 }
 
-LogListType HandlerView::getLoggedRequests()
+LogRange HandlerView::getLoggedRequests()
 {
   ReadLock lock(itsLoggingMutex);
-  return itsRequestLog;
+  lockLogRange();
+  return LogRange(itsRequestLog, this);
+}
+
+void HandlerView::releaseLogRange()
+{
+  --itsLogReaderCount;
+}
+
+void HandlerView::lockLogRange()
+{
+  ++itsLogReaderCount;
 }
 
 bool HandlerView::usesPlugin(const SmartMetPlugin* plugin) const
@@ -273,7 +292,7 @@ bool HandlerView::usesPlugin(const SmartMetPlugin* plugin) const
   return plugin == itsPlugin;
 }
 
-const std::string&  HandlerView::getResource() const
+const std::string& HandlerView::getResource() const
 {
   return itsResource;
 }

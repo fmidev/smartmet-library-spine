@@ -24,13 +24,10 @@
 #include "SmartMetEngine.h"
 #include "SmartMetPlugin.h"
 #include "Thread.h"
-
 #include <boost/function.hpp>
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
-
 #include <libconfig.h++>
-
 #include <list>
 #include <map>
 #include <string>
@@ -48,12 +45,6 @@ typedef std::map<std::string, std::string> URIMap;
 class Reactor
 {
  public:
-  using LoggedRequests = std::map<std::string, LogListType>;
-  using AccessLogStruct =
-      std::tuple<bool, LoggedRequests, boost::posix_time::ptime>;  // Fields are: Logging enabled
-                                                                   // flag, the logged requests,
-                                                                   // last cleanup time
-
   // These hooks are called when certain events occur with the server
 
   // This hook is called when a connection finishes

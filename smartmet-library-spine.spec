@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.8.7
+Version: 19.8.14
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -106,6 +106,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Aug 14 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.8.14-1.fmi
+- Rewrote log requests to avoid large copies and thread exhaustion
+
 * Wed Aug  7 2019 Andris Pavenis <andris.pavenis@fmi.fi> - 19.8.7-1.fmi
 - SmartMet::Spine::Exception: exception handling improvement
 
