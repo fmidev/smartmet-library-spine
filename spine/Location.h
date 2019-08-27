@@ -6,8 +6,10 @@
 
 #pragma once
 
+#include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
 #include <gis/LandCover.h>
+
 #include <iostream>
 #include <limits>
 #include <list>
@@ -46,6 +48,8 @@ class Location
   std::string area;     // municipality or country name
   std::string feature;  // feature code
   std::string country;  // country name, depends on translation, is not const
+
+  boost::optional<int> fmisid;  // station id
 
   double longitude;                // longitude
   double latitude;                 // latitude
