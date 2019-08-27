@@ -1,6 +1,9 @@
 #include "Location.h"
+
 #include "Exception.h"
+
 #include <macgyver/StringConversion.h>
+
 #include <cmath>
 #include <sstream>
 
@@ -81,6 +84,13 @@ std::string formatLocation(const Location& loc, const std::string& key)
       return (std::isnan(loc.priority) ? nanstring : Fmi::to_string(loc.priority));
     if (key == "type")
       return type_string(loc.type);
+    if (key == "fmisid")
+    {
+      if (loc.fmisid)
+        return Fmi::to_string(*loc.fmisid);
+      else
+        return "-";
+    }
     throw Spine::Exception(BCP, "Unsupported location parameter name '" + key + "'!");
   }
   catch (...)
@@ -98,6 +108,7 @@ std::string formatLocation(const Location& loc)
     ss << "geoid:        " << formatLocation(loc, "geoid") << std::endl;
     ss << "name:         " << formatLocation(loc, "name") << std::endl;
     ss << "iso2:         " << formatLocation(loc, "iso2") << std::endl;
+    ss << "fmisid:       " << formatLocation(loc, "fmisid") << std::endl;
     ss << "municipality: " << formatLocation(loc, "municipality") << std::endl;
     ss << "region:       " << formatLocation(loc, "region") << std::endl;
     ss << "feature:      " << formatLocation(loc, "feature") << std::endl;
