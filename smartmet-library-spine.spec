@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.8.14
+Version: 19.8.28
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -14,8 +14,8 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 19.5.6
-BuildRequires: smartmet-library-macgyver-devel >= 19.4.23
+BuildRequires: smartmet-library-newbase-devel >= 19.8.12
+BuildRequires: smartmet-library-macgyver-devel >= 19.8.2
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -31,9 +31,9 @@ BuildRequires: fmt-devel >= 5.2.0
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 19.5.6
-Requires: smartmet-library-macgyver >= 19.4.23
-Requires: smartmet-timezones >= 19.4.2
+Requires: smartmet-library-newbase >= 19.8.12
+Requires: smartmet-library-macgyver >= 19.8.2
+Requires: smartmet-timezones >= 19.7.29
 Requires: smartmet-library-gis >= 19.3.14
 Requires: mariadb-libs
 Requires: boost-filesystem
@@ -106,6 +106,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Aug 28 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.8.28-1.fmi
+- Added optional fmisid information to Location objects
+
 * Wed Aug 14 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.8.14-1.fmi
 - Rewrote log requests to avoid large copies and thread exhaustion
 
