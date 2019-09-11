@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.8.28
+Version: 19.9.11
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -106,6 +106,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Sep 11 2019 Andris Pavenis <andris.pavenis@fmi.fi> - 19.9.11-1.fmi
+- Support configuration entry redirect in SmartMet::Spine::ConfigBase
+
 * Wed Aug 28 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.8.28-1.fmi
 - Added optional fmisid information to Location objects
 
