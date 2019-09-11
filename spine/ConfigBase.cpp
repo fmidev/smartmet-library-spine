@@ -323,8 +323,16 @@ libconfig::Setting& ConfigBase::assert_is_group(libconfig::Setting& setting)
 }
 
 libconfig::Setting* ConfigBase::find_setting(libconfig::Setting& search_start,
-                                             const std::string& path,
-                                             bool mandatory) const
+					     const std::string& path,
+					     bool mandatory) const
+{
+  return find_setting_impl(search_start, path, mandatory, 5);
+}
+
+libconfig::Setting* ConfigBase::find_setting_impl(libconfig::Setting& search_start,
+						  const std::string& path,
+						  bool mandatory,
+						  int max_depth) const
 {
   try
   {
@@ -406,6 +414,23 @@ libconfig::Setting* ConfigBase::find_setting(libconfig::Setting& search_start,
               .addParameter("Path", format_path(curr, name))
               .addDetail(curr->getPath() + "' is not a group");
         }
+      }
+    }
+
+    if (curr and curr->isScalar() and curr->getType() == libconfig::Setting::TypeString) {
+      const char* content = *curr;
+      if (strncasecmp(content, "%{", 2) == 0) {
+	const char* end = std::strchr(content + 2, '}');
+	if (end and strcmp(end, "}") == 0) {
+	  if (max_depth >= 0) {
+	    std::string redirect(content + 2, end);
+	    curr = find_setting_impl(itsConfig->getRoot(), redirect, mandatory, max_depth - 1);
+	  } else {
+	    throw Spine::Exception(BCP, "Configuration parameter redirection depth exceeded")
+              .addParameter("Configuration file", file_name)
+              .addParameter("Path", format_path(curr, name));
+	  }
+	}
       }
     }
 
