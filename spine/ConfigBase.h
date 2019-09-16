@@ -21,9 +21,6 @@ namespace Spine
  *   Main reason for this base class is to
  *   - provide useful methods for retrieving configuration settings
  *   - provide method for libconfig++ exceptions handling
- *
- *   String value of format '%{path}' (no extra space before and after allowed) causes
- *   redirection to configuration entry with specified path to be found instead.
  */
 class ConfigBase
 {
@@ -419,10 +416,6 @@ class ConfigBase
     return static_cast<Type>(setting);
   }
 
-  libconfig::Setting* find_setting_impl(libconfig::Setting& search_start,
-					const std::string& path,
-					bool mandatory,
-					int max_depth) const;
  private:
   const std::string file_name;
   const std::string name;

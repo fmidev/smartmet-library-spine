@@ -42,8 +42,6 @@ class TestConfig : public libconfig::Config
 
     root.add("boundingBox", Setting::TypeArray).add(Setting::TypeString) = "${bbox>defaultBbox}";
 
-    root.add("foo", Setting::TypeString) = "%{parameters.[0].name}";
-
     auto& ep1 = root.add("handler_params", Setting::TypeList).add(Setting::TypeGroup);
     ep1.add("name", Setting::TypeString) = "defaultBbox";
     auto& ep1v = ep1.add("def", Setting::TypeArray);
@@ -181,23 +179,6 @@ BOOST_AUTO_TEST_CASE(get_array_deep)
   BOOST_CHECK_CLOSE(60.0, data.at(1), 1e-10);
   BOOST_CHECK_CLOSE(25.0, data.at(2), 1e-10);
   BOOST_CHECK_CLOSE(65.0, data.at(3), 1e-10);
-}
-
-BOOST_AUTO_TEST_CASE(test_parameter_redirection_1)
-{
-  using namespace SmartMet::Spine;
-  using libconfig::Setting;
-
-  BOOST_TEST_MESSAGE("+ [ConfigBase] Testing configuration entry redirect");
-
-  auto raw_config = create_config();
-  boost::shared_ptr<ConfigBase> config;
-
-  BOOST_REQUIRE_NO_THROW(config.reset(new ConfigBase(raw_config, "Test configuration")));
-
-  std::string value;
-  BOOST_REQUIRE_NO_THROW(value = config->get_mandatory_config_param<std::string>("foo"));
-  BOOST_REQUIRE_EQUAL(value, "bbox");
 }
 
 BOOST_AUTO_TEST_CASE(dump_and_reread_config)
