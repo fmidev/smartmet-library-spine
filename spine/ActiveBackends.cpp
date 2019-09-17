@@ -1,9 +1,15 @@
 #include "ActiveBackends.h"
+#include "Thread.h"
 
 namespace SmartMet
 {
 namespace Spine
 {
+namespace
+{
+MutexType myMutex;
+}
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Start a request
@@ -12,7 +18,7 @@ namespace Spine
 
 void ActiveBackends::start(const std::string& theHost, int thePort)
 {
-  WriteLock lock(itsMutex);
+  WriteLock lock(myMutex);
   ++itsStatus[theHost][thePort];
 }
 
@@ -24,7 +30,7 @@ void ActiveBackends::start(const std::string& theHost, int thePort)
 
 void ActiveBackends::stop(const std::string& theHost, int thePort)
 {
-  WriteLock lock(itsMutex);
+  WriteLock lock(myMutex);
   --itsStatus[theHost][thePort];
 }
 
@@ -36,7 +42,7 @@ void ActiveBackends::stop(const std::string& theHost, int thePort)
 
 void ActiveBackends::reset(const std::string& theHost, int thePort)
 {
-  WriteLock lock(itsMutex);
+  WriteLock lock(myMutex);
   itsStatus[theHost][thePort] = 0;
 }
 
@@ -48,7 +54,7 @@ void ActiveBackends::reset(const std::string& theHost, int thePort)
 
 ActiveBackends::Status ActiveBackends::status() const
 {
-  ReadLock lock(itsMutex);
+  ReadLock lock(myMutex);
   return itsStatus;
 }
 

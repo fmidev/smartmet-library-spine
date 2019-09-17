@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.8.28
+Version: 19.9.17
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -106,6 +106,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Sep 17 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.9.17-1.fmi
+- Fixed ActiveBackends class to destroy gracefully by moving its mutex into the cpp file
+
 * Wed Aug 28 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.8.28-1.fmi
 - Added optional fmisid information to Location objects
 

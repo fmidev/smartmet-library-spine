@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Thread.h"
 #include <boost/noncopyable.hpp>
 #include <map>
 #include <string>
@@ -28,7 +27,6 @@ class ActiveBackends : private boost::noncopyable
   Status status() const;
 
  private:
-  mutable MutexType itsMutex;
   Status itsStatus;
 };
 }  // namespace Spine
