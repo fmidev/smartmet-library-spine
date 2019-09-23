@@ -318,7 +318,7 @@ bool get_processed_response(const SmartMet::Spine::HTTP::Response& response,
 
       ok = true;
     }
-    catch (std::exception e)
+    catch (std::exception & e)
     {
       std::cout << "EXCEPTION: " << e.what() << std::endl;
     }
