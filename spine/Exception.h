@@ -3,6 +3,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <list>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -100,7 +101,7 @@ class Exception : public std::exception
   int line;
   std::string function;
   std::string message;
-  Exception* prevException;
+  std::shared_ptr<Exception> prevException;
   ParameterVector parameterVector;
   DetailVector detailVector;
   bool mLoggingDisabled = false;

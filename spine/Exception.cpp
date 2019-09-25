@@ -30,7 +30,6 @@ Exception::Exception()
 {
   timestamp = boost::posix_time::second_clock::local_time();
   line = 0;
-  prevException = nullptr;
 }
 
 Exception::Exception(const Exception& other)
@@ -45,9 +44,7 @@ Exception::Exception(const Exception& other)
   prevException = nullptr;
   mStackTraceDisabled = other.mStackTraceDisabled;
   mLoggingDisabled = other.mLoggingDisabled;
-
-  if (other.prevException != nullptr)
-    prevException = new Exception(*other.prevException);
+  prevException = other.prevException;
 }
 
 Exception Exception::Trace(const char* _filename,
@@ -72,7 +69,7 @@ Exception::Exception(const char* _filename,
   prevException = nullptr;
   if (_prevException != nullptr)
   {
-    prevException = new Exception(*_prevException);
+    prevException.reset(new Exception(*_prevException));
   }
   else if (std::current_exception())
   {
@@ -82,7 +79,7 @@ Exception::Exception(const char* _filename,
     }
     catch (SmartMet::Spine::Exception& e)
     {
-      prevException = new Exception(e);
+      prevException.reset(new Exception(e));
       // Propagate the flags to the top
       mStackTraceDisabled = e.mStackTraceDisabled;
       mLoggingDisabled = e.mLoggingDisabled;
@@ -92,14 +89,14 @@ Exception::Exception(const char* _filename,
       const std::string cxx_name = Fmi::get_type_name(&e);
       auto it = exception_name_map.find(cxx_name);
       const std::string print_name = it == exception_name_map.end() ? cxx_name : it->second;
-      prevException =
-	new Exception(_filename, _line, _function, std::string("[") + print_name + "] " + e.what());
+      prevException.reset(
+	  new Exception(_filename, _line, _function, std::string("[") + print_name + "] " + e.what()));
     }
     catch (...)
     {
-      prevException =
+      prevException.reset(
 	new Exception(_filename, _line, _function,
-		      std::string("[") + Fmi::current_exception_type() + "]");
+		      std::string("[") + Fmi::current_exception_type() + "]"));
     }
   }
 }
@@ -111,12 +108,10 @@ Exception::Exception(const char* _filename, int _line, const char* _function, st
   line = _line;
   function = _function;
   message = std::move(_message);
-  prevException = nullptr;
 }
 
 Exception::~Exception()
 {
-  delete prevException;
 }
 
 std::string Exception::getFilename() const
@@ -146,15 +141,20 @@ const char* Exception::what() const noexcept(true)
 
 const Exception* Exception::getPrevException() const
 {
-  return prevException;
+  if (prevException) {
+    return prevException.get();
+  } else {
+    return nullptr;
+  }
 }
 
 const Exception* Exception::getFirstException() const
 {
-  if (prevException != nullptr)
+  if (prevException) {
     return prevException->getFirstException();
-
-  return this;
+  } else {
+    return this;
+  }
 }
 
 TimeStamp Exception::getTimeStamp() const
@@ -351,7 +351,9 @@ std::string Exception::getStackTrace() const
     }
     out << "\n";
 
-    e = e->prevException;
+    if (e->prevException) {
+      e = e->prevException.get();
+    }
   }
 
   return out.str();
@@ -400,7 +402,9 @@ std::string Exception::getHtmlStackTrace() const
     }
     out << "</ul>";
 
-    e = e->prevException;
+    if (e->prevException) {
+      e = e->prevException.get();
+    }
   }
 
   out << "</body></html>";
