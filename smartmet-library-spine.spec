@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.9.17
+Version: 19.9.25
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -106,6 +106,10 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Sep 25 2019 Andris Pavenis <andris.pavenis@fmi.fi> - 19.9.25-1.fmi
+- Use std::shared_ptr instead of pointer in SmartMet::Spine::Exception for linking to previous exception
+- Configuration entry redirect support in SmartMet::Spine::ConfigBase
+
 * Tue Sep 17 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.9.17-1.fmi
 - Fixed ActiveBackends class to destroy gracefully by moving its mutex into the cpp file
 
