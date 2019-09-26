@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <boost/atomic.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/thread.hpp>
 
@@ -47,7 +48,7 @@ class SmartMetEngine : private boost::noncopyable
   virtual void shutdown() = 0;
   virtual void shutdownRequestFlagSet();
 
-  bool itsShutdownRequested = false;
+  boost::atomic<bool> itsShutdownRequested{false};
   Reactor* itsReactor = nullptr;
 
  private:
@@ -57,7 +58,7 @@ class SmartMetEngine : private boost::noncopyable
   /// This function is used by the Reactor to initialize the engine
   void construct(const std::string& engineName, Reactor* reactor);
 
-  bool isReady = false;
+  boost::atomic<bool> isReady{false};
   std::string itsName;
   boost::mutex itsInitMutex;
   boost::condition_variable itsCond;
