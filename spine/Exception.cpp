@@ -1,29 +1,26 @@
 #include "Exception.h"
 #include "Convenience.h"
+#include <fmt/format.h>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/TypeName.h>
 #include <iostream>
-#include <sstream>
 
 namespace SmartMet
 {
 namespace Spine
 {
-
 namespace
 {
-  static const std::map<std::string, std::string> exception_name_map =
-    {
-      {"std::out_of_range", "Out of range"}
-      , {"std::invalid_argument", "Invalid argument"}
-      , {"std::length_error", "Length error"}
-      , {"std::domain_error", "Domain error"}
-      , {"std::range_error", "Range error"}
-      , {"std::overflow_error", "Overflow error"}
-      , {"std::underflow_error", "Underflow error"}
-      , {"std::runtime_error", "Runtime error"}
-      , {"std::logic_error", "Logic error"}
-    };
+static const std::map<std::string, std::string> exception_name_map = {
+    {"std::out_of_range", "Out of range"},
+    {"std::invalid_argument", "Invalid argument"},
+    {"std::length_error", "Length error"},
+    {"std::domain_error", "Domain error"},
+    {"std::range_error", "Range error"},
+    {"std::overflow_error", "Overflow error"},
+    {"std::underflow_error", "Underflow error"},
+    {"std::runtime_error", "Runtime error"},
+    {"std::logic_error", "Logic error"}};
 }
 
 Exception::Exception()
@@ -89,14 +86,13 @@ Exception::Exception(const char* _filename,
       const std::string cxx_name = Fmi::get_type_name(&e);
       auto it = exception_name_map.find(cxx_name);
       const std::string print_name = it == exception_name_map.end() ? cxx_name : it->second;
-      prevException.reset(
-	  new Exception(_filename, _line, _function, std::string("[") + print_name + "] " + e.what()));
+      prevException.reset(new Exception(
+          _filename, _line, _function, std::string("[") + print_name + "] " + e.what()));
     }
     catch (...)
     {
-      prevException.reset(
-	new Exception(_filename, _line, _function,
-		      std::string("[") + Fmi::current_exception_type() + "]"));
+      prevException.reset(new Exception(
+          _filename, _line, _function, std::string("[") + Fmi::current_exception_type() + "]"));
     }
   }
 }
@@ -110,9 +106,7 @@ Exception::Exception(const char* _filename, int _line, const char* _function, st
   message = std::move(_message);
 }
 
-Exception::~Exception()
-{
-}
+Exception::~Exception() {}
 
 std::string Exception::getFilename() const
 {
@@ -141,18 +135,24 @@ const char* Exception::what() const noexcept(true)
 
 const Exception* Exception::getPrevException() const
 {
-  if (prevException) {
+  if (prevException)
+  {
     return prevException.get();
-  } else {
+  }
+  else
+  {
     return nullptr;
   }
 }
 
 const Exception* Exception::getFirstException() const
 {
-  if (prevException) {
+  if (prevException)
+  {
     return prevException->getFirstException();
-  } else {
+  }
+  else
+  {
     return this;
   }
 }
@@ -310,106 +310,131 @@ std::string Exception::getStackTrace() const
   if (mLoggingDisabled || mStackTraceDisabled)
     return "";
 
-  std::ostringstream out;
-
   const Exception* e = this;
 
-  out << "\n";
-  out << ANSI_BG_RED << ANSI_FG_WHITE << ANSI_BOLD_ON << " ##### " << e->timestamp << " ##### "
-      << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << ANSI_BG_DEFAULT;
-  out << "\n\n";
+  std::string out = fmt::format("\n{}{}{} #### {} #### {}{}{}\n\n",
+                                ANSI_BG_RED,
+                                ANSI_FG_WHITE,
+                                ANSI_BOLD_ON,
+                                Fmi::to_iso_string(e->timestamp),
+                                ANSI_BOLD_OFF,
+                                ANSI_FG_DEFAULT,
+                                ANSI_BG_DEFAULT);
 
   while (e != nullptr)
   {
-    out << ANSI_FG_RED << ANSI_BOLD_ON << "EXCEPTION " << ANSI_BOLD_OFF << e->message
-        << ANSI_FG_DEFAULT << "\n";
-
-    // out << ANSI_BOLD_ON << " * Time       : " << ANSI_BOLD_OFF << e->timestamp << "\n";
-    out << ANSI_BOLD_ON << " * Function   : " << ANSI_BOLD_OFF << e->function << "\n";
-    out << ANSI_BOLD_ON << " * Location   : " << ANSI_BOLD_OFF << e->filename << ":" << e->line
-        << "\n";
+    out += fmt::format("{}{}EXCEPTION {}{}{}\n{} * Function   : {}{}\n{} * Location   : {}{}:{}\n",
+                       ANSI_FG_RED,
+                       ANSI_BOLD_ON,
+                       ANSI_BOLD_OFF,
+                       e->message,
+                       ANSI_FG_DEFAULT,
+                       ANSI_BOLD_ON,
+                       ANSI_BOLD_OFF,
+                       e->function,
+                       ANSI_BOLD_ON,
+                       ANSI_BOLD_OFF,
+                       e->filename,
+                       e->line);
 
     size_t size = e->detailVector.size();
     if (size > 0)
     {
-      out << ANSI_BOLD_ON << " * Details    :\n" << ANSI_BOLD_OFF;
+      out += ANSI_BOLD_ON;
+      out += " * Details    :\n";
+      out += ANSI_BOLD_OFF;
       for (size_t t = 0; t < size; t++)
       {
-        out << "   - " << e->detailVector.at(t) << "\n";
+        out += "   - ";
+        out += e->detailVector.at(t);
+        out += "\n";
       }
     }
 
     size = e->parameterVector.size();
     if (size > 0)
     {
-      out << ANSI_BOLD_ON << " * Parameters :\n" << ANSI_BOLD_OFF;
+      out += ANSI_BOLD_ON;
+      out += " * Parameters :\n";
+      out += ANSI_BOLD_OFF;
       for (size_t t = 0; t < size; t++)
       {
         auto p = e->parameterVector.at(t);
-        out << "   - " << p.first << " = " << p.second << "\n";
+        out += "   - ";
+        out += p.first;
+        out += " = ";
+        out += p.second;
+        out += "\n";
       }
     }
-    out << "\n";
+    out += "\n";
 
-    if (e->prevException) {
+    if (e->prevException)
+    {
       e = e->prevException.get();
     }
   }
 
-  return out.str();
+  return out;
 }
 
 std::string Exception::getHtmlStackTrace() const
 {
   // This is used only when debugging, hence mStackTraceDisabled is ignored
 
-  std::ostringstream out;
-
-  out << "<html><body>"
-      << "<h2>" << timestamp << "</h2>";
+  std::string out = "<html><body><h2>" + Fmi::to_iso_string(timestamp) + "</h2>";
 
   const Exception* e = this;
   while (e != nullptr)
   {
-    out << "<h2>" << e->message << "</h2>";
-    out << "<ul>"
-        << "<li><it>Function :</it>" << e->function << "</li>"
-        << "<li><it>Location :</it>" << e->filename << ":" << e->line << "</li>";
+    out += fmt::format(
+        "<h2>{}</h2><ul><li><it>Function :</it>{}</li><li><it>Location :</it>{}:{}</li>",
+        e->message,
+        e->function,
+        e->filename,
+        e->line);
 
     size_t size = e->detailVector.size();
     if (size > 0)
     {
-      out << "<li><it>Details :</it></li>";
-      out << "<ol>";
+      out += "<li><it>Details :</it></li>";
+      out += "<ol>";
       for (size_t t = 0; t < size; t++)
       {
-        out << "<li>" << e->detailVector.at(t) << "</li>";
+        out += "<li>";
+        out += e->detailVector.at(t);
+        out += "</li>";
       }
-      out << "</ol>";
+      out += "</ol>";
     }
 
     size = e->parameterVector.size();
     if (size > 0)
     {
-      out << "<li><it>Parameters :</it>";
-      out << "<ol>";
+      out += "<li><it>Parameters :</it>";
+      out += "<ol>";
       for (size_t t = 0; t < size; t++)
       {
         auto p = e->parameterVector.at(t);
-        out << "<li>" << p.first << " = " << p.second << "</li>";
+        out += "<li>";
+        out += p.first;
+        out += " = ";
+        out += p.second;
+        out += "</li>";
       }
-      out << "</ol></li>";
+      out += "</ol></li>";
     }
-    out << "</ul>";
+    out += "</ul>";
 
-    if (e->prevException) {
+    if (e->prevException)
+    {
       e = e->prevException.get();
     }
   }
 
-  out << "</body></html>";
+  out += "</body></html>";
 
-  return out.str();
+  return out;
 }
 
 // ----------------------------------------------------------------------
@@ -428,10 +453,10 @@ void Exception::printError() const
 
     // Print parameters for top level exception, if there are any. Usually
     // plugins set the URI to the top level exception.
-    
+
     if (!parameterVector.empty())
     {
-      for(const auto & param_value : parameterVector)
+      for (const auto& param_value : parameterVector)
         std::cerr << "   - " << param_value.first << " = " << param_value.second << std::endl;
     }
   }

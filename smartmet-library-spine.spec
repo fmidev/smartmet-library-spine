@@ -101,6 +101,7 @@ make %{_smp_mflags}
 
 %changelog
 * Thu Sep 26 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.9.26-1.fmi
+- Use std::string and fmt::format in Exception instead of std::ostringstream to avoid locks
 - Added ASAN and TSAN builds
 - Removed support for RHEL6
 - Added object.c_str() calls needed for RHEL8
