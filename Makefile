@@ -44,7 +44,7 @@ ifeq ($(CXX), clang++)
 	-Wno-sign-conversion
 
  INCLUDES = -isystem $(includedir)/smartmet \
-	-isystem $(includedir)/mysql
+	-isystem $(includedir)/mysql \
 	-isystem $(includedir)/jsoncpp
 else
 
@@ -70,6 +70,13 @@ else
 	-I$(includedir)/mysql \
 	`pkg-config --cflags jsoncpp`
 
+endif
+
+ifeq ($(TSAN), yes)
+  FLAGS += -fsanitize=thread
+endif
+ifeq ($(ASAN), yes)
+  FLAGS += -fsanitize=address -fsanitize=pointer-compare -fsanitize=pointer-subtract -fsanitize=undefined -fsanitize-address-use-after-scope
 endif
 
 # Compile options in release and debug modes
