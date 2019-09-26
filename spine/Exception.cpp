@@ -41,7 +41,8 @@ Exception::Exception(const Exception& other)
   prevException = nullptr;
   mStackTraceDisabled = other.mStackTraceDisabled;
   mLoggingDisabled = other.mLoggingDisabled;
-  prevException = other.prevException;
+  if (other.prevException)
+    prevException.reset(new Exception(*other.prevException));
 }
 
 Exception Exception::Trace(const char* _filename,
@@ -369,10 +370,7 @@ std::string Exception::getStackTrace() const
     }
     out += "\n";
 
-    if (e->prevException)
-    {
-      e = e->prevException.get();
-    }
+    e = e->prevException.get();
   }
 
   return out;
@@ -426,10 +424,7 @@ std::string Exception::getHtmlStackTrace() const
     }
     out += "</ul>";
 
-    if (e->prevException)
-    {
-      e = e->prevException.get();
-    }
+    e = e->prevException.get();
   }
 
   out += "</body></html>";
