@@ -25,7 +25,7 @@ namespace Names
 std::string engine_name(const std::string& filename)
 {
   const boost::regex e(".*/(.*?)\\.so");
-  std::string name = boost::regex_replace(filename, e, "\\1");
+  std::string name = boost::regex_replace(filename, e, "$1");
   return name;
 }
 
