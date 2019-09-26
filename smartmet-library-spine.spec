@@ -109,6 +109,11 @@ make %{_smp_mflags}
 - SmartMet Server plugin tests can now be run in parallel for the benefit of TSAN
 - Use atomics when logging (TSAN)
 - Reactor now uses atomic status variables (TSAN)
+- Use std::shared_ptr instead of pointer in SmartMet::Spine::Exception for linking to previous exception
+- Configuration entry redirect support in SmartMet::Spine::ConfigBase
+
+* Tue Sep 17 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.9.17-1.fmi
+- Fixed ActiveBackends class to destroy gracefully by moving its mutex into the cpp file
 
 * Wed Aug 28 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.8.28-1.fmi
 - Added optional fmisid information to Location objects
