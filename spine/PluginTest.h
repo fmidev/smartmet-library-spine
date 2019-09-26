@@ -15,11 +15,13 @@
 #include "HTTP.h"
 #include "Options.h"
 #include "Reactor.h"
+#include <macgyver/WorkQueue.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <dtl/dtl.hpp>
+#include <atomic>
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
@@ -29,6 +31,9 @@
 #include <string>
 #include <vector>
 
+namespace ba = boost::algorithm;
+namespace fs = boost::filesystem;
+
 namespace SmartMet
 {
 namespace Spine
@@ -36,7 +41,7 @@ namespace Spine
 namespace PluginTest
 {
 typedef boost::function<void(SmartMet::Spine::Reactor& reactor)> PreludeFunction;
-int test(SmartMet::Spine::Options& options, PreludeFunction prelude, bool processresult = false);
+  int test(SmartMet::Spine::Options& options, PreludeFunction prelude, bool processresult = false, int num_threads = 1);
 
 }  // namespace PluginTest
 }  // namespace Spine
@@ -80,7 +85,6 @@ void printRequest(SmartMet::Spine::HTTP::Request& request)
 }
 
 // ---------------------------------------------------------------------
-namespace ba = boost::algorithm;
 
 std::vector<std::string> read_file(const std::string& fn)
 {
@@ -128,7 +132,6 @@ void show_diff(const std::string& src, const std::string& dest)
 
 // ----------------------------------------------------------------------
 
-namespace fs = boost::filesystem;
 
 bool check_path(bool ok, const fs::path& p)
 {
@@ -340,6 +343,129 @@ bool get_processed_response(const SmartMet::Spine::HTTP::Response& response,
     throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
+
+// ----------------------------------------------------------------------
+
+bool process_query(const fs::path & fn,
+		  SmartMet::Spine::Reactor & reactor,
+		  bool processresult)
+{
+  using boost::filesystem::path;
+
+  path inputfile("input");
+  inputfile /= fn;
+  
+  const std::size_t padding = 90;
+  const int dots = static_cast<int>(padding - inputfile.native().size());
+
+  std::ostringstream out;
+  
+  out << fn.native() << ' ' << std::setw(dots) << std::setfill('.') << ". ";
+  
+  std::string input = get_file_contents(inputfile);
+  
+  // emacs keeps messing up the newlines, easier to make sure
+  // the ending is correct this way, but do NOT touch POST queries
+  
+  if (boost::algorithm::ends_with(inputfile.string(), ".get"))
+    {
+      boost::algorithm::trim(input);
+      input += "\r\n\r\n";
+    }
+  
+  auto query = SmartMet::Spine::HTTP::parseRequest(input);
+
+  bool ok = true;
+
+  if (query.first == SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+    {
+      try
+        {
+          SmartMet::Spine::HTTP::Response response;
+	  
+          auto view = reactor.getHandlerView(*query.second);
+          if (!view)
+	    {
+	      ok = false;
+	      out << "FAILED TO HANDLE REQUEST STRING";
+	    }
+          else
+	    {
+	      view->handle(reactor, *query.second, response);
+
+	      std::string result = get_full_response(response);
+
+	      if (processresult)
+		{
+		  // Run script/executable to process the result (e.g. convert binary to ascii) for
+		  // validation
+		  //
+		  path scriptfile = path("scripts") / fn;
+
+		  if (exists(scriptfile))
+		    {
+		      ok = get_processed_response(response, scriptfile, result);
+
+		      if (!ok)
+			out << "FAIL (result processing failed)";
+		    }
+		}
+
+	      if (ok)
+		{
+		  path outputfile = path("output") / fn;
+		  path failure_fn = path("failures") / fn;
+		  if (exists(outputfile) and is_regular_file(outputfile))
+		    {
+		      std::string output = get_file_contents(outputfile);
+
+		      if (result == output)
+			out << "OK";
+		      else
+			{
+			  // printMessage(&response);
+			  ok = false;
+			  out << "FAIL";
+			  boost::filesystem::create_directories(failure_fn.parent_path());
+			  put_file_contents(failure_fn, result);
+			  show_diff(outputfile.string(), failure_fn.string());
+			}
+		    }
+		  else
+		    {
+		      ok = false;
+		      boost::filesystem::create_directories(failure_fn.parent_path());
+		      put_file_contents(failure_fn, result);
+		      out << "FAIL (expected result file '" << outputfile.string() << "' missing)";
+		    }
+		}
+	    }
+	  std::cout << out.str() + "\n" << std::flush;
+        }
+      catch (std::exception& e)
+        {
+          ok = false;
+	  std::cout << out.str() + "\nEXCEPTION: " + e.what() + "\n" << std::flush;
+        }
+      catch (...)
+        {
+          ok = false;
+          std::cout << out.str() + "\nUNKNOWN EXCEPTION\n" << std::flush;
+        }
+    }
+  else if (query.first == SmartMet::Spine::HTTP::ParsingStatus::FAILED)
+    {
+      ok = false;
+      std::cout << out.str() + "\nFAILED TO PARSE REQUEST STRING\n" << std::flush;
+    }
+  else
+    {
+      ok = false;
+      std::cout << out.str() + "PARSED REQUEST ONLY PARTIALLY\n" << std::flush;
+    }
+  return ok;
+}
+  
 }  // namespace
 
 namespace SmartMet
@@ -348,156 +474,61 @@ namespace Spine
 {
 namespace PluginTest
 {
-int test(SmartMet::Spine::Options& options, PreludeFunction prelude, bool processresult)
-{
-  try
+  int test(SmartMet::Spine::Options& options, PreludeFunction prelude, bool processresult, int num_threads)
   {
-    int num_failed = 0;
-    options.parseConfig();
-    SmartMet::Spine::Reactor reactor(options);
-    prelude(reactor);
+    using boost::filesystem::path;
 
-    std::list<boost::filesystem::path> inputfiles = recursive_directory_contents("input");
-
-    const std::size_t padding = 90;
-    for (const boost::filesystem::path& fn : inputfiles)
-    {
-      using boost::filesystem::path;
-      using std::cout;
-      using std::endl;
-      using std::string;
-
-      path inputfile("input");
-      inputfile /= fn;
-
-      bool ok = true;
-      const int dots = static_cast<int>(padding - inputfile.native().size());
-
-      cout << fn.native() << ' ' << std::setw(dots) << std::setfill('.') << ". ";
-
-      string input = get_file_contents(inputfile);
-
-      // emacs keeps messing up the newlines, easier to make sure
-      // the ending is correct this way, but do NOT touch POST queries
-
-      if (boost::algorithm::ends_with(inputfile.string(), ".get"))
+    try
       {
-        boost::algorithm::trim(input);
-        input += "\r\n\r\n";
+	std::atomic<int> num_failed{0};
+	options.parseConfig();
+	SmartMet::Spine::Reactor reactor(options);
+	prelude(reactor);
+
+	std::list<path> inputfiles = recursive_directory_contents("input");
+
+	// Run tests in parallel
+
+	const auto executor = [&num_failed,&reactor,&processresult](const path& fn)
+			      {
+				try
+				  {
+				    bool ok = process_query(fn, reactor, processresult);
+				    if(not ok)
+				      ++num_failed;
+				  }
+				catch(...)
+				  {
+				    ++num_failed;
+				    SmartMet::Spine::Exception ex(BCP, "Test failed");
+				    ex.printError();
+				  }
+			      };
+	
+	Fmi::WorkQueue<path> workqueue(executor, num_threads);
+      
+	for (const path& fn : inputfiles)
+	  workqueue(fn);
+    
+	workqueue.join_all();
+
+	if (num_failed > 0)
+	  {
+	    std::cout << "\n";
+	    std::cout << "*** " << num_failed << " test" << (num_failed == 1 ? "" : "s") << " of "
+		      << inputfiles.size() << " failed\n";
+	    std::cout << std::endl;
+	  }
+
+	return num_failed > 0 ? 1 : 0;
       }
-
-      auto query = SmartMet::Spine::HTTP::parseRequest(input);
-
-      if (query.first == SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+    catch (...)
       {
-        try
-        {
-          SmartMet::Spine::HTTP::Response response;
-
-          auto view = reactor.getHandlerView(*query.second);
-          if (!view)
-          {
-            ok = false;
-            cout << "FAILED TO HANDLE REQUEST STRING" << endl;
-          }
-          else
-          {
-            view->handle(reactor, *query.second, response);
-
-            string result = get_full_response(response);
-
-            if (processresult)
-            {
-              // Run script/executable to process the result (e.g. convert binary to ascii) for
-              // validation
-              //
-              path scriptfile = path("scripts") / fn;
-
-              if (exists(scriptfile))
-              {
-                ok = get_processed_response(response, scriptfile, result);
-
-                if (!ok)
-                  cout << "FAIL (result processing failed)" << endl;
-              }
-            }
-
-            if (ok)
-            {
-              path outputfile = path("output") / fn;
-              path failure_fn = path("failures") / fn;
-              if (exists(outputfile) and is_regular_file(outputfile))
-              {
-                string output = get_file_contents(outputfile);
-
-                if (result == output)
-                  cout << "OK" << endl;
-                else
-                {
-                  // printMessage(&response);
-                  ok = false;
-                  cout << "FAIL" << endl;
-                  boost::filesystem::create_directories(failure_fn.parent_path());
-                  put_file_contents(failure_fn, result);
-                  show_diff(outputfile.string(), failure_fn.string());
-                }
-              }
-              else
-              {
-                ok = false;
-                boost::filesystem::create_directories(failure_fn.parent_path());
-                put_file_contents(failure_fn, result);
-                cout << "FAIL (expected result file '" << outputfile.string() << "' missing)"
-                     << endl;
-              }
-            }
-          }
-        }
-        catch (std::exception& e)
-        {
-          ok = false;
-          cout << "EXCEPTION: " << e.what() << endl;
-        }
-        catch (...)
-        {
-          ok = false;
-          cout << "UNKNOWN EXCEPTION" << endl;
-        }
+	SmartMet::Spine::Exception e(BCP, "Plugin test failed!", nullptr);
+	std::cout << e.getStackTrace() << std::endl;
+	return 1;
       }
-      else if (query.first == SmartMet::Spine::HTTP::ParsingStatus::FAILED)
-      {
-        ok = false;
-        cout << "FAILED TO PARSE REQUEST STRING" << endl;
-      }
-      else
-      {
-        ok = false;
-        cout << "PARSED REQUEST ONLY PARTIALLY" << endl;
-      }
-
-      if (not ok)
-      {
-        num_failed++;
-      }
-    }
-
-    if (num_failed > 0)
-    {
-      std::cout << "\n";
-      std::cout << "*** " << num_failed << " test" << (num_failed == 1 ? "" : "s") << " of "
-                << inputfiles.size() << " failed\n";
-      std::cout << std::endl;
-    }
-
-    return num_failed > 0 ? 1 : 0;
   }
-  catch (...)
-  {
-    SmartMet::Spine::Exception e(BCP, "Plugin test failed!", nullptr);
-    std::cout << e.getStackTrace() << std::endl;
-    return 1;
-  }
-}
 
 }  // namespace PluginTest
 }  // namespace Spine
