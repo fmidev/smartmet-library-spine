@@ -386,7 +386,7 @@ libconfig::Setting* ConfigBase::find_setting(libconfig::Setting& search_start,
         {
           if (curr->exists(name))
           {
-            curr = &(*curr)[name];
+            curr = &(*curr)[name.c_str()];
           }
           else if (mandatory)
           {
