@@ -554,7 +554,7 @@ std::string log_time_str()
   try
   {
     const pt::ptime now = pt::second_clock::local_time();
-    return pt::to_simple_string(now);
+    return Fmi::to_simple_string(now);
   }
   catch (...)
   {
