@@ -32,6 +32,7 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <atomic>
 
 namespace SmartMet
 {
@@ -197,8 +198,8 @@ class Reactor
 
   // Logging
 
+  std::atomic<bool> itsLoggingEnabled{false};
   mutable MutexType itsLoggingMutex;
-  bool itsLoggingEnabled = false;
   boost::posix_time::ptime itsLogLastCleaned;
   boost::shared_ptr<boost::thread> itsLogCleanerThread;
   bool itsShutdownRequested = false;

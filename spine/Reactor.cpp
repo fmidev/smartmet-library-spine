@@ -257,14 +257,14 @@ bool Reactor::addContentHandler(SmartMetPlugin* thePlugin,
     std::string pluginName = thePlugin->getPluginName();
 
     auto itsFilter = itsIPFilters.find(Fmi::ascii_tolower_copy(pluginName));
-    boost::shared_ptr<IPFilter::IPFilter> theFilter;
+    boost::shared_ptr<IPFilter::IPFilter> filter;
     if (itsFilter != itsIPFilters.end())
     {
-      theFilter = itsFilter->second;
+      filter = itsFilter->second;
     }
 
     boost::shared_ptr<HandlerView> theView(new HandlerView(
-        theHandler, theFilter, thePlugin, theUri, itsLoggingEnabled, itsOptions.accesslogdir));
+        theHandler, filter, thePlugin, theUri, itsLoggingEnabled, itsOptions.accesslogdir));
 
     std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered URI "
               << theUri << " for plugin " << thePlugin->getPluginName() << ANSI_BOLD_OFF
@@ -384,7 +384,6 @@ boost::optional<HandlerView&> Reactor::getHandlerView(const HTTP::Request& theRe
 
 bool Reactor::getLogging() const
 {
-  ReadLock lock(itsLoggingMutex);
   return itsLoggingEnabled;
 }
 
@@ -607,15 +606,13 @@ void Reactor::setLogging(bool loggingEnabled)
   try
   {
     WriteLock lock(itsLoggingMutex);
-    bool previousStatus = itsLoggingEnabled;  // Save previous status to detect changes
-    itsLoggingEnabled = loggingEnabled;
 
-    if (itsLoggingEnabled == previousStatus)
-    {
-      // No change in status, simply return
+    // Check for no change in status
+    if(itsLoggingEnabled == loggingEnabled)
       return;
-    }
 
+    itsLoggingEnabled = loggingEnabled;
+    
     if (itsLoggingEnabled)
     {
       // See if cleaner thread is running for some reason
@@ -643,6 +640,7 @@ void Reactor::setLogging(bool loggingEnabled)
     // Set logging status for ALL plugins
     for (auto& handlerPair : itsHandlers)
     {
+
       handlerPair.second->setLogging(itsLoggingEnabled);
     }
   }
