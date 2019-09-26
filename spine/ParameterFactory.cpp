@@ -8,7 +8,6 @@
 #include "Convenience.h"
 #include "Exception.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/regex.hpp>
 #include <macgyver/StringConversion.h>
 #include <stdexcept>
 
@@ -708,8 +707,7 @@ Parameter ParameterFactory::parse(const std::string& paramname,
 
       if (number == kFmiBadParameter)
       {
-        // Prefer regex instead of a try..catch block
-        if (boost::regex_match(p, boost::regex("^[(-|+)]?[0-9]+$")))
+        if (Fmi::looks_signed_int(p))
           number = FmiParameterName(Fmi::stol(p));
         else if (!ignoreBadParameter)
           throw Spine::Exception(BCP, "Unknown parameter '" + paramname + "'!");
