@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.8.28
+Version: 19.9.26
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -26,8 +26,6 @@ BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
 BuildRequires: smartmet-library-gis-devel >= 19.3.14
 BuildRequires: fmt-devel >= 5.2.0
-
-%if 0%{rhel} >= 7
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
@@ -35,20 +33,16 @@ Requires: smartmet-library-newbase >= 19.8.12
 Requires: smartmet-library-macgyver >= 19.8.2
 Requires: smartmet-timezones >= 19.7.29
 Requires: smartmet-library-gis >= 19.3.14
-Requires: mariadb-libs
+Requires: mariadb-embedded
 Requires: boost-filesystem
 Requires: boost-iostreams
-Requires: boost-regex
 Requires: boost-date-time
+Requires: boost-regex
 Requires: boost-thread
 Requires: boost-program-options
 Requires: boost-system
 Requires: boost-timer
 Requires: boost-chrono
-%else
-BuildRequires: mysql-devel
-Requires: mysql-libs
-%endif
 Requires: libicu
 Requires: ctpp2
 Requires: gdal
@@ -106,6 +100,16 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu Sep 26 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.9.26-1.fmi
+- Added ASAN and TSAN builds
+- Removed support for RHEL6
+- Added object.c_str() calls needed for RHEL8
+- Use Fmi::to_simple_string instead of Boost version to avoid locale locks (TSAN)
+- Use Fmi::looks_signed_int instead of regexes to avoid locale locks (TSAN)
+- SmartMet Server plugin tests can now be run in parallel for the benefit of TSAN
+- Use atomics when logging (TSAN)
+- Reactor now uses atomic status variables (TSAN)
+
 * Wed Aug 28 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.8.28-1.fmi
 - Added optional fmisid information to Location objects
 
