@@ -15,14 +15,14 @@
 #include "HTTP.h"
 #include "Options.h"
 #include "Reactor.h"
-#include <macgyver/WorkQueue.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/bind.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <dtl/dtl.hpp>
-#include <atomic>
+#include <macgyver/WorkQueue.h>
 #include <algorithm>
+#include <atomic>
 #include <fstream>
 #include <iomanip>
 #include <list>
@@ -41,7 +41,10 @@ namespace Spine
 namespace PluginTest
 {
 typedef boost::function<void(SmartMet::Spine::Reactor& reactor)> PreludeFunction;
-  int test(SmartMet::Spine::Options& options, PreludeFunction prelude, bool processresult = false, int num_threads = 1);
+int test(SmartMet::Spine::Options& options,
+         PreludeFunction prelude,
+         bool processresult = false,
+         int num_threads = 1);
 
 }  // namespace PluginTest
 }  // namespace Spine
@@ -105,7 +108,7 @@ std::vector<std::string> read_file(const std::string& fn)
   }
 }
 
-void show_diff(const std::string& src, const std::string& dest)
+std::string get_diff(const std::string& src, const std::string& dest)
 {
   try
   {
@@ -120,9 +123,8 @@ void show_diff(const std::string& src, const std::string& dest)
     std::string ret = out.str();
 
     if (ret.size() > 5000)
-      std::cout << "Diff size " << ret.size() << " is too big (>5000)";
-    else
-      std::cout << ret;
+      return "Diff size " + std::to_string(ret.size()) + " is too big (>5000)";
+    return ret;
   }
   catch (...)
   {
@@ -131,7 +133,6 @@ void show_diff(const std::string& src, const std::string& dest)
 }
 
 // ----------------------------------------------------------------------
-
 
 bool check_path(bool ok, const fs::path& p)
 {
@@ -321,7 +322,7 @@ bool get_processed_response(const SmartMet::Spine::HTTP::Response& response,
 
       ok = true;
     }
-    catch (std::exception & e)
+    catch (std::exception& e)
     {
       std::cout << "EXCEPTION: " << e.what() << std::endl;
     }
@@ -346,126 +347,124 @@ bool get_processed_response(const SmartMet::Spine::HTTP::Response& response,
 
 // ----------------------------------------------------------------------
 
-bool process_query(const fs::path & fn,
-		  SmartMet::Spine::Reactor & reactor,
-		  bool processresult)
+bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor, bool processresult)
 {
   using boost::filesystem::path;
 
   path inputfile("input");
   inputfile /= fn;
-  
+
   const std::size_t padding = 90;
   const int dots = static_cast<int>(padding - inputfile.native().size());
 
   std::ostringstream out;
-  
+
   out << fn.native() << ' ' << std::setw(dots) << std::setfill('.') << ". ";
-  
+
   std::string input = get_file_contents(inputfile);
-  
+
   // emacs keeps messing up the newlines, easier to make sure
   // the ending is correct this way, but do NOT touch POST queries
-  
+
   if (boost::algorithm::ends_with(inputfile.string(), ".get"))
-    {
-      boost::algorithm::trim(input);
-      input += "\r\n\r\n";
-    }
-  
+  {
+    boost::algorithm::trim(input);
+    input += "\r\n\r\n";
+  }
+
   auto query = SmartMet::Spine::HTTP::parseRequest(input);
 
   bool ok = true;
 
   if (query.first == SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+  {
+    try
     {
-      try
+      SmartMet::Spine::HTTP::Response response;
+
+      auto view = reactor.getHandlerView(*query.second);
+      if (!view)
+      {
+        ok = false;
+        out << "FAILED TO HANDLE REQUEST STRING";
+      }
+      else
+      {
+        view->handle(reactor, *query.second, response);
+
+        std::string result = get_full_response(response);
+
+        if (processresult)
         {
-          SmartMet::Spine::HTTP::Response response;
-	  
-          auto view = reactor.getHandlerView(*query.second);
-          if (!view)
-	    {
-	      ok = false;
-	      out << "FAILED TO HANDLE REQUEST STRING";
-	    }
+          // Run script/executable to process the result (e.g. convert binary to ascii) for
+          // validation
+          //
+          path scriptfile = path("scripts") / fn;
+
+          if (exists(scriptfile))
+          {
+            ok = get_processed_response(response, scriptfile, result);
+
+            if (!ok)
+              out << "FAIL (result processing failed)";
+          }
+        }
+
+        if (ok)
+        {
+          path outputfile = path("output") / fn;
+          path failure_fn = path("failures") / fn;
+          if (exists(outputfile) and is_regular_file(outputfile))
+          {
+            std::string output = get_file_contents(outputfile);
+
+            if (result == output)
+              out << "OK";
+            else
+            {
+              // printMessage(&response);
+              ok = false;
+              out << "FAIL";
+              boost::filesystem::create_directories(failure_fn.parent_path());
+              put_file_contents(failure_fn, result);
+              out << get_diff(outputfile.string(), failure_fn.string());
+            }
+          }
           else
-	    {
-	      view->handle(reactor, *query.second, response);
-
-	      std::string result = get_full_response(response);
-
-	      if (processresult)
-		{
-		  // Run script/executable to process the result (e.g. convert binary to ascii) for
-		  // validation
-		  //
-		  path scriptfile = path("scripts") / fn;
-
-		  if (exists(scriptfile))
-		    {
-		      ok = get_processed_response(response, scriptfile, result);
-
-		      if (!ok)
-			out << "FAIL (result processing failed)";
-		    }
-		}
-
-	      if (ok)
-		{
-		  path outputfile = path("output") / fn;
-		  path failure_fn = path("failures") / fn;
-		  if (exists(outputfile) and is_regular_file(outputfile))
-		    {
-		      std::string output = get_file_contents(outputfile);
-
-		      if (result == output)
-			out << "OK";
-		      else
-			{
-			  // printMessage(&response);
-			  ok = false;
-			  out << "FAIL";
-			  boost::filesystem::create_directories(failure_fn.parent_path());
-			  put_file_contents(failure_fn, result);
-			  show_diff(outputfile.string(), failure_fn.string());
-			}
-		    }
-		  else
-		    {
-		      ok = false;
-		      boost::filesystem::create_directories(failure_fn.parent_path());
-		      put_file_contents(failure_fn, result);
-		      out << "FAIL (expected result file '" << outputfile.string() << "' missing)";
-		    }
-		}
-	    }
-	  std::cout << out.str() + "\n" << std::flush;
+          {
+            ok = false;
+            boost::filesystem::create_directories(failure_fn.parent_path());
+            put_file_contents(failure_fn, result);
+            out << "FAIL (expected result file '" << outputfile.string() << "' missing)";
+          }
         }
-      catch (std::exception& e)
-        {
-          ok = false;
-	  std::cout << out.str() + "\nEXCEPTION: " + e.what() + "\n" << std::flush;
-        }
-      catch (...)
-        {
-          ok = false;
-          std::cout << out.str() + "\nUNKNOWN EXCEPTION\n" << std::flush;
-        }
+      }
+      std::cout << out.str() + "\n" << std::flush;
     }
+    catch (std::exception& e)
+    {
+      ok = false;
+      std::cout << out.str() + "\nEXCEPTION: " + e.what() + "\n" << std::flush;
+    }
+    catch (...)
+    {
+      ok = false;
+      std::cout << out.str() + "\nUNKNOWN EXCEPTION\n" << std::flush;
+    }
+  }
   else if (query.first == SmartMet::Spine::HTTP::ParsingStatus::FAILED)
-    {
-      ok = false;
-      std::cout << out.str() + "\nFAILED TO PARSE REQUEST STRING\n" << std::flush;
-    }
+  {
+    ok = false;
+    std::cout << out.str() + "\nFAILED TO PARSE REQUEST STRING\n" << std::flush;
+  }
   else
-    {
-      ok = false;
-      std::cout << out.str() + "PARSED REQUEST ONLY PARTIALLY\n" << std::flush;
-    }
+  {
+    ok = false;
+    std::cout << out.str() + "PARSED REQUEST ONLY PARTIALLY\n" << std::flush;
+  }
   return ok;
 }
-  
+
 }  // namespace
 
 namespace SmartMet
@@ -474,61 +473,63 @@ namespace Spine
 {
 namespace PluginTest
 {
-  int test(SmartMet::Spine::Options& options, PreludeFunction prelude, bool processresult, int num_threads)
+int test(SmartMet::Spine::Options& options,
+         PreludeFunction prelude,
+         bool processresult,
+         int num_threads)
+{
+  using boost::filesystem::path;
+
+  try
   {
-    using boost::filesystem::path;
+    std::atomic<int> num_failed{0};
+    options.parseConfig();
+    SmartMet::Spine::Reactor reactor(options);
+    prelude(reactor);
 
-    try
+    std::list<path> inputfiles = recursive_directory_contents("input");
+
+    // Run tests in parallel
+
+    const auto executor = [&num_failed, &reactor, &processresult](const path& fn) {
+      try
       {
-	std::atomic<int> num_failed{0};
-	options.parseConfig();
-	SmartMet::Spine::Reactor reactor(options);
-	prelude(reactor);
-
-	std::list<path> inputfiles = recursive_directory_contents("input");
-
-	// Run tests in parallel
-
-	const auto executor = [&num_failed,&reactor,&processresult](const path& fn)
-			      {
-				try
-				  {
-				    bool ok = process_query(fn, reactor, processresult);
-				    if(not ok)
-				      ++num_failed;
-				  }
-				catch(...)
-				  {
-				    ++num_failed;
-				    SmartMet::Spine::Exception ex(BCP, "Test failed");
-				    ex.printError();
-				  }
-			      };
-	
-	Fmi::WorkQueue<path> workqueue(executor, num_threads);
-      
-	for (const path& fn : inputfiles)
-	  workqueue(fn);
-    
-	workqueue.join_all();
-
-	if (num_failed > 0)
-	  {
-	    std::cout << "\n";
-	    std::cout << "*** " << num_failed << " test" << (num_failed == 1 ? "" : "s") << " of "
-		      << inputfiles.size() << " failed\n";
-	    std::cout << std::endl;
-	  }
-
-	return num_failed > 0 ? 1 : 0;
+        bool ok = process_query(fn, reactor, processresult);
+        if (not ok)
+          ++num_failed;
       }
-    catch (...)
+      catch (...)
       {
-	SmartMet::Spine::Exception e(BCP, "Plugin test failed!", nullptr);
-	std::cout << e.getStackTrace() << std::endl;
-	return 1;
+        ++num_failed;
+        SmartMet::Spine::Exception ex(BCP, "Test failed");
+        ex.printError();
       }
+    };
+
+    Fmi::WorkQueue<path> workqueue(executor, num_threads);
+
+    for (const path& fn : inputfiles)
+      workqueue(fn);
+
+    workqueue.join_all();
+
+    if (num_failed > 0)
+    {
+      std::cout << "\n";
+      std::cout << "*** " << num_failed << " test" << (num_failed == 1 ? "" : "s") << " of "
+                << inputfiles.size() << " failed\n";
+      std::cout << std::endl;
+    }
+
+    return num_failed > 0 ? 1 : 0;
   }
+  catch (...)
+  {
+    SmartMet::Spine::Exception e(BCP, "Plugin test failed!", nullptr);
+    std::cout << e.getStackTrace() << std::endl;
+    return 1;
+  }
+}
 
 }  // namespace PluginTest
 }  // namespace Spine
