@@ -14,8 +14,8 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 19.8.12
-BuildRequires: smartmet-library-macgyver-devel >= 19.8.2
+BuildRequires: smartmet-library-newbase-devel >= 19.9.26
+BuildRequires: smartmet-library-macgyver-devel >= 19.9.26
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -24,15 +24,15 @@ BuildRequires: gdal-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 19.3.14
+BuildRequires: smartmet-library-gis-devel >= 19.9.26
 BuildRequires: fmt-devel >= 5.2.0
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 19.8.12
-Requires: smartmet-library-macgyver >= 19.8.2
+Requires: smartmet-library-newbase >= 19.9.26
+Requires: smartmet-library-macgyver >= 19.9.26
 Requires: smartmet-timezones >= 19.7.29
-Requires: smartmet-library-gis >= 19.3.14
+Requires: smartmet-library-gis >= 19.9.26
 Requires: mariadb-embedded
 Requires: boost-filesystem
 Requires: boost-iostreams
