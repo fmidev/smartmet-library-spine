@@ -41,8 +41,7 @@ Exception::Exception(const Exception& other)
   prevException = nullptr;
   mStackTraceDisabled = other.mStackTraceDisabled;
   mLoggingDisabled = other.mLoggingDisabled;
-  if (other.prevException)
-    prevException.reset(new Exception(*other.prevException));
+  prevException = other.prevException;
 }
 
 Exception Exception::Trace(const char* _filename,
