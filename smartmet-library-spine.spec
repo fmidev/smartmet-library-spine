@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.9.27
+Version: 19.10.1
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -100,6 +100,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Oct  1 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.10.1-1.fmi
+- Added option --stacktrace to enable a stack trace printout on crashes (default is from now on is false)
+
 * Fri Sep 27 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.9.27-1.fmi
 - Fixed PluginTest to print diff results after the actual tests, parallel runs made output overlap
 

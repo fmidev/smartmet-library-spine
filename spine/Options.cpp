@@ -18,57 +18,6 @@ namespace SmartMet
 {
 namespace Spine
 {
-namespace
-{
-const char* default_configfile = "/etc/smartmet/smartmet.conf";
-const char* default_libdir = "/usr/share/smartmet";
-const char* default_locale = "fi_FI.UTF-8";
-const char* default_accesslogdir = "/var/log/smartmet";
-const char* default_new_handler = "default";
-const unsigned int default_port = 8080;
-const unsigned int default_maxthreads = 10;
-const unsigned int default_timeout = 60;
-const unsigned int default_maxrequeuesize = 100;
-const unsigned int default_compresslimit = 1000;
-const unsigned int default_maxactiverequests = 0;    // 0=unlimited
-const unsigned int default_maxrequestsize = 131072;  // 0=unlimited
-}  // namespace
-
-// ----------------------------------------------------------------------
-/*!
- * \brief The options hold two instances of pool options
- */
-// ----------------------------------------------------------------------
-
-PoolOptions::PoolOptions() : minsize(default_maxthreads), maxrequeuesize(default_maxrequeuesize) {}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief The constructor merely sets the defaults
- */
-// ----------------------------------------------------------------------
-
-Options::Options()
-    : port(default_port),
-      timeout(default_timeout),
-      directory(default_libdir),
-      configfile(default_configfile),
-      locale(default_locale),
-      new_handler(default_new_handler),
-      verbose(false),
-      quiet(false),
-      debug(false),
-      logrequests(false),
-      compress(false),
-      compresslimit(default_compresslimit),
-      defaultlogging(true),
-      lazylinking(true),
-      maxactiverequests(default_maxactiverequests),
-      maxrequestsize(default_maxrequestsize),
-      accesslogdir(default_accesslogdir)
-{
-}
-
 // ----------------------------------------------------------------------
 /*!
  * \brief Parse all options
@@ -120,6 +69,7 @@ bool Options::parseOptions(int argc, char* argv[])
     const char* msgdebug = "set debug mode on";
     const char* msgquiet = "set quiet mode on";
     const char* msgverbose = "set verbose mode on";
+    const char* msgstacktrace = "enable stack trace on crashes";
     const char* msglogrequest = "print all incoming requests";
     const char* msgport = "set the HTTP port";
     const char* msgtimeout = "set the server timeout in seconds";
@@ -154,6 +104,7 @@ bool Options::parseOptions(int argc, char* argv[])
         "debug,d", po::bool_switch(&debug)->default_value(debug), msgdebug)(
         "verbose,v", po::bool_switch(&verbose)->default_value(verbose), msgverbose)(
         "quiet", po::bool_switch(&quiet)->default_value(quiet), msgquiet)(
+        "stacktrace", po::bool_switch(&quiet)->default_value(stacktrace), msgstacktrace)(
         "logrequests", po::bool_switch(&logrequests)->default_value(logrequests), msglogrequest)(
         "configfile,c", po::value(&configfile)->default_value(configfile), msgconf)(
         "libdir,L", po::value(&directory)->default_value(directory), msglib)(
@@ -247,6 +198,7 @@ void Options::parseConfig()
       lookupHostSetting(itsConfig, verbose, "verbose");
       lookupHostSetting(itsConfig, debug, "debug");
       lookupHostSetting(itsConfig, quiet, "quiet");
+      lookupHostSetting(itsConfig, stacktrace, "stacktrace");
       lookupHostSetting(itsConfig, logrequests, "logrequests");
       lookupHostSetting(itsConfig, compress, "compress");
       lookupHostSetting(itsConfig, compresslimit, "compresslimit");
@@ -299,22 +251,25 @@ void Options::report() const
 {
   try
   {
-    std::cout << ANSI_ITALIC_ON << "Starting with the following settings:" << std::endl
-              << "Debug mode\t\t\t= " << (debug ? "ON" : "OFF") << std::endl
-              << "Quiet mode\t\t\t= " << (quiet ? "ON" : "OFF") << std::endl
-              << "Log requests\t\t\t= " << (logrequests ? "ON" : "OFF") << std::endl
-              << "Config file\t\t\t= " << configfile << std::endl
-              << "Max fast threads\t\t= " << fastpool.minsize << std::endl
-              << "Max fast queue size\t\t= " << fastpool.maxrequeuesize << std::endl
-              << "Max slow threads\t\t= " << slowpool.minsize << std::endl
-              << "Max slow queue size\t\t= " << slowpool.maxrequeuesize << std::endl
-              << "Max active requests\t\t= " << maxactiverequests << std::endl
-              << "Port\t\t\t\t= " << port << std::endl
-              << "Timeout\t\t\t\t= " << timeout << std::endl
-              << "Access log directory\t\t= " << accesslogdir << std::endl
-              << "Logs requests by default\t= " << defaultlogging << std::endl
-              << "Lazy linking\t\t\t= " << (lazylinking ? "ON" : "OFF") << std::endl
-              << "Out of memory handler\t\t= " << new_handler << std::endl
+    std::cout << ANSI_ITALIC_ON << "Starting with the following settings:\n"
+              << "Debug mode\t\t\t= " << (debug ? "ON" : "OFF") << "\n"
+              << "Quiet mode\t\t\t= " << (quiet ? "ON" : "OFF") << "\n"
+              << "Log requests\t\t\t= " << (logrequests ? "ON" : "OFF") << "\n"
+              << "Config file\t\t\t= " << configfile << "\n"
+              << "Max fast threads\t\t= " << fastpool.minsize << "\n"
+              << "Max fast queue size\t\t= " << fastpool.maxrequeuesize << "\n"
+              << "Max slow threads\t\t= " << slowpool.minsize << "\n"
+              << "Max slow queue size\t\t= " << slowpool.maxrequeuesize << "\n"
+              << "Max active requests\t\t= " << maxactiverequests << "\n"
+              << "Port\t\t\t\t= " << port << "\n"
+              << "Timeout\t\t\t\t= " << timeout << "\n"
+              << "Access log directory\t\t= " << accesslogdir << "\n"
+              << "Logs requests by default\t= " << defaultlogging << "\n"
+              << "Lazy linking\t\t\t= " << (lazylinking ? "ON" : "OFF") << "\n"
+              << "Stack trace on crash\t\t= " << (stacktrace ? "ON" : "OFF")
+              << "\n"
+                 "Out of memory handler\t\t= "
+              << new_handler << "\n"
               << ANSI_ITALIC_OFF << std::endl;
   }
   catch (...)
