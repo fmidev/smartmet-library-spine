@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.10.1
+Version: 19.10.8
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -33,7 +33,7 @@ Requires: smartmet-library-newbase >= 19.9.26
 Requires: smartmet-library-macgyver >= 19.9.26
 Requires: smartmet-timezones >= 19.7.29
 Requires: smartmet-library-gis >= 19.9.26
-Requires: mariadb-embedded
+Requires: mariadb-libs
 Requires: boost-filesystem
 Requires: boost-iostreams
 Requires: boost-date-time
@@ -100,6 +100,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Oct  8 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.10.8-1.fmi
+- Fixed dependency to be mariadb-libs instead of mariadb-embedded
+
 * Tue Oct  1 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.10.1-1.fmi
 - Added option --stacktrace to enable a stack trace printout on crashes (default is from now on is false)
 
