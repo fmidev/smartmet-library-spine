@@ -38,15 +38,8 @@ namespace SmartMet
 {
 namespace Spine
 {
-namespace PluginTest
-{
-typedef boost::function<void(SmartMet::Spine::Reactor& reactor)> PreludeFunction;
-int test(SmartMet::Spine::Options& options,
-         PreludeFunction prelude,
-         bool processresult = false,
-         int num_threads = 1);
+using PreludeFunction = boost::function<void(SmartMet::Spine::Reactor& reactor)>;
 
-}  // namespace PluginTest
 }  // namespace Spine
 }  // namespace SmartMet
 
@@ -345,13 +338,120 @@ bool get_processed_response(const SmartMet::Spine::HTTP::Response& response,
   }
 }
 
-// ----------------------------------------------------------------------
+}  // namespace
 
-bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor, bool processresult)
+namespace SmartMet
+{
+namespace Spine
+{
+class PluginTest
+{
+ public:
+  // Run tests with give server options and header printer
+  int run(SmartMet::Spine::Options& options, PreludeFunction prelude) const;
+
+  // Deprecated function, switched from using a namespace to a class
+  static int test(SmartMet::Spine::Options& options,
+                  PreludeFunction prelude,
+                  bool processresult = false,
+                  int num_threads = 1);
+
+  // Process the output by scripts?
+  void setProcessResult(bool flag) { mProcessResult = flag; }
+  // Run tests in parallel?
+  void setNumberOfThreads(int num_threads) { mNumThreads = num_threads; }
+
+  // Input, expected output, and errorneous output directories
+  void setInputDir(const std::string& dir) { mInputDir = dir; }
+  void setOutputDir(const std::string& dir) { mOutputDir = dir; }
+  void setFailDir(const std::string& dir) { mFailDir = dir; }
+
+ private:
+  bool mProcessResult = false;
+  bool mNumThreads = 1;
+
+  std::string mInputDir{"input"};
+  std::string mOutputDir{"output"};
+  std::string mFailDir{"failures"};
+
+  bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor) const;
+
+};  // class PluginTest
+
+// Deprecated
+int PluginTest::test(SmartMet::Spine::Options& options,
+                     PreludeFunction prelude,
+                     bool processresult,
+                     int num_threads)
+{
+  PluginTest tests;
+  tests.setProcessResult(processresult);
+  tests.setNumberOfThreads(num_threads);
+  return tests.run(options, prelude);
+}
+
+int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) const
 {
   using boost::filesystem::path;
 
-  path inputfile("input");
+  try
+  {
+    std::atomic<int> num_failed{0};
+    options.parseConfig();
+    SmartMet::Spine::Reactor reactor(options);
+    prelude(reactor);
+
+    std::list<path> inputfiles = recursive_directory_contents("input");
+
+    // Run tests in parallel
+
+    const auto executor = [this, &num_failed, &reactor](const path& fn) {
+      try
+      {
+        bool ok = process_query(fn, reactor);
+        if (not ok)
+          ++num_failed;
+      }
+      catch (...)
+      {
+        ++num_failed;
+        SmartMet::Spine::Exception ex(BCP, "Test failed");
+        ex.printError();
+      }
+    };
+
+    Fmi::WorkQueue<path> workqueue(executor, mNumThreads);
+
+    for (const path& fn : inputfiles)
+      workqueue(fn);
+
+    workqueue.join_all();
+
+    if (num_failed > 0)
+    {
+      std::cout << "\n";
+      std::cout << "*** " << num_failed << " test" << (num_failed == 1 ? "" : "s") << " of "
+                << inputfiles.size() << " failed\n";
+      std::cout << std::endl;
+    }
+
+    return num_failed > 0 ? 1 : 0;
+  }
+  catch (...)
+  {
+    SmartMet::Spine::Exception e(BCP, "Plugin test failed!", nullptr);
+    std::cout << e.getStackTrace() << std::endl;
+    return 1;
+  }
+}
+
+// ----------------------------------------------------------------------
+
+bool PluginTest::process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor) const
+{
+  using boost::filesystem::path;
+
+  path inputfile(mInputDir);
   inputfile /= fn;
 
   const std::size_t padding = 90;
@@ -394,7 +494,7 @@ bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor, bool p
 
         std::string result = get_full_response(response);
 
-        if (processresult)
+        if (mProcessResult)
         {
           // Run script/executable to process the result (e.g. convert binary to ascii) for
           // validation
@@ -412,8 +512,8 @@ bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor, bool p
 
         if (ok)
         {
-          path outputfile = path("output") / fn;
-          path failure_fn = path("failures") / fn;
+          path outputfile = path(mOutputDir) / fn;
+          path failure_fn = path(mFailDir) / fn;
           if (exists(outputfile) and is_regular_file(outputfile))
           {
             std::string output = get_file_contents(outputfile);
@@ -465,72 +565,5 @@ bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor, bool p
   return ok;
 }
 
-}  // namespace
-
-namespace SmartMet
-{
-namespace Spine
-{
-namespace PluginTest
-{
-int test(SmartMet::Spine::Options& options,
-         PreludeFunction prelude,
-         bool processresult,
-         int num_threads)
-{
-  using boost::filesystem::path;
-
-  try
-  {
-    std::atomic<int> num_failed{0};
-    options.parseConfig();
-    SmartMet::Spine::Reactor reactor(options);
-    prelude(reactor);
-
-    std::list<path> inputfiles = recursive_directory_contents("input");
-
-    // Run tests in parallel
-
-    const auto executor = [&num_failed, &reactor, &processresult](const path& fn) {
-      try
-      {
-        bool ok = process_query(fn, reactor, processresult);
-        if (not ok)
-          ++num_failed;
-      }
-      catch (...)
-      {
-        ++num_failed;
-        SmartMet::Spine::Exception ex(BCP, "Test failed");
-        ex.printError();
-      }
-    };
-
-    Fmi::WorkQueue<path> workqueue(executor, num_threads);
-
-    for (const path& fn : inputfiles)
-      workqueue(fn);
-
-    workqueue.join_all();
-
-    if (num_failed > 0)
-    {
-      std::cout << "\n";
-      std::cout << "*** " << num_failed << " test" << (num_failed == 1 ? "" : "s") << " of "
-                << inputfiles.size() << " failed\n";
-      std::cout << std::endl;
-    }
-
-    return num_failed > 0 ? 1 : 0;
-  }
-  catch (...)
-  {
-    SmartMet::Spine::Exception e(BCP, "Plugin test failed!", nullptr);
-    std::cout << e.getStackTrace() << std::endl;
-    return 1;
-  }
-}
-
-}  // namespace PluginTest
 }  // namespace Spine
 }  // namespace SmartMet

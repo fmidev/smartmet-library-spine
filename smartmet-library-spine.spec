@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.10.8
+Version: 19.10.29
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -100,6 +100,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Oct 29 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.10.29-1.fmi
+- Plugin tests are now run by a class with multiple controllable settings
+
 * Tue Oct  8 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.10.8-1.fmi
 - Fixed dependency to be mariadb-libs instead of mariadb-embedded
 
