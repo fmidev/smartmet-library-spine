@@ -23,7 +23,11 @@ namespace Spine
 // ----------------------------------------------------------------------
 
 Parameter::Parameter(const std::string& theName, Type theType, FmiParameterName theNumber)
-    : itsName(theName), itsAlias(theName), itsType(theType), itsNumber(theNumber)
+    : itsName(theName),
+      itsOriginalName(theName),
+      itsAlias(theName),
+      itsType(theType),
+      itsNumber(theNumber)
 {
 }
 
@@ -31,7 +35,11 @@ Parameter::Parameter(const std::string& theName,
                      const std::string& theAlias,
                      Type theType,
                      FmiParameterName theNumber)
-    : itsName(theName), itsAlias(theAlias), itsType(theType), itsNumber(theNumber)
+    : itsName(theName),
+      itsOriginalName(theName),
+      itsAlias(theAlias),
+      itsType(theType),
+      itsNumber(theNumber)
 {
 }
 

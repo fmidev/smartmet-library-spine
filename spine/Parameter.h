@@ -37,8 +37,10 @@ class Parameter
             FmiParameterName theNumber = kFmiBadParameter);
 
   const std::string& name() const { return itsName; }
+  const std::string& originalName() const { return itsOriginalName; }
   std::string alias() const { return itsAlias; }
   void setAlias(const std::string& name) { itsAlias = name; }
+  void setOriginalName(const std::string& name) { itsOriginalName = name; }
   FmiParameterName number() const { return itsNumber; }
   Type type() const { return itsType; }
   std::string typestring() const;
@@ -54,6 +56,8 @@ class Parameter
   // extended name may contain parameter name with possible
   // function name or alternatively alias given by user
   // for example mean_t(t2m) as tmean
+  // Original name is case sensitive since grid-parameter names may include LUA-function names
+  std::string itsOriginalName;
 
   std::string itsAlias;
   Type itsType;
