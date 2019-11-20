@@ -396,6 +396,9 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
 
   try
   {
+    // Use any available port
+    options.port = 0;
+
     std::atomic<int> num_failed{0};
     options.parseConfig();
     SmartMet::Spine::Reactor reactor(options);
