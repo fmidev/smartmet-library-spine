@@ -439,6 +439,7 @@ string parse_parameter_name(const string& param_name)
 // ----------------------------------------------------------------------
 std::string ParameterFactory::parse_parameter_functions(
     const std::string& theParameterRequest,
+    std::string& theOriginalName,
     std::string& theParameterNameAlias,
     ParameterFunction& theInnerParameterFunction,
     ParameterFunction& theOuterParameterFunction) const
@@ -471,6 +472,14 @@ std::string ParameterFactory::parse_parameter_functions(
       restOfTheParamReq = restOfTheParamReq.substr(sizeOfTimeFormatString);
       date_formatting_string = paramreq.substr(startIndex, sizeOfTimeFormatString);
       paramreq.erase(startIndex, sizeOfTimeFormatString);
+    }
+
+    // If there is no timeseries functions involved, don't continue parsing
+    if (paramreq.find("(") == std::string::npos)
+    {
+      theOriginalName = paramreq + date_formatting_string;
+      Fmi::ascii_tolower(paramreq);
+      return paramreq + date_formatting_string;
     }
 
     list<string> parts;
@@ -590,6 +599,7 @@ std::string ParameterFactory::parse_parameter_functions(
     }
 
     // We assume ASCII chars only in parameter names
+    theOriginalName = paramname + date_formatting_string;
     Fmi::ascii_tolower(paramname);
     return paramname + date_formatting_string;
   }
@@ -610,12 +620,14 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
     ParameterFunction outerFunction;
 
     std::string paramnameAlias = tmpname;
+    std::string originalParamName = tmpname;
 
-    std::string paramname = parse_parameter_name(
-        parse_parameter_functions(tmpname, paramnameAlias, innerFunction, outerFunction));
+    std::string paramname = parse_parameter_name(parse_parameter_functions(
+        tmpname, originalParamName, paramnameAlias, innerFunction, outerFunction));
     Parameter parameter = parse(paramname, ignoreBadParameter);
 
     parameter.setAlias(paramnameAlias);
+    parameter.setOriginalName(originalParamName);
 
     return ParameterAndFunctions(parameter, ParameterFunctions(innerFunction, outerFunction));
   }
