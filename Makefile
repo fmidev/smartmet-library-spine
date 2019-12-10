@@ -108,7 +108,7 @@ LIBS =	-L$(libdir) \
 	-lboost_system \
 	-lboost_locale \
 	-lctpp2 \
-        -lgdal \
+        -L$(PREFIX)/gdal30/lib `pkg-config --libs gdal30` \
 	-lconfig++ \
 	`pkg-config --libs jsoncpp` \
 	`pkg-config --libs icu-i18n` \
