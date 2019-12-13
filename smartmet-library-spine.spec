@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 19.12.10
+Version: 19.12.13
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -20,7 +20,6 @@ BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
 BuildRequires: libicu-devel
-BuildRequires: gdal30-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
@@ -45,7 +44,6 @@ Requires: boost-timer
 Requires: boost-chrono
 Requires: libicu
 Requires: ctpp2
-Requires: gdal30-libs
 Requires: hdf5
 Requires: jsoncpp
 Requires: libconfig
@@ -100,6 +98,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Fri Dec 13 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.12.13-1.fmi
+- Removed obsolete GDAL dependency
+
 * Tue Dec 10 2019 Mika Heiskanen <mika.heiskanen@fmi.fi> - 19.12.10-1.fmi
 - Upgrade to gdal30
 
