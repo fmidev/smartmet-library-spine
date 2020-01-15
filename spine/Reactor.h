@@ -27,12 +27,12 @@
 #include <boost/function.hpp>
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
+#include <atomic>
 #include <libconfig.h++>
 #include <list>
 #include <map>
 #include <string>
 #include <utility>
-#include <atomic>
 
 namespace SmartMet
 {
@@ -204,7 +204,6 @@ class Reactor
   boost::shared_ptr<boost::thread> itsLogCleanerThread;
   bool itsShutdownRequested = false;
 
-  std::size_t itsActiveRequstLimit = 0;  // by default there is no limit
   ActiveRequests itsActiveRequests;
 
   ActiveBackends itsActiveBackends;
