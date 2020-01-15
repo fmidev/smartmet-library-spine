@@ -39,10 +39,12 @@ class ActiveRequests : private boost::noncopyable
   void remove(std::size_t theKey);
   Requests requests() const;
   std::size_t size() const;
+  std::size_t counter() const;  // how many requests have completed
 
  private:
   mutable MutexType itsMutex;
-  std::size_t itsCounter = 0;
+  std::atomic<std::size_t> itsStartedCounter{0};   // number of started requests
+  std::atomic<std::size_t> itsFinishedCounter{0};  // number of completed requests
   Requests itsRequests;
 };
 }  // namespace Spine

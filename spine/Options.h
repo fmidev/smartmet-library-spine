@@ -24,6 +24,13 @@ struct PoolOptions
   unsigned int maxrequeuesize = 100;
 };
 
+struct ThrottleOptions
+{
+  unsigned int start_limit = 50;    // start with max 50 active requests
+  unsigned int limit = 100;         // final max active requests
+  unsigned int increase_rate = 10;  // increment current limit every 10 succesfull requests
+};
+
 // Storage for parsed options
 
 struct Options
@@ -45,7 +52,8 @@ struct Options
   bool lazylinking = true;
   bool stacktrace = false;
 
-  unsigned int maxactiverequests = 0;    // 0 means unlimited
+  ThrottleOptions throttle;
+
   unsigned int maxrequestsize = 131072;  // Limit incoming request sizes, 0 means unlimited
 
   std::string accesslogdir{"/var/log/smartmet"};

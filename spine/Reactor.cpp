@@ -436,10 +436,20 @@ AccessLogStruct Reactor::getLoggedRequests() const
 
 bool Reactor::isLoadHigh() const
 {
-  // Load is high if there are too many active requests
-  if (itsOptions.maxactiverequests > 0)
-    if (itsActiveRequests.size() > itsOptions.maxactiverequests)
-      return true;
+  // Establish current limit. The limit increases linearly after each succesful request.
+
+  auto limit = itsOptions.throttle.start_limit +
+               itsActiveRequests.counter() / itsOptions.throttle.increase_rate;
+  if (limit > itsOptions.throttle.limit)
+    limit = itsOptions.throttle.limit;
+
+  if (itsActiveRequests.size() >= limit)
+  {
+    if (itsOptions.verbose)
+      std::cerr << Spine::log_time_str() << " " << itsActiveRequests.size()
+                << " active requests, limit is " << limit << std::endl;
+    return true;
+  }
 
   // No other conditions implemented yet
   return false;
@@ -608,11 +618,11 @@ void Reactor::setLogging(bool loggingEnabled)
     WriteLock lock(itsLoggingMutex);
 
     // Check for no change in status
-    if(itsLoggingEnabled == loggingEnabled)
+    if (itsLoggingEnabled == loggingEnabled)
       return;
 
     itsLoggingEnabled = loggingEnabled;
-    
+
     if (itsLoggingEnabled)
     {
       // See if cleaner thread is running for some reason
@@ -640,7 +650,6 @@ void Reactor::setLogging(bool loggingEnabled)
     // Set logging status for ALL plugins
     for (auto& handlerPair : itsHandlers)
     {
-
       handlerPair.second->setLogging(itsLoggingEnabled);
     }
   }

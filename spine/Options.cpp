@@ -84,13 +84,18 @@ bool Options::parseOptions(int argc, char* argv[])
 
     const char* msgaccesslogdir = "access log directory";
 
-    const char* msgslowthreads = "set the initial number of slow queries";
+    const char* msgslowthreads = "set the number of threads for slow queries";
     const char* msgslowrequeue = "set the maximum requeue size for slow queries";
 
-    const char* msgfastthreads = "set the initial number of fast queries";
+    const char* msgfastthreads = "set the number of threads for fast queries";
     const char* msgfastrequeue = "set the maximum requeue size for fast queries";
 
+    const char* msgminactiverequests =
+        "set the initial number of allowed simultaneous active requests";
     const char* msgmaxactiverequests = "set the maximum number of simultaneous active requests";
+    const char* msgactiverequestrate =
+        "set the increase rate for maximum number of simultaneous active requests";
+
     const char* msgmaxrequestsize = "set the maximum allowed size for requests";
 
     // clang-format off
@@ -99,7 +104,9 @@ bool Options::parseOptions(int argc, char* argv[])
         "maxslowrequeuesize,Q", po::value(&slowpool.maxrequeuesize)->default_value(slowpool.maxrequeuesize), msgslowrequeue)(
         "fastthreads,n", po::value(&fastpool.minsize)->default_value(fastpool.minsize), msgfastthreads)(
         "maxfastrequeuesize,q", po::value(&fastpool.maxrequeuesize)->default_value(fastpool.maxrequeuesize), msgfastrequeue)(
-        "maxactiverequests", po::value(&maxactiverequests)->default_value(maxactiverequests), msgmaxactiverequests)(
+        "maxactiverequests", po::value(&throttle.limit)->default_value(throttle.limit), msgmaxactiverequests)(
+        "minactiverequests", po::value(&throttle.start_limit)->default_value(throttle.start_limit), msgminactiverequests)(
+        "requestlimitrate", po::value(&throttle.increase_rate)->default_value(throttle.increase_rate), msgactiverequestrate)(
         "maxrequestsize", po::value(&maxrequestsize)->default_value(maxrequestsize), msgmaxrequestsize)(
         "debug,d", po::bool_switch(&debug)->default_value(debug), msgdebug)(
         "verbose,v", po::bool_switch(&verbose)->default_value(verbose), msgverbose)(
@@ -156,6 +163,12 @@ bool Options::parseOptions(int argc, char* argv[])
       throw Spine::Exception(BCP, "Compression size limit below 100 makes no sense!");
     }
 
+    if (throttle.start_limit > throttle.limit)
+      throttle.start_limit = throttle.limit;
+
+    if (throttle.start_limit == 0 || throttle.limit == 0 || throttle.increase_rate == 0)
+      throw Spine::Exception(BCP, "Active request settings must be > 0");
+
     return true;
   }
   catch (...)
@@ -205,7 +218,11 @@ void Options::parseConfig()
       lookupHostSetting(itsConfig, defaultlogging, "defaultlogging");
       lookupHostSetting(itsConfig, lazylinking, "lazylinking");
       lookupHostSetting(itsConfig, accesslogdir, "accesslogdir");
-      lookupHostSetting(itsConfig, maxactiverequests, "maxactiverequests");
+
+      lookupHostSetting(itsConfig, throttle.limit, "maxactiverequests");     // old variable name
+      lookupHostSetting(itsConfig, throttle.limit, "activerequests.limit");  // new variable name
+      lookupHostSetting(itsConfig, throttle.start_limit, "activerequests.start_limit");
+      lookupHostSetting(itsConfig, throttle.increase_rate, "activerequests.increase_rate");
 
       lookupHostSetting(itsConfig, slowpool.minsize, "slowpool.maxthreads");
       lookupHostSetting(itsConfig, slowpool.maxrequeuesize, "slowpool.maxrequeuesize");
@@ -260,7 +277,9 @@ void Options::report() const
               << "Max fast queue size\t\t= " << fastpool.maxrequeuesize << "\n"
               << "Max slow threads\t\t= " << slowpool.minsize << "\n"
               << "Max slow queue size\t\t= " << slowpool.maxrequeuesize << "\n"
-              << "Max active requests\t\t= " << maxactiverequests << "\n"
+              << "Max active requests\t\t= " << throttle.limit << "\n"
+              << "- at start\t\t\t=" << throttle.start_limit << "\n"
+              << "- increase rate\t\t=" << throttle.increase_rate << "\n"
               << "Port\t\t\t\t= " << port << "\n"
               << "Timeout\t\t\t\t= " << timeout << "\n"
               << "Access log directory\t\t= " << accesslogdir << "\n"
