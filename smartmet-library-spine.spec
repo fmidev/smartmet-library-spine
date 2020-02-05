@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.1.15
+Version: 20.2.5
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -15,7 +15,7 @@ BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
 BuildRequires: smartmet-library-newbase-devel >= 19.12.4
-BuildRequires: smartmet-library-macgyver-devel >= 19.12.4
+BuildRequires: smartmet-library-macgyver-devel >= 20.2.5
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -29,7 +29,7 @@ BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
 Requires: smartmet-library-newbase >= 19.12.4
-Requires: smartmet-library-macgyver >= 19.12.4
+Requires: smartmet-library-macgyver >= 20.2.5
 Requires: smartmet-timezones >= 19.7.29
 Requires: smartmet-library-gis >= 19.12.4
 Requires: mariadb-libs
@@ -98,6 +98,10 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Feb 5 2020 Anssi Reponen <anssi.reponen@fmi.fi> - 20.2.5-1.fmi
+- Interpolate- and nearest-functions added (BRAINSTORM-1504)
+- Aggregation-related bugs fixed (BRAINSTORM-1755)
+
 * Wed Jan 15 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.1.15-1.fmi
 - Added active request throttling
 

@@ -52,6 +52,12 @@ std::string ParameterFunction::hash() const
       case FunctionId::Trend:
         ss << "Trend";
         break;
+      case FunctionId::Nearest:
+        ss << "Nearest";
+        break;
+      case FunctionId::Interpolate:
+        ss << "Interpolate";
+        break;
       case FunctionId::StandardDeviation:
         ss << "Sdev";
         break;
@@ -127,6 +133,12 @@ std::string ParameterFunction::info() const
       case FunctionId::Trend:
         ss << "Trend";
         break;
+      case FunctionId::Nearest:
+        ss << "Nearest";
+        break;
+      case FunctionId::Interpolate:
+        ss << "Interpolate";
+        break;
       case FunctionId::NullFunction:
         ss << "NullFunction";
         break;
@@ -135,14 +147,14 @@ std::string ParameterFunction::info() const
     ss << ":";
 
     if (itsFunctionType == FunctionType::TimeFunction)
-      ss << "TimeFunction";
+      ss << "TimeFunction(itsAggregationInterval=-" << itsAggregationIntervalBehind << "+"
+         << itsAggregationIntervalAhead << " minutes)";
     else if (itsFunctionType == FunctionType::AreaFunction)
       ss << "AreaFunction";
     else
       ss << "NullFunctionType";
 
-    ss << "(itsAggregationInterval=";
-    ss << itsAggregationIntervalBehind << ", " << itsAggregationIntervalAhead << " hours)";
+    ss << " => " << (itsNaNFunction ? "nan-function" : "not nan-function");
 
     return ss.str();
   }

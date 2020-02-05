@@ -20,6 +20,53 @@ namespace ts = SmartMet::Spine::TimeSeries;
 // Protection against namespace tests
 namespace TimeSeriesAggregatorTest
 {
+//  observations
+ts::TimeSeries generate_observation_timeseries()
+{
+  using namespace SmartMet;
+
+  bl::time_zone_ptr zone(new bl::posix_time_zone("EET+2"));
+
+  ts::TimeSeries timeseries;
+
+  timeseries.push_back(ts::TimedValue(
+      bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22)), zone), ts::None()));
+  timeseries.push_back(ts::TimedValue(
+      bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22) + bp::minutes(10)), zone),
+      1.0));
+  timeseries.push_back(ts::TimedValue(
+      bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22) + bp::minutes(15)), zone),
+      2.0));
+  timeseries.push_back(ts::TimedValue(
+      bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22) + bp::minutes(48)), zone),
+      3.5));
+  timeseries.push_back(ts::TimedValue(
+      bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(23)), zone), ts::None()));
+  timeseries.push_back(ts::TimedValue(
+      bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(23) + bp::minutes(8)), zone),
+      4.0));
+  timeseries.push_back(ts::TimedValue(
+      bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(23) + bp::minutes(52)), zone),
+      5.0));
+  timeseries.push_back(ts::TimedValue(
+      bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(24)), zone), ts::None()));
+  timeseries.push_back(ts::TimedValue(
+      bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(24) + bp::minutes(9)), zone),
+      5.5));
+  timeseries.push_back(ts::TimedValue(
+      bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(24) + bp::minutes(53)), zone),
+      3.0));
+  timeseries.push_back(ts::TimedValue(
+      bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(25)), zone), 2.5));
+  timeseries.push_back(ts::TimedValue(
+      bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(25) + bp::minutes(50)), zone),
+      -1.0));
+  timeseries.push_back(ts::TimedValue(
+      bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(26)), zone), ts::None()));
+
+  return timeseries;
+}
+
 ts::TimeSeries generate_timeseries(bool add_missing_value = false)
 {
   using namespace SmartMet;
@@ -476,6 +523,134 @@ ts::TimeSeriesGroupPtr execute_area_time_aggregation_function(SmartMet::Spine::F
   ts::TimeSeriesGroupPtr time_aggregated_grp = ts::aggregate(*area_aggregated_grp, time_pfs);
 
   return time_aggregated_grp;
+}
+
+void nearest_t()
+{
+  using namespace SmartMet::Spine;
+
+  bl::time_zone_ptr zone(new bl::posix_time_zone("EET+2"));
+
+  ts::TimeSeries timeseries = generate_observation_timeseries();
+
+  // Replace None with the nearest valid value within +n/-n minutes
+  ParameterFunction pf(SmartMet::Spine::FunctionId::Nearest, FunctionType::TimeFunction);
+  pf.setAggregationIntervalAhead(8);
+  pf.setAggregationIntervalBehind(8);
+
+  ParameterFunctions pfs;
+  pfs.innerFunction = pf;
+  std::string test_result = to_string(*ts::aggregate(timeseries, pfs));
+
+  std::string expected_result =
+      "2015-Sep-03 00:00:00 EET -> nan\n"
+      "2015-Sep-03 00:10:00 EET -> 1\n"
+      "2015-Sep-03 00:15:00 EET -> 2\n"
+      "2015-Sep-03 00:48:00 EET -> 3.5\n"
+      "2015-Sep-03 01:00:00 EET -> 4\n"
+      "2015-Sep-03 01:08:00 EET -> 4\n"
+      "2015-Sep-03 01:52:00 EET -> 5\n"
+      "2015-Sep-03 02:00:00 EET -> 5\n"
+      "2015-Sep-03 02:09:00 EET -> 5.5\n"
+      "2015-Sep-03 02:53:00 EET -> 3\n"
+      "2015-Sep-03 03:00:00 EET -> 2.5\n"
+      "2015-Sep-03 03:50:00 EET -> -1\n"
+      "2015-Sep-03 04:00:00 EET -> nan\n";
+
+  if (expected_result != test_result)
+    TEST_FAILED("Nearest-function test (8 min) failed. Result should be:\n" + expected_result +
+                "\n not \n" + test_result);
+
+  pf.setAggregationIntervalAhead(10);
+  pf.setAggregationIntervalBehind(10);
+  pfs.innerFunction = pf;
+
+  test_result = to_string(*ts::aggregate(timeseries, pfs));
+
+  expected_result =
+      "2015-Sep-03 00:00:00 EET -> 1\n"
+      "2015-Sep-03 00:10:00 EET -> 1\n"
+      "2015-Sep-03 00:15:00 EET -> 2\n"
+      "2015-Sep-03 00:48:00 EET -> 3.5\n"
+      "2015-Sep-03 01:00:00 EET -> 4\n"
+      "2015-Sep-03 01:08:00 EET -> 4\n"
+      "2015-Sep-03 01:52:00 EET -> 5\n"
+      "2015-Sep-03 02:00:00 EET -> 5\n"
+      "2015-Sep-03 02:09:00 EET -> 5.5\n"
+      "2015-Sep-03 02:53:00 EET -> 3\n"
+      "2015-Sep-03 03:00:00 EET -> 2.5\n"
+      "2015-Sep-03 03:50:00 EET -> -1\n"
+      "2015-Sep-03 04:00:00 EET -> -1\n";
+
+  if (expected_result != test_result)
+    TEST_FAILED("Nearest-function test (10 min) failed. Result should be:\n" + expected_result +
+                "\n not \n" + test_result);
+
+  TEST_PASSED();
+}
+
+void interpolate_t()
+{
+  using namespace SmartMet::Spine;
+
+  bl::time_zone_ptr zone(new bl::posix_time_zone("EET+2"));
+
+  ts::TimeSeries timeseries = generate_observation_timeseries();
+
+  // Replace None with the interpolated value using valid values within +n/-n minutes
+  ParameterFunction pf(SmartMet::Spine::FunctionId::Interpolate, FunctionType::TimeFunction);
+  pf.setAggregationIntervalAhead(10);
+  pf.setAggregationIntervalBehind(10);
+
+  ParameterFunctions pfs;
+  pfs.innerFunction = pf;
+  std::string test_result = to_string(*ts::aggregate(timeseries, pfs));
+
+  std::string expected_result =
+      "2015-Sep-03 00:00:00 EET -> nan\n"
+      "2015-Sep-03 00:10:00 EET -> 1\n"
+      "2015-Sep-03 00:15:00 EET -> 2\n"
+      "2015-Sep-03 00:48:00 EET -> 3.5\n"
+      "2015-Sep-03 01:00:00 EET -> nan\n"
+      "2015-Sep-03 01:08:00 EET -> 4\n"
+      "2015-Sep-03 01:52:00 EET -> 5\n"
+      "2015-Sep-03 02:00:00 EET -> 5.23529\n"
+      "2015-Sep-03 02:09:00 EET -> 5.5\n"
+      "2015-Sep-03 02:53:00 EET -> 3\n"
+      "2015-Sep-03 03:00:00 EET -> 2.5\n"
+      "2015-Sep-03 03:50:00 EET -> -1\n"
+      "2015-Sep-03 04:00:00 EET -> nan\n";
+
+  if (expected_result != test_result)
+    TEST_FAILED("Interpolate-function test (10 min) failed. Result should be:\n" + expected_result +
+                "\n not \n" + test_result);
+
+  pf.setAggregationIntervalAhead(15);
+  pf.setAggregationIntervalBehind(15);
+  pfs.innerFunction = pf;
+
+  test_result = to_string(*ts::aggregate(timeseries, pfs));
+
+  expected_result =
+      "2015-Sep-03 00:00:00 EET -> -1\n"
+      "2015-Sep-03 00:10:00 EET -> 1\n"
+      "2015-Sep-03 00:15:00 EET -> 2\n"
+      "2015-Sep-03 00:48:00 EET -> 3.5\n"
+      "2015-Sep-03 01:00:00 EET -> 3.8\n"
+      "2015-Sep-03 01:08:00 EET -> 4\n"
+      "2015-Sep-03 01:52:00 EET -> 5\n"
+      "2015-Sep-03 02:00:00 EET -> 5.23529\n"
+      "2015-Sep-03 02:09:00 EET -> 5.5\n"
+      "2015-Sep-03 02:53:00 EET -> 3\n"
+      "2015-Sep-03 03:00:00 EET -> 2.5\n"
+      "2015-Sep-03 03:50:00 EET -> -1\n"
+      "2015-Sep-03 04:00:00 EET -> nan\n";
+
+  if (expected_result != test_result)
+    TEST_FAILED("Interpolate-function test (15 min) failed. Result should be:\n" + expected_result +
+                "\n not \n" + test_result);
+
+  TEST_PASSED();
 }
 
 void min_t()
@@ -1128,6 +1303,8 @@ class tests : public tframe::tests
   void test()
   {
     // time aggregation
+    TEST(nearest_t);
+    TEST(interpolate_t);
     TEST(min_t);
     TEST(max_t);
     TEST(mean_t);
@@ -1151,7 +1328,7 @@ class tests : public tframe::tests
     TEST(count_a);
     TEST(change_a);
     TEST(trend_a);
-    // first time the area aggregation
+    // first time then area aggregation
     TEST(min_max_ta);
     // first area then time aggregation
     TEST(min_max_at);
