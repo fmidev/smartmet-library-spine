@@ -123,16 +123,55 @@ FunctionId ParameterFactory::parse_function(const string& theFunction) const
 {
   try
   {
-    static const char* names[] = {
-        "mean_a",          "mean_t",          "nanmean_a",  "nanmean_t",    "max_a",
-        "max_t",           "nanmax_a",        "nanmax_t",   "min_a",        "min_t",
-        "nanmin_a",        "nanmin_t",        "median_a",   "median_t",     "nanmedian_a",
-        "nanmedian_t",     "sum_a",           "sum_t",      "nansum_a",     "nansum_t",
-        "integ_a",         "integ_t",         "naninteg_a", "naninteg_t",   "sdev_a",
-        "sdev_t",          "nansdev_a",       "nansdev_t",  "percentage_a", "percentage_t",
-        "nanpercentage_a", "nanpercentage_t", "count_a",    "count_t",      "nancount_a",
-        "nancount_t",      "change_a",        "change_t",   "nanchange_a",  "nanchange_t",
-        "trend_a",         "trend_t",         "nantrend_a", "nantrend_t",   ""};
+    static const char* names[] = {"mean_a",
+                                  "mean_t",
+                                  "nanmean_a",
+                                  "nanmean_t",
+                                  "max_a",
+                                  "max_t",
+                                  "nanmax_a",
+                                  "nanmax_t",
+                                  "min_a",
+                                  "min_t",
+                                  "nanmin_a",
+                                  "nanmin_t",
+                                  "median_a",
+                                  "median_t",
+                                  "nanmedian_a",
+                                  "nanmedian_t",
+                                  "sum_a",
+                                  "sum_t",
+                                  "nansum_a",
+                                  "nansum_t",
+                                  "integ_a",
+                                  "integ_t",
+                                  "naninteg_a",
+                                  "naninteg_t",
+                                  "sdev_a",
+                                  "sdev_t",
+                                  "nansdev_a",
+                                  "nansdev_t",
+                                  "percentage_a",
+                                  "percentage_t",
+                                  "nanpercentage_a",
+                                  "nanpercentage_t",
+                                  "count_a",
+                                  "count_t",
+                                  "nancount_a",
+                                  "nancount_t",
+                                  "change_a",
+                                  "change_t",
+                                  "nanchange_a",
+                                  "nanchange_t",
+                                  "trend_a",
+                                  "trend_t",
+                                  "nantrend_a",
+                                  "nantrend_t",
+                                  "nearest_t",
+                                  "nannearest_t",
+                                  "interpolate_t",
+                                  "naninterpolate_t",
+                                  ""};
 
     static FunctionId functions[] = {FunctionId::Mean,
                                      FunctionId::Mean,
@@ -177,7 +216,11 @@ FunctionId ParameterFactory::parse_function(const string& theFunction) const
                                      FunctionId::Trend,
                                      FunctionId::Trend,
                                      FunctionId::Trend,
-                                     FunctionId::Trend};
+                                     FunctionId::Trend,
+                                     FunctionId::Nearest,
+                                     FunctionId::Nearest,
+                                     FunctionId::Interpolate,
+                                     FunctionId::Interpolate};
 
     std::string func_name(theFunction);
 
@@ -546,11 +589,17 @@ std::string ParameterFactory::parse_parameter_functions(
       string f_name = (extract_function(functionname2,
                                         theInnerParameterFunction.itsLowerLimit,
                                         theInnerParameterFunction.itsUpperLimit));
+
       theInnerParameterFunction.itsFunctionId = parse_function(f_name);
       theInnerParameterFunction.itsFunctionType =
           (f_name.substr(f_name.size() - 2).compare("_t") == 0 ? FunctionType::TimeFunction
                                                                : FunctionType::AreaFunction);
 
+      theInnerParameterFunction.itsNaNFunction = (f_name.substr(0, 3).compare("nan") == 0);
+      // Nearest && Interpolate functions always accepts NaNs in time series
+      if (theInnerParameterFunction.itsFunctionId == FunctionId::Nearest ||
+          theInnerParameterFunction.itsFunctionId == FunctionId::Interpolate)
+        theInnerParameterFunction.itsNaNFunction = true;
       if (theInnerParameterFunction.itsFunctionType == FunctionType::TimeFunction)
       {
         theInnerParameterFunction.itsAggregationIntervalBehind = aggregation_interval_behind;
@@ -560,10 +609,12 @@ std::string ParameterFactory::parse_parameter_functions(
       f_name = (extract_function(functionname1,
                                  theOuterParameterFunction.itsLowerLimit,
                                  theOuterParameterFunction.itsUpperLimit));
+
       theOuterParameterFunction.itsFunctionId = parse_function(f_name);
       theOuterParameterFunction.itsFunctionType =
           (f_name.substr(f_name.size() - 2).compare("_t") == 0 ? FunctionType::TimeFunction
                                                                : FunctionType::AreaFunction);
+
       theOuterParameterFunction.itsNaNFunction = (f_name.substr(0, 3).compare("nan") == 0);
 
       if (theOuterParameterFunction.itsFunctionType == FunctionType::TimeFunction)
@@ -583,6 +634,10 @@ std::string ParameterFactory::parse_parameter_functions(
           (f_name.substr(f_name.size() - 2).compare("_t") == 0 ? FunctionType::TimeFunction
                                                                : FunctionType::AreaFunction);
       theInnerParameterFunction.itsNaNFunction = (f_name.substr(0, 3).compare("nan") == 0);
+      // Nearest && Interpolate functions always accepts NaNs in time series
+      if (theInnerParameterFunction.itsFunctionId == FunctionId::Nearest ||
+          theInnerParameterFunction.itsFunctionId == FunctionId::Interpolate)
+        theInnerParameterFunction.itsNaNFunction = true;
 
       if (theInnerParameterFunction.itsFunctionType == FunctionType::TimeFunction)
       {

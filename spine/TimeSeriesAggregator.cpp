@@ -37,9 +37,12 @@ class StatCalculator
   boost::local_time::local_date_time getLocalDateTimeStatValue(const ParameterFunction& func) const;
   LonLat getLonLatStatValue(const ParameterFunction& func) const;
 
+  boost::optional<boost::local_time::local_date_time> itsTimestep;
+
  public:
   void operator()(const TimedValue& tv);
   Value getStatValue(const ParameterFunction& func, bool useWeights) const;
+  void setTimestep(const boost::local_time::local_date_time& timestep) { itsTimestep = timestep; }
 };
 
 double StatCalculator::getDoubleStatValue(const ParameterFunction& func, bool useWeights) const
@@ -74,6 +77,10 @@ double StatCalculator::getDoubleStatValue(const ParameterFunction& func, bool us
         return stat.change();
       case FunctionId::Trend:
         return stat.trend();
+      case FunctionId::Nearest:
+        return (itsTimestep ? stat.nearest(itsTimestep->utc_time()) : kFloatMissing);
+      case FunctionId::Interpolate:
+        return (itsTimestep ? stat.interpolate(itsTimestep->utc_time()) : kFloatMissing);
       case FunctionId::NullFunction:
         return kFloatMissing;
 #ifndef UNREACHABLE
@@ -94,6 +101,18 @@ std::string StatCalculator::getStringStatValue(const ParameterFunction& func) co
   {
     FunctionId fid(func.id());
 
+    if (fid == FunctionId::Nearest || fid == FunctionId::Interpolate)
+    {
+      if (itsTimestep)
+      {
+        for (auto item : itsTimeSeries)
+          if (item.time.utc_time() == itsTimestep->utc_time())
+          {
+            return boost::get<std::string>(item.value);
+          }
+      }
+      return boost::get<std::string>(itsTimeSeries[0].value);
+    }
     if (fid == FunctionId::Maximum)
       return boost::get<std::string>(itsTimeSeries[itsTimeSeries.size() - 1].value);
     else if (fid == FunctionId::Minimum)
@@ -270,9 +289,12 @@ Value StatCalculator::getStatValue(const ParameterFunction& func, bool useWeight
       return Spine::TimeSeries::None();
 
     Value ret = Spine::TimeSeries::None();
-
     if (itsDataVector.size() > 0)
     {
+      double result = getDoubleStatValue(func, useWeights);
+      if (result == kFloatMissing &&
+          (func.id() == FunctionId::Nearest || func.id() == FunctionId::Interpolate))
+        return Spine::TimeSeries::None();
       ret = getDoubleStatValue(func, useWeights);
     }
     else if (itsTimeSeries.size() > 0)
@@ -281,7 +303,10 @@ Value StatCalculator::getStatValue(const ParameterFunction& func, bool useWeight
 
       if (boost::get<std::string>(&value))
       {
-        ret = getStringStatValue(func);
+        if (!boost::get<Spine::TimeSeries::None>(&value))
+        {
+          ret = getStringStatValue(func);
+        }
       }
       else if (boost::get<boost::local_time::local_date_time>(&value))
       {
@@ -303,8 +328,11 @@ Value StatCalculator::getStatValue(const ParameterFunction& func, bool useWeight
 bool include_value(const TimedValue& tv, const ParameterFunction& func)
 {
   bool ret = true;
-  if (func.lowerOrUpperLimitGiven() && func.id() != FunctionId::Percentage &&
-      func.id() != FunctionId::Count)
+
+  FunctionId funcId = func.id();
+
+  if (func.lowerOrUpperLimitGiven() && funcId != FunctionId::Percentage &&
+      funcId != FunctionId::Count)
   {
     boost::optional<double> double_value;
     if (boost::get<double>(&(tv.value)))
@@ -319,6 +347,7 @@ bool include_value(const TimedValue& tv, const ParameterFunction& func)
     if (double_value && (*double_value < func.lowerLimit() || *double_value > func.upperLimit()))
       ret = false;
   }
+
   return ret;
 }
 
@@ -361,6 +390,7 @@ std::vector<std::pair<int, int> > get_aggregation_indexes(const ParameterFunctio
         else
           break;
       }
+
       agg_indexes.push_back(index_item);
     }
 
@@ -432,6 +462,7 @@ TimeSeriesPtr time_aggregate(const TimeSeries& ts, const ParameterFunction& func
       }
 
       StatCalculator statcalculator;
+      statcalculator.setTimestep(ts[i].time);
       for (int k = agg_index_start; k <= agg_index_end; k++)
       {
         const TimedValue& tv = ts.at(k);
@@ -493,7 +524,9 @@ TimeSeriesPtr aggregate(const TimeSeries& ts, const ParameterFunctions& pf)
 
       // Do time aggregationn
       if (pf.outerFunction.type() == FunctionType::TimeFunction)
+      {
         ret = time_aggregate(local_ts, pf.outerFunction);
+      }
       else
         *ret = local_ts;
     }
@@ -580,6 +613,7 @@ TimeSeriesGroupPtr aggregate(const TimeSeriesGroup& ts_group, const ParameterFun
 #ifdef MYDEBUG
       cout << "time aggregation" << endl;
 #endif
+
       // 1) do time aggregation
       ret = time_aggregate(ts_group, pf.innerFunction);
     }

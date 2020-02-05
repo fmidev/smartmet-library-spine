@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <iostream>
 #include <limits>
 #include <string>
 #include <vector>
@@ -15,6 +16,9 @@ namespace SmartMet
 namespace Spine
 {
 class ParameterFactory;
+
+// 7 days
+static const int MAX_AGGREGATION_INTERVAL = (7 * 24 * 60);
 
 enum class FunctionId
 {
@@ -29,6 +33,8 @@ enum class FunctionId
   Count,
   Change,
   Trend,
+  Nearest,
+  Interpolate,
   NullFunction
 };
 
@@ -46,27 +52,40 @@ struct ParameterFunction
   ParameterFunction()
       : itsFunctionId(FunctionId::NullFunction),
         itsFunctionType(FunctionType::NullFunctionType),
-        itsLowerLimit(std::numeric_limits<double>::min()),
+        itsLowerLimit(std::numeric_limits<double>::lowest()),
         itsUpperLimit(std::numeric_limits<double>::max()),
-        itsAggregationIntervalBehind(std::numeric_limits<unsigned int>::max()),
-        itsAggregationIntervalAhead(std::numeric_limits<unsigned int>::max()),
+        itsAggregationIntervalBehind(MAX_AGGREGATION_INTERVAL),
+        itsAggregationIntervalAhead(MAX_AGGREGATION_INTERVAL),
         itsNaNFunction(false)
   {
+    if (itsFunctionId == FunctionId::Nearest || itsFunctionId == FunctionId::Interpolate)
+      itsNaNFunction = true;
   }
   ParameterFunction(FunctionId theFunctionId,
                     FunctionType theFunctionType,
-                    double theLowerLimit = std::numeric_limits<double>::min(),
+                    double theLowerLimit = std::numeric_limits<double>::lowest(),
                     double theUpperLimit = std::numeric_limits<double>::max())
       : itsFunctionId(theFunctionId),
         itsFunctionType(theFunctionType),
         itsLowerLimit(theLowerLimit),
         itsUpperLimit(theUpperLimit),
-        itsAggregationIntervalBehind(std::numeric_limits<unsigned int>::max()),
-        itsAggregationIntervalAhead(std::numeric_limits<unsigned int>::max()),
+        itsAggregationIntervalBehind(MAX_AGGREGATION_INTERVAL),
+        itsAggregationIntervalAhead(MAX_AGGREGATION_INTERVAL),
         itsNaNFunction(false)
   {
+    if (itsFunctionId == FunctionId::Nearest || itsFunctionId == FunctionId::Interpolate)
+      itsNaNFunction = true;
   }
-
+  ParameterFunction(const ParameterFunction& pf)
+      : itsFunctionId(pf.itsFunctionId),
+        itsFunctionType(pf.itsFunctionType),
+        itsLowerLimit(pf.itsLowerLimit),
+        itsUpperLimit(pf.itsUpperLimit),
+        itsAggregationIntervalBehind(pf.itsAggregationIntervalBehind),
+        itsAggregationIntervalAhead(pf.itsAggregationIntervalAhead),
+        itsNaNFunction(pf.itsNaNFunction)
+  {
+  }
   bool exists() const { return itsFunctionType != FunctionType::NullFunctionType; }
   std::string info() const;
   FunctionId id() const { return itsFunctionId; }
@@ -75,7 +94,7 @@ struct ParameterFunction
   double upperLimit() const { return itsUpperLimit; }
   bool lowerOrUpperLimitGiven() const
   {
-    return itsLowerLimit != std::numeric_limits<double>::min() ||
+    return itsLowerLimit != std::numeric_limits<double>::lowest() ||
            itsUpperLimit != std::numeric_limits<double>::max();
   }
   unsigned int getAggregationIntervalBehind() const { return itsAggregationIntervalBehind; }
@@ -114,6 +133,10 @@ struct ParameterFunctions
   ParameterFunctions(const ParameterFunction& theInnerFunction,
                      const ParameterFunction& theOuterFunction)
       : innerFunction(theInnerFunction), outerFunction(theOuterFunction)
+  {
+  }
+  ParameterFunctions(const ParameterFunctions& functions)
+      : innerFunction(functions.innerFunction), outerFunction(functions.outerFunction)
   {
   }
 
