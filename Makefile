@@ -27,11 +27,12 @@ objdir = obj
 
 -include $(HOME)/.smartmet.mk
 GCC_DIAG_COLOR ?= always
+CXX_STD ?= c++11
 
 DEFINES = -DUNIX -D_REENTRANT
 
 ifeq ($(CXX), clang++)
- FLAGS = -std=c++11 -fPIC \
+ FLAGS = -std=$(CXX_STD) -fPIC \
 	-Weverything \
 	-Wno-shadow \
 	-Wno-c++98-compat-pedantic \
@@ -48,7 +49,7 @@ ifeq ($(CXX), clang++)
 	-isystem $(includedir)/jsoncpp
 else
 
- FLAGS = -std=c++11 -Wall -W -fPIC -Wno-unused-parameter -fno-omit-frame-pointer -fdiagnostics-color=$(GCC_DIAG_COLOR)
+ FLAGS = -std=$(CXX_STD) -Wall -W -fPIC -Wno-unused-parameter -fno-omit-frame-pointer -fdiagnostics-color=$(GCC_DIAG_COLOR)
 
  FLAGS_DEBUG = \
 	-Wcast-align \
