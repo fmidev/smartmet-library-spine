@@ -7,23 +7,6 @@ namespace Spine
 {
 // ----------------------------------------------------------------------
 /*!
- * \brief Default constructor
- */
-// ----------------------------------------------------------------------
-
-Station::Station()
-    : isFMIStation(false),
-      isRoadStation(false),
-      isMareographStation(false),
-      isBuoyStation(false),
-      isSYKEStation(false),
-      isForeignStation(false),
-      station_elevation(0.0)
-{
-}
-
-// ----------------------------------------------------------------------
-/*!
  * \brief Station hash for caching purposes
  */
 // ----------------------------------------------------------------------

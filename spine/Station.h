@@ -11,18 +11,18 @@ namespace Spine
 class Station
 {
  public:
-  bool isFMIStation;
-  bool isRoadStation;
-  bool isMareographStation;
-  bool isBuoyStation;
-  bool isSYKEStation;
-  bool isForeignStation;
+  bool isFMIStation = false;
+  bool isRoadStation = false;
+  bool isMareographStation = false;
+  bool isBuoyStation = false;
+  bool isSYKEStation = false;
+  bool isForeignStation = false;
 
   std::string station_type;
   std::string distance;
-  double station_id;
-  double access_policy_id;
-  double station_status_id;
+  double station_id = 0;
+  double access_policy_id = 0;
+  double station_status_id = 0;
   std::string language_code;
   std::string station_formal_name;
   std::string station_system_name;
@@ -30,28 +30,28 @@ class Station
   std::string station_global_code;
   boost::posix_time::ptime station_start;
   boost::posix_time::ptime station_end;
-  double target_category;
+  double target_category = 0;
   std::string stationary;
-  double latitude_out;
-  double longitude_out;
-  double station_elevation;
+  double latitude_out = 0;
+  double longitude_out = 0;
+  double station_elevation = 0;
   boost::posix_time::ptime modified_last;
-  double modified_by;
+  double modified_by = 0;
 
   // Possible station identifiers
-  int wmo;
-  int lpnn;
-  int fmisid;
-  int rwsid;
+  int wmo = 0;
+  int lpnn = 0;
+  int fmisid = 0;
+  int rwsid = 0;
 
   // If the location is requested by finding the nearest observation
   // station for e.g. some latlon coordinates,
   // these fields come in handy when formatting the output
-  int geoid;
+  int geoid = 0;
   std::string requestedName;
-  double requestedLon;
-  double requestedLat;
-  double stationDirection;
+  double requestedLon = 0;
+  double requestedLat = 0;
+  double stationDirection = 0;
   std::string timezone;
   std::string region;
   std::string country;
@@ -60,9 +60,6 @@ class Station
   // This will return the requested tag.
   // Because it is request dependent, it will not be serialized
   std::string tag;
-
-  // Initialize the station indicators to false by default
-  Station();
 
   template <typename Archive>
   void serialize(Archive& ar, const unsigned /* version */)
