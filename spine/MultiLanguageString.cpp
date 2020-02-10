@@ -2,7 +2,8 @@
 #include <boost/algorithm/string.hpp>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TypeName.h>
-#include "spine/Exception.h"
+#include "ConfigBase.h"
+#include "Exception.h"
 #include <sstream>
 
 /**

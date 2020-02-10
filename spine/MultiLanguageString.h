@@ -1,9 +1,9 @@
 #pragma once
 
-#include <spine/ConfigBase.h>
 #include <map>
 #include <memory>
 #include <string>
+#include <libconfig.h++>
 
 namespace SmartMet
 {

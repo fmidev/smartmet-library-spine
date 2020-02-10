@@ -1,5 +1,6 @@
 #include <boost/test/included/unit_test.hpp>
 #include "MultiLanguageString.h"
+#include "Exception.h"
 
 using namespace boost::unit_test;
 
