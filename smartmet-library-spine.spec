@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.2.7
+Version: 20.2.10
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -98,6 +98,10 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon Feb 10 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.2.10-1.fmi
+- Import class MultiLanguageString from WFS plugin
+- Import class MultiLanguageStringArray from WFS plugin
+
 * Fri Feb  7 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.2.7-1.fmi
 - Initialize Station POD members to zero to avoid random station numbers etc
 
