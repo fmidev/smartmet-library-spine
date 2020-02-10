@@ -1,7 +1,7 @@
 #include "MultiLanguageStringArray.h"
 #include <macgyver/StringConversion.h>
-#include <spine/ConfigBase.h>
-#include <spine/Exception.h>
+#include "ConfigBase.h"
+#include "Exception.h"
 
 using SmartMet::Spine::MultiLanguageStringArray;
 

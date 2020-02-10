@@ -1,7 +1,7 @@
 #include <boost/test/included/unit_test.hpp>
 #include "MultiLanguageStringArray.h"
 #include <macgyver/TypeName.h>
-#include <spine/Exception.h>
+#include "Exception.h"
 
 using namespace boost::unit_test;
 using libconfig::Setting;
