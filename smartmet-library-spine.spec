@@ -101,6 +101,10 @@ make %{_smp_mflags}
 * Tue Feb 11 2020 Anssi Reponen <anssi.reponen@fmi.fi> - 20.2.11-1.fmi
 - Aggregation function must not fail if aggregation vector contains only Spine::TimeSeries::None() objects (BRAINSTORM-1756)
 
+* Mon Feb 10 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.2.10-1.fmi
+- Import class MultiLanguageString from WFS plugin
+- Import class MultiLanguageStringArray from WFS plugin
+
 * Fri Feb  7 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.2.7-1.fmi
 - Initialize Station POD members to zero to avoid random station numbers etc
 
