@@ -100,8 +100,12 @@ std::string StatCalculator::getStringStatValue(const ParameterFunction& func) co
   try
   {
     FunctionId fid(func.id());
-
-    if (fid == FunctionId::Nearest || fid == FunctionId::Interpolate)
+    if (fid == FunctionId::Mean || fid == FunctionId::StandardDeviation ||
+        fid == FunctionId::Percentage || fid == FunctionId::Change || fid == FunctionId::Trend)
+    {
+      return boost::get<std::string>(itsTimeSeries[0].value);
+    }
+    else if (fid == FunctionId::Nearest || fid == FunctionId::Interpolate)
     {
       if (itsTimestep)
       {
@@ -113,7 +117,7 @@ std::string StatCalculator::getStringStatValue(const ParameterFunction& func) co
       }
       return boost::get<std::string>(itsTimeSeries[0].value);
     }
-    if (fid == FunctionId::Maximum)
+    else if (fid == FunctionId::Maximum)
       return boost::get<std::string>(itsTimeSeries[itsTimeSeries.size() - 1].value);
     else if (fid == FunctionId::Minimum)
       return boost::get<std::string>(itsTimeSeries[0].value);
@@ -272,8 +276,8 @@ Value StatCalculator::getStatValue(const ParameterFunction& func, bool useWeight
 {
   try
   {
-    // if result set contains missing values, then 'nan'-flag in ParameterFunction determines if we
-    // ignore nan values and do statistical calculations with existing values or return missing
+    // if result set contains missing values, then 'nan'-flag in ParameterFunction determines if
+    // we ignore nan values and do statistical calculations with existing values or return missing
     // value
     bool missingValuesPresent(false);
     for (const TimedValue& tv : itsTimeSeries)
@@ -467,7 +471,9 @@ TimeSeriesPtr time_aggregate(const TimeSeries& ts, const ParameterFunction& func
       {
         const TimedValue& tv = ts.at(k);
         if (include_value(tv, func))
+        {
           statcalculator(tv);
+        }
       }
       ret->push_back(TimedValue(ts[i].time, statcalculator.getStatValue(func, true)));
     }
