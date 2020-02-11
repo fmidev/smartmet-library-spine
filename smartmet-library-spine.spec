@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.2.10
+Version: 20.2.11
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -98,6 +98,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Feb 11 2020 Anssi Reponen <anssi.reponen@fmi.fi> - 20.2.11-1.fmi
+- Aggregation function must not fail if aggregation vector contains only Spine::TimeSeries::None() objects (BRAINSTORM-1756)
+
 * Mon Feb 10 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.2.10-1.fmi
 - Import class MultiLanguageString from WFS plugin
 - Import class MultiLanguageStringArray from WFS plugin
