@@ -60,7 +60,7 @@ std::unique_ptr<std::ofstream> makeAccessLogFile(const std::string& resource,
       throw SmartMet::Spine::Exception(BCP, "Could not open access log file: " + path);
     }
 
-    return std::move(file);
+    return file;
   }
   catch (...)
   {
