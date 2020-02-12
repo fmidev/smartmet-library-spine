@@ -31,6 +31,7 @@ class HandlerView : private boost::noncopyable
               SmartMetPlugin* thePlugin,
               const std::string& theResource,
               bool loggingStatus,
+              bool itsPrivate,
               const std::string& accessLogDir);
 
   // CatchNoMatch handler
@@ -44,6 +45,9 @@ class HandlerView : private boost::noncopyable
 
   // See if this View is that of a CatchNoMatch
   bool isCatchNoMatch() const;
+
+  // See if handler is private
+  bool isPrivate() const { return itsPrivate; }
 
   // See if querying this plugin is fast
   bool queryIsFast(HTTP::Request& theRequest) const;
@@ -93,6 +97,9 @@ class HandlerView : private boost::noncopyable
 
   // Flag to see if this is the fallthrough-handler
   bool itsIsCatchNoMatch;
+
+  // Flag to specify that handler is private
+  bool itsPrivate;
 
   // The request log for this handler
   LogListType itsRequestLog;
