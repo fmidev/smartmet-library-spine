@@ -76,16 +76,8 @@ struct ParameterFunction
     if (itsFunctionId == FunctionId::Nearest || itsFunctionId == FunctionId::Interpolate)
       itsNaNFunction = true;
   }
-  ParameterFunction(const ParameterFunction& pf)
-      : itsFunctionId(pf.itsFunctionId),
-        itsFunctionType(pf.itsFunctionType),
-        itsLowerLimit(pf.itsLowerLimit),
-        itsUpperLimit(pf.itsUpperLimit),
-        itsAggregationIntervalBehind(pf.itsAggregationIntervalBehind),
-        itsAggregationIntervalAhead(pf.itsAggregationIntervalAhead),
-        itsNaNFunction(pf.itsNaNFunction)
-  {
-  }
+  ParameterFunction(const ParameterFunction& pf) = default;
+  ParameterFunction& operator = (const ParameterFunction& pf) = default;
   bool exists() const { return itsFunctionType != FunctionType::NullFunctionType; }
   std::string info() const;
   FunctionId id() const { return itsFunctionId; }
@@ -135,10 +127,8 @@ struct ParameterFunctions
       : innerFunction(theInnerFunction), outerFunction(theOuterFunction)
   {
   }
-  ParameterFunctions(const ParameterFunctions& functions)
-      : innerFunction(functions.innerFunction), outerFunction(functions.outerFunction)
-  {
-  }
+  ParameterFunctions(const ParameterFunctions& functions) = default;
+  ParameterFunctions& operator = (const ParameterFunctions& other) = default;
 
   ParameterFunction innerFunction;
   ParameterFunction outerFunction;
