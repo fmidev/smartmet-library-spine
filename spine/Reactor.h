@@ -101,6 +101,9 @@ class Reactor
   bool addContentHandler(SmartMetPlugin* thePlugin,
                          const std::string& theDir,
                          ContentHandler theCallBackFunction);
+  bool addPrivateContentHandler(SmartMetPlugin* thePlugin,
+                                const std::string& theDir,
+                                ContentHandler theCallBackFunction);
   bool setNoMatchHandler(ContentHandler theHandler);
   std::size_t removeContentHandlers(SmartMetPlugin* thePlugin);
 
@@ -144,6 +147,11 @@ class Reactor
   void initializeEngine(SmartMetEngine* theEngine, const std::string& theName);
   void initializePlugin(DynamicPlugin* thePlugin, const std::string& theName);
   std::vector<std::string> findLibraries(const std::string& theName) const;
+
+  bool addContentHandlerImpl(bool isPrivate,
+                             SmartMetPlugin* thePlugin,
+                             const std::string& theDir,
+                             ContentHandler theCallBackFunction);
 
   // SmartMet API Version
   int APIVersion = SMARTMET_API_VERSION;

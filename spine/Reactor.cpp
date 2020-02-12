@@ -237,15 +237,48 @@ int Reactor::getRequiredAPIVersion() const
 {
   return APIVersion;
 }
+
 // ----------------------------------------------------------------------
 /*!
- * \brief Method to register new URI/CallBackFunction association.
+ * \brief Method to register new public URI/CallBackFunction association.
+ *
+ * Handler added using this method is visible through getURIMap() method
  */
 // ----------------------------------------------------------------------
 
 bool Reactor::addContentHandler(SmartMetPlugin* thePlugin,
-                                const std::string& theUri,
-                                ContentHandler theHandler)
+                                const std::string& theDir,
+                                ContentHandler theCallBackFunction)
+{
+  return addContentHandlerImpl(false, thePlugin, theDir, theCallBackFunction);
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Method to register new private URI/CallBackFunction association.
+ *
+ * Handler added using this method is not visible through getURIMap() method
+ */
+// ----------------------------------------------------------------------
+
+bool Reactor::addPrivateContentHandler(SmartMetPlugin* thePlugin,
+                                       const std::string& theDir,
+                                       ContentHandler theCallBackFunction)
+{
+  return addContentHandlerImpl(true, thePlugin, theDir, theCallBackFunction);
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Implementation of registeration of new private URI/CallBackFunction association.
+ *
+ */
+// ----------------------------------------------------------------------
+
+bool Reactor::addContentHandlerImpl(bool itsPrivate,
+                                    SmartMetPlugin* thePlugin,
+                                    const std::string& theUri,
+                                    ContentHandler theHandler)
 {
   try
   {
@@ -264,7 +297,7 @@ bool Reactor::addContentHandler(SmartMetPlugin* thePlugin,
     }
 
     boost::shared_ptr<HandlerView> theView(new HandlerView(
-        theHandler, filter, thePlugin, theUri, itsLoggingEnabled, itsOptions.accesslogdir));
+        theHandler, filter, thePlugin, theUri, itsLoggingEnabled, itsPrivate, itsOptions.accesslogdir));
 
     std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered URI "
               << theUri << " for plugin " << thePlugin->getPluginName() << ANSI_BOLD_OFF
@@ -553,7 +586,9 @@ URIMap Reactor::getURIMap() const
       if (itsShutdownRequested)
         return {};
 
-      theMap.insert(std::make_pair(handlerPair.first, handlerPair.second->getPluginName()));
+      if (not handlerPair.second->isPrivate()) {
+        theMap.insert(std::make_pair(handlerPair.first, handlerPair.second->getPluginName()));
+      }
     }
 
     return theMap;
