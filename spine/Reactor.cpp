@@ -299,7 +299,8 @@ bool Reactor::addContentHandlerImpl(bool itsPrivate,
     boost::shared_ptr<HandlerView> theView(new HandlerView(
         theHandler, filter, thePlugin, theUri, itsLoggingEnabled, itsPrivate, itsOptions.accesslogdir));
 
-    std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered URI "
+    std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
+              << (itsPrivate ? "private " : "") <<  "URI "
               << theUri << " for plugin " << thePlugin->getPluginName() << ANSI_BOLD_OFF
               << ANSI_FG_DEFAULT << std::endl;
 
