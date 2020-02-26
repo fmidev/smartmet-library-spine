@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.2.13
+Version: 20.2.26
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -14,7 +14,7 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 20.2.6
+BuildRequires: smartmet-library-newbase-devel >= 20.2.13
 BuildRequires: smartmet-library-macgyver-devel >= 20.2.5
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
@@ -23,15 +23,15 @@ BuildRequires: libicu-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 20.2.5
+BuildRequires: smartmet-library-gis-devel >= 20.2.18
 BuildRequires: fmt-devel >= 5.2.0
 BuildRequires: mariadb-devel
 BuildRequires: boost-chrono
 BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 20.2.6
+Requires: smartmet-library-newbase >= 20.2.13
 Requires: smartmet-library-macgyver >= 20.2.5
 Requires: smartmet-timezones >= 19.7.29
-Requires: smartmet-library-gis >= 20.2.5
+Requires: smartmet-library-gis >= 20.2.18
 Requires: mariadb-libs
 Requires: boost-filesystem
 Requires: boost-iostreams
@@ -98,6 +98,10 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Feb 26 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.2.26-1.fmi
+- Improved messages on plugin registration
+- Fixed verbose mode output alignment
+
 * Thu Feb 13 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.2.13-1.fmi
 - Added support for private request handlers which frontends are not informed about
 
