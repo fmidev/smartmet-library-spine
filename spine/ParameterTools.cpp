@@ -5,6 +5,7 @@
 #include <macgyver/CharsetTools.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TimeFormatter.h>
+#include <boost/algorithm/string.hpp>
 
 namespace SmartMet
 {
@@ -33,6 +34,72 @@ const std::set<std::string> location_parameters =
     ELEVATION_PARAM,
     POPULATION_PARAM,
     STATION_ELEVATION_PARAM
+};
+
+const std::map<std::string, Parameter::Type> special_parameter_map =
+{
+    { "cloudiness8th", Parameter::Type::DataDerived },
+    { COUNTRY_PARAM, Parameter::Type::DataIndependent },
+    { DARK_PARAM, Parameter::Type::DataIndependent },
+    { DIRECTION_PARAM, Parameter::Type::DataIndependent },
+    { DISTANCE_PARAM, Parameter::Type::DataIndependent },
+    { ELEVATION_PARAM, Parameter::Type::DataIndependent },
+    { EPOCHTIME_PARAM, Parameter::Type::DataIndependent },
+    { "feelslike", Parameter::Type::DataDerived },
+    { FMISID_PARAM, Parameter::Type::DataIndependent },
+    { GEOID_PARAM, Parameter::Type::DataIndependent },
+    { HOUR_PARAM, Parameter::Type::DataIndependent },
+    { ISO2_PARAM, Parameter::Type::DataIndependent },
+    { ISOTIME_PARAM, Parameter::Type::DataIndependent },
+    { LAT_PARAM, Parameter::Type::DataIndependent },
+    { LATITUDE_PARAM, Parameter::Type::DataIndependent },
+    { LATLON_PARAM, Parameter::Type::DataIndependent },
+    //{ LEVEL_PARAM, Parameter::Type::DataIndependent },
+    { LOCALTIME_PARAM, Parameter::Type::DataIndependent },
+    { LOCALTZ_PARAM, Parameter::Type::DataIndependent },
+    { LON_PARAM, Parameter::Type::DataIndependent },
+    { LONGITUDE_PARAM, Parameter::Type::DataIndependent },
+    { LONLAT_PARAM, Parameter::Type::DataIndependent },
+    { LPNN_PARAM, Parameter::Type::DataIndependent },
+    { MODEL_PARAM, Parameter::Type::DataIndependent },
+    { "modtime", Parameter::Type::DataIndependent },
+    { MON_PARAM, Parameter::Type::DataIndependent },
+    { MONTH_PARAM, Parameter::Type::DataIndependent },
+    { MOONPHASE_PARAM, Parameter::Type::DataIndependent },
+    { NAME_PARAM, Parameter::Type::DataIndependent },
+    { NOON_PARAM, Parameter::Type::DataIndependent },
+    { ORIGINTIME_PARAM, Parameter::Type::DataIndependent },
+    { PLACE_PARAM, Parameter::Type::DataIndependent },
+    { REGION_PARAM, Parameter::Type::DataIndependent },
+    //{ RWSID_PARAM, Parameter::Type::DataIndependent },
+    //{ SENSOR_NO_PARAM, Parameter::Type::DataIndependent },
+    { "smartsymbol", Parameter::Type::DataDerived },
+    //{ "stationary", Parameter::Type::DataIndependent },
+    { STATION_ELEVATION_PARAM, Parameter::Type::DataIndependent },
+    { STATIONLAT_PARAM, Parameter::Type::DataIndependent },
+    { STATIONLATITUDE_PARAM, Parameter::Type::DataIndependent },
+    { STATIONLON_PARAM, Parameter::Type::DataIndependent },
+    { STATIONLONGITUDE_PARAM, Parameter::Type::DataIndependent },
+    { STATION_NAME_PARAM, Parameter::Type::DataIndependent },
+    { STATIONNAME_PARAM, Parameter::Type::DataIndependent },
+    { SUNAZIMUTH_PARAM, Parameter::Type::DataIndependent },
+    { SUNDECLINATION_PARAM, Parameter::Type::DataIndependent },
+    { SUNELEVATION_PARAM, Parameter::Type::DataIndependent },
+    { SUNRISE_PARAM, Parameter::Type::DataIndependent },
+    { SUNRISETODAY_PARAM, Parameter::Type::DataIndependent },
+    { SUNSET_PARAM, Parameter::Type::DataIndependent },
+    { SUNSETTODAY_PARAM, Parameter::Type::DataIndependent },
+    { TIME_PARAM, Parameter::Type::DataIndependent },
+    { TIMESTRING_PARAM, Parameter::Type::DataIndependent },
+    { TZ_PARAM, Parameter::Type::DataIndependent },
+    { UTCTIME_PARAM, Parameter::Type::DataIndependent },
+    { "weather", Parameter::Type::DataDerived },
+    { "windchill", Parameter::Type::DataDerived },
+    { "windcompass16", Parameter::Type::DataDerived },
+    { "windcompass32", Parameter::Type::DataDerived },
+    { "windcompass8", Parameter::Type::DataDerived },
+    { WMO_PARAM, Parameter::Type::DataIndependent },
+    { XMLTIME_PARAM, Parameter::Type::DataIndependent }
 };
 
 // ----------------------------------------------------------------------
@@ -453,7 +520,40 @@ Spine::TimeSeries::Value time_parameter(const std::string paramname,
   {
     throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
-}  // namespace
+}
+
+bool is_special_parameter(const std::string& name)
+{
+    std::string p = boost::algorithm::to_lower_copy(name, std::locale::classic());
+    return special_parameter_map.count(p) > 0;
+}
+
+Spine::Parameter makeParameter(const std::string &name)
+{
+  try
+  {
+    if (name.empty())
+      throw Spine::Exception(BCP, "Empty parameters are not allowed");
+
+    std::string p = boost::algorithm::to_lower_copy(name, std::locale::classic());
+    Spine::Parameter::Type type;
+
+    auto it = special_parameter_map.find(p);
+    if (it != special_parameter_map.end()) {
+      type = it->second;
+    } else if (boost::algorithm::ends_with(p, "data_source")) {
+      type = Parameter::Type::DataDerived;
+    } else {
+      type = Parameter::Type::Data;
+    }
+
+    return Spine::Parameter(name, type);
+  }
+  catch (...)
+  {
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
+  }
+}
 
 } // namespace Spine
 } // namespace SmartMet
