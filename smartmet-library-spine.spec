@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.3.5
+Version: 20.3.9
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -98,6 +98,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon Mar  9 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.3.9-1.fmi
+- Update ParameterTools.(cpp|h): add missing import of is_time_parameter()
+
 * Thu Mar  5 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.3.5-1.fmi
 - Import ParameterTools.(cpp|h) from timeseries plugin
 - Import special parameter handling part from obsengine
