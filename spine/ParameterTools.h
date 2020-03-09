@@ -23,6 +23,8 @@ bool is_plain_location_query(const Spine::OptionParsers::ParameterList& theParam
 
 bool is_location_parameter(const std::string& paramname);
 
+bool is_time_parameter(std::string paramname);
+
 std::string location_parameter(const Spine::LocationPtr loc,
                                const std::string paramName,
                                const Spine::ValueFormatter& valueformatter,
