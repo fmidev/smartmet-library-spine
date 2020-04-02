@@ -32,7 +32,6 @@ Requires: smartmet-library-newbase >= 20.2.13
 Requires: smartmet-library-macgyver >= 20.3.5
 Requires: smartmet-timezones >= 19.7.29
 Requires: smartmet-library-gis >= 20.2.18
-Requires: mariadb-libs
 Requires: boost-filesystem
 Requires: boost-iostreams
 Requires: boost-date-time
@@ -48,6 +47,13 @@ Requires: hdf5
 Requires: jsoncpp
 Requires: libconfig
 Requires: fmt >= 5.2.0
+
+%if %{defined el7}
+Requires: mariadb-libs
+%else if %{defined el8}
+Requires: mariadb-connector-c
+%endif
+
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 #TestRequires: bzip2-devel
