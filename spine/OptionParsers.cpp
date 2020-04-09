@@ -28,39 +28,43 @@ int get_parameter_index(const ParameterList& parameters, const std::string& para
 
 void ParameterOptions::expandParameter(const std::string& paramname)
 {
-  int parameterIndex = get_parameter_index(itsParameters, paramname);
+  // Expand parameter in index
+  int expand_index = get_parameter_index(itsParameters, paramname);
 
-  while (parameterIndex > -1)
+  if (expand_index > -1)
   {
-    std::vector<std::string> dataParameterNames;
-    for (auto p : itsParameters)
+    const ParameterFunctions& expand_func = itsParameterFunctions.at(expand_index).functions;
+
+    std::vector<Parameter> dataSourceParams;
+    std::vector<ParameterAndFunctions> dataSourceParameterFunctions;
+    for (const auto& p : itsParameters)
     {
       if (p.type() == SmartMet::Spine::Parameter::Type::Data ||
           p.type() == SmartMet::Spine::Parameter::Type::Landscaped)
-        dataParameterNames.push_back(p.name());
+      {
+        std::string name = p.name() + "_data_source";
+        Fmi::ascii_tolower(name);
+
+        Parameter param(name, p.type(), p.number());
+        if (p.getSensorNumber())
+          param.setSensorNumber(*(p.getSensorNumber()));
+        ParameterAndFunctions paramfunc(param, expand_func);
+        dataSourceParams.push_back(param);
+        dataSourceParameterFunctions.push_back(paramfunc);
+      }
     }
-    const Parameter& originalDataParameter = itsParameters.at(parameterIndex);
-    const ParameterAndFunctions& originalDataParameterAndFunctions =
-        itsParameterFunctions.at(parameterIndex);
-    std::vector<Parameter> dataSourceParams;
-    std::vector<ParameterAndFunctions> dataSourceParameterFunctions;
-    for (auto p : dataParameterNames)
+
+    if (!dataSourceParams.empty())
     {
-      std::string name = p + "_" + originalDataParameter.name();
-      Parameter param(name, originalDataParameter.type(), originalDataParameter.number());
-      ParameterAndFunctions paramfunc(param, originalDataParameterAndFunctions.functions);
-      dataSourceParams.push_back(param);
-      dataSourceParameterFunctions.push_back(paramfunc);
+      // Replace the original parameter with expanded list of parameters
+      itsParameters.erase(itsParameters.begin() + expand_index);
+      itsParameters.insert(
+          itsParameters.begin() + expand_index, dataSourceParams.begin(), dataSourceParams.end());
+      itsParameterFunctions.erase(itsParameterFunctions.begin() + expand_index);
+      itsParameterFunctions.insert(itsParameterFunctions.begin() + expand_index,
+                                   dataSourceParameterFunctions.begin(),
+                                   dataSourceParameterFunctions.end());
     }
-    // Replace the original parameter with expanded list of parameters
-    itsParameters.erase(itsParameters.begin() + parameterIndex);
-    itsParameters.insert(
-        itsParameters.begin() + parameterIndex, dataSourceParams.begin(), dataSourceParams.end());
-    itsParameterFunctions.erase(itsParameterFunctions.begin() + parameterIndex);
-    itsParameterFunctions.insert(itsParameterFunctions.begin() + parameterIndex,
-                                 dataSourceParameterFunctions.begin(),
-                                 dataSourceParameterFunctions.end());
-    parameterIndex = get_parameter_index(itsParameters, paramname);
   }
 }
 
@@ -284,7 +288,8 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
     else if (!!options.timeSteps)
     {
       options.endTimeUTC = options.startTimeUTC;
-      // If you give the number of timesteps, we must assume a default timestep unless you give one
+      // If you give the number of timesteps, we must assume a default timestep unless you give
+      // one
       if (!options.timeStep)
         options.timeStep = default_timestep;
       options.endTime =

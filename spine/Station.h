@@ -3,6 +3,8 @@
 #include <boost/archive/xml_iarchive.hpp>
 #include <boost/archive/xml_oarchive.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/optional.hpp>
+#include <list>
 
 namespace SmartMet
 {
@@ -109,6 +111,19 @@ class Station
 };  // class Station
 
 using Stations = std::vector<Station>;
+
+struct TaggedFMISID
+{
+  std::string tag;
+  boost::optional<int> fmisid;
+  TaggedFMISID(const std::string& t, boost::optional<int> sid) : tag(t), fmisid(sid) {}
+
+ private:
+  TaggedFMISID();
+};
+
+using TaggedFMISIDList = std::list<TaggedFMISID>;
+using TaggedFMISIDListPtr = boost::shared_ptr<TaggedFMISIDList>;
 
 }  // namespace Spine
 }  // namespace SmartMet
