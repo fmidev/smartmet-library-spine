@@ -6,7 +6,11 @@
 
 using std::string;
 
-#define TEST_FAILED_UNLESS(pred) if (!(pred)) { TEST_FAILED("Check '" #pred "' failed"); }
+#define TEST_FAILED_UNLESS(pred)             \
+  if (!(pred))                               \
+  {                                          \
+    TEST_FAILED("Check '" #pred "' failed"); \
+  }
 
 // Protection against conflicts with global functions
 namespace ExceptionTest
@@ -15,19 +19,27 @@ namespace ExceptionTest
 
 void test_std_library_exception_reporting_1()
 {
-  try {
-    try {
+  try
+  {
+    try
+    {
       throw std::runtime_error("Foo");
-    } catch (...) {
+    }
+    catch (...)
+    {
       throw SmartMet::Spine::Exception::Trace(BCP, "Bar");
     }
     TEST_FAILED("Exception should have been thrown");
-  } catch (const SmartMet::Spine::Exception& e) {
+  }
+  catch (const SmartMet::Spine::Exception& e)
+  {
     TEST_FAILED_UNLESS(e.getWhat() == std::string("Bar"));
     const SmartMet::Spine::Exception* prev = e.getPrevException();
     TEST_FAILED_UNLESS(prev != NULL);
     TEST_FAILED_UNLESS(prev->getWhat() == std::string("[Runtime error] Foo"));
-  } catch (...) {
+  }
+  catch (...)
+  {
     TEST_FAILED("SmartMet::Spine::Exception was expected");
   }
   TEST_PASSED();
@@ -40,19 +52,28 @@ struct MyRuntimeError : public std::runtime_error
 
 void test_std_library_exception_reporting_2()
 {
-  try {
-    try {
+  try
+  {
+    try
+    {
       throw MyRuntimeError();
-    } catch (...) {
+    }
+    catch (...)
+    {
       throw SmartMet::Spine::Exception::Trace(BCP, "Bar");
     }
     TEST_FAILED("Exception should have been thrown");
-  } catch (const SmartMet::Spine::Exception& e) {
+  }
+  catch (const SmartMet::Spine::Exception& e)
+  {
     TEST_FAILED_UNLESS(e.getWhat() == std::string("Bar"));
     const SmartMet::Spine::Exception* prev = e.getPrevException();
     TEST_FAILED_UNLESS(prev != NULL);
-    TEST_FAILED_UNLESS(prev->getWhat() == std::string("[ExceptionTest::MyRuntimeError] My runtime error"));
-  } catch (...) {
+    TEST_FAILED_UNLESS(prev->getWhat() ==
+                       std::string("[ExceptionTest::MyRuntimeError] My runtime error"));
+  }
+  catch (...)
+  {
     TEST_FAILED("SmartMet::Spine::Exception was expected");
   }
   TEST_PASSED();
@@ -64,19 +85,27 @@ struct MyException1
 
 void test_other_exception_reporting_1()
 {
-  try {
-    try {
+  try
+  {
+    try
+    {
       throw MyException1();
-    } catch (...) {
+    }
+    catch (...)
+    {
       throw SmartMet::Spine::Exception::Trace(BCP, "Bar");
     }
     TEST_FAILED("Exception should have been thrown");
-  } catch (const SmartMet::Spine::Exception& e) {
+  }
+  catch (const SmartMet::Spine::Exception& e)
+  {
     TEST_FAILED_UNLESS(e.getWhat() == std::string("Bar"));
     const SmartMet::Spine::Exception* prev = e.getPrevException();
     TEST_FAILED_UNLESS(prev != NULL);
     TEST_FAILED_UNLESS(prev->getWhat() == std::string("[ExceptionTest::MyException1]"));
-  } catch (...) {
+  }
+  catch (...)
+  {
     TEST_FAILED("SmartMet::Spine::Exception was expected");
   }
   TEST_PASSED();
@@ -89,9 +118,12 @@ void test_funct_1()
 
 void test_funct_2()
 {
-  try {
+  try
+  {
     test_funct_1();
-  } catch (...) {
+  }
+  catch (...)
+  {
     throw SmartMet::Spine::Exception::Trace(BCP, "Failed");
   }
 }
@@ -100,21 +132,28 @@ void test_funct_2()
 void throw_spine_exception_in_async_call()
 {
   std::future<void> f = std::async(std::launch::async, &test_funct_1);
-  try {
+  try
+  {
     f.get();
     TEST_FAILED("Exception must be thrown");
-  } catch (const SmartMet::Spine::Exception& e) {
-    if (e.getWhat() != std::string("Some error")) {
+  }
+  catch (const SmartMet::Spine::Exception& e)
+  {
+    if (e.getWhat() != std::string("Some error"))
+    {
       TEST_FAILED("Unexpected value of exception message");
     }
     const SmartMet::Spine::Exception* prev = e.getPrevException();
-    if (prev) {
+    if (prev)
+    {
       TEST_FAILED("There should be no previous exception");
     }
-    //std::cout << "f.get() -> exception:\n";
-    //e.printError();
+    // std::cout << "f.get() -> exception:\n";
+    // e.printError();
     TEST_PASSED();
-  } catch (...) {
+  }
+  catch (...)
+  {
     TEST_FAILED("Unexpected exception type");
   }
 }
@@ -122,25 +161,34 @@ void throw_spine_exception_in_async_call()
 void throw_nested_spine_exception_in_async_call()
 {
   std::future<void> f = std::async(std::launch::async, &test_funct_2);
-  try {
+  try
+  {
     f.get();
     TEST_FAILED("Exception must be thrown");
-  } catch (const SmartMet::Spine::Exception& e) {
-    //std::cout << "f.get() -> exception:\n";
-    //e.printError();
-    if (e.getWhat() != std::string("Failed")) {
+  }
+  catch (const SmartMet::Spine::Exception& e)
+  {
+    // std::cout << "f.get() -> exception:\n";
+    // e.printError();
+    if (e.getWhat() != std::string("Failed"))
+    {
       TEST_FAILED("Unexpected value of exception message");
     }
     const SmartMet::Spine::Exception* prev = e.getPrevException();
-    if (prev) {
-      if (prev->getWhat() != std::string("Some error")) {
-	TEST_FAILED("Unexpected value of exception message");
+    if (prev)
+    {
+      if (prev->getWhat() != std::string("Some error"))
+      {
+        TEST_FAILED("Unexpected value of exception message");
       }
       prev = prev->getPrevException();
-      if (prev) {
-	TEST_FAILED("There should be only 2 exception levels");
+      if (prev)
+      {
+        TEST_FAILED("There should be only 2 exception levels");
       }
-    } else {
+    }
+    else
+    {
       TEST_FAILED("There should be no previous exception");
     }
     TEST_PASSED();

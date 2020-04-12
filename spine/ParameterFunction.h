@@ -77,7 +77,7 @@ struct ParameterFunction
       itsNaNFunction = true;
   }
   ParameterFunction(const ParameterFunction& pf) = default;
-  ParameterFunction& operator = (const ParameterFunction& pf) = default;
+  ParameterFunction& operator=(const ParameterFunction& pf) = default;
   bool exists() const { return itsFunctionType != FunctionType::NullFunctionType; }
   std::string info() const;
   FunctionId id() const { return itsFunctionId; }
@@ -128,7 +128,7 @@ struct ParameterFunctions
   {
   }
   ParameterFunctions(const ParameterFunctions& functions) = default;
-  ParameterFunctions& operator = (const ParameterFunctions& other) = default;
+  ParameterFunctions& operator=(const ParameterFunctions& other) = default;
 
   ParameterFunction innerFunction;
   ParameterFunction outerFunction;

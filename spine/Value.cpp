@@ -2,8 +2,8 @@
 #include "ConfigBase.h"
 #include "Exception.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/lambda/lambda.hpp>
 #include <boost/current_function.hpp>
+#include <boost/lambda/lambda.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TimeParser.h>

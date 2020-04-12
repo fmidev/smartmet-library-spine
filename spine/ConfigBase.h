@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Exception.h"
-#include <boost/shared_ptr.hpp>
 #include <boost/current_function.hpp>
+#include <boost/shared_ptr.hpp>
 #include <macgyver/TypeName.h>
 #include <libconfig.h++>
 #include <limits>
@@ -420,9 +420,10 @@ class ConfigBase
   }
 
   libconfig::Setting* find_setting_impl(libconfig::Setting& search_start,
-					const std::string& path,
-					bool mandatory,
-					int max_depth) const;
+                                        const std::string& path,
+                                        bool mandatory,
+                                        int max_depth) const;
+
  private:
   const std::string file_name;
   const std::string name;

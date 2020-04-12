@@ -1,6 +1,6 @@
-#include <boost/test/included/unit_test.hpp>
-#include "MultiLanguageString.h"
 #include "Exception.h"
+#include "MultiLanguageString.h"
+#include <boost/test/included/unit_test.hpp>
 
 using namespace boost::unit_test;
 
