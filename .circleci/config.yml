@@ -9,6 +9,9 @@ jobs:
           name: Install build dependencies
           command: ci-build deps
       - run:
+          name: Check PGDG settings
+          command: cat /etc/yum.repos.d/pgdg*
+      - run:
           name: Build RPM
           command: ci-build rpm
       - persist_to_workspace:
