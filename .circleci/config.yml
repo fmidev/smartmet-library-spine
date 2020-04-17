@@ -6,9 +6,6 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Check PGDG settings
-          command: cat /etc/yum.repos.d/pgdg*
-      - run:
           name: Install build dependencies
           command: ci-build deps
       - run:
