@@ -31,6 +31,13 @@ CXX_STD ?= c++11
 
 DEFINES = -DUNIX -D_REENTRANT
 
+# Boost 1.69
+
+ifneq "$(wildcard /usr/include/boost169)" ""
+  INCLUDES += -I/usr/include/boost169
+  LIBS += -L/usr/lib64/boost169
+endif
+
 ifeq ($(CXX), clang++)
  FLAGS = -std=$(CXX_STD) -fPIC \
 	-Weverything \
@@ -44,7 +51,7 @@ ifeq ($(CXX), clang++)
 	-Wno-documentation-unknown-command \
 	-Wno-sign-conversion
 
- INCLUDES = -isystem $(includedir)/smartmet \
+ INCLUDES += -isystem $(includedir)/smartmet \
 	-isystem $(includedir)/mysql \
 	-isystem $(includedir)/jsoncpp
 else
@@ -54,20 +61,14 @@ else
  FLAGS_DEBUG = \
 	-Wcast-align \
 	-Wcast-qual \
-	-Wconversion \
 	-Winline \
 	-Wno-multichar \
 	-Wno-pmf-conversions \
-	-Wold-style-cast \
-	-Woverloaded-virtual  \
 	-Wpointer-arith \
-	-Wredundant-decls \
 	-Wsign-promo \
-	-Wwrite-strings \
-	-Wctor-dtor-privacy \
-	-Wnon-virtual-dtor
+	-Wwrite-strings
 
- INCLUDES = -I$(includedir)/smartmet \
+ INCLUDES += -I$(includedir)/smartmet \
 	-I$(includedir)/mysql \
 	`pkg-config --cflags jsoncpp`
 
@@ -95,7 +96,7 @@ endif
 
 # Common library compiling template
 
-LIBS =	-L$(libdir) \
+LIBS +=	-L$(libdir) \
 	-lsmartmet-newbase \
 	-lsmartmet-macgyver \
 	-L$(libdir)/mysql -lmysqlclient_r \

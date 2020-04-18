@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.4.6
+Version: 20.4.18
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -13,9 +13,9 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
-BuildRequires: boost-devel
-BuildRequires: smartmet-library-newbase-devel >= 20.2.13
-BuildRequires: smartmet-library-macgyver-devel >= 20.3.5
+BuildRequires: boost169-devel
+BuildRequires: smartmet-library-newbase-devel >= 20.4.18
+BuildRequires: smartmet-library-macgyver-devel >= 20.4.18
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -23,24 +23,24 @@ BuildRequires: libicu-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 20.2.18
+BuildRequires: smartmet-library-gis-devel >= 20.4.18
 BuildRequires: fmt-devel >= 5.2.0
 BuildRequires: mariadb-devel
-BuildRequires: boost-chrono
-BuildRequires: boost-timer
-Requires: smartmet-library-newbase >= 20.2.13
-Requires: smartmet-library-macgyver >= 20.3.5
+BuildRequires: boost169-chrono
+BuildRequires: boost169-timer
+Requires: smartmet-library-newbase >= 20.4.18
+Requires: smartmet-library-macgyver >= 20.4.18
 Requires: smartmet-timezones >= 19.7.29
-Requires: smartmet-library-gis >= 20.2.18
-Requires: boost-filesystem
-Requires: boost-iostreams
-Requires: boost-date-time
-Requires: boost-regex
-Requires: boost-thread
-Requires: boost-program-options
-Requires: boost-system
-Requires: boost-timer
-Requires: boost-chrono
+Requires: smartmet-library-gis >= 20.4.18
+Requires: boost169-filesystem
+Requires: boost169-iostreams
+Requires: boost169-date-time
+Requires: boost169-regex
+Requires: boost169-thread
+Requires: boost169-program-options
+Requires: boost169-system
+Requires: boost169-timer
+Requires: boost169-chrono
 Requires: libicu
 Requires: ctpp2
 Requires: hdf5
@@ -70,7 +70,7 @@ FMI BrainStorm Spinal Cord Library
 %package -n %{SPECNAME}-devel
 Summary: SmartMet Spine development files
 Group: SmartMet/Development
-Requires: boost-devel
+Requires: boost169-devel
 Requires: dtl
 Requires: smartmet-library-macgyver-devel
 Requires: smartmet-library-gis-devel
@@ -104,6 +104,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Sat Apr 18 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.4.18-1.fmi
+- Upgrade to Boost 1.69
+
 * Mon Apr  6 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.4.6-1.fmi
 - New template method Reactor::getEngine
 
