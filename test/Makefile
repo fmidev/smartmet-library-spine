@@ -33,8 +33,7 @@ endif
 
 
 INCLUDES += -I../spine -I/usr/include/smartmet `pkg-config --cflags jsoncpp`
-LIBS += -L.. \
-	../libsmartmet-spine.so \
+LIBS += ../libsmartmet-spine.so \
 	-lsmartmet-macgyver \
 	`pkg-config --libs jsoncpp` \
 	`pkg-config --libs libconfig++` \
@@ -63,5 +62,4 @@ test: $(PROG)
 	$$ok
 
 $(PROG) : % : %.cpp Makefile ../libsmartmet-spine.so
-	$(CC) $(CFLAGS) -o $@ $@.cpp $(INCLUDES) -Wl,-rpath,.. $(LIBS)
-
+	$(CC) $(CFLAGS) -o $@ $@.cpp $(INCLUDES) $(LIBS)
