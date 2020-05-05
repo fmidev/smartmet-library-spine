@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.4.18
+Version: 20.5.5
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -30,7 +30,7 @@ BuildRequires: boost169-chrono
 BuildRequires: boost169-timer
 Requires: smartmet-library-newbase >= 20.4.18
 Requires: smartmet-library-macgyver >= 20.4.18
-Requires: smartmet-timezones >= 19.7.29
+Requires: smartmet-timezones >= 20.5.5
 Requires: smartmet-library-gis >= 20.4.18
 Requires: boost169-filesystem
 Requires: boost169-iostreams
@@ -104,6 +104,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue May  5 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.5.5-1.fmi
+- Do not print a stack trace for errorneous time strings given by the user
+
 * Sat Apr 18 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.4.18-1.fmi
 - Upgrade to Boost 1.69
 

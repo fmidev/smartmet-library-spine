@@ -720,7 +720,8 @@ boost::posix_time::ptime string2ptime(const std::string& value,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Spine::Exception::Trace(BCP, "Operation failed!")
+        .disableStackTrace();  // user input error
   }
 }
 
