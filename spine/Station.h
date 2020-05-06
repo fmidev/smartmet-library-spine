@@ -3,7 +3,6 @@
 #include <boost/archive/xml_iarchive.hpp>
 #include <boost/archive/xml_oarchive.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/optional.hpp>
 #include <list>
 
 namespace SmartMet
@@ -53,7 +52,7 @@ class Station
   std::string requestedName;
   double requestedLon = 0;
   double requestedLat = 0;
-  double stationDirection = 0;
+  double stationDirection = -1;  // negative number is marker that no direction is calculated
   std::string timezone;
   std::string region;
   std::string country;
@@ -112,18 +111,33 @@ class Station
 
 using Stations = std::vector<Station>;
 
+struct FlashOptions
+{
+  double longitude;  // for flash queries
+  double latitude;
+  double radius;
+  std::map<std::string, double> bbox;
+};
 struct TaggedFMISID
 {
-  std::string tag;
-  boost::optional<int> fmisid;
-  TaggedFMISID(const std::string& t, boost::optional<int> sid) : tag(t), fmisid(sid) {}
+  std::string tag{""};
+  int fmisid{-1};
+  double direction{-1};
+  std::string distance{""};
+  // double longitude; // for flash queries
+  // double latitude;
+  // double radius
+  // bbox
+  TaggedFMISID(const std::string& t, int sid, double dir = 0.0, std::string dis = "")
+      : tag(t), fmisid(sid), direction(dir), distance(dis)
+  {
+  }
 
  private:
   TaggedFMISID();
 };
 
 using TaggedFMISIDList = std::list<TaggedFMISID>;
-using TaggedFMISIDListPtr = boost::shared_ptr<TaggedFMISIDList>;
 
 }  // namespace Spine
 }  // namespace SmartMet

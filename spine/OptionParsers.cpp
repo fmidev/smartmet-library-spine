@@ -42,6 +42,11 @@ void ParameterOptions::expandParameter(const std::string& paramname)
       if (p.type() == SmartMet::Spine::Parameter::Type::Data ||
           p.type() == SmartMet::Spine::Parameter::Type::Landscaped)
       {
+        if (!p.getSensorParameter().empty())
+        {
+          // data_source field is not added to qc-field
+          continue;
+        }
         std::string name = p.name() + "_data_source";
         Fmi::ascii_tolower(name);
 

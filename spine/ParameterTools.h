@@ -9,12 +9,10 @@
 #include <macgyver/TimeFormatter.h>
 #include <macgyver/TimeZones.h>
 
-
 namespace SmartMet
 {
 namespace Spine
 {
-
 bool special(const Parameter& theParam);
 
 bool parameter_is_arithmetic(const Spine::Parameter& theParameter);
@@ -41,9 +39,9 @@ Spine::TimeSeries::Value time_parameter(const std::string paramname,
                                         const Fmi::TimeFormatter& timeformatter,
                                         const std::string& timestring);
 
-Parameter makeParameter(const std::string &name);
+Parameter makeParameter(const std::string& name);
 
 bool is_special_parameter(const std::string& name);
 
-} // namespace Spine
-} // namespace SmartMet
+}  // namespace Spine
+}  // namespace SmartMet

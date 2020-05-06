@@ -304,7 +304,7 @@ bool is_time_parameter(std::string paramname)
         paramname == SUNSETTODAY_PARAM || paramname == DAYLENGTH_PARAM ||
         paramname == TIMESTRING_PARAM || paramname == WDAY_PARAM || paramname == WEEKDAY_PARAM ||
         paramname == MON_PARAM || paramname == MONTH_PARAM || paramname == HOUR_PARAM ||
-        paramname == TZ_PARAM || paramname == ORIGINTIME_PARAM ||
+        paramname == TZ_PARAM ||
         (paramname.substr(0, 5) == "date(" && paramname[paramname.size() - 1] == ')'));
   }
   catch (...)

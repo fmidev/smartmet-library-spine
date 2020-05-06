@@ -700,7 +700,8 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
       innermost_item = innermost_item.substr(innermost_item.find_first_of("(") + 1, count);
     }
 
-    if (innermost_item.find("(") != std::string::npos)
+    if (!boost::algorithm::istarts_with(name, "date(") &&
+        innermost_item.find("(") != std::string::npos)
     {
       boost::algorithm::trim(innermost_item);
       std::string innermost_name = innermost_item.substr(0, innermost_item.find("("));
@@ -749,6 +750,9 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
 
     parameter.setAlias(paramnameAlias);
     parameter.setOriginalName(originalParamName);
+
+    if (boost::algorithm::starts_with(paramname, "qc_"))
+      sensor_parameter = "qc";
 
     if (!sensor_no.empty())
       parameter.setSensorNumber(Fmi::stoi(sensor_no));

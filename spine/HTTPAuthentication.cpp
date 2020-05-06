@@ -45,7 +45,7 @@ bool Authentication::authenticateRequest(const Request& request, Response& respo
     {
       std::vector<std::string> splitHeader;
       ba::split(splitHeader, *credentials, ba::is_any_of(" "), ba::token_compress_on);
-      //printf("%s: Got credentials: %s\n", METHOD_NAME.c_str(), credentials->c_str());
+      // printf("%s: Got credentials: %s\n", METHOD_NAME.c_str(), credentials->c_str());
 
       if (splitHeader.size() < 2)
       {

@@ -32,6 +32,7 @@
 #include <list>
 #include <map>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 namespace SmartMet
@@ -118,6 +119,9 @@ class Reactor
   void listEngines() const;
   EngineInstance newInstance(const std::string& theClassName, void* user_data);
   EngineInstance getSingleton(const std::string& theClassName, void* user_data);
+
+  template <typename EngineType>
+  EngineType* getEngine(const std::string& theClassName, void* user_data = nullptr);
 
   // Server communication
 
@@ -226,6 +230,19 @@ class Reactor
   Reactor();
   /* [[noreturn]] */ void cleanLog();
 };
+
+template <typename EngineType>
+EngineType* Reactor::getEngine(const std::string& theClassName, void* user_data)
+{
+  static_assert(std::is_base_of<SmartMetEngine, EngineType>::value,
+                "Engine class not derived from SmartMet::Spine::SmartMetEngine");
+  void* ptr = getSingleton(theClassName, user_data);
+  if (ptr == nullptr)
+  {
+    throw Exception::Trace(BCP, "No " + theClassName + " engine available");
+  }
+  return reinterpret_cast<EngineType*>(ptr);
+}
 
 }  // namespace Spine
 }  // namespace SmartMet

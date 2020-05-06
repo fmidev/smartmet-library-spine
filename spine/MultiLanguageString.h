@@ -1,9 +1,9 @@
 #pragma once
 
+#include <libconfig.h++>
 #include <map>
 #include <memory>
 #include <string>
-#include <libconfig.h++>
 
 namespace SmartMet
 {
@@ -15,7 +15,7 @@ class MultiLanguageString
   MultiLanguageString(const std::string& default_language, libconfig::Setting& setting);
 
   static std::shared_ptr<MultiLanguageString> create(const std::string& default_language,
-                                                       libconfig::Setting& setting);
+                                                     libconfig::Setting& setting);
 
   virtual ~MultiLanguageString();
 

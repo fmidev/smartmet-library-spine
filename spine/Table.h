@@ -76,8 +76,8 @@ class Table : private boost::noncopyable
   const std::string itsEmptyValue;
 
   // paging
-  std::size_t itsStartRow;	// 0 == first
-  std::size_t itsMaxResults;	// 0 == all
+  std::size_t itsStartRow;    // 0 == first
+  std::size_t itsMaxResults;  // 0 == all
 };
 
 }  // namespace Spine

@@ -296,13 +296,17 @@ bool Reactor::addContentHandlerImpl(bool itsPrivate,
       filter = itsFilter->second;
     }
 
-    boost::shared_ptr<HandlerView> theView(new HandlerView(
-        theHandler, filter, thePlugin, theUri, itsLoggingEnabled, itsPrivate, itsOptions.accesslogdir));
+    boost::shared_ptr<HandlerView> theView(new HandlerView(theHandler,
+                                                           filter,
+                                                           thePlugin,
+                                                           theUri,
+                                                           itsLoggingEnabled,
+                                                           itsPrivate,
+                                                           itsOptions.accesslogdir));
 
     std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
-              << (itsPrivate ? "private " : "") <<  "URI "
-              << theUri << " for plugin " << thePlugin->getPluginName() << ANSI_BOLD_OFF
-              << ANSI_FG_DEFAULT << std::endl;
+              << (itsPrivate ? "private " : "") << "URI " << theUri << " for plugin "
+              << thePlugin->getPluginName() << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
 
     // Set the handler and filter
     return itsHandlers.insert(Handlers::value_type(theUri, theView)).second;
@@ -587,7 +591,8 @@ URIMap Reactor::getURIMap() const
       if (itsShutdownRequested)
         return {};
 
-      if (not handlerPair.second->isPrivate()) {
+      if (not handlerPair.second->isPrivate())
+      {
         theMap.insert(std::make_pair(handlerPair.first, handlerPair.second->getPluginName()));
       }
     }
