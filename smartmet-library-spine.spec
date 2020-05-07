@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.5.5
+Version: 20.5.7
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -28,6 +28,7 @@ BuildRequires: fmt-devel >= 5.2.0
 BuildRequires: mariadb-devel
 BuildRequires: boost169-chrono
 BuildRequires: boost169-timer
+BuildRequires: gdal-devel
 Requires: smartmet-library-newbase >= 20.4.18
 Requires: smartmet-library-macgyver >= 20.4.18
 Requires: smartmet-timezones >= 20.5.5
@@ -47,6 +48,7 @@ Requires: hdf5
 Requires: jsoncpp
 Requires: libconfig
 Requires: fmt >= 5.2.0
+Requires: gdal-libs
 
 %if %{defined el7}
 Requires: mariadb-libs
@@ -104,6 +106,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu May  7 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.5.7-1.fmi
+- Import CRSRegistry from GIS engine
+
 * Tue May  5 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.5.5-1.fmi
 - Do not print a stack trace for errorneous time strings given by the user
 
