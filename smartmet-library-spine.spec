@@ -64,6 +64,7 @@ Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 #TestRequires: jsoncpp-devel
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
+#TestRequires: gdal-devel
 
 Summary: BrainStorm common utilities
 %description
