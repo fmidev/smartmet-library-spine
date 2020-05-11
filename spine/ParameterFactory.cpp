@@ -30,6 +30,73 @@ std::ostream& operator<<(std::ostream& out, const ParameterAndFunctions& paramfu
   return out;
 }
 
+int get_function_index(const string& theFunction)
+{
+  static const char* names[] = {"mean_a",
+                                "mean_t",
+                                "nanmean_a",
+                                "nanmean_t",
+                                "max_a",
+                                "max_t",
+                                "nanmax_a",
+                                "nanmax_t",
+                                "min_a",
+                                "min_t",
+                                "nanmin_a",
+                                "nanmin_t",
+                                "median_a",
+                                "median_t",
+                                "nanmedian_a",
+                                "nanmedian_t",
+                                "sum_a",
+                                "sum_t",
+                                "nansum_a",
+                                "nansum_t",
+                                "integ_a",
+                                "integ_t",
+                                "naninteg_a",
+                                "naninteg_t",
+                                "sdev_a",
+                                "sdev_t",
+                                "nansdev_a",
+                                "nansdev_t",
+                                "percentage_a",
+                                "percentage_t",
+                                "nanpercentage_a",
+                                "nanpercentage_t",
+                                "count_a",
+                                "count_t",
+                                "nancount_a",
+                                "nancount_t",
+                                "change_a",
+                                "change_t",
+                                "nanchange_a",
+                                "nanchange_t",
+                                "trend_a",
+                                "trend_t",
+                                "nantrend_a",
+                                "nantrend_t",
+                                "nearest_t",
+                                "nannearest_t",
+                                "interpolate_t",
+                                "naninterpolate_t",
+                                ""};
+
+  std::string func_name(theFunction);
+
+  // If ending is missing, add area aggregation ending
+  if (func_name.find("_a") == std::string::npos && func_name.find("_t") == std::string::npos)
+    func_name += "_a";
+
+  for (unsigned int i = 0; strlen(names[i]) > 0; i++)
+  {
+    if (names[i] == func_name)
+      return i;
+  }
+
+  return -1;
+}
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Get an instance of the parameter factory (singleton)
@@ -123,56 +190,6 @@ FunctionId ParameterFactory::parse_function(const string& theFunction) const
 {
   try
   {
-    static const char* names[] = {"mean_a",
-                                  "mean_t",
-                                  "nanmean_a",
-                                  "nanmean_t",
-                                  "max_a",
-                                  "max_t",
-                                  "nanmax_a",
-                                  "nanmax_t",
-                                  "min_a",
-                                  "min_t",
-                                  "nanmin_a",
-                                  "nanmin_t",
-                                  "median_a",
-                                  "median_t",
-                                  "nanmedian_a",
-                                  "nanmedian_t",
-                                  "sum_a",
-                                  "sum_t",
-                                  "nansum_a",
-                                  "nansum_t",
-                                  "integ_a",
-                                  "integ_t",
-                                  "naninteg_a",
-                                  "naninteg_t",
-                                  "sdev_a",
-                                  "sdev_t",
-                                  "nansdev_a",
-                                  "nansdev_t",
-                                  "percentage_a",
-                                  "percentage_t",
-                                  "nanpercentage_a",
-                                  "nanpercentage_t",
-                                  "count_a",
-                                  "count_t",
-                                  "nancount_a",
-                                  "nancount_t",
-                                  "change_a",
-                                  "change_t",
-                                  "nanchange_a",
-                                  "nanchange_t",
-                                  "trend_a",
-                                  "trend_t",
-                                  "nantrend_a",
-                                  "nantrend_t",
-                                  "nearest_t",
-                                  "nannearest_t",
-                                  "interpolate_t",
-                                  "naninterpolate_t",
-                                  ""};
-
     static FunctionId functions[] = {FunctionId::Mean,
                                      FunctionId::Mean,
                                      FunctionId::Mean,
@@ -222,17 +239,9 @@ FunctionId ParameterFactory::parse_function(const string& theFunction) const
                                      FunctionId::Interpolate,
                                      FunctionId::Interpolate};
 
-    std::string func_name(theFunction);
-
-    // if ending is missing, add area aggregation ending
-    if (func_name.find("_a") == std::string::npos && func_name.find("_t") == std::string::npos)
-      func_name += "_a";
-
-    for (unsigned int i = 0; strlen(names[i]) > 0; i++)
-    {
-      if (names[i] == func_name)
-        return functions[i];
-    }
+    int function_index = get_function_index(theFunction);
+    if (function_index >= 0)
+      return functions[function_index];
 
     throw Spine::Exception(BCP, "Unrecognized function name '" + theFunction + "'!");
   }
@@ -674,6 +683,64 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
     ParameterFunction innerFunction;
     ParameterFunction outerFunction;
 
+    size_t parenhesis_start = std::count(tmpname.begin(), tmpname.end(), '(');
+    size_t parenhesis_end = std::count(tmpname.begin(), tmpname.end(), ')');
+
+    if (parenhesis_start != parenhesis_end)
+      throw Spine::Exception(BCP, "Wrong number of parenthesis: " + tmpname);
+
+    std::string sensor_no;
+    std::string sensor_parameter;
+
+    std::string innermost_item = tmpname;
+    // If sensor info exists it is inside the innermost parenthesis
+    while (innermost_item.find_first_of("(") != innermost_item.find_last_of("("))
+    {
+      size_t count = innermost_item.find_last_of(")") - innermost_item.find_first_of("(") - 1;
+      innermost_item = innermost_item.substr(innermost_item.find_first_of("(") + 1, count);
+    }
+
+    if (!boost::algorithm::istarts_with(name, "date(") &&
+        innermost_item.find("(") != std::string::npos)
+    {
+      boost::algorithm::trim(innermost_item);
+      std::string innermost_name = innermost_item.substr(0, innermost_item.find("("));
+      bool sensor_parameter_exists = false;
+      // If the name before innermost parenthesis is not a function it must be a parameter
+      if (get_function_index(innermost_name) < 0)
+      {
+        // Sensor info
+        size_t len = innermost_item.find(")") - innermost_item.find("(") + 1;
+        std::string sensor_info = innermost_item.substr(innermost_item.find("("), len);
+        if (sensor_info.find(":") != sensor_info.rfind(":"))
+        {
+          size_t len = sensor_info.rfind(")") - sensor_info.rfind(":") - 1;
+          sensor_parameter = sensor_info.substr(sensor_info.rfind(":") + 1, len);
+          len = sensor_info.rfind(":") - sensor_info.find(":") - 1;
+          sensor_no = sensor_info.substr(sensor_info.find(":") + 1, len);
+          sensor_parameter_exists = true;
+        }
+        else if (sensor_info.find(":") != std::string::npos)
+        {
+          size_t len = sensor_info.rfind(")") - sensor_info.find(":") - 1;
+          sensor_no = sensor_info.substr(sensor_info.find(":") + 1, len);
+        }
+        boost::algorithm::trim(sensor_parameter);
+        boost::algorithm::trim(sensor_no);
+
+        if (sensor_no.empty())
+          throw Spine::Exception(BCP, "Sensor number can not be empty!");
+        if (sensor_parameter_exists &&
+            (sensor_parameter.empty() ||
+             (sensor_parameter != "qc" && sensor_parameter != "longitude" &&
+              sensor_parameter != "latitude")))
+          throw Spine::Exception(
+              BCP, "Sensor parameter must be of the following: qc,longitide,latitude!");
+
+        boost::algorithm::replace_first(tmpname, sensor_info, "");
+      }
+    }
+
     std::string paramnameAlias = tmpname;
     std::string originalParamName = tmpname;
 
@@ -684,13 +751,21 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
     parameter.setAlias(paramnameAlias);
     parameter.setOriginalName(originalParamName);
 
+    if (boost::algorithm::starts_with(paramname, "qc_"))
+      sensor_parameter = "qc";
+
+    if (!sensor_no.empty())
+      parameter.setSensorNumber(Fmi::stoi(sensor_no));
+    if (!sensor_parameter.empty())
+      parameter.setSensorParameter(sensor_parameter);
+
     return ParameterAndFunctions(parameter, ParameterFunctions(innerFunction, outerFunction));
   }
   catch (...)
   {
     throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
-}
+}  // namespace Spine
 
 // ----------------------------------------------------------------------
 /*!
