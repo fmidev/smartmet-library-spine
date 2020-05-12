@@ -1,12 +1,12 @@
 #include "CRSRegistry.h"
+#include "Exception.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <boost/spirit/include/qi.hpp>
-#include <gdal/ogr_srs_api.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TypeName.h>
+#include <ogr_srs_api.h>
 #include <stdexcept>
-#include "Exception.h"
 
 namespace ba = boost::algorithm;
 namespace qi = boost::spirit::qi;
@@ -17,7 +17,6 @@ namespace SmartMet
 {
 namespace Spine
 {
-
 /**
  *   @brief [INTERNAL] Identity CRS transformation
  */
@@ -92,6 +91,8 @@ void CRSRegistry::register_epsg(const std::string& name,
       throw Spine::Exception(BCP,
                              "Failed to register projection EPSG:" + Fmi::to_string(epsg_code));
     }
+    entry.cs->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+
     entry.swap_coord = swap_coord;
 
     entry.attrib_map["epsg"] = epsg_code;
@@ -122,6 +123,7 @@ void CRSRegistry::register_proj4(const std::string& name,
     {
       throw Spine::Exception(BCP, "Failed to parse PROJ.4 definition '" + proj4_def + "'!");
     }
+    entry.cs->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
 
     entry.swap_coord = swap_coord;
 
@@ -148,7 +150,8 @@ void CRSRegistry::register_wkt(const std::string& name,
     CHECK_NAME(nm);
 
     MapEntry entry(name, regex);
-    char* str = const_cast<char*>(wkt_def.c_str());
+
+    const auto* str = wkt_def.c_str();
 
     int ret = entry.cs->importFromWkt(&str);
 
@@ -165,6 +168,8 @@ void CRSRegistry::register_wkt(const std::string& name,
         return;
       }
     }
+
+    entry.cs->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
 
     entry.attrib_map["swapCoord"] = swap_coord;
 
@@ -266,7 +271,7 @@ std::string CRSRegistry::get_proj4(const std::string& name)
     auto& entry = get_entry(name);
     entry.cs->exportToProj4(&tmp);
     std::string result(tmp);
-    OGRFree(tmp);
+    CPLFree(tmp);
     return result;
   }
   catch (...)
@@ -564,7 +569,7 @@ void CRSRegistry::TransformationImpl::transform(OGRGeometry& geometry)
       char* gText = nullptr;
       geometry.exportToWkt(&gText);
       msg << "Failed to transform geometry " << gText << " to " << to_name;
-      OGRFree(gText);
+      CPLFree(gText);
       throw Spine::Exception(BCP, msg.str());
     }
   }
@@ -670,4 +675,3 @@ void CRSRegistry::read_crs_dir(const fs::path& theDir)
 
 }  // namespace Spine
 }  // namespace SmartMet
-

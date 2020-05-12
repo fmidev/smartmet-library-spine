@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.5.7
+Version: 20.5.12
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -28,7 +28,7 @@ BuildRequires: fmt-devel >= 5.2.0
 BuildRequires: mariadb-devel
 BuildRequires: boost169-chrono
 BuildRequires: boost169-timer
-BuildRequires: gdal-devel
+BuildRequires: gdal30-devel
 Requires: smartmet-library-newbase >= 20.4.18
 Requires: smartmet-library-macgyver >= 20.4.18
 Requires: smartmet-timezones >= 20.5.5
@@ -48,7 +48,7 @@ Requires: hdf5
 Requires: jsoncpp
 Requires: libconfig
 Requires: fmt >= 5.2.0
-Requires: gdal-libs
+Requires: gdal30-libs
 
 %if %{defined el7}
 Requires: mariadb-libs
@@ -64,7 +64,7 @@ Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 #TestRequires: jsoncpp-devel
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
-#TestRequires: gdal-devel
+#TestRequires: gdal30-devel
 
 Summary: BrainStorm common utilities
 %description
@@ -107,6 +107,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue May 12 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.5.12-1.fmi
+- Ported to use GDAL 3.0
+
 * Thu May  7 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.5.7-1.fmi
 - Import CRSRegistry from GIS engine
 
