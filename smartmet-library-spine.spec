@@ -109,6 +109,7 @@ make %{_smp_mflags}
 %changelog
 * Tue May 12 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.5.12-1.fmi
 - Ported to use GDAL 3.0
+- Support for sensors, TaggedFMISIDs (BRAINSTORM-1678)
 
 * Thu May  7 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.5.7-1.fmi
 - Import CRSRegistry from GIS engine
