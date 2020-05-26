@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.5.12
+Version: 20.5.26
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -107,6 +107,10 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue May 26 2020 Anssi Reponen <anssi.reponen@fmi.fi> - 20.5.26-1.fmi
+- Accept altenative interval separators in time-aggragation functions (BRAINSTORM-1828)
+- In addition to ':'-character also '/'- and ';'-characters are supported
+
 * Tue May 12 2020 Anssi Reponen <anssi.reponen@fmi.fi> - 20.5.12-1.fmi
 - Support for sensors, TaggedFMISIDs (BRAINSTORM-1678)
 
