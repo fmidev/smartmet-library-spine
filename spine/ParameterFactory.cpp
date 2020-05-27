@@ -531,6 +531,7 @@ std::string ParameterFactory::parse_parameter_functions(
     {
       theOriginalName = paramreq + date_formatting_string;
       Fmi::ascii_tolower(paramreq);
+
       return paramreq + date_formatting_string;
     }
 
@@ -714,8 +715,14 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
     {
       boost::algorithm::trim(innermost_item);
       std::string innermost_name = innermost_item.substr(0, innermost_item.find("("));
+      if (innermost_item.find("[") != std::string::npos)
+      {
+        // Remove [..., for example percentage_t[0:60](TotalCloudCover)
+        innermost_name = innermost_name.substr(0, innermost_item.find("["));
+      }
       bool sensor_parameter_exists = false;
       // If the name before innermost parenthesis is not a function it must be a parameter
+
       if (get_function_index(innermost_name) < 0)
       {
         // Sensor info
