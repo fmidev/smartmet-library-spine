@@ -531,6 +531,7 @@ std::string ParameterFactory::parse_parameter_functions(
     {
       theOriginalName = paramreq + date_formatting_string;
       Fmi::ascii_tolower(paramreq);
+
       return paramreq + date_formatting_string;
     }
 
@@ -555,21 +556,30 @@ std::string ParameterFactory::parse_parameter_functions(
 
     unsigned int aggregation_interval_behind = std::numeric_limits<unsigned int>::max();
     unsigned int aggregation_interval_ahead = std::numeric_limits<unsigned int>::max();
-    if (paramname.find(":") != string::npos)
+    std::string intervalSeparator(":");
+    if (paramname.find("/") != string::npos)
+      intervalSeparator = "/";
+    else if (paramname.find(";") != string::npos)
+      intervalSeparator = ";";
+    else if (paramname.find(":") != string::npos)
+      intervalSeparator = ":";
+
+    if (paramname.find(intervalSeparator) != string::npos)
     {
-      std::string aggregation_interval_string_behind = paramname.substr(paramname.find(":") + 1);
+      std::string aggregation_interval_string_behind =
+          paramname.substr(paramname.find(intervalSeparator) + 1);
       std::string aggregation_interval_string_ahead = "0";
-      paramname = paramname.substr(0, paramname.find(":"));
+      paramname = paramname.substr(0, paramname.find(intervalSeparator));
 
       int agg_interval_behind = 0;
       int agg_interval_ahead = 0;
       // check if second aggregation interval is defined
-      if (aggregation_interval_string_behind.find(":") != string::npos)
+      if (aggregation_interval_string_behind.find(intervalSeparator) != string::npos)
       {
         aggregation_interval_string_ahead = aggregation_interval_string_behind.substr(
-            aggregation_interval_string_behind.find(":") + 1);
+            aggregation_interval_string_behind.find(intervalSeparator) + 1);
         aggregation_interval_string_behind = aggregation_interval_string_behind.substr(
-            0, aggregation_interval_string_behind.find(":"));
+            0, aggregation_interval_string_behind.find(intervalSeparator));
         agg_interval_ahead = duration_string_to_minutes(aggregation_interval_string_ahead);
         aggregation_interval_ahead = boost::numeric_cast<unsigned int>(agg_interval_ahead);
       }
@@ -705,8 +715,14 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
     {
       boost::algorithm::trim(innermost_item);
       std::string innermost_name = innermost_item.substr(0, innermost_item.find("("));
+      if (innermost_item.find("[") != std::string::npos)
+      {
+        // Remove [..., for example percentage_t[0:60](TotalCloudCover)
+        innermost_name = innermost_name.substr(0, innermost_item.find("["));
+      }
       bool sensor_parameter_exists = false;
       // If the name before innermost parenthesis is not a function it must be a parameter
+
       if (get_function_index(innermost_name) < 0)
       {
         // Sensor info
