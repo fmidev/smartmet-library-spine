@@ -7,7 +7,7 @@ jobs:
       - checkout
       - run:
           name: Install build dependencies
-          command: ci-build deps
+          command: cat /etc/yum.repos.d/pgdg-redhat-all.repo; ci-build deps
       - run:
           name: Build RPM
           command: ci-build rpm
