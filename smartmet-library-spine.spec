@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.5.27
+Version: 20.6.8
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -107,6 +107,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon Jun  8 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.6.8-1.fmi
+- Upgraded libpqxx
+
 * Wed May 27 2020 Anssi Reponen <anssi.reponen@fmi.fi> - 20.5.27-1.fmi
 - Fixed bug in parameter parsing when square brackets are present
 - For example 'percentage_t[0:60](TotalCloudCover)'
