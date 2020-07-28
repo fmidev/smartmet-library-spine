@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 20.6.28
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -107,6 +107,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Jul 28 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.6.28-2.fmi
+- Log also response size and ETag (or "-" if not set)
+
 * Tue Jul 28 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.6.28-1.fmi
 - Exceptions now print nothing if stack traces are disabled
 
