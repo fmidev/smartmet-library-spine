@@ -94,13 +94,18 @@ bool HandlerView::handle(Reactor& theReactor,
       if (isLogging)  // Need to check this again because it may have changed in previous request
       {
         // Insert new request to the logging list
+
+        auto etag = theResponse.getHeader("ETag");
+
         itsRequestLog.emplace_back(LoggedRequest(theRequest.getURI(),
                                                  boost::posix_time::microsec_clock::local_time(),
                                                  accessDuration,
                                                  theResponse.getStatusString(),
                                                  theRequest.getClientIP(),
                                                  theRequest.getMethodString(),
-                                                 theResponse.getVersion()));
+                                                 theResponse.getVersion(),
+                                                 theResponse.getContentLength(),
+                                                 (etag ? *etag : "-")));
       }
     }
 

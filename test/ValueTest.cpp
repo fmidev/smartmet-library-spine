@@ -36,9 +36,11 @@ BOOST_AUTO_TEST_CASE(test_boolean_value)
 
   v1.set_bool(true);
   BOOST_CHECK_NO_THROW(t1 = v1.get_bool());
+  BOOST_CHECK(v1.is<bool>());
   BOOST_CHECK(t1);
   BOOST_CHECK_EQUAL(std::string("true"), v1.to_string());
 
+  BOOST_CHECK(not v1.is<int64_t>());
   BOOST_CHECK_THROW(v1.get_int(), SmartMet::Spine::Exception);
   BOOST_CHECK_THROW(v1.get_uint(), SmartMet::Spine::Exception);
   BOOST_CHECK_THROW(v1.get_double(), SmartMet::Spine::Exception);

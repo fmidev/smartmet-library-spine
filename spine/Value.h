@@ -277,6 +277,12 @@ class Value
     get_not_implemented_for(typeid(ValueType));
   }
 
+  template <typename ValueType>
+  inline bool is() const
+  {
+    return typeid(ValueType) == type();
+  }
+
   /**
    *   @brief Format as string for debug output (include actual type)
    */

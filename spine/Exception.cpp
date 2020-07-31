@@ -443,6 +443,10 @@ void Exception::printError() const
     std::cerr << getStackTrace() << std::flush;
   else
   {
+#if 0
+    // Disabled for now due to too many trivial client errors. We need better
+    // control of error logging and preferably on-the-fly modifications to it.
+    
     std::cerr << Spine::log_time_str() << " Error: " << what() << std::endl;
 
     // Print parameters for top level exception, if there are any. Usually
@@ -453,6 +457,7 @@ void Exception::printError() const
       for (const auto& param_value : parameterVector)
         std::cerr << "   - " << param_value.first << " = " << param_value.second << std::endl;
     }
+#endif
   }
 }
 

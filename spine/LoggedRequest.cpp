@@ -15,14 +15,19 @@ LoggedRequest::LoggedRequest(const std::string& theRequestString,
                              const std::string& theStatus,
                              const std::string& theIP,
                              const std::string& theMethod,
-                             const std::string& theVersion)
+                             const std::string& theVersion,
+                             std::size_t theContentLength,
+                             const std::string& theETag)
+
     : itsRequestString(theRequestString),
       itsRequestEndTime(requestEndTime),
       itsAccessDuration(accessDuration),
       itsStatus(theStatus),
       itsIP(theIP),
       itsMethod(theMethod),
-      itsVersion(theVersion)
+      itsVersion(theVersion),
+      itsContentLength(theContentLength),
+      itsETag(theETag)
 {
 }
 
@@ -90,6 +95,16 @@ std::string LoggedRequest::getMethod() const
 std::string LoggedRequest::getVersion() const
 {
   return itsVersion;
+}
+
+std::string LoggedRequest::getETag() const
+{
+  return itsETag;
+}
+
+std::size_t LoggedRequest::getContentLength() const
+{
+  return itsContentLength;
 }
 
 }  // namespace Spine
