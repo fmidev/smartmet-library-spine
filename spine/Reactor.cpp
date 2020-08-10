@@ -503,8 +503,6 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
 
   auto n = itsActiveRequests.size();
 
-  std::cout << "Current number of active requests = " << n << std::endl;
-
   if (n < itsActiveRequestsLimit)
   {
     itsHighLoadFlag = false;
