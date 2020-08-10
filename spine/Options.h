@@ -27,6 +27,7 @@ struct PoolOptions
 struct ThrottleOptions
 {
   unsigned int start_limit = 50;    // start with max 50 active requests
+  unsigned int restart_limit = 50;  // restart when down to 50 requests again
   unsigned int limit = 100;         // final max active requests
   unsigned int increase_rate = 10;  // increment current limit every 10 succesfull requests
 };

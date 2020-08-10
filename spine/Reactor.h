@@ -216,6 +216,10 @@ class Reactor
   boost::shared_ptr<boost::thread> itsLogCleanerThread;
   bool itsShutdownRequested = false;
 
+  mutable std::atomic_bool itsHighLoadFlag{false};       // is the load high
+  mutable std::atomic_uint itsActiveRequestsLimit{0};    // current maximum
+  mutable std::atomic_uint itsActiveRequestsCounter{0};  // requests since above was reset
+
   ActiveRequests itsActiveRequests;
 
   ActiveBackends itsActiveBackends;
@@ -224,8 +228,8 @@ class Reactor
   std::size_t itsEngineCount = 0;
   std::size_t itsPluginCount = 0;
 
-  std::atomic<size_t> itsInitializedPluginCount{0};
-  std::atomic<size_t> itsInitializedEngineCount{0};
+  std::atomic_size_t itsInitializedPluginCount{0};
+  std::atomic_size_t itsInitializedEngineCount{0};
   // No void construction, options must be known
   Reactor();
   /* [[noreturn]] */ void cleanLog();

@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.6.28
-Release: 2%{?dist}.fmi
+Version: 20.8.10
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -107,6 +107,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon Aug 10 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.8.10-1.fmi
+- Added throttling for slowing down the server during high load
+
 * Tue Jul 28 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.6.28-2.fmi
 - Log also response size and ETag (or "-" if not set)
 
