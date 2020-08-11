@@ -80,7 +80,7 @@ bool HandlerView::handle(Reactor& theReactor,
       // Frontends do not log finished requests
       auto key = theReactor.insertActiveRequest(theRequest);
       itsHandler(theReactor, theRequest, theResponse);
-      theReactor.removeActiveRequest(key);
+      theReactor.removeActiveRequest(key, theResponse.getStatus());
     }
     else
     {
@@ -88,7 +88,7 @@ bool HandlerView::handle(Reactor& theReactor,
       auto before = boost::posix_time::microsec_clock::universal_time();
       itsHandler(theReactor, theRequest, theResponse);
       auto accessDuration = boost::posix_time::microsec_clock::universal_time() - before;
-      theReactor.removeActiveRequest(key);
+      theReactor.removeActiveRequest(key, theResponse.getStatus());
 
       WriteLock lock(itsLoggingMutex);
       if (isLogging)  // Need to check this again because it may have changed in previous request

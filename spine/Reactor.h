@@ -80,7 +80,7 @@ class Reactor
 
   ActiveRequests::Requests getActiveRequests() const;
   std::size_t insertActiveRequest(const HTTP::Request& theRequest);
-  void removeActiveRequest(std::size_t theKey);
+  void removeActiveRequest(std::size_t theKey, HTTP::Status theStatusCode);
 
   // Monitoring active requests to backends
   void startBackendRequest(const std::string& theHost, int thePort);

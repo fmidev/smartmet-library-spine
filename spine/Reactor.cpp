@@ -538,14 +538,22 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
  */
 // ----------------------------------------------------------------------
 
-void Reactor::removeActiveRequest(std::size_t theKey)
+void Reactor::removeActiveRequest(std::size_t theKey, HTTP::Status theStatusCode)
 {
   itsActiveRequests.remove(theKey);
 
   if (itsActiveRequests.size() < itsActiveRequestsLimit)
     itsHighLoadFlag = false;
 
-  // Update current limit for simultaneous requests
+  // Update current limit for simultaneous requests only if the request was a success
+  //
+  // We also ignore the 204 No content response, which the backend uses to indicate
+  // the etagged result is still valid, since generating no content successfully
+  // does not mean the server is not having load problems for example due to i/o issues.
+
+  if (theStatusCode != HTTP::ok)
+    return;
+
   if (++itsActiveRequestsCounter % itsOptions.throttle.increase_rate == 0)
   {
     if (itsActiveRequestsLimit < itsOptions.throttle.limit)
