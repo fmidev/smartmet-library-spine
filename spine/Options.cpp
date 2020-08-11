@@ -109,7 +109,7 @@ bool Options::parseOptions(int argc, char* argv[])
         "maxfastrequeuesize,q", po::value(&fastpool.maxrequeuesize)->default_value(fastpool.maxrequeuesize), msgfastrequeue)(
         "minactiverequests", po::value(&throttle.start_limit)->default_value(throttle.start_limit), msgminactiverequests)(
         "maxactiverequests", po::value(&throttle.limit)->default_value(throttle.limit), msgmaxactiverequests)(
-        "maxactiverestartrequests", po::value(&throttle.limit)->default_value(throttle.restart_limit), msgmaxactiverestartrequests)(
+        "maxactiverestartrequests", po::value(&throttle.restart_limit)->default_value(throttle.restart_limit), msgmaxactiverestartrequests)(
         "requestlimitrate", po::value(&throttle.increase_rate)->default_value(throttle.increase_rate), msgactiverequestrate)(
         "maxrequestsize", po::value(&maxrequestsize)->default_value(maxrequestsize), msgmaxrequestsize)(
         "debug,d", po::bool_switch(&debug)->default_value(debug), msgdebug)(
@@ -287,6 +287,7 @@ void Options::report() const
               << "Max slow queue size\t\t= " << slowpool.maxrequeuesize << "\n"
               << "Max active requests\t\t= " << throttle.limit << "\n"
               << "- at start\t\t\t= " << throttle.start_limit << "\n"
+              << " -at slowdown\t\t\t= " << throttle.restart_limit << "\n"
               << "- increase rate\t\t\t= " << throttle.increase_rate << "\n"
               << "Port\t\t\t\t= " << port << "\n"
               << "Timeout\t\t\t\t= " << timeout << "\n"

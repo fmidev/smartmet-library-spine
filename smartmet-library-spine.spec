@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.8.10
+Version: 20.8.11
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -107,6 +107,10 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Aug 11 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.8.11-1.fmi
+- Improved throttling messages
+- Fixed command line parsing of throttling restart_limit
+
 * Mon Aug 10 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.8.10-1.fmi
 - Added throttling for slowing down the server during high load
 

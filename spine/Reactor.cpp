@@ -517,7 +517,8 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
 
   if (itsOptions.verbose)
     std::cerr << Spine::log_time_str() << " " << itsActiveRequests.size()
-              << " active requests, limit is " << itsActiveRequestsLimit << std::endl;
+              << " active requests, limit is " << itsActiveRequestsLimit << "/"
+              << itsOptions.throttle.limit << std::endl;
 
   // Reduce the limit back down unless already smaller due to being just started
   if (itsActiveRequestsLimit > itsOptions.throttle.restart_limit)
@@ -525,7 +526,8 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
     itsActiveRequestsLimit = itsOptions.throttle.restart_limit;
     if (itsOptions.verbose)
       std::cerr << Spine::log_time_str() << " dropping active requests limit to "
-                << itsOptions.throttle.restart_limit << std::endl;
+                << itsOptions.throttle.restart_limit << "/" << itsOptions.throttle.limit
+                << std::endl;
   }
   return key;
 }
@@ -552,7 +554,7 @@ void Reactor::removeActiveRequest(std::size_t theKey)
 
       if (itsOptions.verbose)
         std::cerr << Spine::log_time_str() << " increased active requests limit to " << new_limit
-                  << std::endl;
+                  << "/" << itsOptions.throttle.limit << std::endl;
     }
   }
 }
