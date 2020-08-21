@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.8.11
-Release: 2%{?dist}.fmi
+Version: 20.8.21
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -14,8 +14,8 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost169-devel
-BuildRequires: smartmet-library-newbase-devel >= 20.6.16
-BuildRequires: smartmet-library-macgyver-devel >= 20.6.8
+BuildRequires: smartmet-library-newbase-devel >= 20.8.21
+BuildRequires: smartmet-library-macgyver-devel >= 20.8.21
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -23,16 +23,16 @@ BuildRequires: libicu-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 20.4.18
-BuildRequires: fmt-devel >= 5.2.0
+BuildRequires: smartmet-library-gis-devel >= 20.8.21
+BuildRequires: fmt-devel >= 6.2.1
 BuildRequires: mariadb-devel
 BuildRequires: boost169-chrono
 BuildRequires: boost169-timer
 BuildRequires: gdal-devel
-Requires: smartmet-library-newbase >= 20.6.16
-Requires: smartmet-library-macgyver >= 20.6.8
+Requires: smartmet-library-newbase >= 20.8.21
+Requires: smartmet-library-macgyver >= 20.8.21
 Requires: smartmet-timezones >= 20.5.5
-Requires: smartmet-library-gis >= 20.4.18
+Requires: smartmet-library-gis >= 20.8.21
 Requires: boost169-filesystem
 Requires: boost169-iostreams
 Requires: boost169-date-time
@@ -47,7 +47,7 @@ Requires: ctpp2
 Requires: hdf5
 Requires: jsoncpp
 Requires: libconfig
-Requires: fmt >= 5.2.0
+Requires: fmt >= 6.2.1
 Requires: gdal-libs
 
 %if %{defined el7}
@@ -107,6 +107,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Fri Aug 21 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.8.21-1.fmi
+- Upgrade to fmt 6.2
+
 * Tue Aug 11 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.8.11-2.fmi
 - Throttling is now lowered only by 200 OK responses
 
