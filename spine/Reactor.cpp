@@ -120,6 +120,9 @@ Reactor::Reactor(Options& options) : itsOptions(options)
     if (itsOptions.verbose)
       itsOptions.report();
 
+    // Initial limit for simultaneous active requests
+    itsActiveRequestsLimit = itsOptions.throttle.start_limit;
+
     // This has to be done before threading starts
     mysql_library_init(0, nullptr, nullptr);
 
@@ -474,23 +477,7 @@ AccessLogStruct Reactor::getLoggedRequests() const
 
 bool Reactor::isLoadHigh() const
 {
-  // Establish current limit. The limit increases linearly after each succesful request.
-
-  auto limit = itsOptions.throttle.start_limit +
-               itsActiveRequests.counter() / itsOptions.throttle.increase_rate;
-  if (limit > itsOptions.throttle.limit)
-    limit = itsOptions.throttle.limit;
-
-  if (itsActiveRequests.size() >= limit)
-  {
-    if (itsOptions.verbose)
-      std::cerr << Spine::log_time_str() << " " << itsActiveRequests.size()
-                << " active requests, limit is " << limit << std::endl;
-    return true;
-  }
-
-  // No other conditions implemented yet
-  return false;
+  return itsHighLoadFlag;
 }
 
 // ----------------------------------------------------------------------
@@ -512,7 +499,37 @@ ActiveRequests::Requests Reactor::getActiveRequests() const
 
 std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
 {
-  return itsActiveRequests.insert(theRequest);
+  auto key = itsActiveRequests.insert(theRequest);
+
+  auto n = itsActiveRequests.size();
+
+  if (n < itsActiveRequestsLimit)
+  {
+    itsHighLoadFlag = false;
+    return key;
+  }
+
+  // Load is now high
+
+  itsActiveRequestsCounter = 0;
+
+  itsHighLoadFlag = true;
+
+  if (itsOptions.verbose)
+    std::cerr << Spine::log_time_str() << " " << itsActiveRequests.size()
+              << " active requests, limit is " << itsActiveRequestsLimit << "/"
+              << itsOptions.throttle.limit << std::endl;
+
+  // Reduce the limit back down unless already smaller due to being just started
+  if (itsActiveRequestsLimit > itsOptions.throttle.restart_limit)
+  {
+    itsActiveRequestsLimit = itsOptions.throttle.restart_limit;
+    if (itsOptions.verbose)
+      std::cerr << Spine::log_time_str() << " dropping active requests limit to "
+                << itsOptions.throttle.restart_limit << "/" << itsOptions.throttle.limit
+                << std::endl;
+  }
+  return key;
 }
 
 // ----------------------------------------------------------------------
@@ -521,9 +538,33 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
  */
 // ----------------------------------------------------------------------
 
-void Reactor::removeActiveRequest(std::size_t theKey)
+void Reactor::removeActiveRequest(std::size_t theKey, HTTP::Status theStatusCode)
 {
   itsActiveRequests.remove(theKey);
+
+  if (itsActiveRequests.size() < itsActiveRequestsLimit)
+    itsHighLoadFlag = false;
+
+  // Update current limit for simultaneous requests only if the request was a success
+  //
+  // We also ignore the 204 No content response, which the backend uses to indicate
+  // the etagged result is still valid, since generating no content successfully
+  // does not mean the server is not having load problems for example due to i/o issues.
+
+  if (theStatusCode != HTTP::ok)
+    return;
+
+  if (++itsActiveRequestsCounter % itsOptions.throttle.increase_rate == 0)
+  {
+    if (itsActiveRequestsLimit < itsOptions.throttle.limit)
+    {
+      auto new_limit = ++itsActiveRequestsLimit;
+
+      if (itsOptions.verbose)
+        std::cerr << Spine::log_time_str() << " increased active requests limit to " << new_limit
+                  << "/" << itsOptions.throttle.limit << std::endl;
+    }
+  }
 }
 
 // ----------------------------------------------------------------------

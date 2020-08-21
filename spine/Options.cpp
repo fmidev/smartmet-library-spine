@@ -93,6 +93,9 @@ bool Options::parseOptions(int argc, char* argv[])
     const char* msgminactiverequests =
         "set the initial number of allowed simultaneous active requests";
     const char* msgmaxactiverequests = "set the maximum number of simultaneous active requests";
+    const char* msgmaxactiverestartrequests =
+        "reset the maximum number of allowed simultaneous active requests when max has been "
+        "reached";
     const char* msgactiverequestrate =
         "set the increase rate for maximum number of simultaneous active requests";
 
@@ -104,8 +107,9 @@ bool Options::parseOptions(int argc, char* argv[])
         "maxslowrequeuesize,Q", po::value(&slowpool.maxrequeuesize)->default_value(slowpool.maxrequeuesize), msgslowrequeue)(
         "fastthreads,n", po::value(&fastpool.minsize)->default_value(fastpool.minsize), msgfastthreads)(
         "maxfastrequeuesize,q", po::value(&fastpool.maxrequeuesize)->default_value(fastpool.maxrequeuesize), msgfastrequeue)(
-        "maxactiverequests", po::value(&throttle.limit)->default_value(throttle.limit), msgmaxactiverequests)(
         "minactiverequests", po::value(&throttle.start_limit)->default_value(throttle.start_limit), msgminactiverequests)(
+        "maxactiverequests", po::value(&throttle.limit)->default_value(throttle.limit), msgmaxactiverequests)(
+        "maxactiverestartrequests", po::value(&throttle.restart_limit)->default_value(throttle.restart_limit), msgmaxactiverestartrequests)(
         "requestlimitrate", po::value(&throttle.increase_rate)->default_value(throttle.increase_rate), msgactiverequestrate)(
         "maxrequestsize", po::value(&maxrequestsize)->default_value(maxrequestsize), msgmaxrequestsize)(
         "debug,d", po::bool_switch(&debug)->default_value(debug), msgdebug)(
@@ -224,6 +228,10 @@ void Options::parseConfig()
       lookupHostSetting(itsConfig, throttle.start_limit, "activerequests.start_limit");
       lookupHostSetting(itsConfig, throttle.increase_rate, "activerequests.increase_rate");
 
+      // Default restart_limit is start_limit when reading the configuration file.
+      throttle.restart_limit = throttle.start_limit;
+      lookupHostSetting(itsConfig, throttle.restart_limit, "activerequests.restart_limit");
+
       lookupHostSetting(itsConfig, slowpool.minsize, "slowpool.maxthreads");
       lookupHostSetting(itsConfig, slowpool.maxrequeuesize, "slowpool.maxrequeuesize");
 
@@ -279,6 +287,7 @@ void Options::report() const
               << "Max slow queue size\t\t= " << slowpool.maxrequeuesize << "\n"
               << "Max active requests\t\t= " << throttle.limit << "\n"
               << "- at start\t\t\t= " << throttle.start_limit << "\n"
+              << " -at slowdown\t\t\t= " << throttle.restart_limit << "\n"
               << "- increase rate\t\t\t= " << throttle.increase_rate << "\n"
               << "Port\t\t\t\t= " << port << "\n"
               << "Timeout\t\t\t\t= " << timeout << "\n"
