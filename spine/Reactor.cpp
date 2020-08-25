@@ -193,6 +193,11 @@ Reactor::Reactor(Options& options) : itsOptions(options)
   }
 }
 
+void Reactor::init()
+{
+    // FIXME: move initialization here from the constructor
+}
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Find enabled libraries or plugins from the configuration

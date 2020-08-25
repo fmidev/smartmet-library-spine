@@ -95,6 +95,8 @@ class Reactor
   // Destructor
   ~Reactor();
 
+  void init();
+
   // Content handling
 
   int getRequiredAPIVersion() const;
