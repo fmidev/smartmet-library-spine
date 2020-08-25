@@ -128,6 +128,14 @@ Reactor::Reactor(Options& options) : itsOptions(options)
 
     // Initialize the locale before engines are loaded
 
+    itsInitTasks.on_task_error(
+        [this](const std::string& name)
+        {
+            std::cout << __FILE__ << ":" << __LINE__ << ": init task " << name << " failed" << std::endl;
+            // FIXME: stop nicely instead of SIGKILL
+            kill(getpid(), SIGKILL);
+        });
+
     boost::locale::generator gen;
     std::locale::global(gen(itsOptions.locale));
     std::cout.imbue(std::locale());
@@ -168,6 +176,12 @@ Reactor::Reactor(Options& options) : itsOptions(options)
         loadPlugin(libfile, itsOptions.verbose);
     }
 
+    try {
+        itsInitTasks.wait();
+    } catch (...) {
+        std::cout << "Initialization failed" << std::endl;
+        exit(1);
+    }
     // Set ContentEngine default logging. Do this after plugins are loaded so handlers are
     // recognized
 
@@ -831,8 +845,11 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool verbose)
     {
       // Start to initialize the plugin
 
-      itsInitThreads.push_back(boost::make_shared<boost::thread>(
-          boost::bind(&Reactor::initializePlugin, this, plugin.get(), pluginname)));
+      itsInitTasks.add("Load plugin[" + theFilename + "]",
+         [this, plugin, pluginname] ()
+         {
+             initializePlugin(plugin.get(), pluginname);
+         });
 
       itsPlugins.push_back(plugin);
       return true;
@@ -878,8 +895,8 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
     SmartMetEngine* theEngine = reinterpret_cast<SmartMetEngine*>(engineInstance);
 
     // Fire the initialization thread
-    itsInitThreads.push_back(boost::make_shared<boost::thread>(
-        boost::bind(&Reactor::initializeEngine, this, theEngine, theClassName)));
+    itsInitTasks.add("New engine instance[" + theClassName + "]",
+        [this, theEngine, theClassName] () { initializeEngine(theEngine, theClassName); });
 
     return engineInstance;
   }
