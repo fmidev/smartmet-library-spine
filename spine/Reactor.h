@@ -24,6 +24,7 @@
 #include "SmartMetEngine.h"
 #include "SmartMetPlugin.h"
 #include "Thread.h"
+#include <macgyver/AsyncTaskGroup.h>
 #include <boost/function.hpp>
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
@@ -93,6 +94,8 @@ class Reactor
 
   // Destructor
   ~Reactor();
+
+  void init();
 
   // Content handling
 
@@ -205,8 +208,7 @@ class Reactor
   using ConfigList = std::map<std::string, std::string>;
   ConfigList itsEngineConfigs;
 
-  using InitThreadList = std::list<boost::shared_ptr<boost::thread> >;
-  InitThreadList itsInitThreads;
+  Fmi::AsyncTaskGroup itsInitTasks;
 
   // Logging
 
