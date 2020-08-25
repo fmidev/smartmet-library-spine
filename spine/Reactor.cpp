@@ -128,6 +128,10 @@ Reactor::Reactor(Options& options) : itsOptions(options)
 
     // Initialize the locale before engines are loaded
 
+    boost::locale::generator gen;
+    std::locale::global(gen(itsOptions.locale));
+    std::cout.imbue(std::locale());
+
     itsInitTasks.on_task_error(
         [this](const std::string& name)
         {
@@ -135,11 +139,16 @@ Reactor::Reactor(Options& options) : itsOptions(options)
             // FIXME: stop nicely instead of SIGKILL
             kill(getpid(), SIGKILL);
         });
+  }
+  catch (...)
+  {
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
+  }
+}
 
-    boost::locale::generator gen;
-    std::locale::global(gen(itsOptions.locale));
-    std::cout.imbue(std::locale());
-
+void Reactor::init()
+{
+  try {
     // Load engines - all or just the requested ones
 
     const auto& config = itsOptions.itsConfig;
@@ -191,11 +200,6 @@ Reactor::Reactor(Options& options) : itsOptions(options)
   {
     throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
-}
-
-void Reactor::init()
-{
-    // FIXME: move initialization here from the constructor
 }
 
 // ----------------------------------------------------------------------
