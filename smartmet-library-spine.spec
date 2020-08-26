@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.8.25
+Version: 20.8.26
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -15,7 +15,7 @@ BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost169-devel
 BuildRequires: smartmet-library-newbase-devel >= 20.8.21
-BuildRequires: smartmet-library-macgyver-devel >= 20.8.21
+BuildRequires: smartmet-library-macgyver-devel >= 20.8.26
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -30,7 +30,7 @@ BuildRequires: boost169-chrono
 BuildRequires: boost169-timer
 BuildRequires: gdal-devel
 Requires: smartmet-library-newbase >= 20.8.21
-Requires: smartmet-library-macgyver >= 20.8.21
+Requires: smartmet-library-macgyver >= 20.8.26
 Requires: smartmet-timezones >= 20.5.5
 Requires: smartmet-library-gis >= 20.8.21
 Requires: boost169-filesystem
@@ -107,6 +107,11 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Aug 26 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.08.26-1.fmi
+- Use std::unique_ptr<Fmi::AsyncTaskGroup> in Reactor class
+- Move loading engines and plugins to init() method
+- Reactor: stop other async init tasks if one or more failed
+
 * Tue Aug 25 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.08.25-1.fmi
 - Use Fmi::AsyncTaskGroup in Reactor class
 
