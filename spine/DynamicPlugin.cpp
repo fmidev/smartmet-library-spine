@@ -61,14 +61,7 @@ void DynamicPlugin::initializePlugin()
   }
   catch (...)
   {
-    Spine::Exception exception(BCP, "Operation failed!", nullptr);
-    if (!exception.stackTraceDisabled())
-      std::cerr << exception.getStackTrace();
-    else if (!exception.loggingDisabled())
-      std::cerr << Spine::log_time_str() + " Error: " + exception.what() << std::endl;
-
-    kill(getpid(), SIGKILL);  // If we use exit() we might get a core dump.
-                              // exit(-1);
+    throw Spine::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

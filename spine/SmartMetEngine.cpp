@@ -28,15 +28,7 @@ void SmartMetEngine::construct(const std::string& /* engineName */, Reactor* rea
   }
   catch (...)
   {
-    Spine::Exception exception(BCP, "Engine construction failed!", nullptr);
-
-    if (!exception.stackTraceDisabled())
-      std::cerr << exception.getStackTrace();
-    else if (!exception.loggingDisabled())
-      std::cerr << Spine::log_time_str() + " Error: " + exception.what() << std::endl;
-
-    kill(getpid(), SIGKILL);  // If we use exit() we might get a core dump.
-                              // exit(-1);
+    throw Exception::Trace(BCP, "Engine construction failed!");
   }
 }
 
