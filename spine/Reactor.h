@@ -208,7 +208,7 @@ class Reactor
   using ConfigList = std::map<std::string, std::string>;
   ConfigList itsEngineConfigs;
 
-  Fmi::AsyncTaskGroup itsInitTasks;
+  std::unique_ptr<Fmi::AsyncTaskGroup> itsInitTasks;
 
   // Logging
 

@@ -103,7 +103,9 @@ Reactor::~Reactor()
  */
 // ----------------------------------------------------------------------
 
-Reactor::Reactor(Options& options) : itsOptions(options)
+Reactor::Reactor(Options& options)
+    : itsOptions(options)
+    , itsInitTasks(new Fmi::AsyncTaskGroup)
 {
   try
   {
@@ -132,7 +134,9 @@ Reactor::Reactor(Options& options) : itsOptions(options)
     std::locale::global(gen(itsOptions.locale));
     std::cout.imbue(std::locale());
 
-    itsInitTasks.on_task_error(
+    itsInitTasks->stop_on_error(true);
+
+    itsInitTasks->on_task_error(
         [this](const std::string& name)
         {
             std::cout << __FILE__ << ":" << __LINE__ << ": init task " << name << " failed" << std::endl;
@@ -186,7 +190,7 @@ void Reactor::init()
     }
 
     try {
-        itsInitTasks.wait();
+        itsInitTasks->wait();
     } catch (...) {
         std::cout << "Initialization failed" << std::endl;
         exit(1);
@@ -854,7 +858,7 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool verbose)
     {
       // Start to initialize the plugin
 
-      itsInitTasks.add("Load plugin[" + theFilename + "]",
+      itsInitTasks->add("Load plugin[" + theFilename + "]",
          [this, plugin, pluginname] ()
          {
              initializePlugin(plugin.get(), pluginname);
@@ -904,7 +908,7 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
     SmartMetEngine* theEngine = reinterpret_cast<SmartMetEngine*>(engineInstance);
 
     // Fire the initialization thread
-    itsInitTasks.add("New engine instance[" + theClassName + "]",
+    itsInitTasks->add("New engine instance[" + theClassName + "]",
         [this, theEngine, theClassName] () { initializeEngine(theEngine, theClassName); });
 
     return engineInstance;
