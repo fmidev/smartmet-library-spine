@@ -139,9 +139,8 @@ Reactor::Reactor(Options& options)
     itsInitTasks->on_task_error(
         [this](const std::string& name)
         {
+            Exception::Trace(BCP, "Operation failed").printError();
             std::cout << __FILE__ << ":" << __LINE__ << ": init task " << name << " failed" << std::endl;
-            // FIXME: stop nicely instead of SIGKILL
-            kill(getpid(), SIGKILL);
         });
   }
   catch (...)
