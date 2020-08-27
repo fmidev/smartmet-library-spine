@@ -1,5 +1,6 @@
 #include "Exception.h"
 #include "Convenience.h"
+#include <boost/thread.hpp>
 #include <fmt/format.h>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/TypeName.h>
@@ -80,6 +81,10 @@ Exception::Exception(const char* _filename,
       // Propagate the flags to the top
       mStackTraceDisabled = e.mStackTraceDisabled;
       mLoggingDisabled = e.mLoggingDisabled;
+    }
+    catch (const boost::thread_interrupted&)
+    {
+      throw;
     }
     catch (std::exception& e)
     {
