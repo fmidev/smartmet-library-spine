@@ -1242,6 +1242,8 @@ void Reactor::shutdown()
   {
     itsShutdownRequested = true;
 
+    Fmi::AsyncTaskGroup shutdownTasks;
+
     // STEP 1: Informing all plugins that the shutdown is in progress. Otherwise
     //         they might start new jobs meanwhile other components are shutting down.
 
@@ -1266,35 +1268,53 @@ void Reactor::shutdown()
     // this way we can relatively safely shutdown all plugins even if the do not
     // implement their own shutdown() method.
 
-    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown plugins\n"
-              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT;
+    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown plugins"
+              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
 
     for (auto it = itsPlugins.begin(); it != itsPlugins.end(); it++)
     {
       std::cout << ANSI_FG_RED << "* Plugin [" << (*it)->pluginname() << "] shutting down\n"
                 << ANSI_FG_DEFAULT;
-      (*it)->shutdownPlugin();
-      it->reset();
+      shutdownTasks.add(
+          "Plugin [" + (*it)->pluginname() + "] shutdown",
+          [it]() {
+              (*it)->shutdownPlugin();
+              it->reset();
+          });
     }
+
+    shutdownTasks.wait();
+    std::cout << ANSI_FG_RED << "* Plugin shutdown completed" << ANSI_FG_DEFAULT << std::endl;
 
     // STEP 4: Requesting all engines to shutdown.
 
-    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown engines\n"
-              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT;
+    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown engines"
+              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
 
     for (auto it = itsSingletons.begin(); it != itsSingletons.end(); it++)
     {
-      std::cout << ANSI_FG_RED << "* Engine [" << it->first << "] shutting down\n"
-                << ANSI_FG_DEFAULT;
+      std::ostringstream tmp1;
+      tmp1 << ANSI_FG_RED << "* Engine [" << it->first << "] shutting down" << ANSI_FG_DEFAULT << '\n';
+      std::cout << tmp1.str() << std::flush;
       SmartMetEngine* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-      engine->shutdownEngine();
+      shutdownTasks.add(
+          "Engine [" + it->first + "] shutdown",
+          [engine, it]() {
+              engine->shutdownEngine();
+              std::ostringstream tmp2;
+              tmp2 << ANSI_FG_MAGENTA << "* Engine [" << it->first << "] shutdown complete"
+                   << ANSI_FG_DEFAULT << '\n';
+              std::cout << tmp2.str() << std::flush;
+          });
     }
+
+    shutdownTasks.wait();
 
     // STEP 5: Deleting engines. We should not delete engines before they are all shutted down
     //         because they might use other engines (for example, obsengine => geoengine).
 
-    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nDeleting engines\n"
-              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT;
+    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nDeleting engines"
+              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
 
     for (auto it = itsSingletons.begin(); it != itsSingletons.end(); it++)
     {
