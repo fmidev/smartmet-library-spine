@@ -963,7 +963,7 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
 
     thisEngine->wait();
 
-    return result;
+    return itsShutdownRequested ? nullptr : thisEngine;
   }
   catch (...)
   {

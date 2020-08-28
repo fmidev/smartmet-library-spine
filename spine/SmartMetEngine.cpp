@@ -19,7 +19,6 @@ void SmartMetEngine::construct(const std::string& /* engineName */, Reactor* rea
   try
   {
     itsReactor = reactor;
-    boost::unique_lock<boost::mutex> theLock(itsInitMutex);
 
     this->init();
 
@@ -37,9 +36,11 @@ void SmartMetEngine::wait()
   try
   {
     boost::unique_lock<boost::mutex> theLock(itsInitMutex);
-    if (!isReady)
-    {
-      itsCond.wait(theLock);
+    while (!isReady && !itsShutdownRequested) {
+      itsCond.wait_for(
+        theLock,
+        boost::chrono::seconds(1),
+        [this]() -> bool { return isReady || itsShutdownRequested; });
     }
   }
   catch (...)
@@ -54,6 +55,7 @@ void SmartMetEngine::setShutdownRequestedFlag()
   {
     itsShutdownRequested = true;
     shutdownRequestFlagSet();
+    itsCond.notify_all();
   }
   catch (...)
   {
@@ -66,6 +68,7 @@ void SmartMetEngine::shutdownEngine()
   try
   {
     itsShutdownRequested = true;
+    itsCond.notify_all();
     shutdown();
   }
   catch (...)
