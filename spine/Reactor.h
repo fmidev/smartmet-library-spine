@@ -245,7 +245,12 @@ EngineType* Reactor::getEngine(const std::string& theClassName, void* user_data)
   void* ptr = getSingleton(theClassName, user_data);
   if (ptr == nullptr)
   {
-    throw Exception::Trace(BCP, "No " + theClassName + " engine available");
+    if (itsShutdownRequested) {
+      throw Exception::Trace(BCP, "Shutdown in progress - engine " + theClassName
+        + " is not available").disableStackTrace();
+    } else {
+      throw Exception::Trace(BCP, "No " + theClassName + " engine available");
+    }
   }
   return reinterpret_cast<EngineType*>(ptr);
 }

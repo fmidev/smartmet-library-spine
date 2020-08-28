@@ -139,8 +139,10 @@ Reactor::Reactor(Options& options)
     itsInitTasks->on_task_error(
         [this](const std::string& name)
         {
-            Exception::Trace(BCP, "Operation failed").printError();
-            std::cout << __FILE__ << ":" << __LINE__ << ": init task " << name << " failed" << std::endl;
+            if (!isShutdownRequested()) {
+                Exception::Trace(BCP, "Operation failed").printError();
+                std::cout << __FILE__ << ":" << __LINE__ << ": init task " << name << " failed" << std::endl;
+            }
         });
   }
   catch (...)
@@ -935,7 +937,8 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
       // phase when the plugin requests an engine. This exception is usually
       // caught in the plugin's initPlugin() method.
 
-      throw Spine::Exception(BCP, "Shutdown active!");
+      throw Spine::Exception(BCP, "Shutdown active!")
+          .disableStackTrace();
     }
 
     Reactor::EngineInstance result;
@@ -1240,6 +1243,9 @@ void Reactor::shutdown()
 {
   try
   {
+    // We are no more interested about init task errors when shutdown has been requested
+    itsInitTasks->stop_on_error(false);
+
     itsShutdownRequested = true;
 
     Fmi::AsyncTaskGroup shutdownTasks;
