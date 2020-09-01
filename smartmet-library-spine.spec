@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.8.26
+Version: 20.9.1
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -107,6 +107,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Sep  1 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.9.1-1.fmi
+- PluginTest now calls Reactor::init as required by the new API
+
 * Wed Aug 26 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.08.26-1.fmi
 - Use std::unique_ptr<Fmi::AsyncTaskGroup> in Reactor class
 - Move loading engines and plugins to init() method
