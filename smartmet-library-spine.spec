@@ -28,7 +28,6 @@ BuildRequires: fmt-devel >= 6.2.1
 BuildRequires: mariadb-devel
 BuildRequires: boost169-chrono
 BuildRequires: boost169-timer
-BuildRequires: gdal-devel
 Requires: smartmet-library-newbase >= 20.8.21
 Requires: smartmet-library-macgyver >= 20.8.26
 Requires: smartmet-timezones >= 20.5.5
@@ -48,12 +47,19 @@ Requires: hdf5
 Requires: jsoncpp
 Requires: libconfig
 Requires: fmt >= 6.2.1
-Requires: gdal-libs
 
-%if %{defined el7}
-Requires: mariadb-libs
-%else if %{defined el8}
+%if 0%{rhel} >= 8
+BuildRequires: gdal30-devel
+Requires: gdal30-libs
+%else
+BuildRequires: gdal-devel
+Requires: gdal-libs
+%endif
+
+%if 0%{rhel} >= 8
 Requires: mariadb-connector-c
+%else
+Requires: mariadb-libs
 %endif
 
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1

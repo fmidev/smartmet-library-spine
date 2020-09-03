@@ -7,8 +7,8 @@
 #include <boost/optional.hpp>
 #include <boost/regex.hpp>
 #include <boost/shared_ptr.hpp>
-#include <gdal/ogr_geometry.h>
-#include <gdal/ogr_spatialref.h>
+#include <ogr_geometry.h>
+#include <ogr_spatialref.h>
 #include <macgyver/TypeName.h>
 #include <newbase/NFmiPoint.h>
 #include <map>
