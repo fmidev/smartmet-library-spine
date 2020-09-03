@@ -402,6 +402,7 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
     std::atomic<int> num_failed{0};
     options.parseConfig();
     SmartMet::Spine::Reactor reactor(options);
+    reactor.init();
     prelude(reactor);
 
     std::list<path> inputfiles = recursive_directory_contents("input");
