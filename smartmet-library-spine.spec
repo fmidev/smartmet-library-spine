@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.9.1
+Version: 20.9.4
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -112,6 +112,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Fri Sep  4 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.9.4-1.fmi
+- Forward declare GDAL classes in CRSRegistry header to avoid dependency escalation
+
 * Tue Sep  1 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.9.1-1.fmi
 - PluginTest now calls Reactor::init as required by the new API
 

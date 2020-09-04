@@ -1,12 +1,14 @@
 #include "CRSRegistry.h"
+#include "Exception.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <boost/spirit/include/qi.hpp>
-#include <ogr_srs_api.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TypeName.h>
+#include <ogr_geometry.h>
+#include <ogr_spatialref.h>
+#include <ogr_srs_api.h>
 #include <stdexcept>
-#include "Exception.h"
 
 namespace ba = boost::algorithm;
 namespace qi = boost::spirit::qi;
@@ -17,7 +19,6 @@ namespace SmartMet
 {
 namespace Spine
 {
-
 /**
  *   @brief [INTERNAL] Identity CRS transformation
  */
@@ -670,4 +671,3 @@ void CRSRegistry::read_crs_dir(const fs::path& theDir)
 
 }  // namespace Spine
 }  // namespace SmartMet
-

@@ -1,5 +1,8 @@
 #pragma once
 
+#include "ConfigBase.h"
+#include "Thread.h"
+#include "Value.h"
 #include <boost/any.hpp>
 #include <boost/array.hpp>
 #include <boost/filesystem.hpp>
@@ -7,16 +10,14 @@
 #include <boost/optional.hpp>
 #include <boost/regex.hpp>
 #include <boost/shared_ptr.hpp>
-#include <ogr_geometry.h>
-#include <ogr_spatialref.h>
 #include <macgyver/TypeName.h>
 #include <newbase/NFmiPoint.h>
 #include <map>
 #include <ostream>
 #include <typeinfo>
-#include "ConfigBase.h"
-#include "Thread.h"
-#include "Value.h"
+
+class OGRSpatialReference;
+class OGRGeometry;
 
 namespace SmartMet
 {
