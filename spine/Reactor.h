@@ -160,6 +160,8 @@ class Reactor
                              const std::string& theDir,
                              ContentHandler theCallBackFunction);
 
+  void* getEnginePtr(const std::string& theClassName, void* user_data);
+
   // SmartMet API Version
   int APIVersion = SMARTMET_API_VERSION;
 
@@ -242,17 +244,7 @@ EngineType* Reactor::getEngine(const std::string& theClassName, void* user_data)
 {
   static_assert(std::is_base_of<SmartMetEngine, EngineType>::value,
                 "Engine class not derived from SmartMet::Spine::SmartMetEngine");
-  void* ptr = getSingleton(theClassName, user_data);
-  if (ptr == nullptr)
-  {
-    if (itsShutdownRequested) {
-      throw Exception::Trace(BCP, "Shutdown in progress - engine " + theClassName
-        + " is not available").disableStackTrace();
-    } else {
-      throw Exception::Trace(BCP, "No " + theClassName + " engine available");
-    }
-  }
-  return reinterpret_cast<EngineType*>(ptr);
+  return reinterpret_cast<EngineType*>(getEnginePtr(theClassName, user_data));
 }
 
 }  // namespace Spine

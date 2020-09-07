@@ -1234,6 +1234,21 @@ void Reactor::callClientConnectionFinishedHooks(const std::string& theClientIP,
   }
 }
 
+void* Reactor::getEnginePtr(const std::string& theClassName, void* user_data)
+{
+  void* ptr = getSingleton(theClassName, user_data);
+  if (ptr == nullptr)
+  {
+    if (itsShutdownRequested) {
+      throw Exception::Trace(BCP, "Shutdown in progress - engine " + theClassName
+        + " is not available").disableStackTrace();
+    } else {
+      throw Exception::Trace(BCP, "No " + theClassName + " engine available");
+    }
+  }
+  return ptr;
+}
+
 bool Reactor::isShutdownRequested()
 {
   return itsShutdownRequested;
