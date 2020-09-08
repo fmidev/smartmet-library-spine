@@ -81,16 +81,16 @@ void SmartMetPlugin::shutdownPlugin()
 
     while (itsInitActive)
     {
-      std::cout << "  -- waiting the plugin (" << getPluginName()
-                << ") to complete its initialization phase\n";
+      std::cout << ("  -- waiting the plugin (" + getPluginName()
+          + ") to complete its initialization phase\n") << std::flush;
       boost::this_thread::sleep(boost::posix_time::milliseconds(3000));
     }
 
     while (responseCounter < requestCounter)
     {
-      std::cout << "  -- waiting the plugin (" << getPluginName()
-                << ") to complete its processing (" << responseCounter << "/" << requestCounter
-                << ")\n";
+      std::cout << ("  -- waiting the plugin (" + getPluginName()
+          + ") to complete its processing (" + std::to_string(responseCounter) + "/"
+          + std::to_string(requestCounter) + "\n") << std::flush;
       boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
     }
   }
