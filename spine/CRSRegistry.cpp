@@ -1,10 +1,13 @@
 #include "CRSRegistry.h"
+
 #include "Exception.h"
+
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TypeName.h>
+
 #include <ogr_geometry.h>
 #include <ogr_spatialref.h>
 #include <ogr_srs_api.h>
@@ -85,7 +88,7 @@ void CRSRegistry::register_epsg(const std::string& name,
   {
     Spine::WriteLock lock(rw_lock);
     const std::string nm = Fmi::ascii_tolower_copy(name);
-    CHECK_NAME(nm);
+    CHECK_NAME(nm)
 
     MapEntry entry(name, regex);
     if (entry.cs->importFromEPSG(epsg_code) != OGRERR_NONE)
@@ -116,7 +119,7 @@ void CRSRegistry::register_proj4(const std::string& name,
     Spine::WriteLock lock(rw_lock);
 
     const std::string nm = Fmi::ascii_tolower_copy(name);
-    CHECK_NAME(nm);
+    CHECK_NAME(nm)
 
     MapEntry entry(name, regex);
     if (entry.cs->importFromProj4(proj4_def.c_str()) != OGRERR_NONE)
@@ -146,7 +149,7 @@ void CRSRegistry::register_wkt(const std::string& name,
     Spine::WriteLock lock(rw_lock);
 
     const std::string nm = Fmi::ascii_tolower_copy(name);
-    CHECK_NAME(nm);
+    CHECK_NAME(nm)
 
     MapEntry entry(name, regex);
     char* str = const_cast<char*>(wkt_def.c_str());

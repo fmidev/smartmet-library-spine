@@ -5,11 +5,14 @@
 // ======================================================================
 
 #include "Convenience.h"
+
 #include "Exception.h"
 #include "ValueFormatter.h"
+
 #include <boost/algorithm/string.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <macgyver/StringConversion.h>
+
 #include <stdexcept>
 #include <string>
 
@@ -24,7 +27,7 @@ std::string optional_string(const char* theValue, const std::string& theDefault)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return theValue;
@@ -55,7 +58,7 @@ bool optional_bool(const char* theValue, bool theDefault)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return (Fmi::stoi(theValue) != 0);
@@ -85,7 +88,7 @@ int optional_int(const char* theValue, int theDefault)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return Fmi::stoi(theValue);
@@ -115,7 +118,7 @@ std::size_t optional_size(const char* theValue, std::size_t theDefault)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return Fmi::stoul(theValue);
@@ -145,7 +148,7 @@ unsigned long optional_unsigned_long(const char* theValue, unsigned long theDefa
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return Fmi::stoul(theValue);
@@ -176,7 +179,7 @@ char optional_char(const char* theValue, char theDefault)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return std::string(theValue).at(0);
@@ -206,7 +209,7 @@ double optional_double(const char* theValue, double theDefault)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return Fmi::stod(theValue);
@@ -237,7 +240,7 @@ boost::posix_time::ptime optional_time(const char* theValue,
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return Fmi::TimeParser::parse(theValue);
@@ -266,7 +269,7 @@ boost::posix_time::ptime optional_time(const boost::optional<std::string>& theVa
 
 std::string required_string(const char* theValue, const char* theError)
 {
-  if (theValue == nullptr || theValue == 0)
+  if (theValue == nullptr)
     throw Spine::Exception(BCP, theError);
   else
     return theValue;
@@ -284,7 +287,7 @@ bool required_bool(const char* theValue, const char* theError)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       throw Spine::Exception(BCP, theError);
     else
       return (Fmi::stoi(theValue) != 0);
@@ -314,7 +317,7 @@ int required_int(const char* theValue, const char* theError)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       throw Spine::Exception(BCP, theError);
     else
       return Fmi::stoi(theValue);
@@ -344,7 +347,7 @@ std::size_t required_size(const char* theValue, const char* theError)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       throw Spine::Exception(BCP, theError);
     else
       return Fmi::stoul(theValue);
@@ -374,7 +377,7 @@ unsigned long required_unsigned_long(const char* theValue, const char* theError)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       throw Spine::Exception(BCP, theError);
     else
       return Fmi::stoul(theValue);
@@ -405,7 +408,7 @@ char required_char(const char* theValue, const char* theError)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       throw Spine::Exception(BCP, theError);
     else
       return std::string(theValue).at(0);
@@ -435,7 +438,7 @@ double required_double(const char* theValue, const char* theError)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       throw Spine::Exception(BCP, theError);
     else
       return Fmi::stod(theValue);
@@ -465,7 +468,7 @@ boost::posix_time::ptime required_time(const char* theValue, const char* theErro
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       throw Spine::Exception(BCP, theError);
     else
       return Fmi::TimeParser::parse(theValue);
@@ -616,7 +619,7 @@ std::string boost_any_to_string(const boost::any& anyvalue, const ValueFormatter
     else if (type == typeid(float))
     {
       float floatvalue(boost::any_cast<float>(anyvalue));
-      retval = vf.format(floatvalue, precision);
+      retval = vf.format(static_cast<double>(floatvalue), precision);
     }
     else if (type == typeid(double))
     {
@@ -709,7 +712,7 @@ int duration_string_to_minutes(const std::string& interval)
         err_str += "' suffix is not valid, use 'm', 'h' or 'd' suffix instead!";
         throw Spine::Exception(BCP, err_str);
       }
-    };
+    }
 
     return retval;
   }

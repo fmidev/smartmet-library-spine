@@ -5,6 +5,7 @@
 // ======================================================================
 
 #include "Reactor.h"
+
 #include "ConfigTools.h"
 #include "Convenience.h"
 #include "DynamicPlugin.h"
@@ -29,6 +30,7 @@
 #include <boost/timer/timer.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/StringConversion.h>
+
 #include <algorithm>
 #include <dlfcn.h>
 #include <functional>
@@ -103,9 +105,7 @@ Reactor::~Reactor()
  */
 // ----------------------------------------------------------------------
 
-Reactor::Reactor(Options& options)
-    : itsOptions(options)
-    , itsInitTasks(new Fmi::AsyncTaskGroup)
+Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::AsyncTaskGroup)
 {
   try
   {
@@ -136,14 +136,14 @@ Reactor::Reactor(Options& options)
 
     itsInitTasks->stop_on_error(true);
 
-    itsInitTasks->on_task_error(
-        [this](const std::string& name)
-        {
-            if (!isShutdownRequested()) {
-                Exception::Trace(BCP, "Operation failed").printError();
-                std::cout << __FILE__ << ":" << __LINE__ << ": init task " << name << " failed" << std::endl;
-            }
-        });
+    itsInitTasks->on_task_error([this](const std::string& name) {
+      if (!isShutdownRequested())
+      {
+        Exception::Trace(BCP, "Operation failed").printError();
+        std::cout << __FILE__ << ":" << __LINE__ << ": init task " << name << " failed"
+                  << std::endl;
+      }
+    });
   }
   catch (...)
   {
@@ -153,7 +153,8 @@ Reactor::Reactor(Options& options)
 
 void Reactor::init()
 {
-  try {
+  try
+  {
     // Load engines - all or just the requested ones
 
     const auto& config = itsOptions.itsConfig;
@@ -190,11 +191,14 @@ void Reactor::init()
         loadPlugin(libfile, itsOptions.verbose);
     }
 
-    try {
-        itsInitTasks->wait();
-    } catch (...) {
-        std::cout << "Initialization failed" << std::endl;
-        exit(1);
+    try
+    {
+      itsInitTasks->wait();
+    }
+    catch (...)
+    {
+      std::cout << "Initialization failed" << std::endl;
+      exit(1);
     }
     // Set ContentEngine default logging. Do this after plugins are loaded so handlers are
     // recognized
@@ -361,7 +365,7 @@ bool Reactor::setNoMatchHandler(ContentHandler theHandler)
     WriteLock lock(itsContentMutex);
 
     // Catch everything that is specifically not added elsewhere.
-    if (theHandler != 0)
+    if (theHandler != nullptr)
     {
       // Set the data members
       boost::shared_ptr<HandlerView> theView(new HandlerView(theHandler));
@@ -736,7 +740,7 @@ void Reactor::setLogging(bool loggingEnabled)
     if (itsLoggingEnabled)
     {
       // See if cleaner thread is running for some reason
-      if (itsLogCleanerThread.get() != 0 && itsLogCleanerThread->joinable())
+      if (itsLogCleanerThread.get() != nullptr && itsLogCleanerThread->joinable())
       {
         // Kill any remaining thread
         itsLogCleanerThread->interrupt();
@@ -804,7 +808,7 @@ void Reactor::listPlugins() const
  */
 // ----------------------------------------------------------------------
 
-bool Reactor::loadPlugin(const std::string& theFilename, bool verbose)
+bool Reactor::loadPlugin(const std::string& theFilename, bool /* verbose */)
 {
   try
   {
@@ -855,15 +859,13 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool verbose)
 
     boost::shared_ptr<DynamicPlugin> plugin(new DynamicPlugin(theFilename, configfile, *this));
 
-    if (plugin.get() != 0)
+    if (plugin.get() != nullptr)
     {
       // Start to initialize the plugin
 
-      itsInitTasks->add("Load plugin[" + theFilename + "]",
-         [this, plugin, pluginname] ()
-         {
-             initializePlugin(plugin.get(), pluginname);
-         });
+      itsInitTasks->add("Load plugin[" + theFilename + "]", [this, plugin, pluginname]() {
+        initializePlugin(plugin.get(), pluginname);
+      });
 
       itsPlugins.push_back(plugin);
       return true;
@@ -896,7 +898,7 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
                 << theClassName << "'" << std::endl
                 << "No such class was found loaded in the EngineHood" << ANSI_FG_DEFAULT
                 << std::endl;
-      return 0;
+      return nullptr;
     }
 
     // config names are all lower case
@@ -909,8 +911,9 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
     SmartMetEngine* theEngine = reinterpret_cast<SmartMetEngine*>(engineInstance);
 
     // Fire the initialization thread
-    itsInitTasks->add("New engine instance[" + theClassName + "]",
-        [this, theEngine, theClassName] () { initializeEngine(theEngine, theClassName); });
+    itsInitTasks->add(
+        "New engine instance[" + theClassName + "]",
+        [this, theEngine, theClassName]() { initializeEngine(theEngine, theClassName); });
 
     return engineInstance;
   }
@@ -937,8 +940,7 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
       // phase when the plugin requests an engine. This exception is usually
       // caught in the plugin's initPlugin() method.
 
-      throw Spine::Exception(BCP, "Shutdown active!")
-          .disableStackTrace();
+      throw Spine::Exception(BCP, "Shutdown active!").disableStackTrace();
     }
 
     Reactor::EngineInstance result;
@@ -952,7 +954,7 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
       std::cout << ANSI_FG_RED << "No engine '" << theClassName << "' was found loaded in memory."
                 << ANSI_FG_DEFAULT << std::endl;
 
-      return 0;
+      return nullptr;
     }
     else
     {
@@ -1004,7 +1006,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     itsEngineConfigs.insert(ConfigList::value_type(enginename, configfile));
 
     void* itsHandle = dlopen(theFilename.c_str(), RTLD_NOW | RTLD_GLOBAL);
-    if (itsHandle == 0)
+    if (itsHandle == nullptr)
     {
       // Error occurred while opening the dynamic library
       throw Spine::Exception(
@@ -1019,7 +1021,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
         reinterpret_cast<EngineInstanceCreator>(dlsym(itsHandle, "engine_class_creator"));
 
     // Check that pointers to function were loaded succesfully
-    if (itsNamePointer == 0 || itsCreatorPointer == 0)
+    if (itsNamePointer == nullptr || itsCreatorPointer == nullptr)
     {
       throw Spine::Exception(BCP,
                              "Cannot resolve dynamic library symbols: " + std::string(dlerror()));
@@ -1037,7 +1039,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     auto theSingleton = newInstance(itsNamePointer(), nullptr);
 
     // Check whether the preliminary creation succeeded
-    if (theSingleton == 0)
+    if (theSingleton == nullptr)
     {
       // Log error and return with zero
       std::cout << ANSI_FG_RED << "No engine '" << itsNamePointer()
@@ -1239,10 +1241,14 @@ void* Reactor::getEnginePtr(const std::string& theClassName, void* user_data)
   void* ptr = getSingleton(theClassName, user_data);
   if (ptr == nullptr)
   {
-    if (itsShutdownRequested) {
-      throw Exception::Trace(BCP, "Shutdown in progress - engine " + theClassName
-        + " is not available").disableStackTrace();
-    } else {
+    if (itsShutdownRequested)
+    {
+      throw Exception::Trace(BCP,
+                             "Shutdown in progress - engine " + theClassName + " is not available")
+          .disableStackTrace();
+    }
+    else
+    {
       throw Exception::Trace(BCP, "No " + theClassName + " engine available");
     }
   }
@@ -1289,19 +1295,17 @@ void Reactor::shutdown()
     // this way we can relatively safely shutdown all plugins even if the do not
     // implement their own shutdown() method.
 
-    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown plugins"
-              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown plugins" << ANSI_BOLD_OFF
+              << ANSI_FG_DEFAULT << std::endl;
 
     for (auto it = itsPlugins.begin(); it != itsPlugins.end(); it++)
     {
       std::cout << ANSI_FG_RED << "* Plugin [" << (*it)->pluginname() << "] shutting down\n"
                 << ANSI_FG_DEFAULT;
-      shutdownTasks.add(
-          "Plugin [" + (*it)->pluginname() + "] shutdown",
-          [it]() {
-              (*it)->shutdownPlugin();
-              it->reset();
-          });
+      shutdownTasks.add("Plugin [" + (*it)->pluginname() + "] shutdown", [it]() {
+        (*it)->shutdownPlugin();
+        it->reset();
+      });
     }
 
     shutdownTasks.wait();
@@ -1309,24 +1313,23 @@ void Reactor::shutdown()
 
     // STEP 4: Requesting all engines to shutdown.
 
-    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown engines"
-              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown engines" << ANSI_BOLD_OFF
+              << ANSI_FG_DEFAULT << std::endl;
 
     for (auto it = itsSingletons.begin(); it != itsSingletons.end(); it++)
     {
       std::ostringstream tmp1;
-      tmp1 << ANSI_FG_RED << "* Engine [" << it->first << "] shutting down" << ANSI_FG_DEFAULT << '\n';
+      tmp1 << ANSI_FG_RED << "* Engine [" << it->first << "] shutting down" << ANSI_FG_DEFAULT
+           << '\n';
       std::cout << tmp1.str() << std::flush;
       SmartMetEngine* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-      shutdownTasks.add(
-          "Engine [" + it->first + "] shutdown",
-          [engine, it]() {
-              engine->shutdownEngine();
-              std::ostringstream tmp2;
-              tmp2 << ANSI_FG_MAGENTA << "* Engine [" << it->first << "] shutdown complete"
-                   << ANSI_FG_DEFAULT << '\n';
-              std::cout << tmp2.str() << std::flush;
-          });
+      shutdownTasks.add("Engine [" + it->first + "] shutdown", [engine, it]() {
+        engine->shutdownEngine();
+        std::ostringstream tmp2;
+        tmp2 << ANSI_FG_MAGENTA << "* Engine [" << it->first << "] shutdown complete"
+             << ANSI_FG_DEFAULT << '\n';
+        std::cout << tmp2.str() << std::flush;
+      });
     }
 
     shutdownTasks.wait();
@@ -1334,8 +1337,8 @@ void Reactor::shutdown()
     // STEP 5: Deleting engines. We should not delete engines before they are all shutted down
     //         because they might use other engines (for example, obsengine => geoengine).
 
-    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nDeleting engines"
-              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nDeleting engines" << ANSI_BOLD_OFF
+              << ANSI_FG_DEFAULT << std::endl;
 
     for (auto it = itsSingletons.begin(); it != itsSingletons.end(); it++)
     {

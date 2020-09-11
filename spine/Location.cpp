@@ -29,7 +29,9 @@ std::string type_string(const Location::LocationType& type)
         return "BoundingBox";
       case Location::Wkt:
         return "Wkt";
-#ifndef UNREACHABLE
+      case Location::CoordinatePoint:
+        return "CoordinatePoint";
+#ifdef __GNUC__
       default:
         return "";
 #endif

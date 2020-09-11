@@ -1,13 +1,12 @@
 #include "TimeSeriesOutput.h"
+
 #include "Exception.h"
-
-#include <newbase/NFmiGlobals.h>
-
-#include <macgyver/StringConversion.h>
 
 #include <boost/format.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/copy.hpp>
+#include <macgyver/StringConversion.h>
+#include <newbase/NFmiGlobals.h>
 
 namespace SmartMet
 {
@@ -158,8 +157,10 @@ std::string StringVisitor::operator()(const LonLat& lonlat) const
       case LonLatFormat::LATLON:
         return itsValueFormatter.format(lonlat.lat, itsPrecision) + ", " +
                itsValueFormatter.format(lonlat.lon, itsPrecision);
-      default:  // Never reached
+#ifdef __GNUC__
+      default:
         return "";
+#endif
     }
   }
   catch (...)
@@ -297,7 +298,7 @@ void TableVisitor::operator()(double d)
 {
   try
   {
-    if (d == kFloatMissing)
+    if (d == static_cast<double>(kFloatMissing))
     {
       itsTable.set(itsCurrentColumn, itsCurrentRow++, itsValueFormatter.missing());
       return;

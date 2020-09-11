@@ -1,9 +1,12 @@
 #include "TimeSeriesAggregator.h"
+
 #include "Convenience.h"
 #include "Exception.h"
 #include "TimeSeries.h"
 #include "TimeSeriesOutput.h"
+
 #include <newbase/NFmiGlobals.h>
+
 #include <cmath>
 #include <iostream>
 #include <numeric>
@@ -49,7 +52,7 @@ double StatCalculator::getDoubleStatValue(const ParameterFunction& func, bool us
 {
   try
   {
-    Fmi::Stat::Stat stat(itsDataVector, kFloatMissing);
+    Fmi::Stat::Stat stat(itsDataVector, static_cast<double>(kFloatMissing));
     stat.useWeights(useWeights);
 
     switch (func.id())
@@ -78,9 +81,11 @@ double StatCalculator::getDoubleStatValue(const ParameterFunction& func, bool us
       case FunctionId::Trend:
         return stat.trend();
       case FunctionId::Nearest:
-        return (itsTimestep ? stat.nearest(itsTimestep->utc_time()) : kFloatMissing);
+        return (itsTimestep ? stat.nearest(itsTimestep->utc_time())
+                            : static_cast<double>(kFloatMissing));
       case FunctionId::Interpolate:
-        return (itsTimestep ? stat.interpolate(itsTimestep->utc_time()) : kFloatMissing);
+        return (itsTimestep ? stat.interpolate(itsTimestep->utc_time())
+                            : static_cast<double>(kFloatMissing));
       case FunctionId::NullFunction:
         return kFloatMissing;
 #ifndef UNREACHABLE
