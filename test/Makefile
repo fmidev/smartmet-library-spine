@@ -1,18 +1,8 @@
 PROG = $(patsubst %.cpp,%,$(wildcard *Test.cpp))
 
--include $(HOME)/.smartmet.mk
-GCC_DIAG_COLOR ?= always
-CXX_STD ?= c++11
+include ../common.mk
 
 FLAGS = -std=$(CXX_STD) -Wall -W -fdiagnostics-color=$(GCC_DIAG_COLOR) -Wno-unused-parameter -DMYDEBUG
-
-EXTRAFLAGS = -Werror -pedantic -Wpointer-arith -Wcast-qual \
-	-Wcast-align -Wwrite-strings -Wconversion -Winline \
-	-Wctor-dtor-privacy -Wnon-virtual-dtor -Wno-pmf-conversions \
-	-Wsign-promo -Wchar-subscripts -Wold-style-cast \
-	-Wshadow -Woverloaded-virtual
-
-DIFFICULTFLAGS = -Weffc++ -Wunreachable-code -Wredundant-decls
 
 ifeq ($(TSAN), yes)
   FLAGS += -fsanitize=thread
@@ -23,21 +13,6 @@ endif
 
 CC = g++
 CFLAGS = -DUNIX -O0 -g $(FLAGS)
-
-# Boost 1.69
-
-ifneq "$(wildcard /usr/include/boost169)" ""
-  INCLUDES += -I/usr/include/boost169
-  LIBS += -L/usr/lib64/boost169
-endif
-
-ifneq "$(wildcard /usr/gdal30/include)" ""
-  INCLUDES += -I/usr/gdal30/include
-  LIBS += -L$(PREFIX)/gdal30/lib
-else
-  INCLUDES += -I/usr/include/gdal
-endif
-
 
 INCLUDES += -I../spine -I/usr/include/smartmet `pkg-config --cflags jsoncpp`
 LIBS += ../libsmartmet-spine.so \
