@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.9.8
+Version: 20.9.14
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -112,6 +112,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon Sep 14 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.9.14-1.fmi
+- Added possibility to run an alert system command when active requests limit is broken
+
 * Tue Sep  8 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.9.8-1.fmi
 - Reactor shutdown support update
 

@@ -24,10 +24,12 @@
 #include "SmartMetEngine.h"
 #include "SmartMetPlugin.h"
 #include "Thread.h"
-#include <macgyver/AsyncTaskGroup.h>
+
 #include <boost/function.hpp>
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
+#include <macgyver/AsyncTaskGroup.h>
+
 #include <atomic>
 #include <libconfig.h++>
 #include <list>
@@ -234,6 +236,9 @@ class Reactor
 
   std::atomic_size_t itsInitializedPluginCount{0};
   std::atomic_size_t itsInitializedEngineCount{0};
+
+  std::atomic_bool itsRunningAlertScript{false};
+
   // No void construction, options must be known
   Reactor();
   /* [[noreturn]] */ void cleanLog();

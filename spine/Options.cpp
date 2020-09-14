@@ -5,13 +5,16 @@
 // ======================================================================
 
 #include "Options.h"
+
 #include "ConfigTools.h"
 #include "Exception.h"
+
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/program_options.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/StringConversion.h>
+
 #include <iostream>
 
 namespace SmartMet
@@ -101,6 +104,8 @@ bool Options::parseOptions(int argc, char* argv[])
 
     const char* msgmaxrequestsize = "set the maximum allowed size for requests";
 
+    const char* msgalertscript = "command to run the active requests limit is broken";
+
     // clang-format off
     desc.add_options()("help,h", msghelp)("version,V", msgversion)(
         "slowthreads,N", po::value(&slowpool.minsize)->default_value(slowpool.minsize), msgslowthreads)(
@@ -111,6 +116,7 @@ bool Options::parseOptions(int argc, char* argv[])
         "maxactiverequests", po::value(&throttle.limit)->default_value(throttle.limit), msgmaxactiverequests)(
         "maxactiverestartrequests", po::value(&throttle.restart_limit)->default_value(throttle.restart_limit), msgmaxactiverestartrequests)(
         "requestlimitrate", po::value(&throttle.increase_rate)->default_value(throttle.increase_rate), msgactiverequestrate)(
+        "alertscript", po::value(&throttle.alert_script)->default_value(throttle.alert_script), msgalertscript)(
         "maxrequestsize", po::value(&maxrequestsize)->default_value(maxrequestsize), msgmaxrequestsize)(
         "debug,d", po::bool_switch(&debug)->default_value(debug), msgdebug)(
         "verbose,v", po::bool_switch(&verbose)->default_value(verbose), msgverbose)(
@@ -232,6 +238,8 @@ void Options::parseConfig()
       throttle.restart_limit = throttle.start_limit;
       lookupHostSetting(itsConfig, throttle.restart_limit, "activerequests.restart_limit");
 
+      lookupHostSetting(itsConfig, throttle.alert_script, "activerequests.alert_script");
+
       lookupHostSetting(itsConfig, slowpool.minsize, "slowpool.maxthreads");
       lookupHostSetting(itsConfig, slowpool.maxrequeuesize, "slowpool.maxrequeuesize");
 
@@ -287,8 +295,9 @@ void Options::report() const
               << "Max slow queue size\t\t= " << slowpool.maxrequeuesize << "\n"
               << "Max active requests\t\t= " << throttle.limit << "\n"
               << "- at start\t\t\t= " << throttle.start_limit << "\n"
-              << " -at slowdown\t\t\t= " << throttle.restart_limit << "\n"
+              << "- at slowdown\t\t\t= " << throttle.restart_limit << "\n"
               << "- increase rate\t\t\t= " << throttle.increase_rate << "\n"
+              << "- alert script\t\t\t= " << throttle.alert_script << "\n"
               << "Port\t\t\t\t= " << port << "\n"
               << "Timeout\t\t\t\t= " << timeout << "\n"
               << "Access log directory\t\t= " << accesslogdir << "\n"

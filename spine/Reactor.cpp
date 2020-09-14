@@ -27,6 +27,7 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/locale.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/process/child.hpp>
 #include <boost/timer/timer.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/StringConversion.h>
@@ -561,6 +562,32 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
                 << itsOptions.throttle.restart_limit << "/" << itsOptions.throttle.limit
                 << std::endl;
   }
+
+  // Run alert script if set
+
+  if (!itsOptions.throttle.alert_script.empty())
+  {
+    if (itsRunningAlertScript)
+    {
+      if (itsOptions.verbose)
+        std::cerr << Spine::log_time_str() << " Alert script already running" << std::endl;
+    }
+    else
+    {
+      itsRunningAlertScript = true;
+      if (itsOptions.verbose)
+        std::cerr << Spine::log_time_str() << " Running alert script "
+                  << itsOptions.throttle.alert_script << std::endl;
+
+      std::thread thr([this] {
+        boost::process::child cld(itsOptions.throttle.alert_script);
+        cld.wait();
+        itsRunningAlertScript = false;
+      });
+      thr.detach();
+    }
+  }
+
   return key;
 }
 
