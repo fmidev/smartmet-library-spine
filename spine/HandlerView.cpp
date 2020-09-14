@@ -1,7 +1,9 @@
 #include "HandlerView.h"
+
 #include "Convenience.h"
 #include "Exception.h"
 #include "Reactor.h"
+
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem.hpp>
@@ -205,18 +207,12 @@ void HandlerView::cleanLog(const boost::posix_time::ptime& minTime)
 
     // Disable logging-related things for frontend behaviour
     if (itsIsCatchNoMatch)
-    {
       return;
-    }
 
     // Ignore cleaning operation if someone is reading the log right now
 
     if (itsLogReaderCount != 0)
-    {
-      std::cout << log_time_str() << " not cleaning logs since someone is reading them"
-                << std::endl;
       return;
-    }
 
     auto it = std::find_if(
         itsRequestLog.begin(), itsRequestLog.end(), boost::bind(isNotOld, minTime, _1));
