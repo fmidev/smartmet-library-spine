@@ -11,7 +11,6 @@ ifeq ($(ASAN), yes)
   FLAGS += -fsanitize=address -fsanitize=pointer-compare -fsanitize=pointer-subtract -fsanitize=undefined -fsanitize-address-use-after-scope
 endif
 
-CC = g++
 CFLAGS = -DUNIX -O0 -g $(FLAGS)
 
 INCLUDES += -I../spine -I/usr/include/smartmet `pkg-config --cflags jsoncpp`
@@ -44,4 +43,4 @@ test: $(PROG)
 	$$ok
 
 $(PROG) : % : %.cpp Makefile ../libsmartmet-spine.so
-	$(CC) $(CFLAGS) -o $@ $@.cpp $(INCLUDES) $(LIBS)
+	$(CXX) $(CFLAGS) -o $@ $@.cpp $(INCLUDES) $(LIBS)
