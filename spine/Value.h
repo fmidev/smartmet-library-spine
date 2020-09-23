@@ -188,7 +188,7 @@ class Value
     data = tmp;
   }
   inline explicit Value(const BoundingBox& x) { data = x; }
-  virtual ~Value() = default;
+  ~Value() = default;
   Value(const Value& other) = default;
 
   inline bool operator==(const Value& x) const { return data == x.data; }
