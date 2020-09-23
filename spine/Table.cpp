@@ -5,8 +5,8 @@
 // ======================================================================
 
 #include "Table.h"
-#include "Exception.h"
 #include <boost/format.hpp>
+#include <macgyver/Exception.h>
 #include <macgyver/TypeName.h>
 #include <sstream>
 #include <stdexcept>
@@ -58,7 +58,7 @@ void Table::set(std::size_t theColumn, std::size_t theRow, const std::string& th
   try
   {
     if (itsBuildingDone)
-      throw Spine::Exception(BCP, "Cannot set new values in Table once get has been called");
+      throw Fmi::Exception(BCP, "Cannot set new values in Table once get has been called");
 
     // Recalculate array bounds
 
@@ -81,7 +81,7 @@ void Table::set(std::size_t theColumn, std::size_t theRow, const std::string& th
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -100,13 +100,13 @@ const std::string& Table::get(std::size_t theColumn, std::size_t theRow) const
     // Cannot extract values from empty data
 
     if (itsList.empty())
-      throw Spine::Exception(BCP, "Table::get does not work for empty tables");
+      throw Fmi::Exception(BCP, "Table::get does not work for empty tables");
 
     // We expect user to use mini() etc in loops to make sure loops are OK
 
     if (not((theColumn >= itsMinI) and (theColumn <= itsMaxI)))
     {
-      Spine::Exception exception(BCP, "Column index is out of the range!");
+      Fmi::Exception exception(BCP, "Column index is out of the range!");
       exception.addParameter("Column index", std::to_string(theColumn));
       exception.addParameter("Range", std::to_string(itsMinI) + ".." + std::to_string(itsMaxI));
       throw exception;
@@ -114,7 +114,7 @@ const std::string& Table::get(std::size_t theColumn, std::size_t theRow) const
 
     if (not((theRow >= itsMinJ) and (theRow <= itsMaxJ)))
     {
-      Spine::Exception exception(BCP, "Row index is out of the range!");
+      Fmi::Exception exception(BCP, "Row index is out of the range!");
       exception.addParameter("Row index", std::to_string(theRow));
       exception.addParameter("Range", std::to_string(itsMinJ) + ".." + std::to_string(itsMaxJ));
       throw exception;
@@ -136,7 +136,7 @@ const std::string& Table::get(std::size_t theColumn, std::size_t theRow) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -164,7 +164,7 @@ std::string Table::get(std::size_t theColumn,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -204,7 +204,7 @@ void Table::build_array() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -232,7 +232,7 @@ Table::Indexes Table::columns() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -266,7 +266,7 @@ Table::Indexes Table::rows() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

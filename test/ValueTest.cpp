@@ -1,6 +1,6 @@
-#include "Exception.h"
 #include "Value.h"
 #include <boost/test/included/unit_test.hpp>
+#include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <iostream>
 
@@ -41,11 +41,11 @@ BOOST_AUTO_TEST_CASE(test_boolean_value)
   BOOST_CHECK_EQUAL(std::string("true"), v1.to_string());
 
   BOOST_CHECK(not v1.is<int64_t>());
-  BOOST_CHECK_THROW(v1.get_int(), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(v1.get_uint(), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(v1.get_double(), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(v1.get_ptime(), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(v1.get_string(), SmartMet::Spine::Exception);
+  BOOST_CHECK_THROW(v1.get_int(), Fmi::Exception);
+  BOOST_CHECK_THROW(v1.get_uint(), Fmi::Exception);
+  BOOST_CHECK_THROW(v1.get_double(), Fmi::Exception);
+  BOOST_CHECK_THROW(v1.get_ptime(), Fmi::Exception);
+  BOOST_CHECK_THROW(v1.get_string(), Fmi::Exception);
 
   BOOST_CHECK(v1.get<bool>());
 }
@@ -69,8 +69,8 @@ BOOST_AUTO_TEST_CASE(test_int_value)
   BOOST_CHECK_EQUAL((int)u1, 345);
   BOOST_CHECK_NO_THROW(d1 = v1.get_double());
   BOOST_CHECK_CLOSE(d1, 345, 1e-12);
-  BOOST_CHECK_THROW(v1.get_ptime(), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(v1.get_string(), SmartMet::Spine::Exception);
+  BOOST_CHECK_THROW(v1.get_ptime(), Fmi::Exception);
+  BOOST_CHECK_THROW(v1.get_string(), Fmi::Exception);
   BOOST_CHECK_EQUAL(std::string("345"), v1.to_string());
   BOOST_CHECK_EQUAL(345, (int)v1.get<int64_t>());
 
@@ -90,7 +90,7 @@ BOOST_AUTO_TEST_CASE(test_int_value)
   BOOST_CHECK(b1);
   BOOST_CHECK_NO_THROW(i1 = v1.get_int());
   BOOST_CHECK_EQUAL((int)i1, -963);
-  BOOST_CHECK_THROW(u1 = v1.get_uint(), SmartMet::Spine::Exception);
+  BOOST_CHECK_THROW(u1 = v1.get_uint(), Fmi::Exception);
   BOOST_CHECK_NO_THROW(d1 = v1.get_double());
   BOOST_CHECK_CLOSE(d1, -963, 1e-12);
   BOOST_CHECK_EQUAL(std::string("-963"), v1.to_string());
@@ -115,8 +115,8 @@ BOOST_AUTO_TEST_CASE(test_uint_value)
   BOOST_CHECK_EQUAL((int)u1, 345);
   BOOST_CHECK_NO_THROW(d1 = v1.get_double());
   BOOST_CHECK_CLOSE(d1, 345, 1e-12);
-  BOOST_CHECK_THROW(v1.get_ptime(), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(v1.get_string(), SmartMet::Spine::Exception);
+  BOOST_CHECK_THROW(v1.get_ptime(), Fmi::Exception);
+  BOOST_CHECK_THROW(v1.get_string(), Fmi::Exception);
   BOOST_CHECK_EQUAL(std::string("345"), v1.to_string());
   BOOST_CHECK_EQUAL(345, (int)v1.get<uint64_t>());
 
@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_CASE(test_uint_value)
   v3.set_uint(x1);
   BOOST_CHECK_NO_THROW(b1 = v3.get_bool());
   BOOST_CHECK(b1);
-  BOOST_CHECK_THROW(v3.get_int(), SmartMet::Spine::Exception);
+  BOOST_CHECK_THROW(v3.get_int(), Fmi::Exception);
   BOOST_CHECK_NO_THROW(u1 = v3.get_uint());
   BOOST_CHECK_EQUAL(u1, x1);
   BOOST_CHECK_NO_THROW(d1 = v3.get_double());
@@ -150,11 +150,11 @@ BOOST_AUTO_TEST_CASE(test_double_value)
   double d1;
 
   v1.set_double(234.56);
-  BOOST_CHECK_THROW(v1.get_bool(), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(v1.get_int(), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(v1.get_uint(), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(v1.get_ptime(), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(v1.get_string(), SmartMet::Spine::Exception);
+  BOOST_CHECK_THROW(v1.get_bool(), Fmi::Exception);
+  BOOST_CHECK_THROW(v1.get_int(), Fmi::Exception);
+  BOOST_CHECK_THROW(v1.get_uint(), Fmi::Exception);
+  BOOST_CHECK_THROW(v1.get_ptime(), Fmi::Exception);
+  BOOST_CHECK_THROW(v1.get_string(), Fmi::Exception);
   BOOST_CHECK_NO_THROW(d1 = v1.get_double());
   BOOST_CHECK_CLOSE(d1, d0, 1e-10);
   BOOST_CHECK_CLOSE(234.56, v1.get<double>(), 1e-10);
@@ -171,11 +171,11 @@ BOOST_AUTO_TEST_CASE(test_ptime_value)
   const pt::ptime now = pt::second_clock::universal_time();
   pt::ptime t1;
   v1.set_ptime(now);
-  BOOST_CHECK_THROW(v1.get_bool(), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(v1.get_int(), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(v1.get_uint(), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(v1.get_double(), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(v1.get_string(), SmartMet::Spine::Exception);
+  BOOST_CHECK_THROW(v1.get_bool(), Fmi::Exception);
+  BOOST_CHECK_THROW(v1.get_int(), Fmi::Exception);
+  BOOST_CHECK_THROW(v1.get_uint(), Fmi::Exception);
+  BOOST_CHECK_THROW(v1.get_double(), Fmi::Exception);
+  BOOST_CHECK_THROW(v1.get_string(), Fmi::Exception);
   BOOST_CHECK_NO_THROW(t1 = v1.get_ptime());
   BOOST_CHECK(t1 == now);
   BOOST_CHECK(now == v1.get<pt::ptime>());
@@ -207,15 +207,15 @@ BOOST_AUTO_TEST_CASE(test_string_values)
   BOOST_CHECK_NO_THROW(s1 = v1.get_string());
   BOOST_CHECK_EQUAL(s1, std::string("123"));
   BOOST_CHECK_EQUAL(std::string("123"), v1.get<std::string>());
-  // BOOST_CHECK_THROW(v1.get_ptime(), SmartMet::Spine::Exception);
+  // BOOST_CHECK_THROW(v1.get_ptime(), Fmi::Exception);
 
   Value v2;
   v2.set_string("345.67");
-  BOOST_CHECK_THROW(v2.get_int(), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(v2.get_uint(), SmartMet::Spine::Exception);
+  BOOST_CHECK_THROW(v2.get_int(), Fmi::Exception);
+  BOOST_CHECK_THROW(v2.get_uint(), Fmi::Exception);
   BOOST_CHECK_NO_THROW(d1 = v2.get_double());
   BOOST_CHECK_CLOSE(d1, 345.67, 1e-10);
-  BOOST_CHECK_THROW(v2.get_ptime(), SmartMet::Spine::Exception);
+  BOOST_CHECK_THROW(v2.get_ptime(), Fmi::Exception);
 
   Value v3;
   v3.set_string(Fmi::to_iso_string(now));
@@ -325,12 +325,12 @@ BOOST_AUTO_TEST_CASE(test_checking_int_limits)
   const Value lower_limit(100);
   const Value upper_limit(222);
 
-  BOOST_CHECK_THROW(Value(1).check_limits(lower_limit, upper_limit), SmartMet::Spine::Exception);
-  BOOST_CHECK_THROW(Value(99).check_limits(lower_limit, upper_limit), SmartMet::Spine::Exception);
+  BOOST_CHECK_THROW(Value(1).check_limits(lower_limit, upper_limit), Fmi::Exception);
+  BOOST_CHECK_THROW(Value(99).check_limits(lower_limit, upper_limit), Fmi::Exception);
   BOOST_CHECK_NO_THROW(Value(100).check_limits(lower_limit, upper_limit));
   BOOST_CHECK_NO_THROW(Value(120).check_limits(lower_limit, upper_limit));
   BOOST_CHECK_NO_THROW(Value(222).check_limits(lower_limit, upper_limit));
-  BOOST_CHECK_THROW(Value(223).check_limits(lower_limit, upper_limit), SmartMet::Spine::Exception);
+  BOOST_CHECK_THROW(Value(223).check_limits(lower_limit, upper_limit), Fmi::Exception);
 }
 
 BOOST_AUTO_TEST_CASE(test_checking_ptime_limits)
@@ -342,10 +342,10 @@ BOOST_AUTO_TEST_CASE(test_checking_ptime_limits)
 
   BOOST_CHECK_THROW(
       Value(pt::time_from_string("2011-03-04 12:13:13")).check_limits(lower_limit, upper_limit),
-      SmartMet::Spine::Exception);
+      Fmi::Exception);
   BOOST_CHECK_THROW(
       Value(pt::time_from_string("2012-12-31 23:59:59")).check_limits(lower_limit, upper_limit),
-      SmartMet::Spine::Exception);
+      Fmi::Exception);
   BOOST_CHECK_NO_THROW(
       Value(pt::time_from_string("2013-01-01 00:00:00")).check_limits(lower_limit, upper_limit));
   BOOST_CHECK_NO_THROW(

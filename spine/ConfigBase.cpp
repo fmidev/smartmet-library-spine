@@ -1,5 +1,5 @@
 #include "ConfigBase.h"
-#include "Exception.h"
+#include <macgyver/Exception.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/lambda/lambda.hpp>
@@ -20,7 +20,7 @@ ConfigBase::ConfigBase(const std::string& file_name, const std::string& name)
   {
     if (file_name.empty())
     {
-      throw Spine::Exception(BCP, "Configuration not provided!")
+      throw Fmi::Exception(BCP, "Configuration not provided!")
           .addParameter("Name", name)
           .addParameter("Filename", file_name);
     }
@@ -36,7 +36,7 @@ ConfigBase::ConfigBase(const std::string& file_name, const std::string& name)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -47,14 +47,14 @@ ConfigBase::ConfigBase(boost::shared_ptr<libconfig::Config> config, const std::s
   {
     if (not config)
     {
-      throw Spine::Exception(BCP, "Configuration not provided!")
+      throw Fmi::Exception(BCP, "Configuration not provided!")
           .addDetail("Empty boost::shared_ptr<>")
           .addParameter("Name", name);
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -68,7 +68,7 @@ void ConfigBase::handle_libconfig_exceptions(const std::string& location) const
   }
   catch (const libconfig::SettingException& err)
   {
-    throw Spine::Exception(BCP, "Configuration file setting error!")
+    throw Fmi::Exception(BCP, "Configuration file setting error!")
         .addParameter("Name", name)
         .addParameter("Exception type", Fmi::current_exception_type())
         .addParameter("Configuration file", file_name)
@@ -78,7 +78,7 @@ void ConfigBase::handle_libconfig_exceptions(const std::string& location) const
   }
   catch (libconfig::ParseException& err)
   {
-    throw Spine::Exception(BCP, "Configuration file parsing failed!")
+    throw Fmi::Exception(BCP, "Configuration file parsing failed!")
         .addParameter("Name", name)
         .addParameter("Exception type", Fmi::current_exception_type())
         .addParameter("Configuration file", file_name)
@@ -87,7 +87,7 @@ void ConfigBase::handle_libconfig_exceptions(const std::string& location) const
   }
   catch (const libconfig::ConfigException& err)
   {
-    throw Spine::Exception(BCP, "Configuration exception!")
+    throw Fmi::Exception(BCP, "Configuration exception!")
         .addParameter("Name", name)
         .addParameter("Exception type", Fmi::current_exception_type())
         .addParameter("Configuration file", file_name)
@@ -96,7 +96,7 @@ void ConfigBase::handle_libconfig_exceptions(const std::string& location) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 
   // Not supposed to be here
@@ -126,7 +126,7 @@ void ConfigBase::dump_config(std::ostream& stream, const libconfig::Config& conf
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -247,7 +247,7 @@ void ConfigBase::dump_setting(std::ostream& stream,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -267,7 +267,7 @@ libconfig::Setting& ConfigBase::assert_is_list(libconfig::Setting& setting, int 
       std::ostringstream msg2;
       dump_setting(msg2, setting);
 
-      throw Spine::Exception(BCP, msg.str())
+      throw Fmi::Exception(BCP, msg.str())
           .addParameter("Configuration file", file_name)
           .addDetail(msg2.str());
     }
@@ -283,7 +283,7 @@ libconfig::Setting& ConfigBase::assert_is_list(libconfig::Setting& setting, int 
       std::ostringstream msg2;
       dump_setting(msg2, setting);
 
-      throw Spine::Exception(BCP, msg.str())
+      throw Fmi::Exception(BCP, msg.str())
           .addParameter("Configuration file", file_name)
           .addDetail(msg2.str());
     }
@@ -292,7 +292,7 @@ libconfig::Setting& ConfigBase::assert_is_list(libconfig::Setting& setting, int 
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -313,12 +313,12 @@ libconfig::Setting& ConfigBase::assert_is_group(libconfig::Setting& setting)
       std::ostringstream msg2;
       dump_setting(msg2, setting);
 
-      throw Spine::Exception(BCP, msg.str()).addDetail(msg2.str());
+      throw Fmi::Exception(BCP, msg.str()).addDetail(msg2.str());
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -351,7 +351,7 @@ libconfig::Setting* ConfigBase::find_setting_impl(libconfig::Setting& search_sta
 
       if (curr->isScalar())
       {
-        throw Spine::Exception(BCP, "Incorrect path!")
+        throw Fmi::Exception(BCP, "Incorrect path!")
             .addParameter("Configuration file", file_name)
             .addParameter("Path", format_path(&search_start, path))
             .addDetail(curr->getPath() + "' is scalar");
@@ -364,7 +364,7 @@ libconfig::Setting* ConfigBase::find_setting_impl(libconfig::Setting& search_sta
       {
         if (curr->isGroup())
         {
-          throw Spine::Exception(BCP, "Incorrect path!")
+          throw Fmi::Exception(BCP, "Incorrect path!")
               .addParameter("Path", format_path(&search_start, path))
               .addDetail(curr->getPath() + "' is group when array or list is expected");
         }
@@ -372,7 +372,7 @@ libconfig::Setting* ConfigBase::find_setting_impl(libconfig::Setting& search_sta
         {
           if (mandatory)
           {
-            throw Spine::Exception(BCP, "Index in path is out of range!")
+            throw Fmi::Exception(BCP, "Index in path is out of range!")
                 .addParameter("Configuration file", file_name)
                 .addParameter("Path", format_path(&search_start, path))
                 .addParameter("Index", std::to_string(ind))
@@ -398,7 +398,7 @@ libconfig::Setting* ConfigBase::find_setting_impl(libconfig::Setting& search_sta
           }
           else if (mandatory)
           {
-            throw Spine::Exception(BCP, "Path not found!")
+            throw Fmi::Exception(BCP, "Path not found!")
                 .addParameter("Configuration file", file_name)
                 .addParameter("Path", format_path(curr, name));
           }
@@ -409,7 +409,7 @@ libconfig::Setting* ConfigBase::find_setting_impl(libconfig::Setting& search_sta
         }
         else
         {
-          throw Spine::Exception(BCP, "Incorrect path!")
+          throw Fmi::Exception(BCP, "Incorrect path!")
               .addParameter("Configuration file", file_name)
               .addParameter("Path", format_path(curr, name))
               .addDetail(curr->getPath() + "' is not a group");
@@ -432,7 +432,7 @@ libconfig::Setting* ConfigBase::find_setting_impl(libconfig::Setting& search_sta
           }
           else
           {
-            throw Spine::Exception(BCP, "Configuration parameter redirection depth exceeded")
+            throw Fmi::Exception(BCP, "Configuration parameter redirection depth exceeded")
                 .addParameter("Configuration file", file_name)
                 .addParameter("Path", format_path(curr, name));
           }
@@ -444,7 +444,7 @@ libconfig::Setting* ConfigBase::find_setting_impl(libconfig::Setting& search_sta
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -462,7 +462,7 @@ std::string ConfigBase::format_path(libconfig::Setting* origin, const std::strin
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -476,7 +476,7 @@ std::string ConfigBase::get_setting_value<std::string>(const libconfig::Setting&
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -498,7 +498,7 @@ libconfig::Setting& ConfigBase::get_mandatory_config_param(libconfig::Setting& s
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -512,7 +512,7 @@ std::size_t ConfigBase::get_setting_value<std::size_t>(const libconfig::Setting&
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -520,7 +520,7 @@ std::string ConfigBase::get_optional_path(const std::string& theName,
                                           const std::string& theDefault) const
 {
   if (!itsConfig)
-    throw Spine::Exception(BCP, "Config missing");
+    throw Fmi::Exception(BCP, "Config missing");
 
   std::string value;
   if (!itsConfig->lookupValue(theName, value))
@@ -544,11 +544,11 @@ std::string ConfigBase::get_optional_path(const std::string& theName,
 std::string ConfigBase::get_mandatory_path(const std::string& theName) const
 {
   if (!itsConfig)
-    throw Spine::Exception(BCP, "Config missing");
+    throw Fmi::Exception(BCP, "Config missing");
 
   std::string value;
   if (!itsConfig->lookupValue(theName, value))
-    throw Spine::Exception(BCP, "Configuration variable " + theName + " is mandatory");
+    throw Fmi::Exception(BCP, "Configuration variable " + theName + " is mandatory");
 
   if (value[0] != '/')
   {
@@ -569,11 +569,11 @@ std::vector<std::string> ConfigBase::get_mandatory_path_array(const std::string&
   try
   {
     if (!itsConfig)
-      throw Spine::Exception(BCP, "Config missing");
+      throw Fmi::Exception(BCP, "Config missing");
 
     std::vector<std::string> paths;
     if (!get_config_array(theName, paths, min_size, max_size))
-      throw Spine::Exception(BCP, "Failed to read array of strings from variable " + theName);
+      throw Fmi::Exception(BCP, "Failed to read array of strings from variable " + theName);
 
     boost::filesystem::path p(file_name);
 
@@ -586,7 +586,7 @@ std::vector<std::string> ConfigBase::get_mandatory_path_array(const std::string&
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!")
+    throw Fmi::Exception::Trace(BCP, "Operation failed!")
         .addParameter("Path array variable name", theName);
   }
 }

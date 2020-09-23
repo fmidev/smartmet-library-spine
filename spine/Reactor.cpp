@@ -1,3 +1,4 @@
+
 // ======================================================================
 /*!
  * \brief Implementation of class Reactor
@@ -9,7 +10,6 @@
 #include "ConfigTools.h"
 #include "Convenience.h"
 #include "DynamicPlugin.h"
-#include "Exception.h"
 #include "Names.h"
 #include "Options.h"
 #include "SmartMet.h"
@@ -30,6 +30,7 @@
 #include <boost/process/child.hpp>
 #include <boost/timer/timer.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
+#include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 
 #include <algorithm>
@@ -140,7 +141,7 @@ Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::
     itsInitTasks->on_task_error([this](const std::string& name) {
       if (!isShutdownRequested())
       {
-        Exception::Trace(BCP, "Operation failed").printError();
+        Fmi::Exception::Trace(BCP, "Operation failed").printError();
         std::cout << __FILE__ << ":" << __LINE__ << ": init task " << name << " failed"
                   << std::endl;
       }
@@ -148,7 +149,7 @@ Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -179,7 +180,7 @@ void Reactor::init()
 
     if (!config.exists("plugins"))
     {
-      throw Spine::Exception(BCP, "plugins setting missing from the server configuration file");
+      throw Fmi::Exception(BCP, "plugins setting missing from the server configuration file");
     }
     else
     {
@@ -208,7 +209,7 @@ void Reactor::init()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -229,7 +230,7 @@ std::vector<std::string> Reactor::findLibraries(const std::string& theName) cons
   const auto& modules = config.lookup(names);
 
   if (!modules.isGroup())
-    throw Spine::Exception(BCP, names + "-setting must be a group of settings");
+    throw Fmi::Exception(BCP, names + "-setting must be a group of settings");
 
   // Collect all enabled modules
 
@@ -240,10 +241,10 @@ std::vector<std::string> Reactor::findLibraries(const std::string& theName) cons
     auto& settings = modules[i];
 
     if (!settings.isGroup())
-      throw Spine::Exception(BCP, name + " settings must be groups");
+      throw Fmi::Exception(BCP, name + " settings must be groups");
 
     if (settings.getName() == nullptr)
-      throw Spine::Exception(BCP, name + " settings must have names");
+      throw Fmi::Exception(BCP, name + " settings must have names");
 
     std::string module_name = settings.getName();
     std::string libfile = moduledir + "/" + module_name + ".so";
@@ -349,7 +350,7 @@ bool Reactor::addContentHandlerImpl(bool itsPrivate,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!").addParameter("URI", theUri);
+    throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("URI", theUri);
   }
 }
 
@@ -383,7 +384,7 @@ bool Reactor::setNoMatchHandler(ContentHandler theHandler)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -446,7 +447,7 @@ boost::optional<HandlerView&> Reactor::getHandlerView(const HTTP::Request& theRe
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -498,7 +499,7 @@ AccessLogStruct Reactor::getLoggedRequests() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -705,7 +706,7 @@ URIMap Reactor::getURIMap() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -746,7 +747,7 @@ URIMap Reactor::getURIMap() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "cleanLog operation failed!");
+    throw Fmi::Exception::Trace(BCP, "cleanLog operation failed!");
   }
 }
 
@@ -800,7 +801,7 @@ void Reactor::setLogging(bool loggingEnabled)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -829,7 +830,7 @@ void Reactor::listPlugins() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -853,7 +854,7 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool /* verbose */)
       absolutize_path(configfile);
 
       if (is_file_readable(configfile) != 0)
-        throw Spine::Exception(BCP,
+        throw Fmi::Exception(BCP,
                                "plugin " + pluginname + " config " + configfile +
                                    " is unreadable: " + std::strerror(errno));
     }
@@ -906,7 +907,7 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool /* verbose */)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
+    throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
   }
 }
 
@@ -950,7 +951,7 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!").addParameter("Class", theClassName);
+    throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Class", theClassName);
   }
 }
 
@@ -971,7 +972,7 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
       // phase when the plugin requests an engine. This exception is usually
       // caught in the plugin's initPlugin() method.
 
-      throw Spine::Exception(BCP, "Shutdown active!").disableStackTrace();
+      throw Fmi::Exception(BCP, "Shutdown active!").disableStackTrace();
     }
 
     Reactor::EngineInstance result;
@@ -1003,7 +1004,7 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!").addParameter("ClassName", theClassName);
+    throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("ClassName", theClassName);
   }
 }
 
@@ -1029,7 +1030,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     {
       absolutize_path(configfile);
       if (is_file_readable(configfile) != 0)
-        throw Spine::Exception(BCP,
+        throw Fmi::Exception(BCP,
                                "engine " + enginename + " config " + configfile +
                                    " is unreadable: " + std::strerror(errno));
     }
@@ -1040,7 +1041,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     if (itsHandle == nullptr)
     {
       // Error occurred while opening the dynamic library
-      throw Spine::Exception(
+      throw Fmi::Exception(
           BCP, "Unable to load dynamic engine class library: " + std::string(dlerror()));
     }
 
@@ -1054,7 +1055,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     // Check that pointers to function were loaded succesfully
     if (itsNamePointer == nullptr || itsCreatorPointer == nullptr)
     {
-      throw Spine::Exception(BCP,
+      throw Fmi::Exception(BCP,
                              "Cannot resolve dynamic library symbols: " + std::string(dlerror()));
     }
 
@@ -1085,7 +1086,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
+    throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
   }
 }
 
@@ -1167,7 +1168,7 @@ void Reactor::listEngines() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1181,7 +1182,7 @@ bool Reactor::addClientConnectionStartedHook(const std::string& hookName,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1195,7 +1196,7 @@ bool Reactor::addBackendConnectionFinishedHook(const std::string& hookName,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1209,7 +1210,7 @@ bool Reactor::addClientConnectionFinishedHook(const std::string& hookName,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1226,7 +1227,7 @@ void Reactor::callClientConnectionStartedHooks(const std::string& theClientIP)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1246,7 +1247,7 @@ void Reactor::callBackendConnectionFinishedHooks(
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1263,7 +1264,7 @@ void Reactor::callClientConnectionFinishedHooks(const std::string& theClientIP,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1274,13 +1275,13 @@ void* Reactor::getEnginePtr(const std::string& theClassName, void* user_data)
   {
     if (itsShutdownRequested)
     {
-      throw Exception::Trace(BCP,
+      throw Fmi::Exception::Trace(BCP,
                              "Shutdown in progress - engine " + theClassName + " is not available")
           .disableStackTrace();
     }
     else
     {
-      throw Exception::Trace(BCP, "No " + theClassName + " engine available");
+      throw Fmi::Exception::Trace(BCP, "No " + theClassName + " engine available");
     }
   }
   return ptr;
@@ -1380,7 +1381,7 @@ void Reactor::shutdown()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Shutdown operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Shutdown operation failed!");
   }
 }
 

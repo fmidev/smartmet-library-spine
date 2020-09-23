@@ -1,12 +1,10 @@
 #include "HandlerView.h"
-
 #include "Convenience.h"
-#include "Exception.h"
 #include "Reactor.h"
-
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem.hpp>
+#include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 
 namespace
@@ -45,7 +43,7 @@ HandlerView::HandlerView(ContentHandler theHandler,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -160,7 +158,7 @@ void HandlerView::setLogging(bool newStatus)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -177,7 +175,7 @@ bool HandlerView::queryIsFast(HTTP::Request& theRequest) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -189,7 +187,7 @@ std::string HandlerView::getPluginName() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -240,7 +238,7 @@ void HandlerView::cleanLog(const boost::posix_time::ptime& minTime)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -269,7 +267,7 @@ void HandlerView::flushLog()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

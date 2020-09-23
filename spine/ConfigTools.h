@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Exception.h"
+#include <macgyver/Exception.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <libconfig.h++>
@@ -65,7 +65,7 @@ bool lookupHostSetting(const libconfig::Config& theConfig,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Error trying to find setting value")
+    throw Fmi::Exception::Trace(BCP, "Error trying to find setting value")
         .addParameter("variable", theVariable);
   }
 }
@@ -133,7 +133,7 @@ bool lookupHostSettings(const libconfig::Config& theConfig,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Error trying to find setting value")
+    throw Fmi::Exception::Trace(BCP, "Error trying to find setting value")
         .addParameter("variable", theVariable);
   }
 }
@@ -198,7 +198,7 @@ bool lookupHostStringSettings(const libconfig::Config& theConfig,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Error trying to find setting value")
+    throw Fmi::Exception::Trace(BCP, "Error trying to find setting value")
         .addParameter("variable", theVariable);
   }
 }

@@ -1,11 +1,11 @@
 #pragma once
 
-#include "Exception.h"
 #include "Location.h"
 #include "OptionParsers.h"
 #include "Parameter.h"
 #include "TimeSeries.h"
 #include "ValueFormatter.h"
+#include <macgyver/Exception.h>
 #include <macgyver/TimeFormatter.h>
 #include <macgyver/TimeZones.h>
 

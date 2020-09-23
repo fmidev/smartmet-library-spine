@@ -1,9 +1,9 @@
 #include "SmartMetEngine.h"
 #include "Convenience.h"
-#include "Exception.h"
 #include "Reactor.h"
 #include <boost/timer/timer.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
+#include <macgyver/Exception.h>
 #include <sys/types.h>
 #include <csignal>
 #include <iostream>
@@ -27,7 +27,7 @@ void SmartMetEngine::construct(const std::string& /* engineName */, Reactor* rea
   }
   catch (...)
   {
-    throw Exception::Trace(BCP, "Engine construction failed!");
+    throw Fmi::Exception::Trace(BCP, "Engine construction failed!");
   }
 }
 
@@ -45,7 +45,7 @@ void SmartMetEngine::wait()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -59,7 +59,7 @@ void SmartMetEngine::setShutdownRequestedFlag()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -73,7 +73,7 @@ void SmartMetEngine::shutdownEngine()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

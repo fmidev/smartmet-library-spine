@@ -6,10 +6,10 @@
 
 #include "HtmlFormatter.h"
 #include "Convenience.h"
-#include "Exception.h"
 #include "Table.h"
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <macgyver/Exception.h>
 #include <iostream>
 #include <set>
 #include <stdexcept>
@@ -34,7 +34,7 @@ std::set<std::string> parse_html_attributes(const std::string& theStr)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -87,7 +87,7 @@ void HtmlFormatter::format(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

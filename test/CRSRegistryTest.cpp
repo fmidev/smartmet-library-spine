@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_CASE(test_crs_attrib)
   int i1;
   double foo = 1.23, bar = 0;
   BOOST_REQUIRE_NO_THROW(registry.set_attribute("EPSG::4037", "foo", foo));
-  BOOST_REQUIRE_THROW(registry.get_attribute("EPSG::4307", "foo", &i1), Exception);
+  BOOST_REQUIRE_THROW(registry.get_attribute("EPSG::4307", "foo", &i1), Fmi::Exception);
   BOOST_REQUIRE_NO_THROW(found = registry.get_attribute("EPSG::4326", "foo", &bar));
   BOOST_CHECK(not found);
   BOOST_REQUIRE_NO_THROW(found = registry.get_attribute("EPSG::4037", "foo", &bar));

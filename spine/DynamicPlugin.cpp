@@ -6,11 +6,11 @@
 
 #include "DynamicPlugin.h"
 #include "Convenience.h"
-#include "Exception.h"
 #include "Reactor.h"
 #include <boost/bind.hpp>
 #include <boost/timer/timer.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
+#include <macgyver/Exception.h>
 #include <sys/types.h>
 #include <csignal>
 #include <iostream>
@@ -48,7 +48,7 @@ DynamicPlugin::DynamicPlugin(const std::string& theFilename,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -61,7 +61,7 @@ void DynamicPlugin::initializePlugin()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -108,7 +108,7 @@ void DynamicPlugin::reloadPlugin()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -136,7 +136,7 @@ void DynamicPlugin::pluginOpen()
     if (itsHandle == nullptr)
     {
       // Error occurred while opening the dynamic library
-      throw Spine::Exception(BCP,
+      throw Fmi::Exception(BCP,
                              "Unable to load dynamic library plugin: " + std::string(dlerror()));
     }
 
@@ -149,7 +149,7 @@ void DynamicPlugin::pluginOpen()
     // Check that pointers to function were loaded succesfully
     if (plugin_create_func == nullptr || plugin_destroy_func == nullptr)
     {
-      throw Spine::Exception(BCP, "Cannot load symbols: " + std::string(dlerror()));
+      throw Fmi::Exception(BCP, "Cannot load symbols: " + std::string(dlerror()));
     }
 
     // Create an instance of the class using the pointer to "create" function
@@ -158,19 +158,19 @@ void DynamicPlugin::pluginOpen()
 
     if (itsPlugin == nullptr)
     {
-      throw Spine::Exception(BCP, "Unable to create a new instance of plugin class");
+      throw Fmi::Exception(BCP, "Unable to create a new instance of plugin class");
     }
 
     // Verify that the Plugin and Reactor API versions match.
 
     if (itsPlugin->getRequiredAPIVersion() != itsReactorClass.getRequiredAPIVersion())
     {
-      throw Spine::Exception(BCP, "Plugin and Server SmartMet API Version mismatch.");
+      throw Fmi::Exception(BCP, "Plugin and Server SmartMet API Version mismatch.");
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -207,7 +207,7 @@ void DynamicPlugin::pluginClose()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -222,7 +222,7 @@ void DynamicPlugin::shutdownPlugin()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -237,7 +237,7 @@ void DynamicPlugin::setShutdownRequestedFlag()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

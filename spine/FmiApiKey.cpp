@@ -1,5 +1,5 @@
 #include "FmiApiKey.h"
-#include "Exception.h"
+#include <macgyver/Exception.h>
 
 namespace SmartMet
 {
@@ -39,7 +39,7 @@ boost::optional<std::string> getFmiApiKey(const HTTP::Request& theRequest, bool 
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

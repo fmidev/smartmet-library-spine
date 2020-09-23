@@ -1,10 +1,10 @@
 #include "Json.h"
-#include "Exception.h"
 #include "HTTP.h"
 #include "JsonCache.h"
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/regex.hpp>
+#include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 
 namespace SmartMet
@@ -67,15 +67,15 @@ void collect_qids(Json::Value& theJson,
         Json::Value& json = theJson["qid"];
 
         if (!json.isString())
-          throw Spine::Exception(BCP, "The 'qid' value must be a string!");
+          throw Fmi::Exception(BCP, "The 'qid' value must be a string!");
         auto qid = json.asString();
 
         if (qid.empty())
-          throw Spine::Exception(BCP, "The 'qid' value must not be empty!");
+          throw Fmi::Exception(BCP, "The 'qid' value must not be empty!");
 
         auto dotpos = qid.find('.');
         if (dotpos != std::string::npos)
-          throw Spine::Exception(BCP, "The 'qid' value must not contain dots!");
+          throw Fmi::Exception(BCP, "The 'qid' value must not contain dots!");
 
         if (theCaseIsInsensitive)
           Fmi::ascii_tolower(qid);
@@ -97,7 +97,7 @@ void collect_qids(Json::Value& theJson,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Failed to collect qid:s from JSON!");
+    throw Fmi::Exception::Trace(BCP, "Failed to collect qid:s from JSON!");
   }
 }
 
@@ -170,7 +170,7 @@ void JSON::preprocess(Json::Value& theJson,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -203,7 +203,7 @@ void deref(Json::Value& theJson, Json::Value& theRoot)
         Json::Path json_path(path);
         const auto& value = json_path.resolve(theRoot);
         if (value.isNull())
-          throw Spine::Exception(BCP, "Failed to dereference '" + tmp + "'!");
+          throw Fmi::Exception(BCP, "Failed to dereference '" + tmp + "'!");
         // We will not dereference the dereferenced value!
         theJson = value;
       }
@@ -227,7 +227,7 @@ void deref(Json::Value& theJson, Json::Value& theRoot)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -239,7 +239,7 @@ void JSON::dereference(Json::Value& theJson)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -266,16 +266,16 @@ void JSON::extract_set(const std::string& theName,
         if (json.isString())
           theSet.insert(json.asString());
         else
-          throw Spine::Exception(BCP, "The '" + theName + "' array must contain strings only!");
+          throw Fmi::Exception(BCP, "The '" + theName + "' array must contain strings only!");
       }
     }
     else
-      throw Spine::Exception(
+      throw Fmi::Exception(
           BCP, "The '" + theName + "' setting must be a string or an array of strings!");
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -302,16 +302,16 @@ void JSON::extract_set(const std::string& theName,
         if (json.isInt())
           theSet.insert(json.asInt());
         else
-          throw Spine::Exception(BCP, "The '" + theName + "' array must contain integers only");
+          throw Fmi::Exception(BCP, "The '" + theName + "' array must contain integers only");
       }
     }
     else
-      throw Spine::Exception(
+      throw Fmi::Exception(
           BCP, "The '" + theName + "' setting must be an integer or an array of integers");
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -385,7 +385,7 @@ void replaceFromQueryString(Json::Value& theJson,
       if (qid_json != theQids.end())
       {
         if (qid == name)
-          throw Spine::Exception(BCP, "Parameter name cannot match qid exactly")
+          throw Fmi::Exception(BCP, "Parameter name cannot match qid exactly")
               .addParameter("parameter", name)
               .addParameter("value", name_value.second);
 
@@ -419,7 +419,7 @@ void replaceFromQueryString(Json::Value& theJson,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "JSON expansion failed!");
+    throw Fmi::Exception::Trace(BCP, "JSON expansion failed!");
   }
 }
 

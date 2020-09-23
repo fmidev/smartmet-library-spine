@@ -5,16 +5,13 @@
 // ======================================================================
 
 #include "Options.h"
-
 #include "ConfigTools.h"
-#include "Exception.h"
-
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/program_options.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
+#include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
-
 #include <iostream>
 
 namespace SmartMet
@@ -48,7 +45,7 @@ bool Options::parse(int argc, char* argv[])
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -165,25 +162,25 @@ bool Options::parseOptions(int argc, char* argv[])
 
     if (slowpool.minsize > 10000 || fastpool.minsize > 10000)
     {
-      throw Spine::Exception(BCP, "The maximum number of threads is 10000!");
+      throw Fmi::Exception(BCP, "The maximum number of threads is 10000!");
     }
 
     if (compresslimit < 100)
     {
-      throw Spine::Exception(BCP, "Compression size limit below 100 makes no sense!");
+      throw Fmi::Exception(BCP, "Compression size limit below 100 makes no sense!");
     }
 
     if (throttle.start_limit > throttle.limit)
       throttle.start_limit = throttle.limit;
 
     if (throttle.start_limit == 0 || throttle.limit == 0 || throttle.increase_rate == 0)
-      throw Spine::Exception(BCP, "Active request settings must be > 0");
+      throw Fmi::Exception(BCP, "Active request settings must be > 0");
 
     return true;
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -201,7 +198,7 @@ void Options::parseConfig()
       return;
 
     if (!boost::filesystem::exists(configfile))
-      throw Spine::Exception(BCP, "Configuration file missing")
+      throw Fmi::Exception(BCP, "Configuration file missing")
           .addParameter("configfile", configfile);
 
     if (verbose)
@@ -250,26 +247,26 @@ void Options::parseConfig()
     }
     catch (libconfig::ParseException& e)
     {
-      throw Spine::Exception(BCP, "libconfig parser error")
+      throw Fmi::Exception(BCP, "libconfig parser error")
           .addParameter("error", std::string("'") + e.getError() + "'")
           .addParameter("file", e.getFile())
           .addParameter("line", Fmi::to_string(e.getLine()));
     }
     catch (libconfig::SettingException& e)
     {
-      throw Spine::Exception(BCP, "libconfig setting error")
+      throw Fmi::Exception(BCP, "libconfig setting error")
           .addParameter("error", std::string("'") + e.what() + "'")
           .addParameter("path", e.getPath());
     }
     catch (libconfig::ConfigException& e)
     {
-      throw Spine::Exception(BCP, "libconfig configuration error")
+      throw Fmi::Exception(BCP, "libconfig configuration error")
           .addParameter("error", std::string("'") + e.what() + "'");
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Failed to parse configuration file")
+    throw Fmi::Exception::Trace(BCP, "Failed to parse configuration file")
         .addParameter("configfile", configfile);
   }
 }
@@ -311,7 +308,7 @@ void Options::report() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

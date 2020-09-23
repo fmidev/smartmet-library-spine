@@ -109,7 +109,7 @@ bool lookupConfigSetting(const libconfig::Config& theConfig,
   // configuration file. Hence we do not just return false, but
   // throw instead in order to provide a good error message.
 
-  throw Exception(BCP, "Host specific configuration file not found")
+  throw Fmi::Exception(BCP, "Host specific configuration file not found")
       .addParameter("component", theVariable)
       .addParameter("configpath", configpath)
       .addParameter("hostname", boost::asio::ip::host_name())

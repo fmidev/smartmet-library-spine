@@ -5,7 +5,7 @@
 // ======================================================================
 
 #include "Parameter.h"
-#include "Exception.h"
+#include <macgyver/Exception.h>
 #include <boost/functional/hash.hpp>
 #include <sstream>
 #include <stdexcept>
@@ -69,7 +69,7 @@ std::string Parameter::typestring() const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -92,7 +92,7 @@ std::size_t hash_value(const Parameter& theParam)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

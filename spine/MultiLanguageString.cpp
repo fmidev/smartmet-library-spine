@@ -1,7 +1,7 @@
 #include "MultiLanguageString.h"
 #include "ConfigBase.h"
-#include "Exception.h"
 #include <boost/algorithm/string.hpp>
+#include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TypeName.h>
 #include <sstream>
@@ -63,7 +63,7 @@ MultiLanguageString::MultiLanguageString(const std::string& default_language,
           msg << "' while reading item '";
           SmartMet::Spine::ConfigBase::dump_setting(msg, setting);
           msg << "'";
-          throw SmartMet::Spine::Exception(BCP, msg.str());
+          throw Fmi::Exception(BCP, msg.str());
         }
 
         const std::string value = item;
@@ -80,7 +80,7 @@ MultiLanguageString::MultiLanguageString(const std::string& default_language,
         msg << "The string for the default language '" << this->default_language
             << "' is not found in '";
         SmartMet::Spine::ConfigBase::dump_setting(msg, setting);
-        throw SmartMet::Spine::Exception(BCP, msg.str());
+        throw Fmi::Exception(BCP, msg.str());
       }
     }
     else
@@ -89,12 +89,12 @@ MultiLanguageString::MultiLanguageString(const std::string& default_language,
       msg << "Libconfig group expected instead of '";
       SmartMet::Spine::ConfigBase::dump_setting(msg, setting);
       msg << "'";
-      throw SmartMet::Spine::Exception(BCP, msg.str());
+      throw Fmi::Exception(BCP, msg.str());
     }
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -108,7 +108,7 @@ std::shared_ptr<MultiLanguageString> MultiLanguageString::create(
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -130,6 +130,6 @@ std::string MultiLanguageString::get(const std::string& language) const
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }

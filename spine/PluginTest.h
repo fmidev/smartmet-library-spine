@@ -76,7 +76,7 @@ void printRequest(SmartMet::Spine::HTTP::Request& request)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -97,7 +97,7 @@ std::vector<std::string> read_file(const std::string& fn)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -121,7 +121,7 @@ std::string get_diff(const std::string& src, const std::string& dest)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -138,7 +138,7 @@ bool check_path(bool ok, const fs::path& p)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -166,7 +166,7 @@ void add_to_path_list(fs::directory_entry& entry,
 
         if (dest->size() >= max_files)
         {
-          throw SmartMet::Spine::Exception(BCP, "Too many files!")
+          throw Fmi::Exception(BCP, "Too many files!")
               .addParameter("Files", std::to_string(dest->size()))
               .addParameter("Max files", std::to_string(max_files));
         }
@@ -180,7 +180,7 @@ void add_to_path_list(fs::directory_entry& entry,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -191,7 +191,7 @@ std::list<fs::path> recursive_directory_contents(const fs::path& top, unsigned m
     using boost::bind;
 
     if (!boost::filesystem::exists(top) || !boost::filesystem::is_directory(top))
-      throw SmartMet::Spine::Exception(
+      throw Fmi::Exception(
           BCP, "Could not open directory '" + top.string() + "' for reading!");
 
     std::list<fs::path> result;
@@ -205,7 +205,7 @@ std::list<fs::path> recursive_directory_contents(const fs::path& top, unsigned m
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -223,7 +223,7 @@ std::string get_file_contents(const boost::filesystem::path& filename)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -244,7 +244,7 @@ void put_file_contents(const boost::filesystem::path& filename, const std::strin
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -274,7 +274,7 @@ std::string get_full_response(SmartMet::Spine::HTTP::Response& response)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -300,7 +300,7 @@ bool get_processed_response(const SmartMet::Spine::HTTP::Response& response,
       handle = popen(cmd.c_str(), "r");
 
       if (!handle)
-        throw SmartMet::Spine::Exception(BCP, "The 'popen()' function call failed!");
+        throw Fmi::Exception(BCP, "The 'popen()' function call failed!");
 
       const int buflen = 1024;
       char buf[buflen];
@@ -334,7 +334,7 @@ bool get_processed_response(const SmartMet::Spine::HTTP::Response& response,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -419,7 +419,7 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
       catch (...)
       {
         ++num_failed;
-        SmartMet::Spine::Exception ex(BCP, "Test failed");
+        Fmi::Exception ex(BCP, "Test failed");
         ex.printError();
       }
     };
@@ -443,7 +443,7 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
   }
   catch (...)
   {
-    SmartMet::Spine::Exception e(BCP, "Plugin test failed!", nullptr);
+    Fmi::Exception e(BCP, "Plugin test failed!", nullptr);
     std::cout << e.getStackTrace() << std::endl;
     return 1;
   }

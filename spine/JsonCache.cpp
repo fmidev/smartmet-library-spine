@@ -1,7 +1,7 @@
 // ======================================================================
 
 #include "JsonCache.h"
-#include "Exception.h"
+#include <macgyver/Exception.h>
 #include <boost/filesystem/operations.hpp>
 #include <fstream>
 #include <stdexcept>
@@ -51,7 +51,7 @@ Json::Value JsonCache::get(const boost::filesystem::path& thePath) const
     std::string content;
     std::ifstream in{thePath.c_str()};
     if (!in)
-      throw Spine::Exception{BCP,
+      throw Fmi::Exception{BCP,
                              "Failed to open '" + std::string(thePath.c_str()) + "' for reading!"};
 
     content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
@@ -62,7 +62,7 @@ Json::Value JsonCache::get(const boost::filesystem::path& thePath) const
     Json::Value json;
     bool json_ok = reader.parse(content, json);
     if (!json_ok)
-      throw Spine::Exception{
+      throw Fmi::Exception{
           BCP, "Failed to parse '" + thePath.string() + "': " + reader.getFormattedErrorMessages()};
 
     // Now insert the value into the cache and return it
@@ -75,7 +75,7 @@ Json::Value JsonCache::get(const boost::filesystem::path& thePath) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }  // namespace Spine
 

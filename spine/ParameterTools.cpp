@@ -116,7 +116,7 @@ std::string format_date(const boost::local_time::local_date_time& ldt,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -140,7 +140,7 @@ bool special(const Parameter& theParam)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -168,7 +168,7 @@ bool parameter_is_arithmetic(const Spine::Parameter& theParameter)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -194,7 +194,7 @@ bool is_plain_location_query(const Spine::OptionParsers::ParameterList& theParam
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -276,11 +276,11 @@ std::string location_parameter(const Spine::LocationPtr loc,
     if (paramName == ELEVATION_PARAM || paramName == STATION_ELEVATION_PARAM)
       return valueformatter.format(loc->elevation, precision);
 
-    throw Spine::Exception(BCP, "Unknown location parameter: '" + paramName + "'");
+    throw Fmi::Exception(BCP, "Unknown location parameter: '" + paramName + "'");
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -309,7 +309,7 @@ bool is_time_parameter(std::string paramname)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -542,7 +542,7 @@ Spine::TimeSeries::Value time_parameter(const std::string paramname,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -557,7 +557,7 @@ Spine::Parameter makeParameter(const std::string& name)
   try
   {
     if (name.empty())
-      throw Spine::Exception(BCP, "Empty parameters are not allowed");
+      throw Fmi::Exception(BCP, "Empty parameters are not allowed");
 
     std::string p = boost::algorithm::to_lower_copy(name, std::locale::classic());
     Spine::Parameter::Type type;
@@ -580,7 +580,7 @@ Spine::Parameter makeParameter(const std::string& name)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

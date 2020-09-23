@@ -1,6 +1,6 @@
 
 #include "IPFilter.h"
-#include "Exception.h"
+#include <macgyver/Exception.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/spirit/include/qi.hpp>
 
@@ -32,12 +32,12 @@ SequenceFilterPtr makeFilter(const std::string& formatToken)
     }
     else
     {
-      throw Spine::Exception(BCP, "Unrecognized format token: " + formatToken);
+      throw Fmi::Exception(BCP, "Unrecognized format token: " + formatToken);
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -74,7 +74,7 @@ RangeFilter::RangeFilter(const std::string& format)
 
     if (limits.size() != 2)
     {
-      throw Spine::Exception(BCP, "Invalid range filter construction format: " + format);
+      throw Fmi::Exception(BCP, "Invalid range filter construction format: " + format);
     }
 
     unsigned long first = std::strtoul(limits[0].c_str(), nullptr, 10);
@@ -94,7 +94,7 @@ RangeFilter::RangeFilter(const std::string& format)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -115,7 +115,7 @@ bool RangeFilter::match(const std::string& sequence) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -129,7 +129,7 @@ AddressFilter::AddressFilter(const std::string& formatString)
 
     if (tokens.size() != 4)
     {
-      throw Spine::Exception(BCP, "Invalid IP filter format string: " + formatString);
+      throw Fmi::Exception(BCP, "Invalid IP filter format string: " + formatString);
     }
 
     unsigned int index = 0;
@@ -141,7 +141,7 @@ AddressFilter::AddressFilter(const std::string& formatString)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -168,7 +168,7 @@ bool AddressFilter::match(const std::vector<std::string>& ipTokens) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -192,7 +192,7 @@ IPConfig::IPConfig(const std::string& configFile, const std::string& root) : Con
 
     if (!success)
     {
-      throw Spine::Exception(BCP,
+      throw Fmi::Exception(BCP,
                              "Group '" + (root.empty() ? "ip_filters" : (root + ".ip_filters")) +
                                  "' not found in configuration");
     }
@@ -201,7 +201,7 @@ IPConfig::IPConfig(const std::string& configFile, const std::string& root) : Con
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -224,7 +224,7 @@ IPConfig::IPConfig(boost::shared_ptr<libconfig::Config> configPtr, const std::st
 
     if (!success)
     {
-      throw Spine::Exception(BCP,
+      throw Fmi::Exception(BCP,
                              "Group '" + (root.empty() ? "ip_filters" : (root + ".ip_filters")) +
                                  "' not found in configuration");
     }
@@ -233,7 +233,7 @@ IPConfig::IPConfig(boost::shared_ptr<libconfig::Config> configPtr, const std::st
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -255,7 +255,7 @@ IPFilter::IPFilter(const std::string& configFile, const std::string& root)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -272,7 +272,7 @@ IPFilter::IPFilter(boost::shared_ptr<libconfig::Config> configPtr, const std::st
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -287,7 +287,7 @@ IPFilter::IPFilter(const std::vector<std::string>& formatTokens) : itsConfig()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -314,7 +314,7 @@ bool IPFilter::match(const std::string& ip) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
