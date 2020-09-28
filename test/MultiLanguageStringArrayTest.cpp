@@ -1,6 +1,6 @@
-#include "Exception.h"
 #include "MultiLanguageStringArray.h"
 #include <boost/test/included/unit_test.hpp>
+#include <macgyver/Exception.h>
 #include <macgyver/TypeName.h>
 
 using namespace boost::unit_test;
@@ -79,5 +79,5 @@ BOOST_AUTO_TEST_CASE(test_multi_language_string_array_1)
 
   m_fin.add(Setting::TypeString) = "Neljä";
   // Not equal size: should throw an exception
-  BOOST_CHECK_THROW(MultiLanguageStringArray::create("eng", ml_root), SmartMet::Spine::Exception);
+  BOOST_CHECK_THROW(MultiLanguageStringArray::create("eng", ml_root), Fmi::Exception);
 }

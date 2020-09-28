@@ -1,5 +1,5 @@
 #include "TimeSeriesGeneratorCache.h"
-#include "Exception.h"
+#include <macgyver/Exception.h>
 #include <boost/functional/hash.hpp>
 
 namespace SmartMet
@@ -23,7 +23,7 @@ void TimeSeriesGeneratorCache::resize(std::size_t theSize) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -58,7 +58,7 @@ TimeSeriesGeneratorCache::TimeList TimeSeriesGeneratorCache::generate(
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

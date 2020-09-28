@@ -3,32 +3,7 @@ LIB = smartmet-$(SUBNAME)
 SPEC = smartmet-library-$(SUBNAME)
 INCDIR = smartmet/$(SUBNAME)
 
-# Installation directories
-
-processor := $(shell uname -p)
-
-ifeq ($(origin PREFIX), undefined)
-  PREFIX = /usr
-else
-  PREFIX = $(PREFIX)
-endif
-
-ifeq ($(processor), x86_64)
-  libdir = $(PREFIX)/lib64
-else
-  libdir = $(PREFIX)/lib
-endif
-
-bindir = $(PREFIX)/bin
-includedir = $(PREFIX)/include
-objdir = obj
-
-# Compiler options
-
--include $(HOME)/.smartmet.mk
-GCC_DIAG_COLOR ?= always
-CXX_STD ?= c++11
-
+include common.mk
 DEFINES = -DUNIX -D_REENTRANT
 
 # Boost 1.69
@@ -45,9 +20,10 @@ else
   INCLUDES += -I/usr/include/gdal
 endif
 
-ifeq ($(CXX), clang++)
+ifeq ($(USE_CLANG), yes)
  FLAGS = -std=$(CXX_STD) -fPIC \
-	-Weverything \
+	-Wall \
+        -Wextra \
 	-Wno-shadow \
 	-Wno-c++98-compat-pedantic \
 	-Wno-float-equal \
@@ -58,9 +34,10 @@ ifeq ($(CXX), clang++)
 	-Wno-documentation-unknown-command \
 	-Wno-sign-conversion
 
- INCLUDES += -isystem $(includedir)/smartmet \
+ INCLUDES += -I $(includedir)/smartmet \
 	-isystem $(includedir)/mysql \
-	-isystem $(includedir)/jsoncpp
+	-isystem $(includedir)/jsoncpp \
+        $(SYSTEM_INCLUDES)
 else
 
  FLAGS = -std=$(CXX_STD) -Wall -W -fPIC -Wno-unused-parameter -fno-omit-frame-pointer -fdiagnostics-color=$(GCC_DIAG_COLOR)
@@ -156,7 +133,7 @@ release: all
 profile: all
 
 $(LIBFILE): $(OBJS)
-	$(CXX) $(CFLAGS) -shared -rdynamic -o $(LIBFILE) $(OBJS) $(LIBS)
+	$(CC) $(LDFLAGS) -shared -rdynamic -o $(LIBFILE) $(OBJS) $(LIBS)
 
 clean:
 	rm -f $(LIBFILE) $(OBJS) $(patsubst obj/%.o,obj/%.d,$(OBJS)) *~ $(SUBNAME)/*~

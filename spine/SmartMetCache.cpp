@@ -1,7 +1,6 @@
 #include "SmartMetCache.h"
-#include "Exception.h"
+#include <macgyver/Exception.h>
 #include <vector>
-
 #include <boost/bind.hpp>
 #include <boost/make_shared.hpp>
 
@@ -24,7 +23,7 @@ SmartMetCache::SmartMetCache(std::size_t memoryCacheSize,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -74,7 +73,7 @@ SmartMetCache::ValueType SmartMetCache::find(KeyType hash)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -94,7 +93,7 @@ void SmartMetCache::insert(KeyType hash, ValueType data)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -115,7 +114,7 @@ std::vector<std::pair<SmartMetCache::KeyType, SmartMetCache::ValueType>> SmartMe
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -149,7 +148,7 @@ void SmartMetCache::operateFileCache()
   }
   catch (...)
   {
-    Spine::Exception exception(BCP, "Operation failed!", nullptr);
+    Fmi::Exception exception(BCP, "Operation failed!", nullptr);
     std::cerr << exception.getStackTrace();
   }
 }
@@ -171,7 +170,7 @@ void SmartMetCache::queueFileWrites(const std::vector<std::pair<KeyType, ValueTy
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

@@ -5,7 +5,7 @@
 // ======================================================================
 
 #include "TimeSeriesGenerator.h"
-#include "Exception.h"
+#include <macgyver/Exception.h>
 #include <macgyver/TimeParser.h>
 
 namespace bp = boost::posix_time;
@@ -77,7 +77,7 @@ void generate_fixedtimes(std::set<bl::local_date_time>& theTimes,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -152,7 +152,7 @@ void generate_timesteps(std::set<bl::local_date_time>& theTimes,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -238,7 +238,7 @@ void generate_datatimes(std::set<bl::local_date_time>& theTimes,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -273,7 +273,7 @@ void generate_graphtimes(std::set<bl::local_date_time>& theTimes,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -348,7 +348,7 @@ LocalTimeList generate(const TimeSeriesGeneratorOptions& theOptions,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

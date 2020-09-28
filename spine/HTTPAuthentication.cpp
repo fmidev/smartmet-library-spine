@@ -1,9 +1,9 @@
 #include "HTTPAuthentication.h"
-#include "Exception.h"
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <macgyver/Base64.h>
+#include <macgyver/Exception.h>
 #include <macgyver/TypeName.h>
 
 namespace ba = boost::algorithm;
@@ -100,7 +100,7 @@ bool Authentication::authenticateRequest(const Request& request, Response& respo
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

@@ -5,7 +5,7 @@
 // ======================================================================
 
 #include "QCConverter.h"
-#include "Exception.h"
+#include <macgyver/Exception.h>
 #include <string>
 
 namespace SmartMet
@@ -89,7 +89,7 @@ QCConverter::QCConverter()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -113,7 +113,7 @@ bool QCConverter::convert(std::string& newCode, const std::string& oldCode)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -133,7 +133,7 @@ bool QCConverterOpen::convert(std::string& newCode, const std::string& oldCode)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

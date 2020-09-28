@@ -7,13 +7,13 @@
 #include "TableFormatterFactory.h"
 #include "AsciiFormatter.h"
 #include "DebugFormatter.h"
-#include "Exception.h"
 #include "HtmlFormatter.h"
 #include "JsonFormatter.h"
 #include "PhpFormatter.h"
 #include "SerialFormatter.h"
 #include "WxmlFormatter.h"
 #include "XmlFormatter.h"
+#include <macgyver/Exception.h>
 #include <stdexcept>
 
 namespace SmartMet
@@ -49,11 +49,11 @@ TableFormatter* create(const std::string& theName)
     if (theName == "debug")
       return new DebugFormatter();
 
-    throw Spine::Exception(BCP, "Unknown data format request '" + theName + "'");
+    throw Fmi::Exception(BCP, "Unknown data format request '" + theName + "'");
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

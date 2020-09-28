@@ -6,7 +6,7 @@
 
 #include "ValueFormatter.h"
 #include "Convenience.h"
-#include "Exception.h"
+#include <macgyver/Exception.h>
 #include <boost/optional.hpp>
 #include <fmt/format.h>
 #include <fmt/printf.h>
@@ -156,7 +156,7 @@ ValueFormatter::ValueFormatter(const HTTP::Request& theReq)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -212,7 +212,7 @@ std::string ValueFormatter::format(double theValue, int thePrecision) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

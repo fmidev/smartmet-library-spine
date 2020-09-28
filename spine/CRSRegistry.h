@@ -18,6 +18,9 @@
 #include <ostream>
 #include <typeinfo>
 
+class OGRSpatialReference;
+class OGRGeometry;
+
 namespace SmartMet
 {
 namespace Spine

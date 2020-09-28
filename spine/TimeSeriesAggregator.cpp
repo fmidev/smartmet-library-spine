@@ -1,8 +1,9 @@
 #include "TimeSeriesAggregator.h"
+
 #include "Convenience.h"
-#include "Exception.h"
 #include "TimeSeries.h"
 #include "TimeSeriesOutput.h"
+#include <macgyver/Exception.h>
 #include <newbase/NFmiGlobals.h>
 #include <cmath>
 #include <iostream>
@@ -49,7 +50,7 @@ double StatCalculator::getDoubleStatValue(const ParameterFunction& func, bool us
 {
   try
   {
-    Fmi::Stat::Stat stat(itsDataVector, kFloatMissing);
+    Fmi::Stat::Stat stat(itsDataVector, static_cast<double>(kFloatMissing));
     stat.useWeights(useWeights);
 
     switch (func.id())
@@ -78,9 +79,11 @@ double StatCalculator::getDoubleStatValue(const ParameterFunction& func, bool us
       case FunctionId::Trend:
         return stat.trend();
       case FunctionId::Nearest:
-        return (itsTimestep ? stat.nearest(itsTimestep->utc_time()) : kFloatMissing);
+        return (itsTimestep ? stat.nearest(itsTimestep->utc_time())
+                            : static_cast<double>(kFloatMissing));
       case FunctionId::Interpolate:
-        return (itsTimestep ? stat.interpolate(itsTimestep->utc_time()) : kFloatMissing);
+        return (itsTimestep ? stat.interpolate(itsTimestep->utc_time())
+                            : static_cast<double>(kFloatMissing));
       case FunctionId::NullFunction:
         return kFloatMissing;
 #ifndef UNREACHABLE
@@ -91,7 +94,7 @@ double StatCalculator::getDoubleStatValue(const ParameterFunction& func, bool us
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -151,12 +154,12 @@ std::string StatCalculator::getStringStatValue(const ParameterFunction& func) co
     {
       std::stringstream ss;
       ss << "Function " << func.hash() << " can not be applied for a string!";
-      throw Spine::Exception(BCP, ss.str().c_str());
+      throw Fmi::Exception(BCP, ss.str().c_str());
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -179,12 +182,12 @@ boost::local_time::local_date_time StatCalculator::getLocalDateTimeStatValue(
     {
       std::stringstream ss;
       ss << "Function " << func.hash() << " can not be applied for a date!";
-      throw Spine::Exception(BCP, ss.str().c_str());
+      throw Fmi::Exception(BCP, ss.str().c_str());
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -238,12 +241,12 @@ LonLat StatCalculator::getLonLatStatValue(const ParameterFunction& func) const
     {
       std::stringstream ss;
       ss << "Function " << func.hash() << " can not be applied for a lonlat-coordinate!";
-      throw Spine::Exception(BCP, ss.str().c_str());
+      throw Fmi::Exception(BCP, ss.str().c_str());
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -268,7 +271,7 @@ void StatCalculator::operator()(const TimedValue& tv)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -325,7 +328,7 @@ Value StatCalculator::getStatValue(const ParameterFunction& func, bool useWeight
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -402,7 +405,7 @@ std::vector<std::pair<int, int> > get_aggregation_indexes(const ParameterFunctio
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -442,7 +445,7 @@ TimeSeries area_aggregate(const TimeSeriesGroup& ts_group, const ParameterFuncti
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -482,7 +485,7 @@ TimeSeriesPtr time_aggregate(const TimeSeries& ts, const ParameterFunction& func
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -504,7 +507,7 @@ TimeSeriesGroupPtr time_aggregate(const TimeSeriesGroup& ts_group, const Paramet
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -560,7 +563,7 @@ TimeSeriesPtr aggregate(const TimeSeries& ts, const ParameterFunctions& pf)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -635,7 +638,7 @@ TimeSeriesGroupPtr aggregate(const TimeSeriesGroup& ts_group, const ParameterFun
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

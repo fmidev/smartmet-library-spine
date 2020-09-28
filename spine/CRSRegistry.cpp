@@ -1,10 +1,12 @@
 #include "CRSRegistry.h"
-#include "Exception.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <boost/spirit/include/qi.hpp>
+#include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TypeName.h>
+#include <ogr_geometry.h>
+#include <ogr_spatialref.h>
 #include <ogr_srs_api.h>
 #include <stdexcept>
 
@@ -68,7 +70,7 @@ class CRSRegistry::TransformationImpl : public CRSRegistry::Transformation
 
 #define CHECK_NAME(name)   \
   if (crs_map.count(name)) \
-    throw Spine::Exception(BCP, "Duplicate name of coordinate system (" + name + ")!");
+    throw Fmi::Exception(BCP, "Duplicate name of coordinate system (" + name + ")!");
 
 CRSRegistry::CRSRegistry() {}
 
@@ -83,12 +85,12 @@ void CRSRegistry::register_epsg(const std::string& name,
   {
     Spine::WriteLock lock(rw_lock);
     const std::string nm = Fmi::ascii_tolower_copy(name);
-    CHECK_NAME(nm);
+    CHECK_NAME(nm)
 
     MapEntry entry(name, regex);
     if (entry.cs->importFromEPSG(epsg_code) != OGRERR_NONE)
     {
-      throw Spine::Exception(BCP,
+      throw Fmi::Exception(BCP,
                              "Failed to register projection EPSG:" + Fmi::to_string(epsg_code));
     }
     entry.cs->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
@@ -102,7 +104,7 @@ void CRSRegistry::register_epsg(const std::string& name,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -116,12 +118,12 @@ void CRSRegistry::register_proj4(const std::string& name,
     Spine::WriteLock lock(rw_lock);
 
     const std::string nm = Fmi::ascii_tolower_copy(name);
-    CHECK_NAME(nm);
+    CHECK_NAME(nm)
 
     MapEntry entry(name, regex);
     if (entry.cs->importFromProj4(proj4_def.c_str()) != OGRERR_NONE)
     {
-      throw Spine::Exception(BCP, "Failed to parse PROJ.4 definition '" + proj4_def + "'!");
+      throw Fmi::Exception(BCP, "Failed to parse PROJ.4 definition '" + proj4_def + "'!");
     }
     entry.cs->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
 
@@ -133,7 +135,7 @@ void CRSRegistry::register_proj4(const std::string& name,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -147,7 +149,7 @@ void CRSRegistry::register_wkt(const std::string& name,
     Spine::WriteLock lock(rw_lock);
 
     const std::string nm = Fmi::ascii_tolower_copy(name);
-    CHECK_NAME(nm);
+    CHECK_NAME(nm)
 
     MapEntry entry(name, regex);
 
@@ -175,11 +177,11 @@ void CRSRegistry::register_wkt(const std::string& name,
 
     entry.swap_coord = swap_coord;
 
-    throw Spine::Exception(BCP, "Failed to parse PROJ.4 definition '" + wkt_def + "'!");
+    throw Fmi::Exception(BCP, "Failed to parse PROJ.4 definition '" + wkt_def + "'!");
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -205,7 +207,7 @@ boost::shared_ptr<CRSRegistry::Transformation> CRSRegistry::create_transformatio
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -259,7 +261,7 @@ Spine::BoundingBox CRSRegistry::convert_bbox(const Spine::BoundingBox& src, cons
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -276,7 +278,7 @@ std::string CRSRegistry::get_proj4(const std::string& name)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -292,7 +294,7 @@ void CRSRegistry::dump_info(std::ostream& output)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -309,7 +311,7 @@ std::vector<std::string> CRSRegistry::get_crs_keys() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -364,12 +366,12 @@ CRSRegistry::MapEntry& CRSRegistry::get_entry(const std::string& name)
       }
 
       // Still not found ==> throw an error
-      throw Spine::Exception(BCP, "Coordinate system '" + name + "' not found!");
+      throw Fmi::Exception(BCP, "Coordinate system '" + name + "' not found!");
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -380,14 +382,14 @@ void CRSRegistry::handle_get_attribute_error(const std::string& crs_name,
 {
   try
   {
-    throw Spine::Exception(
+    throw Fmi::Exception(
         BCP, "Type mismatch of attribute '" + attrib_name + "' for CRS '" + crs_name + "'!")
         .addParameter("Expected", Fmi::demangle_cpp_type_name(expected_type.name()))
         .addParameter("Found", Fmi::demangle_cpp_type_name(actual_type.name()));
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -411,7 +413,7 @@ CRSRegistry::MapEntry::MapEntry(const std::string& theName, boost::optional<std:
         std::cerr << METHOD_NAME << ": failed to parse PERL regular expression '" << *text << "'"
                   << std::endl;
 
-        Spine::Exception exception(BCP, "Failed to parse PERL regular expression");
+        Fmi::Exception exception(BCP, "Failed to parse PERL regular expression");
         if (text)
           exception.addParameter("text", *text);
         throw exception;
@@ -420,7 +422,7 @@ CRSRegistry::MapEntry::MapEntry(const std::string& theName, boost::optional<std:
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -467,14 +469,14 @@ CRSRegistry::TransformationImpl::TransformationImpl(const CRSRegistry::MapEntry&
   {
     if (not conv)
     {
-      throw Spine::Exception(
+      throw Fmi::Exception(
           BCP,
           "Failed to create coordinate transformation '" + from_name + "' to '" + to_name + "'!");
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -489,7 +491,7 @@ CRSRegistry::TransformationImpl::~TransformationImpl()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -519,12 +521,12 @@ NFmiPoint CRSRegistry::TransformationImpl::transform(const NFmiPoint& src)
       std::ostringstream msg;
       msg << "Coordinate transformatiom from " << from_name << " to " << to_name << " failed for ("
           << src.X() << ", " << src.Y() << ")";
-      throw Spine::Exception(BCP, msg.str());
+      throw Fmi::Exception(BCP, msg.str());
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -549,12 +551,12 @@ boost::array<double, 3> CRSRegistry::TransformationImpl::transform(
       std::ostringstream msg;
       msg << "Coordinate transformatiom from " << from_name << " to " << to_name << " failed for ("
           << src[0] << ", " << src[1] << ", " << src[1] << ")";
-      throw Spine::Exception(BCP, msg.str());
+      throw Fmi::Exception(BCP, msg.str());
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -570,12 +572,12 @@ void CRSRegistry::TransformationImpl::transform(OGRGeometry& geometry)
       geometry.exportToWkt(&gText);
       msg << "Failed to transform geometry " << gText << " to " << to_name;
       CPLFree(gText);
-      throw Spine::Exception(BCP, msg.str());
+      throw Fmi::Exception(BCP, msg.str());
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -629,7 +631,7 @@ void CRSRegistry::parse_single_crs_def(Spine::ConfigBase& theConfig, libconfig::
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -638,10 +640,10 @@ void CRSRegistry::read_crs_dir(const fs::path& theDir)
   try
   {
     if (not fs::exists(theDir))
-      throw Spine::Exception(BCP, "Gis config: CRS directory '" + theDir.string() + "' not found");
+      throw Fmi::Exception(BCP, "Gis config: CRS directory '" + theDir.string() + "' not found");
 
     if (not fs::is_directory(theDir))
-      throw Spine::Exception(
+      throw Fmi::Exception(
           BCP, "Gis config: CRS directory '" + theDir.string() + "' is not a directory");
 
     for (auto it = fs::directory_iterator(theDir); it != fs::directory_iterator(); ++it)
@@ -661,7 +663,7 @@ void CRSRegistry::read_crs_dir(const fs::path& theDir)
         }
         catch (...)
         {
-          throw Spine::Exception::Trace(BCP, "Invalid CRS description!")
+          throw Fmi::Exception::Trace(BCP, "Invalid CRS description!")
               .addParameter("File", entry.string());
         }
       }
@@ -669,7 +671,7 @@ void CRSRegistry::read_crs_dir(const fs::path& theDir)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

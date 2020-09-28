@@ -7,6 +7,7 @@
 #pragma once
 
 #include <boost/shared_ptr.hpp>
+
 #include <libconfig.h++>
 #include <string>
 
@@ -30,6 +31,7 @@ struct ThrottleOptions
   unsigned int restart_limit = 50;  // restart when down to 50 requests again
   unsigned int limit = 100;         // final max active requests
   unsigned int increase_rate = 10;  // increment current limit every 10 succesfull requests
+  std::string alert_script = "";    // system command to run when the limit is broken
 };
 
 // Storage for parsed options

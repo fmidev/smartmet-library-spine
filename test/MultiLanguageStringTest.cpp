@@ -1,4 +1,4 @@
-#include "Exception.h"
+#include <macgyver/Exception.h>
 #include "MultiLanguageString.h"
 #include <boost/test/included/unit_test.hpp>
 
@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(test_multi_language_string_2)
   ml_root.add("fin", Setting::TypeString) = "Esimerkki";
   ml_root.add("LAV", Setting::TypeString) = "Piemērs";
 
-  BOOST_REQUIRE_THROW(MultiLanguageString::create("rus", ml_root), SmartMet::Spine::Exception);
+  BOOST_REQUIRE_THROW(MultiLanguageString::create("rus", ml_root), Fmi::Exception);
 }
 
 BOOST_AUTO_TEST_CASE(test_multi_language_string_3)

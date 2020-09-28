@@ -1,5 +1,5 @@
 #include "Station.h"
-#include "Exception.h"
+#include <macgyver/Exception.h>
 
 namespace SmartMet
 {
@@ -21,7 +21,7 @@ std::string Station::hash() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

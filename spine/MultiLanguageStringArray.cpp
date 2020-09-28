@@ -1,6 +1,6 @@
 #include "MultiLanguageStringArray.h"
 #include "ConfigBase.h"
-#include "Exception.h"
+#include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 
 using SmartMet::Spine::MultiLanguageStringArray;
@@ -48,7 +48,7 @@ MultiLanguageStringArray::MultiLanguageStringArray(const std::string& default_la
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -63,7 +63,7 @@ std::shared_ptr<MultiLanguageStringArray> MultiLanguageStringArray::create(
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -85,7 +85,7 @@ const std::vector<std::string>& MultiLanguageStringArray::get(const std::string&
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -100,7 +100,7 @@ void MultiLanguageStringArray::parse_content(libconfig::Setting& setting)
     msg << "Libconfig group expected instead of '";
     SmartMet::Spine::ConfigBase::dump_setting(msg, setting);
     msg << "'";
-    throw SmartMet::Spine::Exception(BCP, msg.str());
+    throw Fmi::Exception(BCP, msg.str());
   }
 
   const int num_items = setting.getLength();
@@ -115,7 +115,7 @@ void MultiLanguageStringArray::parse_content(libconfig::Setting& setting)
       msg << "' while reading item '";
       SmartMet::Spine::ConfigBase::dump_setting(msg, setting);
       msg << "'";
-      throw SmartMet::Spine::Exception(BCP, msg.str());
+      throw Fmi::Exception(BCP, msg.str());
     }
 
     std::vector<std::string> value;
@@ -137,7 +137,7 @@ void MultiLanguageStringArray::parse_content(libconfig::Setting& setting)
           << " in '";
       SmartMet::Spine::ConfigBase::dump_setting(msg, setting);
       msg << '\'';
-      throw SmartMet::Spine::Exception(BCP, msg.str());
+      throw Fmi::Exception(BCP, msg.str());
     }
 
     const std::string tmp = item.getName();
@@ -153,6 +153,6 @@ void MultiLanguageStringArray::parse_content(libconfig::Setting& setting)
     msg << "The string array for the default language '" << this->default_language
         << "' is not found in '";
     SmartMet::Spine::ConfigBase::dump_setting(msg, setting);
-    throw SmartMet::Spine::Exception(BCP, msg.str());
+    throw Fmi::Exception(BCP, msg.str());
   }
 }

@@ -5,10 +5,10 @@
 // ======================================================================
 
 #include "Convenience.h"
-#include "Exception.h"
 #include "ValueFormatter.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <stdexcept>
 #include <string>
@@ -24,14 +24,14 @@ std::string optional_string(const char* theValue, const std::string& theDefault)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return theValue;
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -47,7 +47,7 @@ std::string optional_string(const boost::optional<std::string>& theValue,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -55,14 +55,14 @@ bool optional_bool(const char* theValue, bool theDefault)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return (Fmi::stoi(theValue) != 0);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -77,7 +77,7 @@ bool optional_bool(const boost::optional<std::string>& theValue, bool theDefault
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -85,14 +85,14 @@ int optional_int(const char* theValue, int theDefault)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return Fmi::stoi(theValue);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -107,7 +107,7 @@ int optional_int(const boost::optional<std::string>& theValue, int theDefault)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -115,14 +115,14 @@ std::size_t optional_size(const char* theValue, std::size_t theDefault)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return Fmi::stoul(theValue);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -137,7 +137,7 @@ std::size_t optional_size(const boost::optional<std::string>& theValue, std::siz
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -145,14 +145,14 @@ unsigned long optional_unsigned_long(const char* theValue, unsigned long theDefa
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return Fmi::stoul(theValue);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -168,7 +168,7 @@ unsigned long optional_unsigned_long(const boost::optional<std::string>& theValu
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -176,14 +176,14 @@ char optional_char(const char* theValue, char theDefault)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return std::string(theValue).at(0);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -198,7 +198,7 @@ char optional_char(const boost::optional<std::string>& theValue, char theDefault
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -206,14 +206,14 @@ double optional_double(const char* theValue, double theDefault)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return Fmi::stod(theValue);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -228,7 +228,7 @@ double optional_double(const boost::optional<std::string>& theValue, double theD
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -237,14 +237,14 @@ boost::posix_time::ptime optional_time(const char* theValue,
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
+    if (theValue == nullptr)
       return theDefault;
     else
       return Fmi::TimeParser::parse(theValue);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -260,14 +260,14 @@ boost::posix_time::ptime optional_time(const boost::optional<std::string>& theVa
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
 std::string required_string(const char* theValue, const char* theError)
 {
-  if (theValue == nullptr || theValue == 0)
-    throw Spine::Exception(BCP, theError);
+  if (theValue == nullptr)
+    throw Fmi::Exception(BCP, theError);
   else
     return theValue;
 }
@@ -275,7 +275,7 @@ std::string required_string(const char* theValue, const char* theError)
 std::string required_string(const boost::optional<std::string>& theValue, const char* theError)
 {
   if (!theValue)
-    throw Spine::Exception(BCP, theError);
+    throw Fmi::Exception(BCP, theError);
   else
     return *theValue;
 }
@@ -284,14 +284,14 @@ bool required_bool(const char* theValue, const char* theError)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
-      throw Spine::Exception(BCP, theError);
+    if (theValue == nullptr)
+      throw Fmi::Exception(BCP, theError);
     else
       return (Fmi::stoi(theValue) != 0);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -300,13 +300,13 @@ bool required_bool(const boost::optional<std::string>& theValue, const char* the
   try
   {
     if (!theValue)
-      throw Spine::Exception(BCP, theError);
+      throw Fmi::Exception(BCP, theError);
     else
       return (Fmi::stoi(*theValue) != 0);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -314,14 +314,14 @@ int required_int(const char* theValue, const char* theError)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
-      throw Spine::Exception(BCP, theError);
+    if (theValue == nullptr)
+      throw Fmi::Exception(BCP, theError);
     else
       return Fmi::stoi(theValue);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -330,13 +330,13 @@ int required_int(const boost::optional<std::string>& theValue, const char* theEr
   try
   {
     if (!theValue)
-      throw Spine::Exception(BCP, theError);
+      throw Fmi::Exception(BCP, theError);
     else
       return Fmi::stoi(*theValue);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -344,14 +344,14 @@ std::size_t required_size(const char* theValue, const char* theError)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
-      throw Spine::Exception(BCP, theError);
+    if (theValue == nullptr)
+      throw Fmi::Exception(BCP, theError);
     else
       return Fmi::stoul(theValue);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -360,13 +360,13 @@ std::size_t required_size(const boost::optional<std::string>& theValue, const ch
   try
   {
     if (!theValue)
-      throw Spine::Exception(BCP, theError);
+      throw Fmi::Exception(BCP, theError);
     else
       return Fmi::stoul(*theValue);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -374,14 +374,14 @@ unsigned long required_unsigned_long(const char* theValue, const char* theError)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
-      throw Spine::Exception(BCP, theError);
+    if (theValue == nullptr)
+      throw Fmi::Exception(BCP, theError);
     else
       return Fmi::stoul(theValue);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -391,13 +391,13 @@ unsigned long required_unsigned_long(const boost::optional<std::string>& theValu
   try
   {
     if (!theValue)
-      throw Spine::Exception(BCP, theError);
+      throw Fmi::Exception(BCP, theError);
     else
       return Fmi::stoul(*theValue);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -405,14 +405,14 @@ char required_char(const char* theValue, const char* theError)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
-      throw Spine::Exception(BCP, theError);
+    if (theValue == nullptr)
+      throw Fmi::Exception(BCP, theError);
     else
       return std::string(theValue).at(0);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -421,13 +421,13 @@ char required_char(const boost::optional<std::string>& theValue, const char* the
   try
   {
     if (!theValue)
-      throw Spine::Exception(BCP, theError);
+      throw Fmi::Exception(BCP, theError);
     else
       return std::string(*theValue).at(0);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -435,14 +435,14 @@ double required_double(const char* theValue, const char* theError)
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
-      throw Spine::Exception(BCP, theError);
+    if (theValue == nullptr)
+      throw Fmi::Exception(BCP, theError);
     else
       return Fmi::stod(theValue);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -451,13 +451,13 @@ double required_double(const boost::optional<std::string>& theValue, const char*
   try
   {
     if (!theValue)
-      throw Spine::Exception(BCP, theError);
+      throw Fmi::Exception(BCP, theError);
     else
       return Fmi::stod(*theValue);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -465,14 +465,14 @@ boost::posix_time::ptime required_time(const char* theValue, const char* theErro
 {
   try
   {
-    if (theValue == nullptr || theValue == 0)
-      throw Spine::Exception(BCP, theError);
+    if (theValue == nullptr)
+      throw Fmi::Exception(BCP, theError);
     else
       return Fmi::TimeParser::parse(theValue);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -482,13 +482,13 @@ boost::posix_time::ptime required_time(const boost::optional<std::string>& theVa
   try
   {
     if (!theValue)
-      throw Spine::Exception(BCP, theError);
+      throw Fmi::Exception(BCP, theError);
     else
       return Fmi::TimeParser::parse(*theValue);
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -533,7 +533,7 @@ bool str_iless(const std::string& a, const std::string& b, const std::locale& lo
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -545,7 +545,7 @@ bool str_iequal(const std::string& a, const std::string& b, const std::locale& l
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -558,7 +558,7 @@ std::string log_time_str()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -574,7 +574,7 @@ std::string boost_any_to_string(const boost::any& anyvalue)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -616,7 +616,7 @@ std::string boost_any_to_string(const boost::any& anyvalue, const ValueFormatter
     else if (type == typeid(float))
     {
       float floatvalue(boost::any_cast<float>(anyvalue));
-      retval = vf.format(floatvalue, precision);
+      retval = vf.format(static_cast<double>(floatvalue), precision);
     }
     else if (type == typeid(double))
     {
@@ -659,7 +659,7 @@ std::string boost_any_to_string(const boost::any& anyvalue, const ValueFormatter
     }
     else
     {
-      throw Spine::Exception(BCP, "Unknown boost::any datatype: " + std::string(type.name()));
+      throw Fmi::Exception(BCP, "Unknown boost::any datatype: " + std::string(type.name()));
     }
 
     if (retval.empty() && !(type == typeid(char*) || type == typeid(std::string)))
@@ -669,7 +669,7 @@ std::string boost_any_to_string(const boost::any& anyvalue, const ValueFormatter
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -707,15 +707,15 @@ int duration_string_to_minutes(const std::string& interval)
         std::string err_str("'");
         err_str.push_back(unit_char);
         err_str += "' suffix is not valid, use 'm', 'h' or 'd' suffix instead!";
-        throw Spine::Exception(BCP, err_str);
+        throw Fmi::Exception(BCP, err_str);
       }
-    };
+    }
 
     return retval;
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

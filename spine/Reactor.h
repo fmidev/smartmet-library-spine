@@ -24,9 +24,12 @@
 #include "SmartMetEngine.h"
 #include "SmartMetPlugin.h"
 #include "Thread.h"
+
 #include <boost/function.hpp>
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
+#include <macgyver/AsyncTaskGroup.h>
+
 #include <atomic>
 #include <libconfig.h++>
 #include <list>
@@ -94,6 +97,8 @@ class Reactor
   // Destructor
   ~Reactor();
 
+  void init();
+
   // Content handling
 
   int getRequiredAPIVersion() const;
@@ -157,6 +162,8 @@ class Reactor
                              const std::string& theDir,
                              ContentHandler theCallBackFunction);
 
+  void* getEnginePtr(const std::string& theClassName, void* user_data);
+
   // SmartMet API Version
   int APIVersion = SMARTMET_API_VERSION;
 
@@ -205,8 +212,7 @@ class Reactor
   using ConfigList = std::map<std::string, std::string>;
   ConfigList itsEngineConfigs;
 
-  using InitThreadList = std::list<boost::shared_ptr<boost::thread> >;
-  InitThreadList itsInitThreads;
+  std::unique_ptr<Fmi::AsyncTaskGroup> itsInitTasks;
 
   // Logging
 
@@ -230,6 +236,9 @@ class Reactor
 
   std::atomic_size_t itsInitializedPluginCount{0};
   std::atomic_size_t itsInitializedEngineCount{0};
+
+  std::atomic_bool itsRunningAlertScript{false};
+
   // No void construction, options must be known
   Reactor();
   /* [[noreturn]] */ void cleanLog();
@@ -240,12 +249,7 @@ EngineType* Reactor::getEngine(const std::string& theClassName, void* user_data)
 {
   static_assert(std::is_base_of<SmartMetEngine, EngineType>::value,
                 "Engine class not derived from SmartMet::Spine::SmartMetEngine");
-  void* ptr = getSingleton(theClassName, user_data);
-  if (ptr == nullptr)
-  {
-    throw Exception::Trace(BCP, "No " + theClassName + " engine available");
-  }
-  return reinterpret_cast<EngineType*>(ptr);
+  return reinterpret_cast<EngineType*>(getEnginePtr(theClassName, user_data));
 }
 
 }  // namespace Spine

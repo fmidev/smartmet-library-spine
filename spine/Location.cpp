@@ -1,9 +1,6 @@
 #include "Location.h"
-
-#include "Exception.h"
-
+#include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
-
 #include <cmath>
 #include <sstream>
 
@@ -29,7 +26,9 @@ std::string type_string(const Location::LocationType& type)
         return "BoundingBox";
       case Location::Wkt:
         return "Wkt";
-#ifndef UNREACHABLE
+      case Location::CoordinatePoint:
+        return "CoordinatePoint";
+#ifdef __GNUC__
       default:
         return "";
 #endif
@@ -37,7 +36,7 @@ std::string type_string(const Location::LocationType& type)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -91,11 +90,11 @@ std::string formatLocation(const Location& loc, const std::string& key)
       else
         return "-";
     }
-    throw Spine::Exception(BCP, "Unsupported location parameter name '" + key + "'!");
+    throw Fmi::Exception(BCP, "Unsupported location parameter name '" + key + "'!");
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -128,7 +127,7 @@ std::string formatLocation(const Location& loc)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

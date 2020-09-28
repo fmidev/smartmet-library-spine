@@ -3,6 +3,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
+
 #include <libconfig.h++>
 #include <ostream>
 #include <typeinfo>
@@ -175,7 +176,7 @@ class Value
   inline explicit Value(unsigned int x) { set_uint(x); }
   inline explicit Value(unsigned long int x) { set_uint(x); }
   inline explicit Value(unsigned long long int x) { set_uint(x); }
-  inline explicit Value(float x) { set_double(x); }
+  inline explicit Value(float x) { set_double(static_cast<double>(x)); }
   inline explicit Value(double x) { set_double(x); }
   inline explicit Value(long double x) { set_double(static_cast<double>(x)); }
   inline explicit Value(const char* x) { set_string(x); }
@@ -187,7 +188,7 @@ class Value
     data = tmp;
   }
   inline explicit Value(const BoundingBox& x) { data = x; }
-  virtual ~Value() = default;
+  ~Value() = default;
   Value(const Value& other) = default;
 
   inline bool operator==(const Value& x) const { return data == x.data; }

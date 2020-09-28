@@ -1,6 +1,6 @@
 #include "TableFeeder.h"
-#include "Exception.h"
 #include "TimeSeriesOutput.h"
+#include <macgyver/Exception.h>
 
 namespace SmartMet
 {
@@ -25,7 +25,7 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeries& ts)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -88,7 +88,7 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeriesGroup& ts_group)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -117,7 +117,7 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeriesVector& ts_vector)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -139,7 +139,7 @@ const TableFeeder& TableFeeder::operator<<(const std::vector<Value>& value_vecto
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -153,7 +153,7 @@ TableFeeder& TableFeeder::operator<<(LonLatFormat newformat)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

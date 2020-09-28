@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.8.21
+Version: 20.9.23
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -14,8 +14,8 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost169-devel
-BuildRequires: smartmet-library-newbase-devel >= 20.8.21
-BuildRequires: smartmet-library-macgyver-devel >= 20.8.21
+BuildRequires: smartmet-library-newbase-devel >= 20.9.25
+BuildRequires: smartmet-library-macgyver-devel >= 20.9.18
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -23,16 +23,16 @@ BuildRequires: libicu-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 20.8.21
+BuildRequires: smartmet-library-gis-devel >= 20.9.25
 BuildRequires: fmt-devel >= 6.2.1
 BuildRequires: mariadb-devel
 BuildRequires: boost169-chrono
 BuildRequires: boost169-timer
 BuildRequires: gdal30-devel
-Requires: smartmet-library-newbase >= 20.8.21
-Requires: smartmet-library-macgyver >= 20.8.21
+Requires: smartmet-library-newbase >= 20.9.25
+Requires: smartmet-library-macgyver >= 20.9.18
 Requires: smartmet-timezones >= 20.5.5
-Requires: smartmet-library-gis >= 20.8.21
+Requires: smartmet-library-gis >= 20.9.25
 Requires: boost169-filesystem
 Requires: boost169-iostreams
 Requires: boost169-date-time
@@ -50,10 +50,13 @@ Requires: libconfig
 Requires: fmt >= 6.2.1
 Requires: gdal30-libs
 
-%if %{defined el7}
-Requires: mariadb-libs
-%else if %{defined el8}
+BuildRequires: gdal30-devel
+Requires: gdal30-libs
+
+%if 0%{rhel} >= 8
 Requires: mariadb-connector-c
+%else
+Requires: mariadb-libs
 %endif
 
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
@@ -66,7 +69,6 @@ Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 #TestRequires: zlib-devel
 #TestRequires: gdal30-devel
 
-Summary: BrainStorm common utilities
 %description
 FMI BrainStorm Spinal Cord Library
 
@@ -107,6 +109,36 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Sep 23 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.9.23-1.fmi
+- Removed Spine::Exception, using Fmi::Exception instead
+- Made Value destructor non-virtual
+
+* Mon Sep 14 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.9.14-3.fmi
+- Removed obsolete warning messages on log cleaning
+
+* Mon Sep 14 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.9.14-2.fmi
+- Do not run the alert system command when ramping up to full throttle
+
+* Mon Sep 14 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.9.14-1.fmi
+- Added possibility to run an alert system command when active requests limit is broken
+
+* Tue Sep  8 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.9.8-1.fmi
+- Reactor shutdown support update
+
+* Fri Sep  4 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.9.4-1.fmi
+- Forward declare GDAL classes in CRSRegistry header to avoid dependency escalation
+
+* Tue Sep  1 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.9.1-1.fmi
+- PluginTest now calls Reactor::init as required by the new API
+
+* Wed Aug 26 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.08.26-1.fmi
+- Use std::unique_ptr<Fmi::AsyncTaskGroup> in Reactor class
+- Move loading engines and plugins to init() method
+- Reactor: stop other async init tasks if one or more failed
+
+* Tue Aug 25 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.08.25-1.fmi
+- Use Fmi::AsyncTaskGroup in Reactor class
+
 * Fri Aug 21 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.8.21-1.fmi
 - Upgrade to fmt 6.2
 
@@ -832,7 +864,7 @@ make %{_smp_mflags}
 
 * Mon Jan 13 2014 Santeri Oksman <santeri.oksman@fmi.fi> - 14.1.13-1.fmi
 - HTTP Request and Response parsing is implemented in Boost Spirit
-- Added	water to snow conversion parameters Snow1h, Snow1hUpper, Snow1hLower
+- Added water to snow conversion parameters Snow1h, Snow1hUpper, Snow1hLower
 - Fixed time series generator to handle starttime=data and endtime=data
 
 * Thu Dec 12 2013 Tuomo Lauri <tuomo.lauri@fmi.fi> - 13.12.12-1.fmi
@@ -852,29 +884,29 @@ make %{_smp_mflags}
 - Added some colour to log messages
 - Moved TemplateFormatter and TypeName to macgyver
 
-* Wed Oct 9 2013 Tuomo Lauri  <tuomo.lauri@fmi.fi>       - 13.10.9-1.fmi
+* Wed Oct 9 2013 Tuomo Lauri  <tuomo.lauri@fmi.fi> - 13.10.9-1.fmi
 - Parallelized Reactor construction process
 - Removed threaded server type as unused
 - HTTP Response gateway status is no longer a public member
 - Added daylength to ParameterFactory
 - Added Thread.h header for common mutex and lock defintions
 
-* Wed Sep 18 2013 Tuomo Lauri  <tuomo.lauri@fmi.fi>      - 13.9.18-1.fmi
+* Wed Sep 18 2013 Tuomo Lauri  <tuomo.lauri@fmi.fi> - 13.9.18-1.fmi
 - Improved streamer status handling
 
-* Fri Sep 6 2013 Tuomo Lauri   <tuomo.lauri@fmi.fi>      - 13.9.6-1.fmi
+* Fri Sep 6 2013 Tuomo Lauri   <tuomo.lauri@fmi.fi> - 13.9.6-1.fmi
 - Fixed Wxml formatter timestring for good
 
-* Tue Sep 3 2013 Anssi Reponen <anssi.reponen@fmi.fi>    - 13.9.3-1.fmi
+* Tue Sep 3 2013 Anssi Reponen <anssi.reponen@fmi.fi> - 13.9.3-1.fmi
 - setMissingText function added to ValueFormatter
 
-* Wed Aug 28 2013 Tuomo Lauri <tuomo.lauri@fmi.fi>       - 13.8.28-1.fmi
+* Wed Aug 28 2013 Tuomo Lauri <tuomo.lauri@fmi.fi> - 13.8.28-1.fmi
 - Aggregation-related improvements
 
-* Fri Aug 23 2013 Tuomo Lauri <tuomo.lauri@fmi.fi>       - 13.8.23-1.fmi
+* Fri Aug 23 2013 Tuomo Lauri <tuomo.lauri@fmi.fi> - 13.8.23-1.fmi
 - Fixed HourlyMaximumWindSpeed parameter aliasing
 
-* Thu Aug 15 2013 Tuomo Lauri <tuomo.lauri@fmi.fi>	 - 13.8.15-1.fmi
+* Thu Aug 15 2013 Tuomo Lauri <tuomo.lauri@fmi.fi> - 13.8.15-1.fmi
 - Added server callback hooks to Reactor
 - Added backend stream status checking functionality to Response
 
@@ -894,7 +926,7 @@ make %{_smp_mflags}
 * Sun Jun 23 2013 Mika Heiskanen <mika.heiskanen@fmi.fi> - 13.6.23-1.fmi
 - Fixed constructors to use input parameters instead of member variables
 
-* Mon Jun 17 2013 Tuomo Lauri    <tuomo.lauri@fmi.fi>    - 13.6.17-1.fmi
+* Mon Jun 17 2013 Tuomo Lauri    <tuomo.lauri@fmi.fi> - 13.6.17-1.fmi
 - Station.h fix
 - Fixed WXML formatting to detect locations with the same name
 
@@ -910,23 +942,23 @@ make %{_smp_mflags}
 * Fri May 24 2013 <mika.heiskanen@fmi.fi> - 13.5.24-1.fmi
 - Fixes to time series generator defaults on timezones and start times
 
-* Wed May 22 2013 <mika.heiskanen@fmi.fi>    - 13.5.22-3.fmi
+* Wed May 22 2013 <mika.heiskanen@fmi.fi> - 13.5.22-3.fmi
 - Fixed Reactor not to require configuration variables
 
-* Wed May 22 2013 <mika.heiskanen@fmi.fi>    - 13.5.22-2.fmi
+* Wed May 22 2013 <mika.heiskanen@fmi.fi> - 13.5.22-2.fmi
 - PluginTest can now hande chunked responses too
 
-* Wed May 22 2013 <andris.pavenis@fmi.fi>    - 13.5.22-1.fmi
+* Wed May 22 2013 <andris.pavenis@fmi.fi> - 13.5.22-1.fmi
 - Use ConfigBase in Reactor to avoid unnecessary C++ exceptions
 - Time series generator now works more intelligently when generating time series starting from now
 
-* Fri May 17 2013 <andris.pavenis@fmi.fi>    - 13.5.17-1.fmi
+* Fri May 17 2013 <andris.pavenis@fmi.fi> - 13.5.17-1.fmi
 - Fixed PluginTest
 
 * Thu May 16 2013 <andris.pavenis@fmi.fi> - 13.5.16-1.fmi
 - Table class hotfix
 
-* Wed May 15 2013 lauri  <tuomo.lauri@fmi.fi>    - 13.5.15-1.fmi
+* Wed May 15 2013 lauri  <tuomo.lauri@fmi.fi> - 13.5.15-1.fmi
 - Fixed logging functionality
 
 * Tue May 14 2013 tervo <roope.tervo@fmi.fi> - 13.5.14-2.fmi
@@ -950,7 +982,7 @@ make %{_smp_mflags}
 * Mon Apr 22 2013 mheiskan <mika.heiskanen@fmi.fi> - 13.4.22-1.fmi
 - Reactor now uses two thread pools, one for slow queries and one for fast ones
 
-* Fri Apr 12 2013 lauri <tuomo.lauri@fmi.fi>    - 13.4.12-1.fmi
+* Fri Apr 12 2013 lauri <tuomo.lauri@fmi.fi> - 13.4.12-1.fmi
 - Added IP whitelist filtering to Reactor
 
 * Mon Apr 8 2013 oksman <santeri.oksman@fmi.fi> - 13.4.8-1.fmi
@@ -959,36 +991,36 @@ make %{_smp_mflags}
 * Mon Mar 25 2013 mheiskan  <mika.heiskanen@fmi.fi> - 13.3.25-2.fmi
 - Using macgyver to generate local date times gracefully
 
-* Mon Mar 25 2013 lauri     <tuomo.lauri@fmi.fi>    - 13.3.25-1.fmi
+* Mon Mar 25 2013 lauri     <tuomo.lauri@fmi.fi> - 13.3.25-1.fmi
 - Modification to IPFilter constructor
 
-* Mon Mar 18 2013 lauri     <tuomo.lauri@fmi.fi>    - 13.3.18-1.fmi
+* Mon Mar 18 2013 lauri     <tuomo.lauri@fmi.fi> - 13.3.18-1.fmi
 - HTTP Request parser now accepts GET parameters in a POST request
 
-* Mon Mar 11 2013 lauri     <tuomo.lauri@fmi.fi>    - 13.3.11-1.fmi
+* Mon Mar 11 2013 lauri     <tuomo.lauri@fmi.fi> - 13.3.11-1.fmi
 - Added IP Filter
 
 * Thu Mar  7 2013 pavenis   <andris.pavenis@fmi.fi>
 - Depend on dtl (http://code.google.com/p/dtl-cpp/)
 - Fix timesteps option to work when timestep=data
 
-* Tue Mar  5 2013 lauri     <tuomo.lauri@fmi.fi>    - 13.3.5-1.fmi
+* Tue Mar  5 2013 lauri     <tuomo.lauri@fmi.fi> - 13.3.5-1.fmi
 - HTTP Request toString-method did not url-encode, now it does
 
-* Wed Feb 27 2013 lauri     <tuomo.lauri@fmi.fi>    - 13.2.27-1.fmi
+* Wed Feb 27 2013 lauri     <tuomo.lauri@fmi.fi> - 13.2.27-1.fmi
 - Made HTTP query parameters case-insensitive
 
-* Fri Feb 22 2013 lauri     <tuomo.lauri@fmi.fi>    - 13.2.22-1.fmi
+* Fri Feb 22 2013 lauri     <tuomo.lauri@fmi.fi> - 13.2.22-1.fmi
 - HTTP header keys are now used in case-insensitive manner
 
-* Wed Feb 20 2013 lauri     <tuomo.lauri@fmi.fi>    - 13.2.20.1-fmi
+* Wed Feb 20 2013 lauri     <tuomo.lauri@fmi.fi> - 13.2.20.1-fmi
 - Endtime is now included in the times generated by the TimeSeriesGenerator
 
-* Mon Feb 11 2013 lauri     <tuomo.lauri@fmi.fi>    - 13.2.11-1.fmi
+* Mon Feb 11 2013 lauri     <tuomo.lauri@fmi.fi> - 13.2.11-1.fmi
 
 * Fixed bug in TimeSeriesGeneratorOptions
 
-* Wed Feb  6 2013 lauri     <tuomo.lauri@fmi.fi>    - 13.2.6-1.fmi
+* Wed Feb  6 2013 lauri     <tuomo.lauri@fmi.fi> - 13.2.6-1.fmi
 - Added HTTP handling library for Synapse server
 - Added ConfigBase for better configuration handling
 - Added Value generic value type
@@ -996,7 +1028,7 @@ make %{_smp_mflags}
 * Tue Nov 13 2012 mheiskan <mika.heiskanen@fmi.fi> - 12.11.13-2.fmi
 - Fixed DST handling in TimeSeriesGenerator
 
-* Tue Nov 13 2012 lauri    <tuomo.lauri@fmi.fi>    - 12.11.13-1.el6.fmi
+* Tue Nov 13 2012 lauri    <tuomo.lauri@fmi.fi> - 12.11.13-1.el6.fmi
 - New boost::thread behaviour introduced in the newest Boost release, fixed in Reactor logging.
 - Added convenience functions from WFS branch
 
@@ -1008,24 +1040,24 @@ make %{_smp_mflags}
 * Mon Oct  8 2012 mheiskan <mika.heiskanen@fmi.fi> - 12.10.8-1.el6.fmi
 - Added HtmlFormatter
 
-* Tue Aug 14 2012 lauri    <tuomo.lauri@fmi.fi>    - 12.8.14-1.el6.fmi
+* Tue Aug 14 2012 lauri    <tuomo.lauri@fmi.fi> - 12.8.14-1.el6.fmi
 - XmlFormatter now escapes quotes
 
-* Tue Aug  7 2012 lauri    <tuomo.lauri@fmi.fi>    - 12.8.7-1.el6.fmi
+* Tue Aug  7 2012 lauri    <tuomo.lauri@fmi.fi> - 12.8.7-1.el6.fmi
 - Merged LocationFormatter into Location
 - Added <feature> to ParameterFactory
 - Added <country> to Location
 
-* Thu Aug 2 2012 lauri    <tuomo.lauri@fmi.fi>    - 12.8.2-2.el6.fmi
+* Thu Aug 2 2012 lauri    <tuomo.lauri@fmi.fi> - 12.8.2-2.el6.fmi
 - LocationFormatter now returns name if region is undefined
 
-* Thu Aug 2 2012 lauri    <tuomo.lauri@fmi.fi>    - 12.8.2-1.el6.fmi
+* Thu Aug 2 2012 lauri    <tuomo.lauri@fmi.fi> - 12.8.2-1.el6.fmi
 - Renamed area to region in LocationFormatter to comply with ParameterFactory
 
-* Wed Aug 1 2012 lauri    <tuomo.lauri@fmi.fi>    - 12.8.1-1.el6.fmi
+* Wed Aug 1 2012 lauri    <tuomo.lauri@fmi.fi> - 12.8.1-1.el6.fmi
 - Renamed timezone to tz in LocationFormatter
 
-* Mon Jul 30 2012 lauri    <tuomo.lauri@fmi.fi>    - 12.7.30-1.el6.fmi
+* Mon Jul 30 2012 lauri    <tuomo.lauri@fmi.fi> - 12.7.30-1.el6.fmi
 - Removed unneeded features from LocationFormatter
 
 * Mon Jul 23 2012 mheiskan <mika.heiskanen@fmi.fi> - 12.7.23-1.el6.fmi
@@ -1042,7 +1074,7 @@ make %{_smp_mflags}
 - Fixed include path and linked libraries
 - Changed some parts of the API to use double instead of float
 
-* Thu Jun 21 2012 lauri <tuomo.lauri@fmi.fi>    - 12.6.21-1.el6.fmi
+* Thu Jun 21 2012 lauri <tuomo.lauri@fmi.fi> - 12.6.21-1.el6.fmi
 - Added LocationAccessor for easier access to Location - objects.
 
 * Fri Jun 8 2012 oksman <santeri.oksman@fmi.fi> - 12.6.8-1.el6.fmi

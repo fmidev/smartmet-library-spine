@@ -6,8 +6,8 @@
 
 #include "AsciiFormatter.h"
 #include "Convenience.h"
-#include "Exception.h"
 #include "Table.h"
+#include <macgyver/Exception.h>
 #include <iostream>
 
 namespace SmartMet
@@ -71,7 +71,7 @@ void AsciiFormatter::format(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 }  // namespace Spine

@@ -6,11 +6,11 @@
 
 #include "XmlFormatter.h"
 #include "Convenience.h"
-#include "Exception.h"
 #include "Table.h"
 #include "TableFormatterOptions.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
+#include <macgyver/Exception.h>
 #include <iostream>
 #include <stdexcept>
 
@@ -34,7 +34,7 @@ std::set<std::string> parse_xml_attributes(const std::string& theStr)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -76,11 +76,11 @@ void XmlFormatter::format(std::ostream& theOutput,
         format_tags(theOutput, theTable, theNames, tag, theReq);
     }
     else
-      throw Spine::Exception(BCP, "Unknown xmlstyle '" + style + "'");
+      throw Fmi::Exception(BCP, "Unknown xmlstyle '" + style + "'");
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -128,7 +128,7 @@ void XmlFormatter::format_attributes(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -176,7 +176,7 @@ void XmlFormatter::format_tags(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -208,7 +208,7 @@ void XmlFormatter::format_mixed(std::ostream& theOutput,
     std::string attribstring;
     auto attr = theReq.getParameter("attributes");
     if (!attr)
-      throw Spine::Exception(BCP, "attribute list is required in mixed style formatting");
+      throw Fmi::Exception(BCP, "attribute list is required in mixed style formatting");
 
     attribstring = *attr;
 
@@ -248,7 +248,7 @@ void XmlFormatter::format_mixed(std::ostream& theOutput,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

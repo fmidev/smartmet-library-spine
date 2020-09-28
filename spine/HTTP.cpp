@@ -1,8 +1,8 @@
 #include "HTTP.h"
-#include "Exception.h"
 #include "HTTPParsers.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/shared_array.hpp>
+#include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <cstdlib>
 #include <iostream>
@@ -60,7 +60,7 @@ void parseTokens(SmartMet::Spine::HTTP::ParamMap& outputMap,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -154,7 +154,7 @@ std::string statusCodeToString(Status theStatus)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 }  // namespace StatusStrings
@@ -337,7 +337,7 @@ std::string getStockReply(Status theStatus)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 }  // namespace StockReplies
@@ -390,7 +390,7 @@ Status stringToStatusCode(const std::string& theCode)
     return Status::shutdown;
 
   // Unrecognized throws
-  throw Spine::Exception(BCP, "Attempting to set Unsupported status code: " + theCode);
+  throw Fmi::Exception(BCP, "Attempting to set Unsupported status code: " + theCode);
 }
 
 Message::Message(const HeaderMap& headerMap, const std::string& version, bool isChunked)
@@ -416,7 +416,7 @@ boost::optional<std::string> Message::getHeader(const std::string& headerName) c
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -448,7 +448,7 @@ void Message::setHeader(const std::string& headerName, const std::string& header
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -460,7 +460,7 @@ void Message::removeHeader(const std::string& headerName)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -570,7 +570,7 @@ std::string Request::toString() const
         {
           if (!itsContent.empty())
             // Body is not meaningfull in GET-Requests
-            throw Spine::Exception(
+            throw Fmi::Exception(
                 BCP, "HTTP::Request: Attempting to serialize GET Request with body content");
         }
         // fall through
@@ -600,28 +600,28 @@ std::string Request::toString() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
 boost::asio::const_buffer Request::contentToBuffer()
 {
   // TODO(mheiskan)
-  throw Spine::Exception(BCP, "Request::contentToBuffer not implemented");
+  throw Fmi::Exception(BCP, "Request::contentToBuffer not implemented");
   // return boost::asio::const_buffer("moi",3);
 }
 
 boost::asio::const_buffer Request::headersToBuffer()
 {
   // TODO(mheiskan)
-  throw Spine::Exception(BCP, "Request::headersToBuffer not implemented");
+  throw Fmi::Exception(BCP, "Request::headersToBuffer not implemented");
   // return boost::asio::const_buffer("moi",3);
 }
 
 std::string Request::headersToString() const
 {
   // TODO(mheiskan)
-  throw Spine::Exception(BCP, "Request::headersToBuffer not implemented");
+  throw Fmi::Exception(BCP, "Request::headersToBuffer not implemented");
   // return std::string();
 }
 
@@ -659,7 +659,7 @@ std::string Request::getMethodString() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -702,7 +702,7 @@ std::string Request::getURI() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -741,7 +741,7 @@ std::string Request::getQueryString() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -777,7 +777,7 @@ boost::optional<std::string> Request::getParameter(const std::string& paramName)
     auto params = itsParameters.equal_range(paramName);
     std::size_t numParams = std::distance(params.first, params.second);
     if (numParams > 1)
-      throw Spine::Exception(BCP,
+      throw Fmi::Exception(BCP,
                              "More than one parameter value for parameter \"" + paramName + "\"");
 
     if (numParams == 0)
@@ -787,7 +787,7 @@ boost::optional<std::string> Request::getParameter(const std::string& paramName)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -801,7 +801,7 @@ void Request::setParameter(const std::string& paramName, const std::string& para
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -813,7 +813,7 @@ void Request::addParameter(const std::string& paramName, const std::string& para
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -825,7 +825,7 @@ void Request::removeParameter(const std::string& paramName)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -847,7 +847,7 @@ std::vector<std::string> Request::getParameterList(const std::string& paramName)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -890,7 +890,7 @@ std::string Response::getContent()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -902,7 +902,7 @@ std::size_t Response::getContentLength() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -914,7 +914,7 @@ void Response::appendContent(const std::string& bodyPart)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -926,7 +926,7 @@ void Response::setContent(const std::string& theContent)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -938,7 +938,7 @@ void Response::setContent(boost::shared_ptr<std::string> theContent)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -950,7 +950,7 @@ void Response::setContent(boost::shared_ptr<std::vector<char> > theContent)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -962,7 +962,7 @@ void Response::setContent(boost::shared_array<char> theContent, std::size_t cont
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -977,7 +977,7 @@ void Response::setContent(boost::shared_ptr<ContentStreamer> theContent)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -989,7 +989,7 @@ void Response::setContent(boost::shared_ptr<ContentStreamer> theContent, std::si
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1002,7 +1002,7 @@ void Response::setStatus(Status newStatus)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1019,7 +1019,7 @@ void Response::setStatus(Status newStatus, bool defaultContent)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1032,7 +1032,7 @@ void Response::setStatus(const std::string& statusString)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1049,7 +1049,7 @@ void Response::setStatus(const std::string& statusString, bool defaultContent)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1063,7 +1063,7 @@ void Response::setStatus(int statusNumber)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1080,7 +1080,7 @@ void Response::setStatus(int statusNumber, bool defaultContent)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1097,7 +1097,7 @@ std::string Response::getStatusString() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1119,7 +1119,7 @@ std::string Response::toString()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1130,7 +1130,7 @@ std::string Response::headersToString() const
     // Response status must be explicitly given!
     if (itsStatus == Status::not_a_status)
     {
-      throw Spine::Exception(BCP, "HTTP Response status not set.");
+      throw Fmi::Exception(BCP, "HTTP Response status not set.");
     }
 
     // Use a string instead of a stringstream to avoid global locale locks!
@@ -1149,7 +1149,7 @@ std::string Response::headersToString() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1163,7 +1163,7 @@ boost::asio::const_buffer Response::headersToBuffer()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1175,7 +1175,7 @@ boost::asio::const_buffer Response::contentToBuffer()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1187,7 +1187,7 @@ bool Response::hasStreamContent() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1318,7 +1318,7 @@ std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::stri
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1387,7 +1387,7 @@ std::tuple<ParsingStatus, std::unique_ptr<Response>, std::string::const_iterator
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1461,7 +1461,7 @@ boost::asio::const_buffer MessageContent::getBuffer()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1496,7 +1496,7 @@ std::string MessageContent::getString()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1509,7 +1509,7 @@ std::stringstream& MessageContent::operator<<(std::stringstream& ss)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1524,14 +1524,14 @@ MessageContent& MessageContent::operator+(const std::string& moreContent)
     }
     else
     {
-      throw Spine::Exception(BCP, "Can't add string non-string message content");
+      throw Fmi::Exception(BCP, "Can't add string non-string message content");
     }
 
     return *this;
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1562,7 +1562,7 @@ ContentStreamer::StreamerStatus MessageContent::getStreamingStatus() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1650,7 +1650,7 @@ std::string urldecode(std::string const& url)
         {
           // Test for incorrect URL which seem to crop up in reference Jira issue examples
           if (url.substr(pos - 8, 7) != ";base64")
-            throw Spine::Exception(BCP, "Incorrect data-url " + url);
+            throw Fmi::Exception(BCP, "Incorrect data-url " + url);
 
           std::string todecode = url.substr(pos);
           std::string decoded = base64decode(todecode);
@@ -1696,7 +1696,7 @@ std::string urldecode(std::string const& url)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1718,7 +1718,7 @@ std::string char2hex(int dec)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1747,7 +1747,7 @@ std::string urlencode(const std::string& url)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

@@ -1,8 +1,7 @@
 #include "AccessLogger.h"
 #include "Convenience.h"
-#include "Exception.h"
-
 #include <boost/filesystem.hpp>
+#include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 
 namespace
@@ -29,7 +28,7 @@ std::string makeAccessLogFileName(const std::string& resource, const std::string
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -57,14 +56,14 @@ std::unique_ptr<std::ofstream> makeAccessLogFile(const std::string& resource,
     file->open(path, std::ofstream::out | std::ofstream::app);
     if (!file->is_open())
     {
-      throw SmartMet::Spine::Exception(BCP, "Could not open access log file: " + path);
+      throw Fmi::Exception(BCP, "Could not open access log file: " + path);
     }
 
     return file;
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 }  // namespace
@@ -88,7 +87,7 @@ void AccessLogger::start()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -103,7 +102,7 @@ void AccessLogger::stop()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -132,7 +131,7 @@ void AccessLogger::log(const LoggedRequest& theRequest)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

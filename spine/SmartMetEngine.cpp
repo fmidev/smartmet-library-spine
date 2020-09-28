@@ -1,9 +1,9 @@
 #include "SmartMetEngine.h"
 #include "Convenience.h"
-#include "Exception.h"
 #include "Reactor.h"
 #include <boost/timer/timer.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
+#include <macgyver/Exception.h>
 #include <sys/types.h>
 #include <csignal>
 #include <iostream>
@@ -19,7 +19,6 @@ void SmartMetEngine::construct(const std::string& /* engineName */, Reactor* rea
   try
   {
     itsReactor = reactor;
-    boost::unique_lock<boost::mutex> theLock(itsInitMutex);
 
     this->init();
 
@@ -28,15 +27,7 @@ void SmartMetEngine::construct(const std::string& /* engineName */, Reactor* rea
   }
   catch (...)
   {
-    Spine::Exception exception(BCP, "Engine construction failed!", nullptr);
-
-    if (!exception.stackTraceDisabled())
-      std::cerr << exception.getStackTrace();
-    else if (!exception.loggingDisabled())
-      std::cerr << Spine::log_time_str() + " Error: " + exception.what() << std::endl;
-
-    kill(getpid(), SIGKILL);  // If we use exit() we might get a core dump.
-                              // exit(-1);
+    throw Fmi::Exception::Trace(BCP, "Engine construction failed!");
   }
 }
 
@@ -45,14 +36,16 @@ void SmartMetEngine::wait()
   try
   {
     boost::unique_lock<boost::mutex> theLock(itsInitMutex);
-    if (!isReady)
-    {
-      itsCond.wait(theLock);
+    while (!isReady && !itsShutdownRequested) {
+      itsCond.wait_for(
+        theLock,
+        boost::chrono::seconds(1),
+        [this]() -> bool { return isReady || itsShutdownRequested; });
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -62,10 +55,11 @@ void SmartMetEngine::setShutdownRequestedFlag()
   {
     itsShutdownRequested = true;
     shutdownRequestFlagSet();
+    itsCond.notify_all();
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -74,11 +68,12 @@ void SmartMetEngine::shutdownEngine()
   try
   {
     itsShutdownRequested = true;
+    itsCond.notify_all();
     shutdown();
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

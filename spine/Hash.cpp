@@ -1,5 +1,5 @@
 #include "Hash.h"
-#include "Exception.h"
+#include <macgyver/Exception.h>
 // ----------------------------------------------------------------------
 /*!
  * \brief Hash for boost date
@@ -33,7 +33,7 @@ std::size_t hash_value(const date& theDate)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 }  // namespace gregorian
@@ -69,7 +69,7 @@ std::size_t hash_value(const time_duration& theDuration)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 }  // namespace posix_time
@@ -107,7 +107,7 @@ std::size_t hash_value(const ptime& theTime)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 }  // namespace posix_time
@@ -137,7 +137,7 @@ std::size_t hash_value(const time_zone_ptr& theZone)
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 }  // namespace local_time

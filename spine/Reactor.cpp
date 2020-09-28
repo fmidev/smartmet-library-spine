@@ -1,3 +1,4 @@
+
 // ======================================================================
 /*!
  * \brief Implementation of class Reactor
@@ -5,10 +6,10 @@
 // ======================================================================
 
 #include "Reactor.h"
+
 #include "ConfigTools.h"
 #include "Convenience.h"
 #include "DynamicPlugin.h"
-#include "Exception.h"
 #include "Names.h"
 #include "Options.h"
 #include "SmartMet.h"
@@ -26,9 +27,12 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/locale.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/process/child.hpp>
 #include <boost/timer/timer.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
+#include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
+
 #include <algorithm>
 #include <dlfcn.h>
 #include <functional>
@@ -103,7 +107,7 @@ Reactor::~Reactor()
  */
 // ----------------------------------------------------------------------
 
-Reactor::Reactor(Options& options) : itsOptions(options)
+Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::AsyncTaskGroup)
 {
   try
   {
@@ -132,6 +136,27 @@ Reactor::Reactor(Options& options) : itsOptions(options)
     std::locale::global(gen(itsOptions.locale));
     std::cout.imbue(std::locale());
 
+    itsInitTasks->stop_on_error(true);
+
+    itsInitTasks->on_task_error([this](const std::string& name) {
+      if (!isShutdownRequested())
+      {
+        Fmi::Exception::Trace(BCP, "Operation failed").printError();
+        std::cout << __FILE__ << ":" << __LINE__ << ": init task " << name << " failed"
+                  << std::endl;
+      }
+    });
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+void Reactor::init()
+{
+  try
+  {
     // Load engines - all or just the requested ones
 
     const auto& config = itsOptions.itsConfig;
@@ -155,7 +180,7 @@ Reactor::Reactor(Options& options) : itsOptions(options)
 
     if (!config.exists("plugins"))
     {
-      throw Spine::Exception(BCP, "plugins setting missing from the server configuration file");
+      throw Fmi::Exception(BCP, "plugins setting missing from the server configuration file");
     }
     else
     {
@@ -168,6 +193,15 @@ Reactor::Reactor(Options& options) : itsOptions(options)
         loadPlugin(libfile, itsOptions.verbose);
     }
 
+    try
+    {
+      itsInitTasks->wait();
+    }
+    catch (...)
+    {
+      std::cout << "Initialization failed" << std::endl;
+      exit(1);
+    }
     // Set ContentEngine default logging. Do this after plugins are loaded so handlers are
     // recognized
 
@@ -175,7 +209,7 @@ Reactor::Reactor(Options& options) : itsOptions(options)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -196,7 +230,7 @@ std::vector<std::string> Reactor::findLibraries(const std::string& theName) cons
   const auto& modules = config.lookup(names);
 
   if (!modules.isGroup())
-    throw Spine::Exception(BCP, names + "-setting must be a group of settings");
+    throw Fmi::Exception(BCP, names + "-setting must be a group of settings");
 
   // Collect all enabled modules
 
@@ -207,10 +241,10 @@ std::vector<std::string> Reactor::findLibraries(const std::string& theName) cons
     auto& settings = modules[i];
 
     if (!settings.isGroup())
-      throw Spine::Exception(BCP, name + " settings must be groups");
+      throw Fmi::Exception(BCP, name + " settings must be groups");
 
     if (settings.getName() == nullptr)
-      throw Spine::Exception(BCP, name + " settings must have names");
+      throw Fmi::Exception(BCP, name + " settings must have names");
 
     std::string module_name = settings.getName();
     std::string libfile = moduledir + "/" + module_name + ".so";
@@ -316,7 +350,7 @@ bool Reactor::addContentHandlerImpl(bool itsPrivate,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!").addParameter("URI", theUri);
+    throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("URI", theUri);
   }
 }
 
@@ -333,7 +367,7 @@ bool Reactor::setNoMatchHandler(ContentHandler theHandler)
     WriteLock lock(itsContentMutex);
 
     // Catch everything that is specifically not added elsewhere.
-    if (theHandler != 0)
+    if (theHandler != nullptr)
     {
       // Set the data members
       boost::shared_ptr<HandlerView> theView(new HandlerView(theHandler));
@@ -350,7 +384,7 @@ bool Reactor::setNoMatchHandler(ContentHandler theHandler)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -413,7 +447,7 @@ boost::optional<HandlerView&> Reactor::getHandlerView(const HTTP::Request& theRe
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -465,7 +499,7 @@ AccessLogStruct Reactor::getLoggedRequests() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -520,6 +554,35 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
               << " active requests, limit is " << itsActiveRequestsLimit << "/"
               << itsOptions.throttle.limit << std::endl;
 
+  // Run alert script if set and we're not in the ramping up phase
+
+  if (!itsOptions.throttle.alert_script.empty())
+  {
+    if (itsActiveRequestsLimit < itsOptions.throttle.limit)
+    {
+      // Do nothing when ramping up
+    }
+    else if (itsRunningAlertScript)
+    {
+      if (itsOptions.verbose)
+        std::cerr << Spine::log_time_str() << " Alert script already running" << std::endl;
+    }
+    else
+    {
+      itsRunningAlertScript = true;
+      if (itsOptions.verbose)
+        std::cerr << Spine::log_time_str() << " Running alert script "
+                  << itsOptions.throttle.alert_script << std::endl;
+
+      std::thread thr([this] {
+        boost::process::child cld(itsOptions.throttle.alert_script);
+        cld.wait();
+        itsRunningAlertScript = false;
+      });
+      thr.detach();
+    }
+  }
+
   // Reduce the limit back down unless already smaller due to being just started
   if (itsActiveRequestsLimit > itsOptions.throttle.restart_limit)
   {
@@ -529,6 +592,7 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
                 << itsOptions.throttle.restart_limit << "/" << itsOptions.throttle.limit
                 << std::endl;
   }
+
   return key;
 }
 
@@ -642,7 +706,7 @@ URIMap Reactor::getURIMap() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -683,7 +747,7 @@ URIMap Reactor::getURIMap() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "cleanLog operation failed!");
+    throw Fmi::Exception::Trace(BCP, "cleanLog operation failed!");
   }
 }
 
@@ -708,7 +772,7 @@ void Reactor::setLogging(bool loggingEnabled)
     if (itsLoggingEnabled)
     {
       // See if cleaner thread is running for some reason
-      if (itsLogCleanerThread.get() != 0 && itsLogCleanerThread->joinable())
+      if (itsLogCleanerThread.get() != nullptr && itsLogCleanerThread->joinable())
       {
         // Kill any remaining thread
         itsLogCleanerThread->interrupt();
@@ -737,7 +801,7 @@ void Reactor::setLogging(bool loggingEnabled)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -766,7 +830,7 @@ void Reactor::listPlugins() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -776,7 +840,7 @@ void Reactor::listPlugins() const
  */
 // ----------------------------------------------------------------------
 
-bool Reactor::loadPlugin(const std::string& theFilename, bool verbose)
+bool Reactor::loadPlugin(const std::string& theFilename, bool /* verbose */)
 {
   try
   {
@@ -790,7 +854,7 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool verbose)
       absolutize_path(configfile);
 
       if (is_file_readable(configfile) != 0)
-        throw Spine::Exception(BCP,
+        throw Fmi::Exception(BCP,
                                "plugin " + pluginname + " config " + configfile +
                                    " is unreadable: " + std::strerror(errno));
     }
@@ -827,12 +891,13 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool verbose)
 
     boost::shared_ptr<DynamicPlugin> plugin(new DynamicPlugin(theFilename, configfile, *this));
 
-    if (plugin.get() != 0)
+    if (plugin.get() != nullptr)
     {
       // Start to initialize the plugin
 
-      itsInitThreads.push_back(boost::make_shared<boost::thread>(
-          boost::bind(&Reactor::initializePlugin, this, plugin.get(), pluginname)));
+      itsInitTasks->add("Load plugin[" + theFilename + "]", [this, plugin, pluginname]() {
+        initializePlugin(plugin.get(), pluginname);
+      });
 
       itsPlugins.push_back(plugin);
       return true;
@@ -842,7 +907,7 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool verbose)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
+    throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
   }
 }
 
@@ -865,7 +930,7 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
                 << theClassName << "'" << std::endl
                 << "No such class was found loaded in the EngineHood" << ANSI_FG_DEFAULT
                 << std::endl;
-      return 0;
+      return nullptr;
     }
 
     // config names are all lower case
@@ -878,14 +943,15 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
     SmartMetEngine* theEngine = reinterpret_cast<SmartMetEngine*>(engineInstance);
 
     // Fire the initialization thread
-    itsInitThreads.push_back(boost::make_shared<boost::thread>(
-        boost::bind(&Reactor::initializeEngine, this, theEngine, theClassName)));
+    itsInitTasks->add(
+        "New engine instance[" + theClassName + "]",
+        [this, theEngine, theClassName]() { initializeEngine(theEngine, theClassName); });
 
     return engineInstance;
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!").addParameter("Class", theClassName);
+    throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Class", theClassName);
   }
 }
 
@@ -906,7 +972,7 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
       // phase when the plugin requests an engine. This exception is usually
       // caught in the plugin's initPlugin() method.
 
-      throw Spine::Exception(BCP, "Shutdown active!");
+      throw Fmi::Exception(BCP, "Shutdown active!").disableStackTrace();
     }
 
     Reactor::EngineInstance result;
@@ -920,7 +986,7 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
       std::cout << ANSI_FG_RED << "No engine '" << theClassName << "' was found loaded in memory."
                 << ANSI_FG_DEFAULT << std::endl;
 
-      return 0;
+      return nullptr;
     }
     else
     {
@@ -934,11 +1000,11 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
 
     thisEngine->wait();
 
-    return result;
+    return itsShutdownRequested ? nullptr : thisEngine;
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!").addParameter("ClassName", theClassName);
+    throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("ClassName", theClassName);
   }
 }
 
@@ -964,7 +1030,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     {
       absolutize_path(configfile);
       if (is_file_readable(configfile) != 0)
-        throw Spine::Exception(BCP,
+        throw Fmi::Exception(BCP,
                                "engine " + enginename + " config " + configfile +
                                    " is unreadable: " + std::strerror(errno));
     }
@@ -972,10 +1038,10 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     itsEngineConfigs.insert(ConfigList::value_type(enginename, configfile));
 
     void* itsHandle = dlopen(theFilename.c_str(), RTLD_NOW | RTLD_GLOBAL);
-    if (itsHandle == 0)
+    if (itsHandle == nullptr)
     {
       // Error occurred while opening the dynamic library
-      throw Spine::Exception(
+      throw Fmi::Exception(
           BCP, "Unable to load dynamic engine class library: " + std::string(dlerror()));
     }
 
@@ -987,9 +1053,9 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
         reinterpret_cast<EngineInstanceCreator>(dlsym(itsHandle, "engine_class_creator"));
 
     // Check that pointers to function were loaded succesfully
-    if (itsNamePointer == 0 || itsCreatorPointer == 0)
+    if (itsNamePointer == nullptr || itsCreatorPointer == nullptr)
     {
-      throw Spine::Exception(BCP,
+      throw Fmi::Exception(BCP,
                              "Cannot resolve dynamic library symbols: " + std::string(dlerror()));
     }
 
@@ -1005,7 +1071,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     auto theSingleton = newInstance(itsNamePointer(), nullptr);
 
     // Check whether the preliminary creation succeeded
-    if (theSingleton == 0)
+    if (theSingleton == nullptr)
     {
       // Log error and return with zero
       std::cout << ANSI_FG_RED << "No engine '" << itsNamePointer()
@@ -1020,7 +1086,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
+    throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
   }
 }
 
@@ -1102,7 +1168,7 @@ void Reactor::listEngines() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1116,7 +1182,7 @@ bool Reactor::addClientConnectionStartedHook(const std::string& hookName,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1130,7 +1196,7 @@ bool Reactor::addBackendConnectionFinishedHook(const std::string& hookName,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1144,7 +1210,7 @@ bool Reactor::addClientConnectionFinishedHook(const std::string& hookName,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1161,7 +1227,7 @@ void Reactor::callClientConnectionStartedHooks(const std::string& theClientIP)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1181,7 +1247,7 @@ void Reactor::callBackendConnectionFinishedHooks(
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -1198,8 +1264,27 @@ void Reactor::callClientConnectionFinishedHooks(const std::string& theClientIP,
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
+}
+
+void* Reactor::getEnginePtr(const std::string& theClassName, void* user_data)
+{
+  void* ptr = getSingleton(theClassName, user_data);
+  if (ptr == nullptr)
+  {
+    if (itsShutdownRequested)
+    {
+      throw Fmi::Exception::Trace(BCP,
+                             "Shutdown in progress - engine " + theClassName + " is not available")
+          .disableStackTrace();
+    }
+    else
+    {
+      throw Fmi::Exception::Trace(BCP, "No " + theClassName + " engine available");
+    }
+  }
+  return ptr;
 }
 
 bool Reactor::isShutdownRequested()
@@ -1211,7 +1296,12 @@ void Reactor::shutdown()
 {
   try
   {
+    // We are no more interested about init task errors when shutdown has been requested
+    itsInitTasks->stop_on_error(false);
+
     itsShutdownRequested = true;
+
+    Fmi::AsyncTaskGroup shutdownTasks;
 
     // STEP 1: Informing all plugins that the shutdown is in progress. Otherwise
     //         they might start new jobs meanwhile other components are shutting down.
@@ -1237,35 +1327,50 @@ void Reactor::shutdown()
     // this way we can relatively safely shutdown all plugins even if the do not
     // implement their own shutdown() method.
 
-    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown plugins\n"
-              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT;
+    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown plugins" << ANSI_BOLD_OFF
+              << ANSI_FG_DEFAULT << std::endl;
 
     for (auto it = itsPlugins.begin(); it != itsPlugins.end(); it++)
     {
       std::cout << ANSI_FG_RED << "* Plugin [" << (*it)->pluginname() << "] shutting down\n"
                 << ANSI_FG_DEFAULT;
-      (*it)->shutdownPlugin();
-      it->reset();
+      shutdownTasks.add("Plugin [" + (*it)->pluginname() + "] shutdown", [it]() {
+        (*it)->shutdownPlugin();
+        it->reset();
+      });
     }
+
+    shutdownTasks.wait();
+    std::cout << ANSI_FG_RED << "* Plugin shutdown completed" << ANSI_FG_DEFAULT << std::endl;
 
     // STEP 4: Requesting all engines to shutdown.
 
-    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown engines\n"
-              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT;
+    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown engines" << ANSI_BOLD_OFF
+              << ANSI_FG_DEFAULT << std::endl;
 
     for (auto it = itsSingletons.begin(); it != itsSingletons.end(); it++)
     {
-      std::cout << ANSI_FG_RED << "* Engine [" << it->first << "] shutting down\n"
-                << ANSI_FG_DEFAULT;
+      std::ostringstream tmp1;
+      tmp1 << ANSI_FG_RED << "* Engine [" << it->first << "] shutting down" << ANSI_FG_DEFAULT
+           << '\n';
+      std::cout << tmp1.str() << std::flush;
       SmartMetEngine* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-      engine->shutdownEngine();
+      shutdownTasks.add("Engine [" + it->first + "] shutdown", [engine, it]() {
+        engine->shutdownEngine();
+        std::ostringstream tmp2;
+        tmp2 << ANSI_FG_MAGENTA << "* Engine [" << it->first << "] shutdown complete"
+             << ANSI_FG_DEFAULT << '\n';
+        std::cout << tmp2.str() << std::flush;
+      });
     }
+
+    shutdownTasks.wait();
 
     // STEP 5: Deleting engines. We should not delete engines before they are all shutted down
     //         because they might use other engines (for example, obsengine => geoengine).
 
-    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nDeleting engines\n"
-              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT;
+    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nDeleting engines" << ANSI_BOLD_OFF
+              << ANSI_FG_DEFAULT << std::endl;
 
     for (auto it = itsSingletons.begin(); it != itsSingletons.end(); it++)
     {
@@ -1276,7 +1381,7 @@ void Reactor::shutdown()
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Shutdown operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Shutdown operation failed!");
   }
 }
 

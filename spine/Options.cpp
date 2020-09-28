@@ -6,11 +6,11 @@
 
 #include "Options.h"
 #include "ConfigTools.h"
-#include "Exception.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/program_options.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
+#include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <iostream>
 
@@ -45,7 +45,7 @@ bool Options::parse(int argc, char* argv[])
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -101,6 +101,8 @@ bool Options::parseOptions(int argc, char* argv[])
 
     const char* msgmaxrequestsize = "set the maximum allowed size for requests";
 
+    const char* msgalertscript = "command to run the active requests limit is broken";
+
     // clang-format off
     desc.add_options()("help,h", msghelp)("version,V", msgversion)(
         "slowthreads,N", po::value(&slowpool.minsize)->default_value(slowpool.minsize), msgslowthreads)(
@@ -111,6 +113,7 @@ bool Options::parseOptions(int argc, char* argv[])
         "maxactiverequests", po::value(&throttle.limit)->default_value(throttle.limit), msgmaxactiverequests)(
         "maxactiverestartrequests", po::value(&throttle.restart_limit)->default_value(throttle.restart_limit), msgmaxactiverestartrequests)(
         "requestlimitrate", po::value(&throttle.increase_rate)->default_value(throttle.increase_rate), msgactiverequestrate)(
+        "alertscript", po::value(&throttle.alert_script)->default_value(throttle.alert_script), msgalertscript)(
         "maxrequestsize", po::value(&maxrequestsize)->default_value(maxrequestsize), msgmaxrequestsize)(
         "debug,d", po::bool_switch(&debug)->default_value(debug), msgdebug)(
         "verbose,v", po::bool_switch(&verbose)->default_value(verbose), msgverbose)(
@@ -159,25 +162,25 @@ bool Options::parseOptions(int argc, char* argv[])
 
     if (slowpool.minsize > 10000 || fastpool.minsize > 10000)
     {
-      throw Spine::Exception(BCP, "The maximum number of threads is 10000!");
+      throw Fmi::Exception(BCP, "The maximum number of threads is 10000!");
     }
 
     if (compresslimit < 100)
     {
-      throw Spine::Exception(BCP, "Compression size limit below 100 makes no sense!");
+      throw Fmi::Exception(BCP, "Compression size limit below 100 makes no sense!");
     }
 
     if (throttle.start_limit > throttle.limit)
       throttle.start_limit = throttle.limit;
 
     if (throttle.start_limit == 0 || throttle.limit == 0 || throttle.increase_rate == 0)
-      throw Spine::Exception(BCP, "Active request settings must be > 0");
+      throw Fmi::Exception(BCP, "Active request settings must be > 0");
 
     return true;
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -195,7 +198,7 @@ void Options::parseConfig()
       return;
 
     if (!boost::filesystem::exists(configfile))
-      throw Spine::Exception(BCP, "Configuration file missing")
+      throw Fmi::Exception(BCP, "Configuration file missing")
           .addParameter("configfile", configfile);
 
     if (verbose)
@@ -232,6 +235,8 @@ void Options::parseConfig()
       throttle.restart_limit = throttle.start_limit;
       lookupHostSetting(itsConfig, throttle.restart_limit, "activerequests.restart_limit");
 
+      lookupHostSetting(itsConfig, throttle.alert_script, "activerequests.alert_script");
+
       lookupHostSetting(itsConfig, slowpool.minsize, "slowpool.maxthreads");
       lookupHostSetting(itsConfig, slowpool.maxrequeuesize, "slowpool.maxrequeuesize");
 
@@ -242,26 +247,26 @@ void Options::parseConfig()
     }
     catch (libconfig::ParseException& e)
     {
-      throw Spine::Exception(BCP, "libconfig parser error")
+      throw Fmi::Exception(BCP, "libconfig parser error")
           .addParameter("error", std::string("'") + e.getError() + "'")
           .addParameter("file", e.getFile())
           .addParameter("line", Fmi::to_string(e.getLine()));
     }
     catch (libconfig::SettingException& e)
     {
-      throw Spine::Exception(BCP, "libconfig setting error")
+      throw Fmi::Exception(BCP, "libconfig setting error")
           .addParameter("error", std::string("'") + e.what() + "'")
           .addParameter("path", e.getPath());
     }
     catch (libconfig::ConfigException& e)
     {
-      throw Spine::Exception(BCP, "libconfig configuration error")
+      throw Fmi::Exception(BCP, "libconfig configuration error")
           .addParameter("error", std::string("'") + e.what() + "'");
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Failed to parse configuration file")
+    throw Fmi::Exception::Trace(BCP, "Failed to parse configuration file")
         .addParameter("configfile", configfile);
   }
 }
@@ -287,8 +292,9 @@ void Options::report() const
               << "Max slow queue size\t\t= " << slowpool.maxrequeuesize << "\n"
               << "Max active requests\t\t= " << throttle.limit << "\n"
               << "- at start\t\t\t= " << throttle.start_limit << "\n"
-              << " -at slowdown\t\t\t= " << throttle.restart_limit << "\n"
+              << "- at slowdown\t\t\t= " << throttle.restart_limit << "\n"
               << "- increase rate\t\t\t= " << throttle.increase_rate << "\n"
+              << "- alert script\t\t\t= " << throttle.alert_script << "\n"
               << "Port\t\t\t\t= " << port << "\n"
               << "Timeout\t\t\t\t= " << timeout << "\n"
               << "Access log directory\t\t= " << accesslogdir << "\n"
@@ -302,7 +308,7 @@ void Options::report() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

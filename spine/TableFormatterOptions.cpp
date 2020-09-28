@@ -5,7 +5,7 @@
 // ======================================================================
 
 #include "TableFormatterOptions.h"
-#include "Exception.h"
+#include <macgyver/Exception.h>
 #include <stdexcept>
 
 static const char* default_wxml_version = "2.00";
@@ -60,7 +60,7 @@ TableFormatterOptions::TableFormatterOptions(const libconfig::Config& theConfig)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

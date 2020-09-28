@@ -5,10 +5,10 @@
 //======================================================================
 
 #pragma once
-#include "Exception.h"
 #include "HTTP.h"
 #include <json/json.h>
-#include <smartmet/macgyver/TimeParser.h>
+#include <macgyver/Exception.h>
+#include <macgyver/TimeParser.h>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -62,7 +62,7 @@ void extract_array(const std::string& theName,
   try
   {
     if (!theJson.isArray())
-      throw SmartMet::Spine::Exception(BCP, theName + " setting must be an array");
+      throw Fmi::Exception(BCP, theName + " setting must be an array");
 
     for (unsigned int i = 0; i < theJson.size(); i++)
     {
@@ -74,7 +74,7 @@ void extract_array(const std::string& theName,
   }
   catch (...)
   {
-    throw SmartMet::Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

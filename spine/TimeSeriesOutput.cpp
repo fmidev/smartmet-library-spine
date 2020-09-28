@@ -1,13 +1,10 @@
 #include "TimeSeriesOutput.h"
-#include "Exception.h"
-
-#include <newbase/NFmiGlobals.h>
-
-#include <macgyver/StringConversion.h>
-
 #include <boost/format.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/copy.hpp>
+#include <macgyver/Exception.h>
+#include <macgyver/StringConversion.h>
+#include <newbase/NFmiGlobals.h>
 
 namespace SmartMet
 {
@@ -45,7 +42,7 @@ std::ostream& operator<<(std::ostream& os, const Value& val)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -60,7 +57,7 @@ std::ostream& operator<<(std::ostream& os, const TimeSeries& ts)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -81,7 +78,7 @@ std::ostream& operator<<(std::ostream& os, const TimeSeriesGroup& tsg)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -99,7 +96,7 @@ std::ostream& operator<<(std::ostream& os, const TimeSeriesVector& tsv)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -113,7 +110,7 @@ std::string StringVisitor::operator()(const None& /* none */) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -130,7 +127,7 @@ std::string StringVisitor::operator()(double d) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -142,7 +139,7 @@ std::string StringVisitor::operator()(int i) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -158,13 +155,15 @@ std::string StringVisitor::operator()(const LonLat& lonlat) const
       case LonLatFormat::LATLON:
         return itsValueFormatter.format(lonlat.lat, itsPrecision) + ", " +
                itsValueFormatter.format(lonlat.lon, itsPrecision);
-      default:  // Never reached
+#ifdef __GNUC__
+      default:
         return "";
+#endif
     }
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -176,7 +175,7 @@ std::string StringVisitor::operator()(const boost::local_time::local_date_time& 
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -189,7 +188,7 @@ void OStreamVisitor::operator()(const None& /* none */) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -201,7 +200,7 @@ void OStreamVisitor::operator()(const std::string& str) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -213,7 +212,7 @@ void OStreamVisitor::operator()(double d) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -225,7 +224,7 @@ void OStreamVisitor::operator()(int i) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -238,7 +237,7 @@ void OStreamVisitor::operator()(const LonLat& lonlat) const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -250,7 +249,7 @@ void OStreamVisitor::operator()(const boost::local_time::local_date_time& ldt) c
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -263,7 +262,7 @@ OStreamVisitor& OStreamVisitor::operator<<(LonLatFormat newformat)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -277,7 +276,7 @@ void TableVisitor::operator()(const None& /* none */)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -289,7 +288,7 @@ void TableVisitor::operator()(const std::string& str)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -297,7 +296,7 @@ void TableVisitor::operator()(double d)
 {
   try
   {
-    if (d == kFloatMissing)
+    if (d == static_cast<double>(kFloatMissing))
     {
       itsTable.set(itsCurrentColumn, itsCurrentRow++, itsValueFormatter.missing());
       return;
@@ -309,7 +308,7 @@ void TableVisitor::operator()(double d)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -321,7 +320,7 @@ void TableVisitor::operator()(int i)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -350,7 +349,7 @@ void TableVisitor::operator()(const LonLat& lonlat)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -381,7 +380,7 @@ void TableVisitor::operator()(const boost::local_time::local_date_time& ldt)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -411,7 +410,7 @@ TableVisitor& operator<<(TableVisitor& tf, const Value& val)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -424,7 +423,7 @@ TableVisitor& TableVisitor::operator<<(LonLatFormat newformat)
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

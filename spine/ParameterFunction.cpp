@@ -5,7 +5,7 @@
 // ======================================================================
 
 #include "ParameterFunction.h"
-#include "Exception.h"
+#include <macgyver/Exception.h>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -82,7 +82,7 @@ std::string ParameterFunction::hash() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 
@@ -160,7 +160,7 @@ std::string ParameterFunction::info() const
   }
   catch (...)
   {
-    throw Spine::Exception::Trace(BCP, "Operation failed!");
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Exception.h"
 #include <boost/current_function.hpp>
 #include <boost/shared_ptr.hpp>
+#include <macgyver/Exception.h>
 #include <macgyver/TypeName.h>
 #include <libconfig.h++>
 #include <limits>
@@ -75,7 +75,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw Exception::Trace(BCP, "Operation failed!").addParameter("Parameter", theName);
+      throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Parameter", theName);
     }
   }
 
@@ -100,7 +100,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw Exception::Trace(BCP, "Operation failed!").addParameter("Parameter", theName);
+      throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Parameter", theName);
     }
   }
 
@@ -139,7 +139,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw Exception::Trace(BCP, "Operation failed!").addParameter("Parameter", theName);
+      throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Parameter", theName);
     }
   }
 
@@ -164,7 +164,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw Exception::Trace(BCP, "Operation failed!").addParameter("Parameter", theName);
+      throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Parameter", theName);
     }
   }
 
@@ -206,7 +206,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw Exception::Trace(BCP, "Operation failed!").addParameter("Path", path);
+      throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Path", path);
     }
   }
 
@@ -243,7 +243,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw Exception::Trace(BCP, "Operation failed!").addParameter("Path", path);
+      throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Path", path);
     }
   }
 
@@ -291,7 +291,7 @@ class ConfigBase
             int len = setting.getLength();
             if (len < min_size or len > max_size)
             {
-              throw Exception(BCP, "The size of the array setting is out of the range!")
+              throw Fmi::Exception(BCP, "The size of the array setting is out of the range!")
                   .addParameter("Configuration file", file_name)
                   .addParameter("Size", std::to_string(len))
                   .addParameter("Range",
@@ -308,7 +308,7 @@ class ConfigBase
           {
             if (min_size > 1 or max_size < 1)
             {
-              throw Exception(BCP, "The size of the array setting is out of the range!")
+              throw Fmi::Exception(BCP, "The size of the array setting is out of the range!")
                   .addParameter("Configuration file", file_name)
                   .addParameter("Size", "1")
                   .addParameter("Range",
@@ -320,7 +320,7 @@ class ConfigBase
           }
           else
           {
-            throw Exception(BCP, "Incorrect configuration type!")
+            throw Fmi::Exception(BCP, "Incorrect configuration type!")
                 .addParameter("Configuration file", file_name)
                 .addParameter("Path", path)
                 .addDetail("Scalar or array of " +
@@ -340,7 +340,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw Exception::Trace(BCP, "Operation failed!").addParameter("Path", path);
+      throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Path", path);
     }
   }
 
@@ -354,7 +354,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw Exception::Trace(BCP, "Operation failed!").addParameter("Path", path);
+      throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Path", path);
     }
   }
 
@@ -369,7 +369,7 @@ class ConfigBase
       std::vector<MemberType> result;
       if (not this->get_config_array(setting, path, result, min_size, max_size))
       {
-        throw Exception(BCP, "Mandatory array setting not found!")
+        throw Fmi::Exception(BCP, "Mandatory array setting not found!")
             .addParameter("Configuration file", file_name)
             .addParameter("Path", path);
       }
@@ -377,7 +377,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw Exception::Trace(BCP, "Operation failed!").addParameter("Path", path);
+      throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Path", path);
     }
   }
 
