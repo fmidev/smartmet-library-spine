@@ -1,6 +1,8 @@
 PROG = $(patsubst %.cpp,%,$(wildcard *Test.cpp))
 
-include ../common.mk
+REQUIRES = jsoncpp configpp
+
+include $(shell echo $${PREFIX-/usr})/share/smartmet/devel/makefile.inc
 
 FLAGS = -std=$(CXX_STD) -Wall -W -fdiagnostics-color=$(GCC_DIAG_COLOR) -Wno-unused-parameter -DMYDEBUG
 
@@ -13,11 +15,12 @@ endif
 
 CFLAGS = -DUNIX -O0 -g $(FLAGS)
 
-INCLUDES += -I../spine -I/usr/include/smartmet `pkg-config --cflags jsoncpp`
+INCLUDES += -I../spine
+
 LIBS += ../libsmartmet-spine.so \
 	-lsmartmet-macgyver \
-	`pkg-config --libs jsoncpp` \
-	`pkg-config --libs libconfig++` \
+	$(JSONCPP_LIBS) \
+	$(LIBCONFIGPP_LIBS) \
 	-lboost_filesystem \
 	-lboost_iostreams \
 	-lboost_regex \
