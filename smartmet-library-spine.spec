@@ -71,6 +71,7 @@ Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: gdal-devel
+#TestRequires: mariadb-devel
 
 %description
 FMI BrainStorm Spinal Cord Library
