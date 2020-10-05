@@ -35,9 +35,10 @@ clean:
 	rm -f $(PROG) *~
 
 test: $(PROG)
-	@rm -rf /tmp/bscachetest #Cache test uses this
-	@rm -rf /tmp/bscachetest2 #Cache test uses this
-	@rm -rf /tmp/bscachetest3 #Cache test uses this
+	@rm -rf /tmp/$$UID/bscachetest #Cache test uses this
+	@rm -rf /tmp/$$UID/bscachetest2 #Cache test uses this
+	@rm -rf /tmp/$$UID/bscachetest3 #Cache test uses this
+	@mkdir -p /tmp/$$UID
 	@echo Running tests:
 	@ok=true; \
 	for prog in $(PROG); do \
