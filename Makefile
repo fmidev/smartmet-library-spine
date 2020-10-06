@@ -3,87 +3,20 @@ LIB = smartmet-$(SUBNAME)
 SPEC = smartmet-library-$(SUBNAME)
 INCDIR = smartmet/$(SUBNAME)
 
-include common.mk
+REQUIRES = gdal jsoncpp mysql icu-i18n configpp
+
+include $(shell echo $${PREFIX-/usr})/share/smartmet/devel/makefile.inc
+
+# ISO C++ forbids casting between pointer-to-function and pointer-to-object
+CFLAGS += -Wno-pedantic
+
 DEFINES = -DUNIX -D_REENTRANT
-
-# Boost 1.69
-
-ifneq "$(wildcard /usr/include/boost169)" ""
-  INCLUDES += -I/usr/include/boost169
-  LIBS += -L/usr/lib64/boost169
-endif
-
-ifneq "$(wildcard /usr/gdal30/include)" ""
-  INCLUDES += -I/usr/gdal30/include
-  LIBS += -L$(PREFIX)/gdal30/lib
-else
-  INCLUDES += -I/usr/include/gdal
-endif
-
-ifeq ($(USE_CLANG), yes)
- FLAGS = -std=$(CXX_STD) -fPIC \
-	-Wall \
-        -Wextra \
-	-Wno-shadow \
-	-Wno-c++98-compat-pedantic \
-	-Wno-float-equal \
-	-Wno-padded \
-	-Wno-missing-prototypes \
-	-Wno-global-constructors \
-	-Wno-exit-time-destructors \
-	-Wno-documentation-unknown-command \
-	-Wno-sign-conversion
-
- INCLUDES += -I $(includedir)/smartmet \
-	-isystem $(includedir)/mysql \
-	-isystem $(includedir)/jsoncpp \
-        $(SYSTEM_INCLUDES)
-else
-
- FLAGS = -std=$(CXX_STD) -Wall -W -fPIC -Wno-unused-parameter -fno-omit-frame-pointer -fdiagnostics-color=$(GCC_DIAG_COLOR)
-
- FLAGS_DEBUG = \
-	-Wcast-align \
-	-Wcast-qual \
-	-Winline \
-	-Wno-multichar \
-	-Wno-pmf-conversions \
-	-Wpointer-arith \
-	-Wsign-promo \
-	-Wwrite-strings
-
- INCLUDES += -I$(includedir)/smartmet \
-	-I$(includedir)/mysql \
-	`pkg-config --cflags jsoncpp`
-
-endif
-
-ifeq ($(TSAN), yes)
-  FLAGS += -fsanitize=thread
-endif
-ifeq ($(ASAN), yes)
-  FLAGS += -fsanitize=address -fsanitize=pointer-compare -fsanitize=pointer-subtract -fsanitize=undefined -fsanitize-address-use-after-scope
-endif
-
-# Compile options in release and debug modes
-
-CFLAGS_RELEASE = $(DEFINES) $(FLAGS) $(FLAGS_RELEASE) -DNDEBUG -O2 -g
-CFLAGS_DEBUG   = $(DEFINES) $(FLAGS) $(FLAGS_DEBUG)   -Werror  -O0 -g
-
-# Compile option overrides
-
-ifneq (,$(findstring debug,$(MAKECMDGOALS)))
-  override CFLAGS += $(CFLAGS_DEBUG)
-else
-  override CFLAGS +=  $(CFLAGS_RELEASE)
-endif
 
 # Common library compiling template
 
 LIBS +=	-L$(libdir) \
 	-lsmartmet-newbase \
 	-lsmartmet-macgyver \
-	-L$(libdir)/mysql -lmysqlclient_r \
 	-lboost_filesystem \
 	-lboost_regex \
 	-lboost_timer \
@@ -94,20 +27,16 @@ LIBS +=	-L$(libdir) \
 	-lboost_system \
 	-lboost_locale \
 	-lctpp2 \
-	-lconfig++ \
-	`pkg-config --libs jsoncpp` \
-	`pkg-config --libs icu-i18n` \
+	$(CONFIGPP_LIBS) \
+	$(MYSQL_LIBS) \
+	$(JSONCPP_LIBS) \
+	$(ICU_I18_LIBS) \
 	-ldl \
 	-lrt
 
 # What to install
 
 LIBFILE = lib$(LIB).so
-
-# How to install
-
-INSTALL_PROG = install -p -m 755
-INSTALL_DATA = install -p -m 664
 
 # Compilation directories
 

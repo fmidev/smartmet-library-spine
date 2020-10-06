@@ -1,6 +1,8 @@
 PROG = $(patsubst %.cpp,%,$(wildcard *Test.cpp))
 
-include ../common.mk
+REQUIRES = jsoncpp configpp gdal
+
+include $(shell echo $${PREFIX-/usr})/share/smartmet/devel/makefile.inc
 
 FLAGS = -std=$(CXX_STD) -Wall -W -fdiagnostics-color=$(GCC_DIAG_COLOR) -Wno-unused-parameter -DMYDEBUG
 
@@ -13,25 +15,12 @@ endif
 
 CFLAGS = -DUNIX -O0 -g $(FLAGS)
 
-# Boost 1.69
+INCLUDES += -I../spine
 
-ifneq "$(wildcard /usr/include/boost169)" ""
-  INCLUDES += -I/usr/include/boost169
-  LIBS += -L/usr/lib64/boost169
-endif
-
-ifneq "$(wildcard /usr/gdal30/include)" ""
-  INCLUDES += -I/usr/gdal30/include
-  LIBS += -L$(PREFIX)/gdal30/lib
-else
-  INCLUDES += -I/usr/include/gdal
-endif
-
-INCLUDES += -I../spine -I/usr/include/smartmet `pkg-config --cflags jsoncpp`
 LIBS += ../libsmartmet-spine.so \
 	-lsmartmet-macgyver \
-	`pkg-config --libs jsoncpp` \
-	`pkg-config --libs libconfig++` \
+	$(JSONCPP_LIBS) \
+	$(LIBCONFIGPP_LIBS) \
 	-lboost_filesystem \
 	-lboost_iostreams \
 	-lboost_regex \
@@ -46,9 +35,10 @@ clean:
 	rm -f $(PROG) *~
 
 test: $(PROG)
-	@rm -rf /tmp/bscachetest #Cache test uses this
-	@rm -rf /tmp/bscachetest2 #Cache test uses this
-	@rm -rf /tmp/bscachetest3 #Cache test uses this
+	@rm -rf /tmp/$$UID/bscachetest #Cache test uses this
+	@rm -rf /tmp/$$UID/bscachetest2 #Cache test uses this
+	@rm -rf /tmp/$$UID/bscachetest3 #Cache test uses this
+	@mkdir -p /tmp/$$UID
 	@echo Running tests:
 	@ok=true; \
 	for prog in $(PROG); do \

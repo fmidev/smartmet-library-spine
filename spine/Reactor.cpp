@@ -73,7 +73,7 @@ int is_file_readable(std::string& file_name)
   {
     // Open is not enough: directory might be opened but is not readable
     // On NFS: open(2) man page says reading might fail even if open succeeds
-    std::size_t nbytes = 1;
+    const std::size_t nbytes = 1;
     char buf[nbytes];
     auto rdtest = read(handle, static_cast<void*>(buf), nbytes);
     close(handle);
@@ -1046,6 +1046,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     }
 
     // Load the symbols (pointers to functions in dynamic library)
+
     EngineNamePointer itsNamePointer =
         reinterpret_cast<EngineNamePointer>(dlsym(itsHandle, "engine_name"));
 
