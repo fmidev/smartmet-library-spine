@@ -27,6 +27,11 @@ ConfigBase::ConfigBase(const std::string& file_name, const std::string& name)
 
     try
     {
+      // Enable sensible relative include paths
+      boost::filesystem::path p = file_name;
+      p.remove_filename();
+      itsConfig->setIncludeDir(p.c_str());
+
       itsConfig->readFile(file_name.c_str());
     }
     catch (const libconfig::ConfigException&)
