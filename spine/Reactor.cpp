@@ -1,4 +1,3 @@
-
 // ======================================================================
 /*!
  * \brief Implementation of class Reactor
@@ -537,26 +536,9 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
 
   auto n = itsActiveRequests.size();
 
-  if (n < itsActiveRequestsLimit)
-  {
-    itsHighLoadFlag = false;
-    return key;
-  }
-
-  // Load is now high
-
-  itsActiveRequestsCounter = 0;
-
-  itsHighLoadFlag = true;
-
-  if (itsOptions.verbose)
-    std::cerr << Spine::log_time_str() << " " << itsActiveRequests.size()
-              << " active requests, limit is " << itsActiveRequestsLimit << "/"
-              << itsOptions.throttle.limit << std::endl;
-
-  // Run alert script if set and we're not in the ramping up phase
-
-  if (!itsOptions.throttle.alert_script.empty())
+  // Run alert script if needed
+  
+  if(n >= itsOptions.throttle.alert_limit && !itsOptions.throttle.alert_script.empty())
   {
     if (itsActiveRequestsLimit < itsOptions.throttle.limit)
     {
@@ -582,6 +564,25 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
       thr.detach();
     }
   }
+
+  // Check if we should report high load
+  
+  if (n < itsActiveRequestsLimit)
+  {
+    itsHighLoadFlag = false;
+    return key;
+  }
+
+  // Load is now high
+
+  itsActiveRequestsCounter = 0; // now new finished active requests yet
+
+  itsHighLoadFlag = true;
+
+  if (itsOptions.verbose)
+    std::cerr << Spine::log_time_str() << " " << itsActiveRequests.size()
+              << " active requests, limit is " << itsActiveRequestsLimit << "/"
+              << itsOptions.throttle.limit << std::endl;
 
   // Reduce the limit back down unless already smaller due to being just started
   if (itsActiveRequestsLimit > itsOptions.throttle.restart_limit)

@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 20.10.7
-Release: 2%{?dist}.fmi
+Release: 3%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -113,6 +113,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Oct  7 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.7-3.fmi
+- Added throttle.alert_limit for controlling when to run the alert script
+
 * Wed Oct  7 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.7-2.fmi
 - Prevent unnecessary coredump if engine shutdown hooks throw during the shutdown
 

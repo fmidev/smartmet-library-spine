@@ -101,6 +101,7 @@ bool Options::parseOptions(int argc, char* argv[])
 
     const char* msgmaxrequestsize = "set the maximum allowed size for requests";
 
+    const char* msgalertlimit = "active requests limit for running the alert script";
     const char* msgalertscript = "command to run the active requests limit is broken";
 
     // clang-format off
@@ -113,6 +114,7 @@ bool Options::parseOptions(int argc, char* argv[])
         "maxactiverequests", po::value(&throttle.limit)->default_value(throttle.limit), msgmaxactiverequests)(
         "maxactiverestartrequests", po::value(&throttle.restart_limit)->default_value(throttle.restart_limit), msgmaxactiverestartrequests)(
         "requestlimitrate", po::value(&throttle.increase_rate)->default_value(throttle.increase_rate), msgactiverequestrate)(
+        "alertlimit", po::value(&throttle.alert_limit)->default_value(throttle.alert_limit), msgalertlimit)(
         "alertscript", po::value(&throttle.alert_script)->default_value(throttle.alert_script), msgalertscript)(
         "maxrequestsize", po::value(&maxrequestsize)->default_value(maxrequestsize), msgmaxrequestsize)(
         "debug,d", po::bool_switch(&debug)->default_value(debug), msgdebug)(
@@ -160,21 +162,30 @@ bool Options::parseOptions(int argc, char* argv[])
       return false;
     }
 
-    if (slowpool.minsize > 10000 || fastpool.minsize > 10000)
-    {
-      throw Fmi::Exception(BCP, "The maximum number of threads is 10000!");
-    }
-
-    if (compresslimit < 100)
-    {
-      throw Fmi::Exception(BCP, "Compression size limit below 100 makes no sense!");
-    }
-
     if (throttle.start_limit > throttle.limit)
       throttle.start_limit = throttle.limit;
 
+    if (slowpool.minsize > 10000 || fastpool.minsize > 10000)
+      throw Fmi::Exception(BCP, "The maximum number of threads is 10000!");
+
+    if (compresslimit < 100)
+      throw Fmi::Exception(BCP, "Compression size limit below 100 makes no sense!");
+
+    if(throttle.alert_limit > throttle.restart_limit)
+      throw Fmi::Exception(BCP, "Active requests alert limit must be smaller than the restart limit")
+          .addParameter("Alert limit", Fmi::to_string(throttle.alert_limit))
+          .addParameter("Restart limit", Fmi::to_string(throttle.restart_limit));
+
+    if(throttle.alert_limit > throttle.limit)
+      throw Fmi::Exception(BCP, "Alert limit > limit makes no sense")
+          .addParameter("Alert limit", Fmi::to_string(throttle.alert_limit))
+          .addParameter("Limit", Fmi::to_string(throttle.limit));
+    
     if (throttle.start_limit == 0 || throttle.limit == 0 || throttle.increase_rate == 0)
-      throw Fmi::Exception(BCP, "Active request settings must be > 0");
+      throw Fmi::Exception(BCP, "Active request settings must be > 0")
+          .addParameter("Start limit", Fmi::to_string(throttle.start_limit))
+          .addParameter("Limit",Fmi::to_string(throttle.limit))
+          .addParameter("Increase rate",Fmi::to_string(throttle.increase_rate));
 
     return true;
   }
@@ -239,6 +250,10 @@ void Options::parseConfig()
       // Default restart_limit is start_limit when reading the configuration file.
       throttle.restart_limit = throttle.start_limit;
       lookupHostSetting(itsConfig, throttle.restart_limit, "activerequests.restart_limit");
+
+      // Default alert limit is the limit itself, this setting may reduce it
+      throttle.alert_limit = throttle.limit;
+      lookupHostSetting(itsConfig, throttle.alert_limit, "activerequests.alert_limit");
 
       lookupHostSetting(itsConfig, throttle.alert_script, "activerequests.alert_script");
 
