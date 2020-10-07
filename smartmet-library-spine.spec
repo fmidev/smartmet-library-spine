@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.10.6
+Version: 20.10.7
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -15,7 +15,7 @@ BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost169-devel
 BuildRequires: smartmet-library-newbase-devel >= 20.9.29
-BuildRequires: smartmet-library-macgyver-devel >= 20.10.5
+BuildRequires: smartmet-library-macgyver-devel >= 20.10.7
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -29,7 +29,7 @@ BuildRequires: mariadb-devel
 BuildRequires: boost169-chrono
 BuildRequires: boost169-timer
 Requires: smartmet-library-newbase >= 20.9.29
-Requires: smartmet-library-macgyver >= 20.10.5
+Requires: smartmet-library-macgyver >= 20.10.7
 Requires: smartmet-timezones >= 20.5.5
 Requires: smartmet-library-gis >= 20.10.5
 Requires: boost169-filesystem
@@ -113,6 +113,10 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Oct  7 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.10.7-1.fmi
+- Rebuilt due to smartmet-library-macgyver makefile.inc changes
+- Add verification that libsmartmet-spine.so do not have unresolved external references
+
 * Tue Oct  6 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.6-1.fmi
 - Enable include paths relative to main configuration file
 
