@@ -115,7 +115,7 @@ make %{_smp_mflags}
 %changelog
 * Wed Oct  7 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.10.7-1.fmi
 - Rebuilt due to smartmet-library-macgyver makefile.inc changes
-- Add verification that libsmartmet-spine.so do not have unresolved external references
+- Fail build if libsmartmet-spine.so has unresolved external references
 
 * Tue Oct  6 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.6-1.fmi
 - Enable include paths relative to main configuration file
