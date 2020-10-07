@@ -171,11 +171,6 @@ bool Options::parseOptions(int argc, char* argv[])
     if (compresslimit < 100)
       throw Fmi::Exception(BCP, "Compression size limit below 100 makes no sense!");
 
-    if(throttle.alert_limit > throttle.restart_limit)
-      throw Fmi::Exception(BCP, "Active requests alert limit must be smaller than the restart limit")
-          .addParameter("Alert limit", Fmi::to_string(throttle.alert_limit))
-          .addParameter("Restart limit", Fmi::to_string(throttle.restart_limit));
-
     if(throttle.alert_limit > throttle.limit)
       throw Fmi::Exception(BCP, "Alert limit > limit makes no sense")
           .addParameter("Alert limit", Fmi::to_string(throttle.alert_limit))
