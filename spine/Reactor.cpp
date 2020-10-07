@@ -1248,7 +1248,10 @@ void Reactor::callBackendConnectionFinishedHooks(
   }
   catch (...)
   {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+    // This is called by the Connection destructor, hence we must not throw
+    Fmi::Exception ex(BCP, "Connections destructing, not calling hooks anymore", nullptr);
+    ex.printError();
+    // Fall through to the destructor
   }
 }
 
