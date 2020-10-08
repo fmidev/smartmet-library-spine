@@ -36,8 +36,10 @@ void SmartMetPlugin::initPlugin()
     catch (...)
     {
       Fmi::Exception exception(BCP, "Init call failed!", nullptr);
-      if (!itsShutdownRequested)
+      if (!itsShutdownRequested) {
+        itsInitActive = false;
         throw exception;
+      }
       // else
       //  std::cout << "SHUTDOWN EXCEPTION :\n" << exception.what() << "\n";
     }
