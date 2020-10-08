@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.10.7
+Version: 20.10.8
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -113,6 +113,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu Oct  8 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.10.87-1.fmi
+- Fix SmartMetPlugin::initPlugin (cleanup in case of C++ exception)
+
 * Wed Oct  7 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.10.7-1.fmi
 - Rebuilt due to smartmet-library-macgyver makefile.inc changes
 - Fail build if libsmartmet-spine.so has unresolved external references
