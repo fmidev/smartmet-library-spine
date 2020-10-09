@@ -297,7 +297,7 @@ double Value::get_double() const
       case TI_STRING:
         try
         {
-          return Fmi::stod(boost::algorithm::trim_copy(boost::get<std::string>(data)));
+          return Fmi::stod(Fmi::trim_copy(boost::get<std::string>(data)));
         }
         catch (const std::exception&)
         {
@@ -738,7 +738,7 @@ boost::posix_time::ptime parse_xml_time(const std::string& value)
 
     using qi_rule = qi::rule<std::string::const_iterator, std::string()>;
 
-    const std::string tmp = ba::trim_copy(value);
+    const std::string tmp = Fmi::trim_copy(value);
 
     char tz_off_sign = ' ';
     short unsigned year = 0, month = 0, day = 0;
@@ -808,7 +808,7 @@ bool string2bool(const std::string src)
 
     std::string arg = src;
     Fmi::ascii_tolower(arg);
-    ba::trim(arg);
+    Fmi::trim(arg);
 
     if ((arg == "true") || (arg == "1"))
       return true;
@@ -958,9 +958,9 @@ void Point::parse_string(const std::string& src)
       throw Fmi::Exception(BCP, msg.str());
     }
 
-    crs = parts.size() == 2 ? std::string("") : ba::trim_copy(parts[2]);
-    x = Fmi::stod(boost::algorithm::trim_copy(parts[0]));
-    y = Fmi::stod(boost::algorithm::trim_copy(parts[1]));
+    crs = parts.size() == 2 ? std::string("") : Fmi::trim_copy(parts[2]);
+    x = Fmi::stod(Fmi::trim_copy(parts[0]));
+    y = Fmi::stod(Fmi::trim_copy(parts[1]));
   }
   catch (...)
   {
@@ -1011,11 +1011,11 @@ void BoundingBox::parse_string(const std::string& src)
       throw Fmi::Exception(BCP, msg.str());
     }
 
-    crs = parts.size() == 4 ? std::string("") : ba::trim_copy(parts[4]);
-    xMin = Fmi::stod(boost::algorithm::trim_copy(parts[0]));
-    yMin = Fmi::stod(boost::algorithm::trim_copy(parts[1]));
-    xMax = Fmi::stod(boost::algorithm::trim_copy(parts[2]));
-    yMax = Fmi::stod(boost::algorithm::trim_copy(parts[3]));
+    crs = parts.size() == 4 ? std::string("") : Fmi::trim_copy(parts[4]);
+    xMin = Fmi::stod(Fmi::trim_copy(parts[0]));
+    yMin = Fmi::stod(Fmi::trim_copy(parts[1]));
+    xMax = Fmi::stod(Fmi::trim_copy(parts[2]));
+    yMax = Fmi::stod(Fmi::trim_copy(parts[3]));
   }
   catch (...)
   {

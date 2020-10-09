@@ -328,8 +328,8 @@ string ParameterFactory::extract_function(const string& theString,
 
         string lo = limits.substr(0, pos);
         string hi = limits.substr(pos + 1);
-        boost::algorithm::trim(lo);
-        boost::algorithm::trim(hi);
+        Fmi::trim(lo);
+        Fmi::trim(hi);
 
         if (lo.empty() && hi.empty())
           throw Fmi::Exception(BCP, "Both lower and upper limit are missing from the modifier!");
@@ -507,8 +507,8 @@ std::string ParameterFactory::parse_parameter_functions(
     {
       theParameterNameAlias = paramreq.substr(alias_name_pos + 3);
       paramreq = paramreq.substr(0, alias_name_pos);
-      boost::algorithm::trim(theParameterNameAlias);
-      boost::algorithm::trim(paramreq);
+      Fmi::trim(theParameterNameAlias);
+      Fmi::trim(paramreq);
     }
 
     // special handling for date formatting, for example date(%Y-...)
@@ -688,7 +688,7 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
 {
   try
   {
-    auto tmpname = boost::algorithm::trim_copy(name);
+    auto tmpname = Fmi::trim_copy(name);
 
     ParameterFunction innerFunction;
     ParameterFunction outerFunction;
@@ -713,7 +713,7 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
     if (!boost::algorithm::istarts_with(name, "date(") &&
         innermost_item.find("(") != std::string::npos)
     {
-      boost::algorithm::trim(innermost_item);
+      Fmi::trim(innermost_item);
       std::string innermost_name = innermost_item.substr(0, innermost_item.find("("));
       if (innermost_item.find("[") != std::string::npos)
       {
@@ -741,8 +741,8 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
           size_t len = sensor_info.rfind(")") - sensor_info.find(":") - 1;
           sensor_no = sensor_info.substr(sensor_info.find(":") + 1, len);
         }
-        boost::algorithm::trim(sensor_parameter);
-        boost::algorithm::trim(sensor_no);
+        Fmi::trim(sensor_parameter);
+        Fmi::trim(sensor_no);
 
         if (sensor_no.empty())
           throw Fmi::Exception(BCP, "Sensor number can not be empty!");

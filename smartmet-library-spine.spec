@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.10.6
+Version: 20.10.9
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -14,8 +14,8 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost169-devel
-BuildRequires: smartmet-library-newbase-devel >= 20.9.29
-BuildRequires: smartmet-library-macgyver-devel >= 20.10.5
+BuildRequires: smartmet-library-newbase-devel >= 20.10.9
+BuildRequires: smartmet-library-macgyver-devel >= 20.10.9
 BuildRequires: libconfig
 BuildRequires: libconfig-devel
 BuildRequires: ctpp2-devel
@@ -23,14 +23,14 @@ BuildRequires: libicu-devel
 BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 20.10.5
+BuildRequires: smartmet-library-gis-devel >= 20.9.25
 BuildRequires: fmt-devel >= 6.2.1
 BuildRequires: mariadb-devel
 BuildRequires: boost169-chrono
 BuildRequires: boost169-timer
 BuildRequires: gdal30-devel
-Requires: smartmet-library-newbase >= 20.9.25
-Requires: smartmet-library-macgyver >= 20.9.18
+Requires: smartmet-library-newbase >= 20.10.9
+Requires: smartmet-library-macgyver >= 20.10.9
 Requires: smartmet-timezones >= 20.5.5
 Requires: smartmet-library-gis >= 20.9.25
 Requires: boost169-filesystem
@@ -109,6 +109,19 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Fri Oct  9 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.9-1.fmi
+- Use Fmi::trim for speed
+
+* Wed Oct  7 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.7-3.fmi
+- Added throttle.alert_limit for controlling when to run the alert script
+
+* Wed Oct  7 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.7-2.fmi
+- Prevent unnecessary coredump if engine shutdown hooks throw during the shutdown
+
+* Wed Oct  7 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.10.7-1.fmi
+- Rebuilt due to smartmet-library-macgyver makefile.inc changes
+- Fail build if libsmartmet-spine.so has unresolved external references
+
 * Tue Oct  6 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.6-1.fmi
 - Enable include paths relative to main configuration file
 
