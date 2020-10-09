@@ -21,6 +21,7 @@
 #include <boost/range/iterator_range.hpp>
 #include <dtl/dtl.hpp>
 #include <macgyver/WorkQueue.h>
+#include <macgyver/StringConversion.h>
 #include <algorithm>
 #include <atomic>
 #include <fstream>
@@ -472,7 +473,7 @@ bool PluginTest::process_query(const fs::path& fn, SmartMet::Spine::Reactor& rea
 
   if (boost::algorithm::ends_with(inputfile.string(), ".get"))
   {
-    boost::algorithm::trim(input);
+    Fmi::trim(input);
     input += "\r\n\r\n";
   }
 
