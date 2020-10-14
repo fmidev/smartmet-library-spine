@@ -6,6 +6,7 @@
 // ======================================================================
 
 #include "DebugFormatter.h"
+#include "HTTP.h"
 #include "Table.h"
 #include "TableFormatterOptions.h"
 #include <regression/tframe.h>
@@ -52,11 +53,10 @@ void basic()
   SmartMet::Spine::HTTP::Request req;
 
   SmartMet::Spine::DebugFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result:\n" + out.str() + "\nexpected:\n" + res);
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "\nexpected:\n" + res);
 
   TEST_PASSED();
 }
@@ -74,15 +74,14 @@ void empty()
   SmartMet::Spine::HTTP::Request req;
 
   SmartMet::Spine::DebugFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() !=
+  if (out !=
       "<!DOCTYPE html><html><head><title>Debug mode output</title><style>table {border-collapse: "
       "collapse;}th, td {border-bottom: 1px solid black; padding: 3px 0.5em 3px 0.5em; text-align: "
       "center;}tr:nth-child(even) {background-color: #f2f2f2;}tr:hover {background-color: "
       "#e2e2e2;}</style>\n</head><body>\n<table><tr></tr></table></body></html>")
-    TEST_FAILED("Incorrect result:\n" + out.str());
+    TEST_FAILED("Incorrect result:\n" + out);
 
   TEST_PASSED();
 }

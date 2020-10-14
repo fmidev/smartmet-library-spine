@@ -6,6 +6,7 @@
 
 #include "SerialFormatter.h"
 #include "Convenience.h"
+#include "HTTP.h"
 #include "Table.h"
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -75,15 +76,16 @@ std::list<std::string> parse_attributes(const std::string& theStr)
  */
 // ----------------------------------------------------------------------
 
-void format_plain(std::ostream& theOutput,
-                  const Table& theTable,
-                  const TableFormatter::Names& theNames,
-                  const HTTP::Request& theReq,
-                  Table::Indexes& theCols,
-                  Table::Indexes& theRows)
+std::string format_plain(const Table& theTable,
+                         const TableFormatter::Names& theNames,
+                         const HTTP::Request& theReq,
+                         Table::Indexes& theCols,
+                         Table::Indexes& theRows)
 {
   try
   {
+    std::string out;
+
     std::string miss;
     auto missing = theReq.getParameter("missingtext");
 
@@ -92,29 +94,44 @@ void format_plain(std::ostream& theOutput,
     else
       miss = *missing;
 
-    theOutput << "a:" << theRows.size() << ":{";
+    out += "a:";
+    out += Fmi::to_string(theRows.size());
+    out += ":{";
 
     std::size_t row = 0;
     for (std::size_t j : theRows)
     {
-      theOutput << "i:" << row++ << ";a:" << theCols.size() << ":{";
+      out += "i:";
+      out += Fmi::to_string(row++);
+      out += ";a:";
+      out += Fmi::to_string(theCols.size());
+      out += ":{";
 
       for (std::size_t i : theCols)
       {
         const std::string& name = theNames[i];
         std::string value = theTable.get(i, j);
 
-        theOutput << "s:" << name.size() << ":\"" << name << "\";";
+        out += "s:";
+        out += Fmi::to_string(name.size());
+        out += ":\"";
+        out += name;
+        out += "\";";
 
+        out += "s:";
+        out += (Fmi::to_string(value.empty() ? miss.size() : value.size()));
+        out += ":\"";
         if (value.empty())
-          theOutput << "s:" << miss.size() << ":\"" << miss << "\";";
+          out += miss;
         else
-          theOutput << "s:" << value.size() << ":\"" << value << "\";";
+          out += value;
+        out += "\";";
       }
-      theOutput << "}";
+      out += "}";
     }
 
-    theOutput << "}";
+    out += "}";
+    return out;
   }
   catch (...)
   {
@@ -128,16 +145,17 @@ void format_plain(std::ostream& theOutput,
  */
 // ----------------------------------------------------------------------
 
-void format_attributes(std::ostream& theOutput,
-                       const Table& theTable,
-                       const TableFormatter::Names& theNames,
-                       const HTTP::Request& theReq,
-                       Table::Indexes& theCols,
-                       Table::Indexes& theRows,
-                       std::list<std::string>& theAttributes)
+std::string format_attributes(const Table& theTable,
+                              const TableFormatter::Names& theNames,
+                              const HTTP::Request& theReq,
+                              Table::Indexes& theCols,
+                              Table::Indexes& theRows,
+                              std::list<std::string>& theAttributes)
 {
   try
   {
+    std::string out;
+
     std::string miss;
     auto missing = theReq.getParameter("missingtext");
 
@@ -149,31 +167,49 @@ void format_attributes(std::ostream& theOutput,
     if (theAttributes.size() == 0)
     {
       if (theRows.size() > 1)
-        theOutput << "a:" << theRows.size() << ":{";
+      {
+        out += "a:";
+        out += Fmi::to_string(theRows.size());
+        out += ":{";
+      }
 
       std::size_t row = 0;
       for (std::size_t j : theRows)
       {
         if (theRows.size() > 1)
-          theOutput << "i:" << row++ << ";";
+        {
+          out += "i:";
+          out += Fmi::to_string(row++);
+          out += ';';
+        }
 
-        theOutput << "a:" << theCols.size() << ":{";
+        out += "a:";
+        out += Fmi::to_string(theCols.size());
+        out += ":{";
 
         for (std::size_t i : theCols)
         {
           const std::string& name = theNames[i];
-          theOutput << "s:" << name.size() << ":\"" << name << "\";";
+          out += "s:";
+          out += Fmi::to_string(name.size());
+          out += ":\"";
+          out += name;
+          out += "\";";
 
           std::string value = theTable.get(i, j);
+          out += "s:";
+          out += (Fmi::to_string(value.empty() ? miss.size() : value.size()));
+          out += ":\"";
           if (value.empty())
-            theOutput << "s:" << miss.size() << ":\"" << miss << "\";";
+            out += miss;
           else
-            theOutput << "s:" << value.size() << ":\"" << value << "\";";
+            out += value;
+          out += "\";";
         }
-        theOutput << "}";
+        out += "}";
       }
       if (theRows.size() > 1)
-        theOutput << "}";
+        out += "}";
     }
     else
     {
@@ -199,7 +235,9 @@ void format_attributes(std::ostream& theOutput,
 
       // Process unique attribute values one at a time
 
-      theOutput << "a:" << values.size() << ":{";
+      out += "a:";
+      out += Fmi::to_string(values.size());
+      out += ":{";
 
       for (const std::string& value : values)
       {
@@ -209,17 +247,23 @@ void format_attributes(std::ostream& theOutput,
           if (theTable.get(nam, j) == value)
             rows.insert(j);
         }
-        theOutput << "s:" << value.size() << ":\"" << value << "\";";
+        out += "s:";
+        out += Fmi::to_string(value.size());
+        out += ":\"";
+        out += value;
+        out += "\";";
 
-        format_attributes(theOutput, theTable, theNames, theReq, theCols, rows, theAttributes);
+        out += format_attributes(theTable, theNames, theReq, theCols, rows, theAttributes);
       }
-      theOutput << "}";
+      out += "}";
 
       // Restore the attribute column
 
       theCols.insert(nam);
       theAttributes.push_front(attribute);
     }
+
+    return out;
   }
   catch (...)
   {
@@ -234,11 +278,10 @@ void format_attributes(std::ostream& theOutput,
  */
 // ----------------------------------------------------------------------
 
-void SerialFormatter::format(std::ostream& theOutput,
-                             const Table& theTable,
-                             const TableFormatter::Names& theNames,
-                             const HTTP::Request& theReq,
-                             const TableFormatterOptions&) const
+std::string SerialFormatter::format(const Table& theTable,
+                                    const TableFormatter::Names& theNames,
+                                    const HTTP::Request& theReq,
+                                    const TableFormatterOptions&) const
 {
   try
   {
@@ -255,13 +298,9 @@ void SerialFormatter::format(std::ostream& theOutput,
     Table::Indexes rows = theTable.rows();
 
     if (atts.size() == 0)
-    {
-      format_plain(theOutput, theTable, theNames, theReq, cols, rows);
-    }
-    else
-    {
-      format_attributes(theOutput, theTable, theNames, theReq, cols, rows, atts);
-    }
+      return format_plain(theTable, theNames, theReq, cols, rows);
+
+    return format_attributes(theTable, theNames, theReq, cols, rows, atts);
   }
   catch (...)
   {

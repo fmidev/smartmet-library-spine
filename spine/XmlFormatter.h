@@ -17,32 +17,28 @@ class TableFormatterOptions;
 class XmlFormatter : public TableFormatter
 {
  public:
-  void format(std::ostream& theOutput,
-              const Table& theTable,
-              const TableFormatter::Names& theNames,
-              const HTTP::Request& theReq,
-              const TableFormatterOptions& theConfig) const;
+  std::string format(const Table& theTable,
+                     const TableFormatter::Names& theNames,
+                     const HTTP::Request& theReq,
+                     const TableFormatterOptions& theConfig) const;
 
   const std::string mimetype() const { return "application/xml"; }
 
  private:
-  void format_attributes(std::ostream& theOutput,
-                         const Table& theTable,
-                         const TableFormatter::Names& theNames,
-                         const std::string& theTag,
-                         const HTTP::Request& theReq) const;
+  std::string format_attributes(const Table& theTable,
+                                const TableFormatter::Names& theNames,
+                                const std::string& theTag,
+                                const HTTP::Request& theReq) const;
 
-  void format_tags(std::ostream& theOutput,
-                   const Table& theTable,
-                   const TableFormatter::Names& theNames,
-                   const std::string& theTag,
-                   const HTTP::Request& theReq) const;
+  std::string format_tags(const Table& theTable,
+                          const TableFormatter::Names& theNames,
+                          const std::string& theTag,
+                          const HTTP::Request& theReq) const;
 
-  void format_mixed(std::ostream& theOutput,
-                    const Table& theTable,
-                    const TableFormatter::Names& theNames,
-                    const std::string& theTag,
-                    const HTTP::Request& theReq) const;
+  std::string format_mixed(const Table& theTable,
+                           const TableFormatter::Names& theNames,
+                           const std::string& theTag,
+                           const HTTP::Request& theReq) const;
 };
 }  // namespace Spine
 }  // namespace SmartMet

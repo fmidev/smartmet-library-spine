@@ -6,6 +6,7 @@
 
 #include "WxmlFormatter.h"
 #include "Convenience.h"
+#include "HTTP.h"
 #include "Table.h"
 #include "TableFormatterOptions.h"
 #include <boost/algorithm/string/replace.hpp>
@@ -76,34 +77,37 @@ bool looks_time(const std::string& theValue)
  */
 // ----------------------------------------------------------------------
 
-void WxmlFormatter::format_100(std::ostream& theOutput,
-                               const Table& theTable,
-                               const TableFormatter::Names& theNames,
-                               const HTTP::Request& /* theReq */,
-                               const TableFormatterOptions& theConfig) const
+std::string WxmlFormatter::format_100(const Table& theTable,
+                                      const TableFormatter::Names& theNames,
+                                      const HTTP::Request& /* theReq */,
+                                      const TableFormatterOptions& theConfig) const
 {
   try
   {
-    theOutput << R"(<?xml version="1.0" encoding="UTF-8" ?>)" << std::endl;
+    std::string out = R"(<?xml version="1.0" encoding="UTF-8" ?>)" "\n";
 
     std::string schema = theConfig.wxmlSchema();
 
     boost::algorithm::replace_first(schema, "{version}", "1.00");
 
     if (schema.empty())
-      theOutput << "<pointweather>" << std::endl;
+      out += "<pointweather>\n";
     else
-      theOutput << "<pointweather xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
-                   "xsi:schemaLocation=\""
-                << schema << "\">" << std::endl;
+    {
+      out +=
+          "<pointweather xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+          "xsi:schemaLocation=\"";
+      out += schema;
+      out += "\">\n";
+    }
 
     const Table::Indexes cols = theTable.columns();
     const Table::Indexes rows = theTable.rows();
 
     if (rows.empty())
     {
-      theOutput << "</pointweather>";
-      return;
+      out += "</pointweather>";
+      return out;
     }
 
     std::vector<std::size_t> wcols;
@@ -134,9 +138,11 @@ void WxmlFormatter::format_100(std::ostream& theOutput,
       if (looks_time(t) && t > origintime)
         origintime = t;
     }
-    theOutput << "<meta>" << std::endl;
-    theOutput << "<updated>" << origintime << "</updated>" << std::endl;
-    theOutput << "</meta>" << std::endl;
+    out += "<meta>\n";
+    out += "<updated>";
+    out += origintime;
+    out += "</updated>\n";
+    out += "</meta>\n";
 
     std::string current_geoid = "ABCDEFGHIJKLMNOPQRSTUWXYZ";
 
@@ -145,37 +151,50 @@ void WxmlFormatter::format_100(std::ostream& theOutput,
       if (theTable.get(col_geoid, j) != current_geoid)
       {
         if (j != 0)
-          theOutput << "</location>" << std::endl;
+          out += "</location>\n";
 
         current_geoid = theTable.get(col_geoid, j);
 
-        theOutput << "<location name=\"" << theTable.get(col_name, j) << "\" id=\""
-                  << theTable.get(col_geoid, j) << "\" lon=\"" << theTable.get(col_longitude, j)
-                  << "\" lat=\"" << theTable.get(col_latitude, j) << "\">" << std::endl;
+        out += "<location name=\"";
+        out += theTable.get(col_name, j);
+        out += "\" id=\"";
+        out += theTable.get(col_geoid, j);
+        out += "\" lon=\"";
+        out += theTable.get(col_longitude, j);
+        out += "\" lat=\"";
+        out += theTable.get(col_latitude, j);
+        out += "\">\n";
       }
 
-      theOutput << "<forecast time=\"" << theTable.get(col_xmltime, j) << "\" day=\""
-                << theTable.get(col_weekday, j) << "\">" << std::endl;
+      out += "<forecast time=\"";
+      out += theTable.get(col_xmltime, j);
+      out += "\" day=\"";
+      out += theTable.get(col_weekday, j);
+      out += "\">\n";
 
       for (std::size_t i : wcols)
       {
         const std::string& name = theNames[i];
         const auto& value = theTable.get(i, j);
-        theOutput << "<param name=\"" << name << "\"";
+        out += "<param name=\"";
+        out += name;
+        out += "\"";
         if (!value.empty())
         {
           if (looks_number(value))
-            theOutput << " value=\"";
+            out += " value=\"";
           else
-            theOutput << " text=\"";
-          theOutput << value << "\"";
+            out += " text=\"";
+          out += value;
+          out += "\"";
         }
-        theOutput << "/>" << std::endl;
+        out += "/>\n";
       }
-      theOutput << "</forecast>" << std::endl;
+      out += "</forecast>\n";
     }
-    theOutput << "</location>" << std::endl;
-    theOutput << "</pointweather>" << std::endl;
+    out += "</location>\n";
+    out += "</pointweather>\n";
+    return out;
   }
   catch (...)
   {
@@ -192,35 +211,38 @@ void WxmlFormatter::format_100(std::ostream& theOutput,
  */
 // ----------------------------------------------------------------------
 
-void WxmlFormatter::format_200(std::ostream& theOutput,
-                               const Table& theTable,
-                               const TableFormatter::Names& theNames,
-                               const HTTP::Request& /* theReq */,
-                               const TableFormatterOptions& theConfig) const
+std::string WxmlFormatter::format_200(const Table& theTable,
+                                      const TableFormatter::Names& theNames,
+                                      const HTTP::Request& /* theReq */,
+                                      const TableFormatterOptions& theConfig) const
 
 {
   try
   {
-    const auto& formatType = theConfig.formatType();
-    theOutput << R"(<?xml version="1.0" encoding="UTF-8" ?>)" << std::endl;
+    std::string out = R"(<?xml version="1.0" encoding="UTF-8" ?>)" "\n";
 
+    const auto& formatType = theConfig.formatType();
     std::string schema = theConfig.wxmlSchema();
 
     boost::algorithm::replace_first(schema, "{version}", "2.00");
 
     if (schema.empty())
-      theOutput << "<pointweather>" << std::endl;
+      out += "<pointweather>\n";
     else
-      theOutput << "<pointweather xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
-                   "xsi:schemaLocation=\""
-                << schema << "\">" << std::endl;
+    {
+      out +=
+          "<pointweather xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+          "xsi:schemaLocation=\"";
+      out += schema;
+      out += "\">\n";
+    }
 
     const Table::Indexes cols = theTable.columns();
     const Table::Indexes rows = theTable.rows();
     if (rows.empty())
     {
-      theOutput << "</pointweather>";
-      return;
+      out += "</pointweather>";
+      return out;
     }
     std::vector<std::size_t> wcols;
     std::copy(cols.begin(), cols.end(), std::back_inserter(wcols));
@@ -249,65 +271,82 @@ void WxmlFormatter::format_200(std::ostream& theOutput,
       if (looks_time(t) && t > origintime)
         origintime = t;
     }
-    theOutput << "<meta>" << std::endl;
-    theOutput << "<updated>" << origintime << "</updated>" << std::endl;
-    theOutput << "</meta>" << std::endl;
+    out += "<meta>\n";
+    out += "<updated>";
+    out += origintime;
+    out += "</updated>\n";
+    out += "</meta>\n";
     std::string current_geoid = "ABCDEFGHIJKLMNOPQRSTUWXYZ";
     for (std::size_t j : rows)
     {
       if (theTable.get(col_geoid, j) != current_geoid)
       {
         if (j != 0)
-          theOutput << "</location>" << std::endl;
+          out += "</location>\n";
 
         current_geoid = theTable.get(col_geoid, j);
-        theOutput << "<location name=\"" << theTable.get(col_name, j) << "\" id=\""
-                  << theTable.get(col_geoid, j) << "\" lon=\"" << theTable.get(col_longitude, j)
-                  << "\" lat=\"" << theTable.get(col_latitude, j) << "\">" << std::endl;
+        out += "<location name=\"";
+        out += theTable.get(col_name, j);
+        out += "\" id=\"";
+        out += theTable.get(col_geoid, j);
+        out += "\" lon=\"";
+        out += theTable.get(col_longitude, j);
+        out += "\" lat=\"";
+        out += theTable.get(col_latitude, j);
+        out += "\">\n";
       }
       if (formatType == "observation")
       {
-        theOutput << "<observation time=\"";
+        out += "<observation time=\"";
       }
       else
       {
-        theOutput << "<forecast time=\"";
+        out += "<forecast time=\"";
       }
 
-      theOutput << theTable.get(col_xmltime, j) << "\"";
+      out += theTable.get(col_xmltime, j);
+      out += "\"";
 
       auto& tstring = theTable.get(col_timestring, j);
       if (tstring != theTable.getMissingText() && !tstring.empty())
-        theOutput << " timestring=\"" << tstring << "\"";
+      {
+        out += " timestring=\"";
+        out += tstring;
+        out += "\"";
+      }
 
-      theOutput << ">" << std::endl;
+      out += ">\n";
 
       for (std::size_t i : wcols)
       {
         const std::string& name = theNames[i];
         const auto& value = theTable.get(i, j);
-        theOutput << "<param name=\"" << name << "\"";
+        out += "<param name=\"";
+        out += name;
+        out += "\"";
         if (!value.empty())
         {
           if (looks_number(value))
-            theOutput << " value=\"";
+            out += " value=\"";
           else
-            theOutput << " text=\"";
-          theOutput << value << "\"";
+            out += " text=\"";
+          out += value;
+          out += "\"";
         }
-        theOutput << "/>" << std::endl;
+        out += "/>\n";
       }
       if (formatType == "observation")
       {
-        theOutput << "</observation>" << std::endl;
+        out += "</observation>\n";
       }
       else
       {
-        theOutput << "</forecast>" << std::endl;
+        out += "</forecast>\n";
       }
     }
-    theOutput << "</location>" << std::endl;
-    theOutput << "</pointweather>" << std::endl;
+    out += "</location>\n";
+    out += "</pointweather>\n";
+    return out;
   }
   catch (...)
   {
@@ -323,11 +362,10 @@ void WxmlFormatter::format_200(std::ostream& theOutput,
  */
 // ----------------------------------------------------------------------
 
-void WxmlFormatter::format(std::ostream& theOutput,
-                           const Table& theTable,
-                           const TableFormatter::Names& theNames,
-                           const HTTP::Request& theReq,
-                           const TableFormatterOptions& theConfig) const
+std::string WxmlFormatter::format(const Table& theTable,
+                                  const TableFormatter::Names& theNames,
+                                  const HTTP::Request& theReq,
+                                  const TableFormatterOptions& theConfig) const
 {
   try
   {
@@ -340,11 +378,11 @@ void WxmlFormatter::format(std::ostream& theOutput,
       version = *givenversion;
 
     if (version == "1.00")
-      format_100(theOutput, theTable, theNames, theReq, theConfig);
-    else if (version == "2.00")
-      format_200(theOutput, theTable, theNames, theReq, theConfig);
-    else
-      throw Fmi::Exception(BCP, "Unsupported wxml version: " + version);
+      return format_100(theTable, theNames, theReq, theConfig);
+    if (version == "2.00")
+      return format_200(theTable, theNames, theReq, theConfig);
+
+    throw Fmi::Exception(BCP, "Unsupported wxml version: " + version);
   }
   catch (...)
   {

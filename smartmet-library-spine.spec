@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.10.9
+Version: 20.10.14
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -90,7 +90,7 @@ SmartMet Spine development files
 rm -rf $RPM_BUILD_ROOT
 
 %setup -q -n %{SPECNAME}
- 
+
 %build
 make %{_smp_mflags}
 
@@ -109,8 +109,14 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Oct 14 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.14-1.fmi
+- Do not use stringstreams in TableFormatter API due to GNU std::locale locks
+
 * Fri Oct  9 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.9-1.fmi
 - Use Fmi::trim for speed
+
+* Thu Oct  8 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.10.8-1.fmi
+- Fix SmartMetPlugin::initPlugin (cleanup in case of C++ exception)
 
 * Wed Oct  7 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.7-3.fmi
 - Added throttle.alert_limit for controlling when to run the alert script
