@@ -43,7 +43,7 @@ NumType check_limits_impl(NumType arg,
       msg << sep << "upperLimit=" << ((*upper_limit).*getter)();
     }
     msg << ")";
-    throw Fmi::Exception(BCP, msg.str());
+    throw Fmi::Exception(BCP, msg.str()).disableStackTrace();
   }
   catch (...)
   {
@@ -208,7 +208,7 @@ int64_t Value::get_int() const
         {
           std::ostringstream msg;
           msg << "The value '" << tmp << "' is too large for int64_t";
-          throw Fmi::Exception(BCP, msg.str());
+          throw Fmi::Exception(BCP, msg.str()).disableStackTrace();
         }
         return static_cast<int64_t>(tmp);
 
@@ -222,7 +222,7 @@ int64_t Value::get_int() const
           std::ostringstream msg;
           msg << "Failed to read an integer value from the string '"
               << boost::get<std::string>(data) << "'!";
-          throw Fmi::Exception(BCP, msg.str());
+          throw Fmi::Exception(BCP, msg.str()).disableStackTrace();
         }
 
       default:
@@ -252,7 +252,7 @@ uint64_t Value::get_uint() const
         {
           std::ostringstream msg;
           msg << "Cannot assign negative value " << tmp << " to uint64_t!";
-          throw Fmi::Exception(BCP, msg.str());
+          throw Fmi::Exception(BCP, msg.str()).disableStackTrace();
         }
         return static_cast<uint64_t>(tmp);
 
@@ -266,7 +266,7 @@ uint64_t Value::get_uint() const
           std::ostringstream msg;
           msg << "Failed to read an unsigned integer value from the string '"
               << boost::get<std::string>(data) << "'!";
-          throw Fmi::Exception(BCP, msg.str());
+          throw Fmi::Exception(BCP, msg.str()).disableStackTrace();
         }
 
       default:
@@ -304,7 +304,7 @@ double Value::get_double() const
           std::ostringstream msg;
           msg << "Failed to read a double value from the string '" << boost::get<std::string>(data)
               << "'";
-          throw Fmi::Exception(BCP, msg.str());
+          throw Fmi::Exception(BCP, msg.str()).disableStackTrace();
         }
 
       default:
@@ -378,7 +378,7 @@ BoundingBox Value::get_bbox() const
       const std::string& src = boost::get<std::string>(data);
       return BoundingBox(src);
     }
-    bad_value_type(METHOD_NAME, typeid(Point));
+    bad_value_type(METHOD_NAME, typeid(BoundingBox));
   }
   catch (...)
   {
@@ -787,7 +787,7 @@ boost::posix_time::ptime parse_xml_time(const std::string& value)
       {
         std::ostringstream msg;
         msg << "Failed to read time from the string '" << tmp << "': " << err.what();
-        throw Fmi::Exception(BCP, msg.str());
+        throw Fmi::Exception(BCP, msg.str()).disableStackTrace();
       }
     }
     else
@@ -818,7 +818,7 @@ bool string2bool(const std::string src)
 
     std::ostringstream msg;
     msg << "Cannot convert '" << src << "' to bool.";
-    throw Fmi::Exception(BCP, msg.str());
+    throw Fmi::Exception(BCP, msg.str()).disableStackTrace();
   }
   catch (...)
   {
@@ -1008,7 +1008,7 @@ void BoundingBox::parse_string(const std::string& src)
     {
       std::ostringstream msg;
       msg << "Invalid bounding box format in '" << src << "' (xMin,yMin,xMax,yMax[,crs]) expected)";
-      throw Fmi::Exception(BCP, msg.str());
+      throw Fmi::Exception(BCP, msg.str()).disableStackTrace();
     }
 
     crs = parts.size() == 4 ? std::string("") : Fmi::trim_copy(parts[4]);
