@@ -6,6 +6,7 @@
 
 #include "PhpFormatter.h"
 #include "Convenience.h"
+#include "HTTP.h"
 #include "Table.h"
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -75,12 +76,11 @@ std::list<std::string> parse_attributes(const std::string& theStr)
  */
 // ----------------------------------------------------------------------
 
-void format_plain(std::ostream& theOutput,
-                  const Table& theTable,
-                  const TableFormatter::Names& theNames,
-                  const HTTP::Request& theReq,
-                  Table::Indexes& theCols,
-                  Table::Indexes& theRows)
+std::string format_plain(const Table& theTable,
+                         const TableFormatter::Names& theNames,
+                         const HTTP::Request& theReq,
+                         Table::Indexes& theCols,
+                         Table::Indexes& theRows)
 {
   try
   {
@@ -92,32 +92,37 @@ void format_plain(std::ostream& theOutput,
     else
       miss = *missing;
 
-    theOutput << "array(\n";
+    std::string out = "array(\n";
 
     bool jfirst = true;
     for (std::size_t j : theRows)
     {
       if (!jfirst)
-        theOutput << ",\n";
+        out += ",\n";
       jfirst = false;
 
-      theOutput << "array(\n";
+      out += "array(\n";
 
       bool ifirst = true;
       for (std::size_t i : theCols)
       {
         if (!ifirst)
-          theOutput << ",\n";
+          out += ",\n";
         ifirst = false;
 
         const std::string& name = theNames[i];
         std::string value = theTable.get(i, j);
-        theOutput << '"' << name << '"' << " => \"" << (value.empty() ? miss : value) << "\"";
+        out += '"';
+        out += name;
+        out += "\" => \"";
+        out += (value.empty() ? miss : value);
+        out += "\"";
       }
-      theOutput << "\n)";
+      out += "\n)";
     }
 
-    theOutput << ");\n";
+    out += ");\n";
+    return out;
   }
   catch (...)
   {
@@ -131,16 +136,17 @@ void format_plain(std::ostream& theOutput,
  */
 // ----------------------------------------------------------------------
 
-void format_attributes(std::ostream& theOutput,
-                       const Table& theTable,
-                       const TableFormatter::Names& theNames,
-                       const HTTP::Request& theReq,
-                       Table::Indexes& theCols,
-                       Table::Indexes& theRows,
-                       std::list<std::string>& theAttributes)
+std::string format_attributes(const Table& theTable,
+                              const TableFormatter::Names& theNames,
+                              const HTTP::Request& theReq,
+                              Table::Indexes& theCols,
+                              Table::Indexes& theRows,
+                              std::list<std::string>& theAttributes)
 {
   try
   {
+    std::string out;
+
     std::string miss;
     auto missing = theReq.getParameter("missingtext");
 
@@ -152,29 +158,33 @@ void format_attributes(std::ostream& theOutput,
     if (theAttributes.size() == 0)
     {
       if (theRows.size() > 1)
-        theOutput << "array(";
+        out += "array(";
       bool jfirst = true;
 
       for (std::size_t j : theRows)
       {
         if (!jfirst)
-          theOutput << "),\narray(\n";
+          out += "),\narray(\n";
         jfirst = false;
 
         bool ifirst = true;
         for (std::size_t i : theCols)
         {
           if (!ifirst)
-            theOutput << ",\n";
+            out += ",\n";
           ifirst = false;
 
           const std::string& name = theNames[i];
           std::string value = theTable.get(i, j);
-          theOutput << '"' << name << '"' << " => \"" << (value.empty() ? miss : value) << "\"";
+          out += '"';
+          out += name;
+          out += "\" => \"";
+          out += (value.empty() ? miss : value);
+          out += "\"";
         }
       }
       if (theRows.size() > 1)
-        theOutput << ")";
+        out += ')';
     }
     else
     {
@@ -202,11 +212,11 @@ void format_attributes(std::ostream& theOutput,
 
       bool vfirst = true;
 
-      theOutput << "array(\n";
+      out += "array(\n";
       for (const std::string& value : values)
       {
         if (!vfirst)
-          theOutput << ",\n";
+          out += ",\n";
         vfirst = false;
 
         Table::Indexes rows;
@@ -215,22 +225,25 @@ void format_attributes(std::ostream& theOutput,
           if (theTable.get(nam, j) == value)
             rows.insert(j);
         }
-        theOutput << '"' << value << "\" => ";
+        out += '"';
+        out += value;
+        out += "\" => ";
         if (theAttributes.empty())
-          theOutput << "array(\n";
+          out += "array(\n";
 
-        format_attributes(theOutput, theTable, theNames, theReq, theCols, rows, theAttributes);
+        out += format_attributes(theTable, theNames, theReq, theCols, rows, theAttributes);
 
         if (theAttributes.empty())
-          theOutput << ")";
+          out += ')';
       }
-      theOutput << ")";
+      out += ')';
 
       // Restore the attribute column
 
       theCols.insert(nam);
       theAttributes.push_front(attribute);
     }
+    return out;
   }
   catch (...)
   {
@@ -245,11 +258,10 @@ void format_attributes(std::ostream& theOutput,
  */
 // ----------------------------------------------------------------------
 
-void PhpFormatter::format(std::ostream& theOutput,
-                          const Table& theTable,
-                          const TableFormatter::Names& theNames,
-                          const HTTP::Request& theReq,
-                          const TableFormatterOptions& /* theConfig */) const
+std::string PhpFormatter::format(const Table& theTable,
+                                 const TableFormatter::Names& theNames,
+                                 const HTTP::Request& theReq,
+                                 const TableFormatterOptions& /* theConfig */) const
 {
   try
   {
@@ -266,14 +278,9 @@ void PhpFormatter::format(std::ostream& theOutput,
     Table::Indexes rows = theTable.rows();
 
     if (atts.size() == 0)
-    {
-      format_plain(theOutput, theTable, theNames, theReq, cols, rows);
-    }
-    else
-    {
-      format_attributes(theOutput, theTable, theNames, theReq, cols, rows, atts);
-      theOutput << ";\n";
-    }
+      return format_plain(theTable, theNames, theReq, cols, rows);
+
+    return format_attributes(theTable, theNames, theReq, cols, rows, atts) + ";\n";
   }
   catch (...)
   {

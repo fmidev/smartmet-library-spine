@@ -6,6 +6,7 @@
 // ======================================================================
 
 #include "AsciiFormatter.h"
+#include "HTTP.h"
 #include "Table.h"
 #include "TableFormatterOptions.h"
 #include <regression/tframe.h>
@@ -42,11 +43,10 @@ void format()
   SmartMet::Spine::HTTP::Request req;
 
   SmartMet::Spine::AsciiFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result:\n" + out.str());
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out);
 
   TEST_PASSED();
 }
@@ -69,11 +69,10 @@ void separator()
   req.setParameter("separator", ",");
 
   SmartMet::Spine::AsciiFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result:\n" + out.str());
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out);
 
   TEST_PASSED();
 }
@@ -96,11 +95,10 @@ void missingtext()
   req.setParameter("missingtext", "-");
 
   SmartMet::Spine::AsciiFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result:\n" + out.str());
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out);
 
   TEST_PASSED();
 }
@@ -118,11 +116,10 @@ void empty()
   SmartMet::Spine::HTTP::Request req;
 
   SmartMet::Spine::AsciiFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != "")
-    TEST_FAILED("Incorrect result:\n" + out.str());
+  if (out != "")
+    TEST_FAILED("Incorrect result:\n" + out);
 
   TEST_PASSED();
 }

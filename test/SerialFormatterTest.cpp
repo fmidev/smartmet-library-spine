@@ -6,6 +6,7 @@
 // ======================================================================
 
 #include "SerialFormatter.h"
+#include "HTTP.h"
 #include "Table.h"
 #include "TableFormatterOptions.h"
 #include <regression/tframe.h>
@@ -50,11 +51,10 @@ void noattributes()
   SmartMet::Spine::HTTP::Request req;
 
   SmartMet::Spine::SerialFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result:\n" + out.str() + "\nexpected:\n" + res);
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "\nexpected:\n" + res);
 
   TEST_PASSED();
 }
@@ -89,11 +89,10 @@ void oneattribute()
   req.setParameter("attributes", "col2");
 
   SmartMet::Spine::SerialFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result:\n" + out.str() + "\nexpected:\n" + res);
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "\nexpected:\n" + res);
 
   TEST_PASSED();
 }
@@ -131,11 +130,10 @@ void twoattributes()
   req.setParameter("attributes", "col2,col3");
 
   SmartMet::Spine::SerialFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result:\n" + out.str() + "\nexpected:\n" + res);
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "\nexpected:\n" + res);
 
   TEST_PASSED();
 }
@@ -153,11 +151,10 @@ void empty()
   SmartMet::Spine::HTTP::Request req;
 
   SmartMet::Spine::SerialFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != "a:0:{}")
-    TEST_FAILED("Incorrect result:\n" + out.str());
+  if (out != "a:0:{}")
+    TEST_FAILED("Incorrect result:\n" + out);
 
   TEST_PASSED();
 }

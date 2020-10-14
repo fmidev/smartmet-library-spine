@@ -6,6 +6,7 @@
 // ======================================================================
 
 #include "Table.h"
+#include "HTTP.h"
 #include "TableFormatterOptions.h"
 #include "XmlFormatter.h"
 #include <regression/tframe.h>
@@ -50,11 +51,10 @@ void attributestyle()
   req.setParameter("xmlstyle", "attributes");
 
   SmartMet::Spine::XmlFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result: " + out.str());
+  if (out != res)
+    TEST_FAILED("Incorrect result: " + out + "\nExpected:\n" + res);
 
   TEST_PASSED();
 }
@@ -86,11 +86,10 @@ void tagstyle()
   req.setParameter("xmlstyle", "tags");
 
   SmartMet::Spine::XmlFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result: " + out.str());
+  if (out != res)
+    TEST_FAILED("Incorrect result: " + out + "\nExpected:\n" + res);
 
   TEST_PASSED();
 }
@@ -122,11 +121,10 @@ void mixedstyle()
   req.setParameter("attributes", "col2,col1");
 
   SmartMet::Spine::XmlFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result: " + out.str());
+  if (out != res)
+    TEST_FAILED("Incorrect result: " + out + "\nExpected:\n" + res);
 
   TEST_PASSED();
 }
@@ -156,11 +154,10 @@ void missingtext()
   req.setParameter("missingtext", "-");
 
   SmartMet::Spine::XmlFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result: " + out.str());
+  if (out != res)
+    TEST_FAILED("Incorrect result: " + out + "\nExpected:\n" + res);
 
   TEST_PASSED();
 }
@@ -178,11 +175,12 @@ void empty()
   SmartMet::Spine::HTTP::Request req;
 
   SmartMet::Spine::XmlFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<result>\n</result>\n")
-    TEST_FAILED("Incorrect result:\n" + out.str());
+  const char * res = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<result>\n</result>\n";
+  
+  if (out != res)
+    TEST_FAILED("Incorrect result: " + out + "\nExpected:\n" + res);
 
   TEST_PASSED();
 }

@@ -5,8 +5,6 @@
 // ======================================================================
 
 #pragma once
-#include "HTTP.h"
-
 #include <iosfwd>
 #include <string>
 #include <vector>
@@ -18,17 +16,21 @@ namespace Spine
 class Table;
 class TableFormatterOptions;
 
+namespace HTTP
+{
+class Request;
+}
+
 class TableFormatter
 {
  public:
   using Names = std::vector<std::string>;
 
   virtual ~TableFormatter();
-  virtual void format(std::ostream& theOutput,
-                      const Table& theTable,
-                      const Names& theNames,
-                      const HTTP::Request& theReq,
-                      const TableFormatterOptions& theConfig) const = 0;
+  virtual std::string format(const Table& theTable,
+                             const Names& theNames,
+                             const HTTP::Request& theReq,
+                             const TableFormatterOptions& theConfig) const = 0;
 
   virtual const std::string mimetype() const = 0;
 

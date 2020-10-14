@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.10.9
+Version: 20.10.14
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -113,6 +113,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Oct 14 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.14-1.fmi
+- Do not use stringstreams in TableFormatter API due to GNU std::locale locks
+
 * Fri Oct  9 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.9-1.fmi
 - Use Fmi::trim for speed
 

@@ -6,6 +6,7 @@
 
 #include "AsciiFormatter.h"
 #include "Convenience.h"
+#include "HTTP.h"
 #include "Table.h"
 #include <macgyver/Exception.h>
 #include <iostream>
@@ -24,14 +25,15 @@ namespace Spine
  */
 // ----------------------------------------------------------------------
 
-void AsciiFormatter::format(std::ostream& theOutput,
-                            const Table& theTable,
-                            const TableFormatter::Names& /* theNames */,
-                            const HTTP::Request& theReq,
-                            const TableFormatterOptions& /* theConfig */) const
+std::string AsciiFormatter::format(const Table& theTable,
+                                   const TableFormatter::Names& /* theNames */,
+                                   const HTTP::Request& theReq,
+                                   const TableFormatterOptions& /* theConfig */) const
 {
   try
   {
+    std::string out;
+
     std::string sep;
     auto separator = theReq.getParameter("separator");
 
@@ -57,17 +59,18 @@ void AsciiFormatter::format(std::ostream& theOutput,
       for (std::size_t i : cols)
       {
         if (!ifirst)
-          theOutput << sep;
+          out += sep;
         ifirst = false;
         const auto& value = theTable.get(i, j);
 
         if (value.empty())
-          theOutput << miss;
+          out += miss;
         else
-          theOutput << value;
+          out += value;
       }
-      theOutput << std::endl;
+      out += "\n";
     }
+    return out;
   }
   catch (...)
   {

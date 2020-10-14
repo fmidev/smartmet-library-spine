@@ -5,13 +5,12 @@
  */
 // ======================================================================
 
-#include "HTTP.h"
 #include "JsonFormatter.h"
+#include "HTTP.h"
 #include "Table.h"
 #include "TableFormatterOptions.h"
 #include <regression/tframe.h>
 #include <cmath>
-#include <sstream>
 
 template <typename T>
 std::string tostr(const T& theValue)
@@ -49,11 +48,10 @@ void noattributes()
   SmartMet::Spine::HTTP::Request req;
 
   SmartMet::Spine::JsonFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result:\n" + out.str() + "\nexpected:\n" + res);
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "\nexpected:\n" + res);
 
   TEST_PASSED();
 }
@@ -85,11 +83,11 @@ void oneattribute()
   req.setParameter("attributes", "col2");
 
   SmartMet::Spine::JsonFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result:\n" + out.str() + "\nexpected:\n" + res);
+  auto out = fmt.format(tab, names, req, config);
+
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "\nexpected:\n" + res);
 
   TEST_PASSED();
 }
@@ -125,11 +123,10 @@ void twoattributes()
   req.setParameter("attributes", "col2,col3");
 
   SmartMet::Spine::JsonFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result:\n" + out.str() + "\nexpected:\n" + res);
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "\nexpected:\n" + res);
 
   TEST_PASSED();
 }
@@ -147,11 +144,10 @@ void empty()
   SmartMet::Spine::HTTP::Request req;
 
   SmartMet::Spine::JsonFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != "[]")
-    TEST_FAILED("Incorrect result:\n" + out.str());
+  if (out != "[]")
+    TEST_FAILED("Incorrect result:\n" + out);
 
   TEST_PASSED();
 }
@@ -182,11 +178,10 @@ void escaping()
   SmartMet::Spine::HTTP::Request req;
 
   SmartMet::Spine::JsonFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result:\n" + out.str() + "\nexpected:\n" + res);
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "\nexpected:\n" + res);
 
   TEST_PASSED();
 }

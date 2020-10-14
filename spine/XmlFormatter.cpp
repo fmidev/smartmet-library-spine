@@ -6,6 +6,7 @@
 
 #include "XmlFormatter.h"
 #include "Convenience.h"
+#include "HTTP.h"
 #include "Table.h"
 #include "TableFormatterOptions.h"
 #include <boost/algorithm/string.hpp>
@@ -44,15 +45,14 @@ std::set<std::string> parse_xml_attributes(const std::string& theStr)
  */
 // ----------------------------------------------------------------------
 
-void XmlFormatter::format(std::ostream& theOutput,
-                          const Table& theTable,
-                          const TableFormatter::Names& theNames,
-                          const HTTP::Request& theReq,
-                          const TableFormatterOptions& theConfig) const
+std::string XmlFormatter::format(const Table& theTable,
+                                 const TableFormatter::Names& theNames,
+                                 const HTTP::Request& theReq,
+                                 const TableFormatterOptions& theConfig) const
 {
   try
   {
-    theOutput << R"(<?xml version="1.0" encoding="UTF-8" ?>)" << std::endl;
+    std::string out = R"(<?xml version="1.0" encoding="UTF-8" ?>)" "\n";
 
     const auto& tag = theConfig.xmlTag();
 
@@ -65,18 +65,20 @@ void XmlFormatter::format(std::ostream& theOutput,
       style = *givenstyle;
 
     if (style == "attributes")
-      format_attributes(theOutput, theTable, theNames, tag, theReq);
+      out += format_attributes(theTable, theNames, tag, theReq);
     else if (style == "tags")
-      format_tags(theOutput, theTable, theNames, tag, theReq);
+      out += format_tags(theTable, theNames, tag, theReq);
     else if (style == "mixed")
     {
       if (theReq.getParameter("attributes"))
-        format_mixed(theOutput, theTable, theNames, tag, theReq);
+        out += format_mixed(theTable, theNames, tag, theReq);
       else
-        format_tags(theOutput, theTable, theNames, tag, theReq);
+        out += format_tags(theTable, theNames, tag, theReq);
     }
     else
       throw Fmi::Exception(BCP, "Unknown xmlstyle '" + style + "'");
+
+    return out;
   }
   catch (...)
   {
@@ -90,14 +92,15 @@ void XmlFormatter::format(std::ostream& theOutput,
  */
 // ----------------------------------------------------------------------
 
-void XmlFormatter::format_attributes(std::ostream& theOutput,
-                                     const Table& theTable,
-                                     const TableFormatter::Names& theNames,
-                                     const std::string& theTag,
-                                     const HTTP::Request& theReq) const
+std::string XmlFormatter::format_attributes(const Table& theTable,
+                                            const TableFormatter::Names& theNames,
+                                            const std::string& theTag,
+                                            const HTTP::Request& theReq) const
 {
   try
   {
+    std::string out;
+
     std::string miss;
     auto missing = theReq.getParameter("missingtext");
 
@@ -109,22 +112,30 @@ void XmlFormatter::format_attributes(std::ostream& theOutput,
     const Table::Indexes cols = theTable.columns();
     const Table::Indexes rows = theTable.rows();
 
-    theOutput << "<" << theTag << ">" << std::endl;
+    out += '<';
+    out += theTag;
+    out += ">\n";
 
     for (std::size_t j : rows)
     {
-      theOutput << "<row";
+      out += "<row";
       for (std::size_t i : cols)
       {
-        theOutput << ' ';
+        out += ' ';
         const std::string& name = theNames[i];
         std::string value = theTable.get(i, j);
         boost::algorithm::replace_all(value, "\"", "&quot;");  // Escape possible quotes
-        theOutput << name << "=\"" << (value.empty() ? miss : value) << '"';
+        out += name;
+        out += "=\"";
+        out += (value.empty() ? miss : value);
+        out += '"';
       }
-      theOutput << "/>" << std::endl;
+      out += "/>\n";
     }
-    theOutput << "</" << theTag << ">" << std::endl;
+    out += "</";
+    out += theTag;
+    out += ">\n";
+    return out;
   }
   catch (...)
   {
@@ -138,14 +149,15 @@ void XmlFormatter::format_attributes(std::ostream& theOutput,
  */
 // ----------------------------------------------------------------------
 
-void XmlFormatter::format_tags(std::ostream& theOutput,
-                               const Table& theTable,
-                               const TableFormatter::Names& theNames,
-                               const std::string& theTag,
-                               const HTTP::Request& theReq) const
+std::string XmlFormatter::format_tags(const Table& theTable,
+                                      const TableFormatter::Names& theNames,
+                                      const std::string& theTag,
+                                      const HTTP::Request& theReq) const
 {
   try
   {
+    std::string out;
+
     std::string miss;
     auto missing = theReq.getParameter("missingtext");
 
@@ -157,22 +169,32 @@ void XmlFormatter::format_tags(std::ostream& theOutput,
     const Table::Indexes cols = theTable.columns();
     const Table::Indexes rows = theTable.rows();
 
-    theOutput << "<" << theTag << ">" << std::endl;
+    out += '<';
+    out += theTag;
+    out += ">\n";
 
     for (std::size_t j : rows)
     {
-      theOutput << "<row>" << std::endl;
+      out += "<row>\n";
       for (std::size_t i : cols)
       {
         const std::string& name = theNames[i];
         std::string value = theTable.get(i, j);
         boost::algorithm::replace_all(value, "\"", "&quot;");  // Escape possible quotes
-        theOutput << '<' << name << '>' << (value.empty() ? miss : value) << "</" << name << ">"
-                  << std::endl;
+        out += '<';
+        out += name;
+        out += '>';
+        out += (value.empty() ? miss : value);
+        out += "</";
+        out += name;
+        out += ">\n";
       }
-      theOutput << "</row>" << std::endl;
+      out += "</row>\n";
     }
-    theOutput << "</" << theTag << ">" << std::endl;
+    out += "</";
+    out += theTag;
+    out += ">\n";
+    return out;
   }
   catch (...)
   {
@@ -186,14 +208,15 @@ void XmlFormatter::format_tags(std::ostream& theOutput,
  */
 // ----------------------------------------------------------------------
 
-void XmlFormatter::format_mixed(std::ostream& theOutput,
-                                const Table& theTable,
-                                const TableFormatter::Names& theNames,
-                                const std::string& theTag,
-                                const HTTP::Request& theReq) const
+std::string XmlFormatter::format_mixed(const Table& theTable,
+                                       const TableFormatter::Names& theNames,
+                                       const std::string& theTag,
+                                       const HTTP::Request& theReq) const
 {
   try
   {
+    std::string out;
+
     std::string miss;
     auto missing = theReq.getParameter("missingtext");
 
@@ -214,11 +237,13 @@ void XmlFormatter::format_mixed(std::ostream& theOutput,
 
     std::set<std::string> atts = parse_xml_attributes(attribstring);
 
-    theOutput << "<" << theTag << ">" << std::endl;
+    out += '<';
+    out += theTag;
+    out += ">\n";
 
     for (std::size_t j : rows)
     {
-      theOutput << "<row";
+      out += "<row";
       for (std::size_t i : cols)
       {
         const std::string& name = theNames[i];
@@ -226,10 +251,14 @@ void XmlFormatter::format_mixed(std::ostream& theOutput,
         {
           std::string value = theTable.get(i, j);
           boost::algorithm::replace_all(value, "\"", "&quot;");  // Escape possible quotes
-          theOutput << ' ' << name << "=\"" << (value.empty() ? miss : value) << '"';
+          out += ' ';
+          out += name;
+          out += "=\"";
+          out += (value.empty() ? miss : value);
+          out += '"';
         }
       }
-      theOutput << ">" << std::endl;
+      out += ">\n";
 
       for (std::size_t i : cols)
       {
@@ -238,13 +267,21 @@ void XmlFormatter::format_mixed(std::ostream& theOutput,
         {
           std::string value = theTable.get(i, j);
           boost::algorithm::replace_all(value, "\"", "&quot;");  // Escape possible quotes
-          theOutput << '<' << name << '>' << (value.empty() ? miss : value) << "</" << name << ">"
-                    << std::endl;
+          out += '<';
+          out += name;
+          out += '>';
+          out += (value.empty() ? miss : value);
+          out += "</";
+          out += name;
+          out += ">\n";
         }
       }
-      theOutput << "</row>" << std::endl;
+      out += "</row>\n";
     }
-    theOutput << "</" << theTag << ">" << std::endl;
+    out += "</";
+    out += theTag;
+    out += ">\n";
+    return out;
   }
   catch (...)
   {

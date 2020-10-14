@@ -6,11 +6,13 @@
 
 #include "JsonFormatter.h"
 #include "Convenience.h"
+#include "HTTP.h"
 #include "Table.h"
-#include <macgyver/Exception.h>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/spirit/include/qi.hpp>
+#include <fmt/format.h>
+#include <macgyver/Exception.h>
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
@@ -31,17 +33,18 @@ namespace
  */
 // ----------------------------------------------------------------------
 
-void escape_json(std::ostream& out, const std::string& s)
+std::string escape_json(const std::string& s)
 {
-  out << '"';
+  std::string out = "\"";
   for (auto c : s)
   {
     if (c == '"' || c == '\\' || ('\x00' <= c && c <= '\x1f'))
-      out << "\\u" << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(c);
+      out += fmt::format("\\u{04:x}", static_cast<int>(c));
     else
-      out << c;
+      out += c;
   }
-  out << '"';
+  out += '"';
+  return out;
 }
 
 // ----------------------------------------------------------------------
@@ -125,54 +128,57 @@ std::list<std::string> parse_attributes(const std::string& theStr)
  */
 // ----------------------------------------------------------------------
 
-void format_recursively(std::ostream& theOutput,
-                        const Table& theTable,
-                        const TableFormatter::Names& theNames,
-                        const HTTP::Request& theReq,
-                        Table::Indexes& theCols,
-                        Table::Indexes& theRows,
-                        std::list<std::string>& theAttributes)
+std::string format_recursively(const Table& theTable,
+                               const TableFormatter::Names& theNames,
+                               const HTTP::Request& theReq,
+                               Table::Indexes& theCols,
+                               Table::Indexes& theRows,
+                               std::list<std::string>& theAttributes)
 {
   try
   {
+    std::string out;
+
     const std::string miss = "null";
     if (theAttributes.empty())
     {
       // Format the json always as an array
-      theOutput << '[';
+      out += '[';
       std::size_t row = 0;
       for (std::size_t j : theRows)
       {
         if (row++ > 0)
-          theOutput << ',';
+          out += ',';
 
-        theOutput << "{";
+        out += "{";
 
         std::size_t col = 0;
         for (std::size_t i : theCols)
         {
           if (col++ > 0)
-            theOutput << ',';
+            out += ',';
 
           const std::string& name = theNames[i];
-          theOutput << '"' << name << '"';
+          out += '"';
+          out += name;
+          out += '"';
 
-          theOutput << ":";
+          out += ':';
 
           const auto& value = theTable.get(i, j);
           if (value.empty())
-            theOutput << miss;
+            out += miss;
           else if (value == "nan" || value == "NaN")  // nan is not allowed in JSON
-            theOutput << "null";
+            out += "null";
           else if (looks_number(value))
-            theOutput << value;
+            out += value;
           else
-            escape_json(theOutput, value);
+            out += escape_json(value);
         }
-        theOutput << "}";
+        out += '}';
       }
 
-      theOutput << ']';
+      out += ']';
     }
     else
     {
@@ -199,29 +205,32 @@ void format_recursively(std::ostream& theOutput,
 
       // Process unique attribute values one at a time
 
-      theOutput << '{';
+      out += '{';
 
       int att = 0;
       for (const std::string& v : values)
       {
         if (att++ > 0)
-          theOutput << ',';
+          out += ',';
         Table::Indexes rows;
         for (std::size_t j : theRows)
         {
           if (theTable.get(nam, j) == v)
             rows.insert(j);
         }
-        theOutput << '"' << v << "\":";
-        format_recursively(theOutput, theTable, theNames, theReq, theCols, rows, theAttributes);
+        out += '"';
+        out += v;
+        out += "\":";
+        out += format_recursively(theTable, theNames, theReq, theCols, rows, theAttributes);
       }
-      theOutput << '}';
+      out += '}';
 
       // Restore the attribute column
 
       theCols.insert(nam);
       theAttributes.push_front(attribute);
     }
+    return out;
   }
   catch (...)
   {
@@ -237,11 +246,10 @@ void format_recursively(std::ostream& theOutput,
  */
 // ----------------------------------------------------------------------
 
-void JsonFormatter::format(std::ostream& theOutput,
-                           const Table& theTable,
-                           const TableFormatter::Names& theNames,
-                           const HTTP::Request& theReq,
-                           const TableFormatterOptions& /* theConfig */) const
+std::string JsonFormatter::format(const Table& theTable,
+                                  const TableFormatter::Names& theNames,
+                                  const HTTP::Request& theReq,
+                                  const TableFormatterOptions& /* theConfig */) const
 {
   try
   {
@@ -257,7 +265,7 @@ void JsonFormatter::format(std::ostream& theOutput,
     Table::Indexes cols = theTable.columns();
     Table::Indexes rows = theTable.rows();
 
-    format_recursively(theOutput, theTable, theNames, theReq, cols, rows, atts);
+    return format_recursively(theTable, theNames, theReq, cols, rows, atts);
   }
   catch (...)
   {

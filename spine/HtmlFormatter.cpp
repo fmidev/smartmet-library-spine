@@ -6,6 +6,7 @@
 
 #include "HtmlFormatter.h"
 #include "Convenience.h"
+#include "HTTP.h"
 #include "Table.h"
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -44,11 +45,10 @@ std::set<std::string> parse_html_attributes(const std::string& theStr)
  */
 // ----------------------------------------------------------------------
 
-void HtmlFormatter::format(std::ostream& theOutput,
-                           const Table& theTable,
-                           const TableFormatter::Names& theNames,
-                           const HTTP::Request& theReq,
-                           const TableFormatterOptions& /* theConfig */) const
+std::string HtmlFormatter::format(const Table& theTable,
+                                  const TableFormatter::Names& theNames,
+                                  const HTTP::Request& theReq,
+                                  const TableFormatterOptions& /* theConfig */) const
 {
   try
   {
@@ -64,26 +64,31 @@ void HtmlFormatter::format(std::ostream& theOutput,
     const Table::Indexes rows = theTable.rows();
 
     // Output headers
-
-    theOutput << "<table><tr>";
+    
+    std::string out = "<table><tr>";
     for (const auto& nam : cols)
     {
       const std::string& name = theNames[nam];
-      theOutput << "<th>" << htmlescape(name) << "</th>";
+      out += "<th>";
+      out += htmlescape(name);
+      out += "</th>";
     }
-    theOutput << "</tr>";
+    out += "</tr>";
 
     for (const auto j : rows)
     {
-      theOutput << "<tr>" << std::endl;
+      out += "<tr>\n";
       for (const auto i : cols)
       {
         std::string value = htmlescape(theTable.get(i, j));
-        theOutput << "<td>" << (value.empty() ? miss : value) << "</td>";
+        out += "<td>";
+        out += (value.empty() ? miss : value);
+        out += "</td>";
       }
-      theOutput << "</tr>";
+      out += "</tr>";
     }
-    theOutput << "</table>";
+    out += "</table>";
+    return out;
   }
   catch (...)
   {

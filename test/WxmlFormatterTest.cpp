@@ -6,6 +6,7 @@
 // ======================================================================
 
 #include "Table.h"
+#include "HTTP.h"
 #include "TableFormatterOptions.h"
 #include "WxmlFormatter.h"
 #include <regression/tframe.h>
@@ -76,11 +77,10 @@ void version1()
   req.setParameter("version", "1.00");
 
   SmartMet::Spine::WxmlFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result: " + out.str() + "\nExpected result: " + res);
+  if (out != res)
+    TEST_FAILED("Incorrect result: " + out + "\nExpected result: " + res);
 
   TEST_PASSED();
 }
@@ -136,11 +136,10 @@ void version2()
   req.setParameter("version", "2.00");
 
   SmartMet::Spine::WxmlFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() != res)
-    TEST_FAILED("Incorrect result: " + out.str() + "\nExpected result: " + res);
+  if (out != res)
+    TEST_FAILED("Incorrect result: " + out + "\nExpected result: " + res);
 
   TEST_PASSED();
 }
@@ -158,15 +157,15 @@ void empty()
   SmartMet::Spine::HTTP::Request req;
 
   SmartMet::Spine::WxmlFormatter fmt;
-  std::ostringstream out;
-  fmt.format(out, tab, names, req, config);
+  auto out = fmt.format(tab, names, req, config);
 
-  if (out.str() !=
-      "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<pointweather "
-      "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
-      "xsi:schemaLocation=\"http://services.weatherproof.fi/schemas/pointweather_2.00.xsd\">\n</"
-      "pointweather>")
-    TEST_FAILED("Incorrect result: " + out.str());
+  const char * res = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<pointweather "
+                     "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+                     "xsi:schemaLocation=\"http://services.weatherproof.fi/schemas/pointweather_2.00.xsd\">\n</"
+                     "pointweather>";
+  
+  if (out != res)
+    TEST_FAILED("Incorrect result: '" + out + "'\nExpected: '" + res + "'");
 
   TEST_PASSED();
 }
