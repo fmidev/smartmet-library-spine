@@ -35,20 +35,12 @@ namespace
 
 std::string escape_json(const std::string& s)
 {
-  const char * hexchars = "0123456789abcdef";
-  char buffer[8] = { '\0' };
-  
   std::string out = "\"";
   for (auto c : s)
   {
     if (c == '"' || c == '\\' || ('\x00' <= c && c <= '\x1f'))
     {
-#ifdef NEW_LIBFMT_EXISTS
-      out += fmt::format("\\u{04:x}", static_cast<int>(c));
-#else
-      sprintf(buffer,"\\u00%c%c", hexchars[c>>4], hexchars[c & 0xf]);
-      out += buffer;
-#endif      
+      out += fmt::format("\\u{:04x}", static_cast<int>(c));
     }
     else
       out += c;
