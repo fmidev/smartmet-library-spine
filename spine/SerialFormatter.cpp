@@ -102,7 +102,7 @@ std::string format_plain(const Table& theTable,
     for (std::size_t j : theRows)
     {
       out += "i:";
-      out += row++;
+      out += Fmi::to_string(row++);
       out += ";a:";
       out += Fmi::to_string(theCols.size());
       out += ":{";
