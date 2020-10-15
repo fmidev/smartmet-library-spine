@@ -88,7 +88,7 @@ void ValueFormatter::buildFormat(const ValueFormatterParam& param)
   if (param.showPos)  // sign for positive numbers
     fmt += '+';
 
-  if (param.fill == '0' || param.adjustField == "interval")  // sign aware zero padding
+  if (param.fill == '0' || param.adjustField == "internal")  // sign aware zero padding
     fmt += '0';
 
   if (param.width > 0)
