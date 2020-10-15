@@ -55,7 +55,7 @@ ValueFormatterParam::ValueFormatterParam(const std::string& theMissingText,
  *
  * format_spec ::=  [[fill]align][sign]["#"]["0"][width]["." precision][type]
  * fill        ::=  <a character other than '{' or '}'>
- * align       ::=  "<" | ">" | "=" | "^"
+ * align       ::=  "<" | ">" | "^"
  * sign        ::=  "+" | "-" | " "
  * width       ::=  integer | "{" arg_id "}"
  * precision   ::=  integer | "{" arg_id "}"
@@ -80,7 +80,7 @@ void ValueFormatter::buildFormat(const ValueFormatterParam& param)
     else if (param.adjustField == "right")
       fmt += '>';
     else if (param.adjustField == "internal")
-      fmt += '=';
+      ; // deprecated in newer fmt in favour of sign aware zero padding
     else if (param.adjustField == "center")  // libfmt extension
       fmt += '^';
   }
@@ -88,7 +88,7 @@ void ValueFormatter::buildFormat(const ValueFormatterParam& param)
   if (param.showPos)  // sign for positive numbers
     fmt += '+';
 
-  if (param.fill == '0')  // sign aware zero padding
+  if (param.fill == '0' || param.adjustField == "interval")  // sign aware zero padding
     fmt += '0';
 
   if (param.width > 0)

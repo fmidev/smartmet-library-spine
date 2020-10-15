@@ -178,7 +178,7 @@ void adjustfield()
     if ((result = fmt.format(1.23, precision)) != "  1.23")
       TEST_FAILED("Formatting 1.23 failed: " + result);
 
-    if ((result = fmt.format(-1.23, precision)) != "- 1.23")
+    if ((result = fmt.format(-1.23, precision)) != " -1.23")
       TEST_FAILED("Formatting -1.23 failed: " + result);
   }
 
