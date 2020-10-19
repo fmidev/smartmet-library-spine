@@ -1,5 +1,8 @@
 #include "ConfigBase.h"
 #include <boost/test/included/unit_test.hpp>
+#include <cstring>
+#include <cstdlib>
+#include <fstream>
 #include <iostream>
 
 using namespace boost::unit_test;
@@ -243,4 +246,62 @@ BOOST_AUTO_TEST_CASE(dump_and_reread_config)
       unlink(fn);
     throw;
   }
+}
+
+BOOST_AUTO_TEST_CASE(test_relative_include_1)
+{
+    using namespace SmartMet::Spine;
+    using libconfig::Setting;
+
+    char *dn = nullptr;
+    char c_dn[256];
+    std::string fn1, fn2;
+
+    const auto cleanup = [&]() {
+        if (fn1 != "") { unlink(fn1.c_str()); }
+        if (fn2 != "") { unlink(fn2.c_str()); }
+        if (dn) { rmdir(dn); }
+    };
+
+    strncpy(c_dn, "/tmp/smartmet-library-spine-XXXXXX", sizeof(c_dn));
+    dn = mkdtemp(c_dn);
+    if (!dn) {
+        perror("Failed to create temporary directory");
+        BOOST_REQUIRE(dn);
+    }
+
+    try {
+        fn1 = dn + std::string("/test.conf");
+        fn2 = dn + std::string("/test.inc");
+
+        {
+            std::ofstream f1(fn1.c_str());
+            f1 << "@include \"test.inc\"\n";
+        }
+
+        {
+            std::ofstream f2(fn2.c_str());
+            f2 << "foo = \"bar\";\n";
+        }
+
+        std::unique_ptr<ConfigBase> cfg;
+
+        try {
+            cfg.reset(new ConfigBase(fn1, "Test"));
+        } catch (const Fmi::Exception& e) {
+            e.printError();
+            BOOST_REQUIRE_NO_THROW(throw);
+        } catch (...) {
+            BOOST_REQUIRE_NO_THROW(throw);
+        }
+
+        std::string x;
+        BOOST_REQUIRE_NO_THROW(x = cfg->get_mandatory_config_param<std::string>("foo"));
+        BOOST_CHECK_EQUAL(x, std::string("bar"));
+
+        cleanup();
+    } catch (...) {
+        cleanup();
+        throw;
+    }
 }
