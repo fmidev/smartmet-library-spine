@@ -263,7 +263,7 @@ BOOST_AUTO_TEST_CASE(test_include_1)
     using namespace SmartMet::Spine;
     using libconfig::Setting;
 
-    BOOST_TEST_MESSAGE("+ [ConfigBase] Dump include by relative path");
+    BOOST_TEST_MESSAGE("+ [ConfigBase] Include by relative and absolute path");
 
     char *dn = nullptr;
     char c_dn[256];
@@ -332,7 +332,7 @@ BOOST_AUTO_TEST_CASE(test_recursive_include)
     using namespace SmartMet::Spine;
     using libconfig::Setting;
 
-    BOOST_TEST_MESSAGE("+ [ConfigBase] Dump recursive include by relative path");
+    BOOST_TEST_MESSAGE("+ [ConfigBase] Recursive include by relative and absolute path");
 
     char *dn = nullptr;
     char c_dn[256];
