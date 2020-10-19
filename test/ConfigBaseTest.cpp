@@ -248,10 +248,22 @@ BOOST_AUTO_TEST_CASE(dump_and_reread_config)
   }
 }
 
-BOOST_AUTO_TEST_CASE(test_relative_include_1)
+namespace {
+    void mkfile(const std::string& fn, const std::string& data)
+    {
+        std::ofstream out;
+        //out.exceptions(std::ios::failbit | std::ios::badbit);
+        out.open(fn.c_str());
+        out << data;
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_include_1)
 {
     using namespace SmartMet::Spine;
     using libconfig::Setting;
+
+    BOOST_TEST_MESSAGE("+ [ConfigBase] Dump include by relative path");
 
     char *dn = nullptr;
     char c_dn[256];
@@ -273,16 +285,84 @@ BOOST_AUTO_TEST_CASE(test_relative_include_1)
     try {
         fn1 = dn + std::string("/test.conf");
         fn2 = dn + std::string("/test.inc");
+        mkfile(fn1, "@include \"test.inc\"\n");
+        mkfile(fn2, "foo = \"bar\";\n");
 
-        {
-            std::ofstream f1(fn1.c_str());
-            f1 << "@include \"test.inc\"\n";
+        // Try include by relative path
+        std::unique_ptr<ConfigBase> cfg;
+
+        try {
+            cfg.reset(new ConfigBase(fn1, "Test"));
+        } catch (const Fmi::Exception& e) {
+            e.printError();
+            BOOST_REQUIRE_NO_THROW(throw);
+        } catch (...) {
+            BOOST_REQUIRE_NO_THROW(throw);
         }
 
-        {
-            std::ofstream f2(fn2.c_str());
-            f2 << "foo = \"bar\";\n";
+        std::string x;
+        BOOST_REQUIRE_NO_THROW(x = cfg->get_mandatory_config_param<std::string>("foo"));
+        BOOST_CHECK_EQUAL(x, std::string("bar"));
+
+        // Try include by absolute path
+        cfg.reset();
+        mkfile(fn1, "@include \"" + fn2 + "\"\n");
+
+        try {
+            cfg.reset(new ConfigBase(fn1, "Test"));
+        } catch (const Fmi::Exception& e) {
+            e.printError();
+            BOOST_REQUIRE_NO_THROW(throw);
+        } catch (...) {
+            BOOST_REQUIRE_NO_THROW(throw);
         }
+
+        BOOST_REQUIRE_NO_THROW(x = cfg->get_mandatory_config_param<std::string>("foo"));
+        BOOST_CHECK_EQUAL(x, std::string("bar"));
+
+        cleanup();
+    } catch (...) {
+        cleanup();
+        throw;
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_recursive_include)
+{
+    using namespace SmartMet::Spine;
+    using libconfig::Setting;
+
+    BOOST_TEST_MESSAGE("+ [ConfigBase] Dump recursive include by relative path");
+
+    char *dn = nullptr;
+    char c_dn[256];
+    std::string fn0, fn1, fn2, fn3;
+
+    const auto cleanup = [&]() {
+        if (fn1 != "") { unlink(fn1.c_str()); }
+        if (fn2 != "") { unlink(fn2.c_str()); }
+        if (fn3 != "") { unlink(fn3.c_str()); }
+        if (fn0 != "") { rmdir(fn0.c_str()); }
+        if (dn) { rmdir(dn); }
+    };
+
+    strncpy(c_dn, "/tmp/smartmet-library-spine-XXXXXX", sizeof(c_dn));
+    dn = mkdtemp(c_dn);
+    if (!dn) {
+        perror("Failed to create temporary directory");
+        BOOST_REQUIRE(dn);
+    }
+
+    try {
+        fn0 = dn + std::string("/cnf");
+        fn1 = dn + std::string("/test.conf");
+        fn2 = fn0 + std::string("/test.inc");
+        fn3 = fn0 + std::string("/test2.inc");
+
+        mkdir(fn0.c_str(), 0700);
+        mkfile(fn1, "@include \"cnf/test.inc\"\n");
+        mkfile(fn2, "@include \"cnf/test2.inc\"\n");
+        mkfile(fn3, "foo = \"bar\";\n");
 
         std::unique_ptr<ConfigBase> cfg;
 
@@ -296,6 +376,22 @@ BOOST_AUTO_TEST_CASE(test_relative_include_1)
         }
 
         std::string x;
+        BOOST_REQUIRE_NO_THROW(x = cfg->get_mandatory_config_param<std::string>("foo"));
+        BOOST_CHECK_EQUAL(x, std::string("bar"));
+
+        // Try second include by absolute path
+        cfg.reset();
+        mkfile(fn2, "@include \"" + fn3 + "\"\n");
+
+        try {
+            cfg.reset(new ConfigBase(fn1, "Test"));
+        } catch (const Fmi::Exception& e) {
+            e.printError();
+            BOOST_REQUIRE_NO_THROW(throw);
+        } catch (...) {
+            BOOST_REQUIRE_NO_THROW(throw);
+        }
+
         BOOST_REQUIRE_NO_THROW(x = cfg->get_mandatory_config_param<std::string>("foo"));
         BOOST_CHECK_EQUAL(x, std::string("bar"));
 
