@@ -126,6 +126,14 @@ std::string get_diff(const std::string& src, const std::string& dest)
   }
 }
 
+std::vector<std::string> read_ignore_list(const std::string & dir)
+{
+  auto filename = dir + "/" + ".testignore";
+  if(!fs::exists(filename))
+    return {};
+  return read_file(filename);
+}
+
 // ----------------------------------------------------------------------
 
 bool check_path(bool ok, const fs::path& p)
@@ -375,7 +383,7 @@ class PluginTest
   std::string mOutputDir{"output"};
   std::string mFailDir{"failures"};
 
-  bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor) const;
+  bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor, const std::vector<std::string>& ignorelist) const;
 
 };  // class PluginTest
 
@@ -405,15 +413,17 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
     SmartMet::Spine::Reactor reactor(options);
     reactor.init();
     prelude(reactor);
+    
+    const auto inputfiles = recursive_directory_contents(mInputDir);
 
-    std::list<path> inputfiles = recursive_directory_contents("input");
-
+    const auto ignorelist = read_ignore_list(mInputDir);
+    
     // Run tests in parallel
 
-    const auto executor = [this, &num_failed, &reactor](const path& fn) {
+    const auto executor = [this, &num_failed, &reactor, &ignorelist](const path& fn) {
       try
       {
-        bool ok = process_query(fn, reactor);
+        bool ok = process_query(fn, reactor, ignorelist);
         if (not ok)
           ++num_failed;
       }
@@ -452,7 +462,7 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
 
 // ----------------------------------------------------------------------
 
-bool PluginTest::process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor) const
+bool PluginTest::process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor, const std::vector<std::string>& ignorelist) const
 {
   using boost::filesystem::path;
 
@@ -495,52 +505,60 @@ bool PluginTest::process_query(const fs::path& fn, SmartMet::Spine::Reactor& rea
       }
       else
       {
-        view->handle(reactor, *query.second, response);
-
-        std::string result = get_full_response(response);
-
-        if (mProcessResult)
+        if(std::find(ignorelist.begin(), ignorelist.end(), fn.string()) != ignorelist.end())
         {
-          // Run script/executable to process the result (e.g. convert binary to ascii) for
-          // validation
-          //
-          path scriptfile = path("scripts") / fn;
-
-          if (exists(scriptfile))
-          {
-            ok = get_processed_response(response, scriptfile, result);
-
-            if (!ok)
-              out << "FAIL (result processing failed)";
-          }
+          ok = true;
+          out << "IGNORED IN THIS SETUP";
         }
-
-        if (ok)
+        else
         {
-          path outputfile = path(mOutputDir) / fn;
-          path failure_fn = path(mFailDir) / fn;
-          if (exists(outputfile) and is_regular_file(outputfile))
+          view->handle(reactor, *query.second, response);
+          
+          std::string result = get_full_response(response);
+          
+          if (mProcessResult)
           {
-            std::string output = get_file_contents(outputfile);
-
-            if (result == output)
-              out << "OK";
-            else
+            // Run script/executable to process the result (e.g. convert binary to ascii) for
+            // validation
+            //
+            path scriptfile = path("scripts") / fn;
+            
+            if (exists(scriptfile))
             {
-              // printMessage(&response);
-              ok = false;
-              out << "FAIL";
-              boost::filesystem::create_directories(failure_fn.parent_path());
-              put_file_contents(failure_fn, result);
-              out << get_diff(outputfile.string(), failure_fn.string());
+              ok = get_processed_response(response, scriptfile, result);
+              
+              if (!ok)
+                out << "FAIL (result processing failed)";
             }
           }
-          else
+        
+          if (ok)
           {
-            ok = false;
-            boost::filesystem::create_directories(failure_fn.parent_path());
-            put_file_contents(failure_fn, result);
-            out << "FAIL (expected result file '" << outputfile.string() << "' missing)";
+            path outputfile = path(mOutputDir) / fn;
+            path failure_fn = path(mFailDir) / fn;
+            if (exists(outputfile) and is_regular_file(outputfile))
+            {
+              std::string output = get_file_contents(outputfile);
+              
+              if (result == output)
+                out << "OK";
+              else
+              {
+                // printMessage(&response);
+                ok = false;
+                out << "FAIL";
+                boost::filesystem::create_directories(failure_fn.parent_path());
+                put_file_contents(failure_fn, result);
+                out << get_diff(outputfile.string(), failure_fn.string());
+              }
+            }
+            else
+            {
+              ok = false;
+              boost::filesystem::create_directories(failure_fn.parent_path());
+              put_file_contents(failure_fn, result);
+              out << "FAIL (expected result file '" << outputfile.string() << "' missing)";
+            }
           }
         }
       }
