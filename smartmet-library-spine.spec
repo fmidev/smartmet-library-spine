@@ -16,8 +16,8 @@ BuildRequires: make
 BuildRequires: boost169-devel
 BuildRequires: smartmet-library-newbase-devel >= 20.10.9
 BuildRequires: smartmet-library-macgyver-devel >= 20.10.9
-BuildRequires: libconfig
-BuildRequires: libconfig-devel
+BuildRequires: libconfig >= 1.7.2
+BuildRequires: libconfig-devel >= 1.7.2
 BuildRequires: ctpp2-devel
 BuildRequires: libicu-devel
 BuildRequires: dtl
@@ -45,7 +45,7 @@ Requires: libicu
 Requires: ctpp2
 Requires: hdf5
 Requires: jsoncpp
-Requires: libconfig
+Requires: libconfig >= 1.7.2
 Requires: fmt >= 6.2.1
 
 %if 0%{rhel} >= 8
@@ -115,6 +115,9 @@ make %{_smp_mflags}
 %changelog
 * Mon Oct 26 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.26-1.fmi
 - Enabled .testignore files in plugin tests
+
+* Tue Oct 20 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.10.20-1.fmi
+- Rebuild to API incompatible libconfig replacement (libconfig update to 1.7.2)
 
 * Thu Oct 15 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.15-1.fmi
 - libmft internal alignment has been deprecated, use zero fill automatically instead
