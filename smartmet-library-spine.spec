@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 20.10.28
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -14,8 +14,8 @@ BuildRequires: rpm-build
 BuildRequires: gcc-c++
 BuildRequires: make
 BuildRequires: boost169-devel
-BuildRequires: smartmet-library-newbase-devel >= 20.10.9
-BuildRequires: smartmet-library-macgyver-devel >= 20.10.9
+BuildRequires: smartmet-library-newbase-devel >= 20.10.28
+BuildRequires: smartmet-library-macgyver-devel >= 20.10.28
 BuildRequires: libconfig >= 1.7.2
 BuildRequires: libconfig-devel >= 1.7.2
 BuildRequires: ctpp2-devel
@@ -24,14 +24,14 @@ BuildRequires: dtl
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel
 BuildRequires: smartmet-library-gis-devel >= 20.10.5
-BuildRequires: fmt-devel >= 6.2.1
+BuildRequires: fmt-devel >= 7.1.0
 BuildRequires: mariadb-devel
 BuildRequires: boost169-chrono
 BuildRequires: boost169-timer
-Requires: smartmet-library-newbase >= 20.10.9
-Requires: smartmet-library-macgyver >= 20.10.9
+Requires: smartmet-library-newbase >= 20.10.28
+Requires: smartmet-library-macgyver >= 20.10.28
 Requires: smartmet-timezones >= 20.5.5
-Requires: smartmet-library-gis >= 20.10.5
+Requires: smartmet-library-gis >= 20.10.28
 Requires: boost169-filesystem
 Requires: boost169-iostreams
 Requires: boost169-date-time
@@ -46,7 +46,7 @@ Requires: ctpp2
 Requires: hdf5
 Requires: jsoncpp
 Requires: libconfig >= 1.7.2
-Requires: fmt >= 6.2.1
+Requires: fmt >= 7.1.0
 
 %if 0%{rhel} >= 8
 BuildRequires: gdal30-devel
@@ -113,6 +113,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Oct 28 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.10.28-2.fmi
+- Rebuild due to fmt upgrade
+
 * Wed Oct 28 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.28-1.fmi
 - Optimized JsonCache for speed
 
