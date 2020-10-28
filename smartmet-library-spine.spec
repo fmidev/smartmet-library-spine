@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.10.26
+Version: 20.10.28
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -113,6 +113,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Oct 28 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.28-1.fmi
+- Optimized JsonCache for speed
+
 * Mon Oct 26 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.26-1.fmi
 - Enabled .testignore files in plugin tests
 

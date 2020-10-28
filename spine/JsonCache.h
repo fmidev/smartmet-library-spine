@@ -9,7 +9,7 @@
 #include "Thread.h"
 #include <boost/filesystem/path.hpp>
 #include <json/json.h>
-#include <map>
+#include <unordered_map>
 #include <string>
 
 namespace SmartMet
@@ -32,7 +32,7 @@ class JsonCache
     Data(const std::time_t& theTime, const Json::Value& theJson);
   };
 
-  using Cache = std::map<boost::filesystem::path, Data>;
+  using Cache = std::unordered_map<std::size_t, Data>;
   mutable MutexType itsMutex;
   mutable Cache itsCache;
 
