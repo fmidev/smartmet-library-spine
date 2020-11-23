@@ -594,6 +594,7 @@ std::vector<std::string> PluginTest::read_ignore_list(const std::string & dir) c
   for (const auto& fn : files) {
       std::vector<std::string> a2 = read_file(fn);
       std::copy(a2.begin(), a2.end(), std::back_inserter(a1));
+      std::cout << "-- Loaded " << a2.size() << " ignores from " << fn << std::endl;
   }
   std::sort(a1.begin(), a1.end());
   std::unique_copy(a1.begin(), a1.end(), std::back_inserter(result));
