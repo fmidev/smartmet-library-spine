@@ -126,14 +126,6 @@ std::string get_diff(const std::string& src, const std::string& dest)
   }
 }
 
-std::vector<std::string> read_ignore_list(const std::string & dir)
-{
-  auto filename = dir + "/" + ".testignore";
-  if(!fs::exists(filename))
-    return {};
-  return read_file(filename);
-}
-
 // ----------------------------------------------------------------------
 
 bool check_path(bool ok, const fs::path& p)
@@ -374,6 +366,7 @@ class PluginTest
   void setInputDir(const std::string& dir) { mInputDir = dir; }
   void setOutputDir(const std::string& dir) { mOutputDir = dir; }
   void setFailDir(const std::string& dir) { mFailDir = dir; }
+  void addIgnoreList(const std::string& fileName) { ignore_lists.push_back(fileName); }
 
  private:
   bool mProcessResult = false;
@@ -382,9 +375,11 @@ class PluginTest
   std::string mInputDir{"input"};
   std::string mOutputDir{"output"};
   std::string mFailDir{"failures"};
+  std::vector<std::string> ignore_lists;
 
   bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor, const std::vector<std::string>& ignorelist) const;
 
+  std::vector<std::string> read_ignore_list(const std::string & dir) const;
 };  // class PluginTest
 
 // Deprecated
@@ -586,6 +581,23 @@ bool PluginTest::process_query(const fs::path& fn, SmartMet::Spine::Reactor& rea
     std::cout << out.str() + "PARSED REQUEST ONLY PARTIALLY\n" << std::flush;
   }
   return ok;
+}
+
+std::vector<std::string> PluginTest::read_ignore_list(const std::string & dir) const
+{
+  auto files = ignore_lists;
+  if (files.empty()) {
+    files.push_back(dir + "/" + ".testignore");
+  }
+
+  std::vector<std::string> result, a1;
+  for (const auto& fn : files) {
+      std::vector<std::string> a2 = read_file(fn);
+      std::copy(a2.begin(), a2.end(), std::back_inserter(a1));
+  }
+  std::sort(a1.begin(), a1.end());
+  std::unique_copy(a1.begin(), a1.end(), std::back_inserter(result));
+  return result;
 }
 
 }  // namespace Spine
