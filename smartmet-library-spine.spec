@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.10.28
+Version: 20.11.23
 Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -113,6 +113,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon Nov 23 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.11.23-1.fmi
+- Small PluginTest.h update (supports specifying ignore lists)
+
 * Wed Oct 28 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.10.28-2.fmi
 - Rebuild due to fmt upgrade
 
