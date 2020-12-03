@@ -98,6 +98,13 @@ Reactor::~Reactor()
 {
   // Debug output
   std::cout << "SmartMet Server stopping..." << std::endl;
+
+  // Manual cleanup
+  itsInitTasks->stop();
+  itsInitTasks.reset();
+  itsHandlers.clear();
+  itsPlugins.clear();
+  itsEngines.clear();
 }
 
 // ----------------------------------------------------------------------
