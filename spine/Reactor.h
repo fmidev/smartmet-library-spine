@@ -171,10 +171,11 @@ class Reactor
 
   // Content handling
   mutable MutexType itsContentMutex;
-  using Handlers = std::map<std::string, boost::shared_ptr<HandlerView> >;
+  using HandlerPtr = boost::shared_ptr<HandlerView>;
+  using Handlers = std::map<std::string, HandlerPtr>;
   Handlers itsHandlers;
   bool itsCatchNoMatch = false;
-  boost::shared_ptr<HandlerView> itsCatchNoMatchHandler;
+  HandlerPtr itsCatchNoMatchHandler;
 
   // Filters are determined at construction, an will be stored here until inserted into the handler
   // views
