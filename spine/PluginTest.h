@@ -380,7 +380,8 @@ class PluginTest
   bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor, const std::vector<std::string>& ignorelist) const;
 
   std::vector<std::string> read_ignore_list(const std::string & dir) const;
-};  // class PluginTest
+  static std::vector<std::string> read_ignore_file(const std::string& fn);
+ };  // class PluginTest
 
 // Deprecated
 int PluginTest::test(SmartMet::Spine::Options& options,
@@ -592,13 +593,52 @@ std::vector<std::string> PluginTest::read_ignore_list(const std::string & dir) c
 
   std::vector<std::string> result, a1;
   for (const auto& fn : files) {
-      std::vector<std::string> a2 = read_file(fn);
+      std::vector<std::string> a2 = read_ignore_file(fn);
       std::copy(a2.begin(), a2.end(), std::back_inserter(a1));
-      std::cout << "-- Loaded " << a2.size() << " ignores from " << fn << std::endl;
   }
   std::sort(a1.begin(), a1.end());
   std::unique_copy(a1.begin(), a1.end(), std::back_inserter(result));
   return result;
+}
+
+std::vector<std::string> PluginTest::read_ignore_file(const std::string& fn)
+{
+  try
+  {
+    std::ifstream input(fn.c_str());
+    std::vector<std::string> result;
+    std::string line;
+    bool input_ok = bool(input);
+    if (input_ok) {
+        std::cout << "### Reading test ignores from " << fn << std::endl;
+    }
+    while (std::getline(input, line))
+    {
+      ba::trim_if(line, ba::is_any_of(" \t\r\n"));
+      std::string prefix = "      ";
+      if (line.length() > 0) {
+          if (line[0] != ';' and line[0] != '#') {
+              std::size_t pos = line.find_first_of(" \t");
+              if (pos == std::string::npos) {
+                  result.push_back(line);
+              } else {
+                  result.push_back(line.substr(0, pos));
+              }
+              prefix="IGNORE";
+          }
+      }
+      std::cout << prefix << " | " << line << std::endl;
+    }
+    if (input_ok) {
+        std::cout << "### " << result.size() << " ignores read from " << fn
+                  << std::endl << std::endl;
+    }
+    return result;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
 }
 
 }  // namespace Spine
