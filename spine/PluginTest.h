@@ -369,6 +369,16 @@ class PluginTest
   void addIgnoreList(const std::string& fileName) { ignore_lists.push_back(fileName); }
 
  private:
+  struct IgnoreInfo
+  {
+    std::string description;
+    bool found;
+
+    IgnoreInfo(const std::string& description = "") : description(description), found(false) {}
+  };
+
+  typedef std::map<std::string, IgnoreInfo> IgnoreMap;
+
   bool mProcessResult = false;
   bool mNumThreads = 1;
 
@@ -377,8 +387,7 @@ class PluginTest
   std::string mFailDir{"failures"};
   std::vector<std::string> ignore_lists;
 
-  bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor,
-      std::map<std::string, bool>& ignores) const;
+  bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor, IgnoreMap& ignores) const;
 
   std::vector<std::string> read_ignore_list(const std::string & dir) const;
   static std::vector<std::string> read_ignore_file(const std::string& fn);
@@ -413,9 +422,16 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
 
     const auto inputfiles = recursive_directory_contents(mInputDir);
 
-    std::map<std::string, bool> ignores;
+    IgnoreMap ignores;
     for (const auto& ignore : read_ignore_list(mInputDir)) {
-        ignores.emplace(ignore, false);
+        std::size_t pos = ignore.find_first_of(" \t");
+        if (pos == std::string::npos) {
+            ignores.emplace(ignore, IgnoreInfo());
+        } else {
+            ignores.emplace(
+                ignore.substr(0, pos),
+                IgnoreInfo(ba::trim_copy_if(ignore.substr(pos+1), ba::is_any_of(" \t"))));
+        }
     }
 
     // Run tests in parallel
@@ -443,7 +459,7 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
     workqueue.join_all();
 
     for (const auto& item : ignores) {
-      if (not item.second) {
+      if (not item.second.found) {
         std::cout << "WARNING: test '" << item.first << "' specified in ignores is not found" << std::endl;
       }
     }
@@ -469,7 +485,7 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
 // ----------------------------------------------------------------------
 
 bool PluginTest::process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor,
-    std::map<std::string, bool>& ignores) const
+    IgnoreMap& ignores) const
 {
   using boost::filesystem::path;
 
@@ -515,9 +531,12 @@ bool PluginTest::process_query(const fs::path& fn, SmartMet::Spine::Reactor& rea
         auto ignores_it = ignores.find(fn.string());
         if(ignores_it != ignores.end())
         {
-          ignores_it->second = true;
+          ignores_it->second.found = true;
           ok = true;
           out << "IGNORED IN THIS SETUP";
+          if (ignores_it->second.description != "") {
+              out << ": " << ignores_it->second.description;
+          }
         }
         else
         {
@@ -607,10 +626,9 @@ std::vector<std::string> PluginTest::read_ignore_list(const std::string & dir) c
   std::vector<std::string> result, a1;
   for (const auto& fn : files) {
       std::vector<std::string> a2 = read_ignore_file(fn);
-      std::copy(a2.begin(), a2.end(), std::back_inserter(a1));
+      std::copy(a2.begin(), a2.end(), std::back_inserter(result));
   }
-  std::sort(a1.begin(), a1.end());
-  std::unique_copy(a1.begin(), a1.end(), std::back_inserter(result));
+  std::sort(result.begin(), result.end());
   return result;
 }
 
@@ -631,12 +649,7 @@ std::vector<std::string> PluginTest::read_ignore_file(const std::string& fn)
       std::string prefix = "      ";
       if (line.length() > 0) {
           if (line[0] != ';' and line[0] != '#') {
-              std::size_t pos = line.find_first_of(" \t");
-              if (pos == std::string::npos) {
-                  result.push_back(line);
-              } else {
-                  result.push_back(line.substr(0, pos));
-              }
+              result.push_back(line);
               prefix="IGNORE";
           }
       }
