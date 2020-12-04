@@ -44,7 +44,7 @@ release: all
 profile: all
 
 smartmet-plugin-test: obj/SmartmetPluginTest.o ../libsmartmet-spine.so
-	$(CXX) $(CFLAGS) -o $@ obj/SmartmetPluginTest.o -L. -lsmartmet-spine $(LIBS)
+	$(CXX) $(CFLAGS) -o $@ obj/SmartmetPluginTest.o -L .. -lsmartmet-spine $(LIBS)
 
 clean:
 	rm -f obj/*.o obj/*.d $(PROGS)
