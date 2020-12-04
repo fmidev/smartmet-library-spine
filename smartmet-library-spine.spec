@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.12.3
-Release: 2%{?dist}.fmi
+Version: 20.12.4
+Release: 3%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -111,8 +111,16 @@ make %{_smp_mflags}
 %files -n %{SPECNAME}-devel
 %defattr(0644,root,root,0755)
 %{_includedir}/smartmet/%{DIRNAME}
+%attr(0755,root,root) %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Dec  4 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.4-3.fmi
+- Import PluginTest from WFS plugin, modify for use with all plugins
+- install as part of smartmet-library-spine-devel package
+
+* Fri Dec  4 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.4-2.fmi
+- PluginTest.h updates (support comments in ignore list, warn about ignores not found)
+
 * Thu Dec  3 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.3-1.fmi
 - Additional manual cleanup in Reactor destructor
 

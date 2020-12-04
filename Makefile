@@ -38,9 +38,11 @@ LIBS +=	-L$(libdir) \
 
 LIBFILE = lib$(LIB).so
 
+PROGS = smartmet_plugin_test
+
 # Compilation directories
 
-vpath %.cpp $(SUBNAME)
+vpath %.cpp $(SUBNAME) app
 vpath %.h $(SUBNAME)
 vpath %.o $(objdir)
 
@@ -57,6 +59,8 @@ INCLUDES := -Iinclude $(INCLUDES)
 # The rules
 
 all: objdir $(LIBFILE)
+	$(MAKE) -C app
+
 debug: all
 release: all
 profile: all
@@ -69,11 +73,16 @@ $(LIBFILE): $(OBJS)
 		exit 1; \
 	fi
 
+smartmet_plugin_test: obj/SmartmetPluginTest.o $(LIBFILE)
+	$(CXX) $(CFLAGS) -o $@ $* -L. -lsmartmet-spine -lboost_program_options $(CONFIGPP_LIBS) -lpthread
+
 clean:
 	rm -f $(LIBFILE) $(OBJS) $(patsubst obj/%.o,obj/%.d,$(OBJS)) *~ $(SUBNAME)/*~
+	$(MAKE) -C app $@
 
 format:
 	clang-format -i -style=file $(SUBNAME)/*.h $(SUBNAME)/*.cpp test/*.cpp
+	$(MAKE) -C app $@
 
 install:
 	@mkdir -p $(includedir)/$(INCDIR)
@@ -86,6 +95,7 @@ install:
 	@mkdir -p $(libdir)
 	echo $(INSTALL_PROG) $(LIBFILE) $(libdir)/$(LIBFILE)
 	$(INSTALL_PROG) $(LIBFILE) $(libdir)/$(LIBFILE)
+	$(MAKE) -C app $@
 
 test:
 	$(MAKE) -C test $@
