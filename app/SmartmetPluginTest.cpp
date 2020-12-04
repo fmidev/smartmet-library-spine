@@ -32,6 +32,15 @@ void prelude(SmartMet::Spine::Reactor& reactor, const std::string& handler_path)
   }
 }
 
+void alarm_handler(int)
+{
+    std::cerr << std::endl
+              << "Timeout: test terminated"
+              << std::endl
+              << std::endl;
+    abort();
+}
+
 #define nm_help "help"
 #define nm_config "reactor-config"
 #define nm_input "input-dir"
@@ -39,6 +48,7 @@ void prelude(SmartMet::Spine::Reactor& reactor, const std::string& handler_path)
 #define nm_failures "failures-dir"
 #define nm_threads "num-threads"
 #define nm_ignore "ignore"
+#define nm_timeout "timeout"
 #define nm_handler "handler"
 
 
@@ -69,6 +79,8 @@ int main(int argc, char* argv[])
             "Optional parameter to specify files containing lists"
             " of tests to be skipped. File .testignore from input directory is used of none specified."
             " May be provided 0 or more times")
+        (nm_timeout, po::value<unsigned>(), "Timeout of entire test run in seconds (missing or value "
+            " 0 means no timeout")
         ;
 
     po::variables_map opt;
@@ -91,12 +103,17 @@ int main(int argc, char* argv[])
     options.defaultlogging = false;
     options.accesslogdir = "/tmp";
 
+    signal(SIGALRM, alarm_handler);
+
     try
     {
         SmartMet::Spine::PluginTest tester;
         SmartMet::Spine::PreludeFunction prelude_funct;
         if (opt.count(nm_input)) {
             tester.setInputDir(opt[nm_input].as<std::string>());
+        }
+        if (opt.count(nm_timeout)) {
+            alarm(opt[nm_timeout].as<unsigned>());
         }
         if (opt.count(nm_expected)) {
             tester.setOutputDir(opt[nm_expected].as<std::string>());
