@@ -47,7 +47,7 @@ smartmet-plugin-test: obj/SmartmetPluginTest.o ../libsmartmet-spine.so
 	$(CXX) $(CFLAGS) -o $@ obj/SmartmetPluginTest.o -L. -lsmartmet-spine $(LIBS)
 
 clean:
-	rm -f $(OBJS) $(patsubst obj/%.o,obj/%.d,$(OBJS)) *~ $(PROGS)/*~
+	rm -f obj/*.o obj/*.d $(PROGS)
 
 format:
 	clang-format -i -style=file *.h *.cpp
