@@ -1,4 +1,4 @@
-#include <spine/PluginTest.h>
+#include "PluginTest.h"
 #include <iostream>
 #include <sstream>
 #include <boost/program_options.hpp>
