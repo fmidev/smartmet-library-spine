@@ -377,7 +377,8 @@ class PluginTest
   std::string mFailDir{"failures"};
   std::vector<std::string> ignore_lists;
 
-  bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor, const std::vector<std::string>& ignorelist) const;
+  bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor,
+      std::map<std::string, bool>& ignores) const;
 
   std::vector<std::string> read_ignore_list(const std::string & dir) const;
   static std::vector<std::string> read_ignore_file(const std::string& fn);
@@ -409,17 +410,20 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
     SmartMet::Spine::Reactor reactor(options);
     reactor.init();
     prelude(reactor);
-    
+
     const auto inputfiles = recursive_directory_contents(mInputDir);
 
-    const auto ignorelist = read_ignore_list(mInputDir);
-    
+    std::map<std::string, bool> ignores;
+    for (const auto& ignore : read_ignore_list(mInputDir)) {
+        ignores.emplace(ignore, false);
+    }
+
     // Run tests in parallel
 
-    const auto executor = [this, &num_failed, &reactor, &ignorelist](const path& fn) {
+    const auto executor = [this, &num_failed, &reactor, &ignores](const path& fn) {
       try
       {
-        bool ok = process_query(fn, reactor, ignorelist);
+        bool ok = process_query(fn, reactor, ignores);
         if (not ok)
           ++num_failed;
       }
@@ -437,6 +441,12 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
       workqueue(fn);
 
     workqueue.join_all();
+
+    for (const auto& item : ignores) {
+      if (not item.second) {
+        std::cout << "WARNING: test '" << item.first << "' specified in ignores is not found" << std::endl;
+      }
+    }
 
     if (num_failed > 0)
     {
@@ -458,7 +468,8 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
 
 // ----------------------------------------------------------------------
 
-bool PluginTest::process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor, const std::vector<std::string>& ignorelist) const
+bool PluginTest::process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor,
+    std::map<std::string, bool>& ignores) const
 {
   using boost::filesystem::path;
 
@@ -501,8 +512,10 @@ bool PluginTest::process_query(const fs::path& fn, SmartMet::Spine::Reactor& rea
       }
       else
       {
-        if(std::find(ignorelist.begin(), ignorelist.end(), fn.string()) != ignorelist.end())
+        auto ignores_it = ignores.find(fn.string());
+        if(ignores_it != ignores.end())
         {
+          ignores_it->second = true;
           ok = true;
           out << "IGNORED IN THIS SETUP";
         }
