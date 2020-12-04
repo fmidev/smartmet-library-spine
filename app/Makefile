@@ -32,7 +32,7 @@ PROGS = smartmet-plugin-test
 vpath %.h $(SUBNAME)
 vpath %.o $(objdir)
 
-INCLUDES := -I../include $(INCLUDES)
+INCLUDES := -I../spine $(INCLUDES)
 
 .PHONY: test rpm
 
