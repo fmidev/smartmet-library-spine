@@ -72,13 +72,7 @@ workflows:
   build-test:
     jobs:
       - build-rhel7
-          filters:
-            branches:
-              only: master
       - build-rhel8
-          filters:
-            branches:
-              only: master
       - test-rhel7:
           requires:
             - build-rhel7
