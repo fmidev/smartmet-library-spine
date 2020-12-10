@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.12.4
+Version: 20.12.10
 Release: 3%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -114,6 +114,9 @@ make %{_smp_mflags}
 %attr(0755,root,root) %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Thu Dec 10 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.10-1.fmi
+- Adapt to changes in makefile.inc
+
 * Fri Dec  4 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.4-3.fmi
 - Import PluginTest from WFS plugin, modify for use with all plugins
 - install as part of smartmet-library-spine-devel package
