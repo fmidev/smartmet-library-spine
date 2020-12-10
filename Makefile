@@ -27,10 +27,7 @@ LIBS +=	-L$(libdir) \
 	-lboost_system \
 	-lboost_locale \
 	-lctpp2 \
-	$(CONFIGPP_LIBS) \
-	$(MYSQL_LIBS) \
-	$(JSONCPP_LIBS) \
-	$(ICU_I18_LIBS) \
+	$(REQUIRED_LIBS) \
 	-ldl \
 	-lrt
 
