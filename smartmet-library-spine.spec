@@ -49,17 +49,17 @@ Requires: libconfig >= 1.7.2
 Requires: fmt >= 7.1.0
 
 %if 0%{rhel} >= 8
-BuildRequires: gdal30-devel
-Requires: gdal30-libs
+BuildRequires: gdal32-devel
+Requires: gdal32-libs
+Requires: mariadb-connector-c
+#TestRequires: gdal32-devel
+#TestRequires: mariadb-connector-c
 %else
 BuildRequires: gdal-devel
 Requires: gdal-libs
-%endif
-
-%if 0%{rhel} >= 8
-Requires: mariadb-connector-c
-%else
 Requires: mariadb-libs
+#TestRequires: gdal-devel
+#TestRequires: mariadb-devel
 %endif
 
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
@@ -70,8 +70,6 @@ Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 #TestRequires: jsoncpp-devel
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
-#TestRequires: gdal-devel
-#TestRequires: mariadb-devel
 
 %description
 FMI BrainStorm Spinal Cord Library
