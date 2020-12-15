@@ -15,6 +15,10 @@ namespace qi = boost::spirit::qi;
 namespace ac = boost::spirit::ascii;
 namespace fs = boost::filesystem;
 
+#if GDAL_VERSION_MAJOR >= 3
+#define OGRFree(x) CPLFree(x)
+#endif
+
 namespace SmartMet
 {
 namespace Spine
