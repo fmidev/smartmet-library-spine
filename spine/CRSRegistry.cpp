@@ -94,8 +94,7 @@ void CRSRegistry::register_epsg(const std::string& name,
     MapEntry entry(name, regex);
     if (entry.cs->importFromEPSG(epsg_code) != OGRERR_NONE)
     {
-      throw Fmi::Exception(BCP,
-                             "Failed to register projection EPSG:" + Fmi::to_string(epsg_code));
+      throw Fmi::Exception(BCP, "Failed to register projection EPSG:" + Fmi::to_string(epsg_code));
     }
     entry.swap_coord = swap_coord;
 
@@ -153,7 +152,8 @@ void CRSRegistry::register_wkt(const std::string& name,
     CHECK_NAME(nm)
 
     MapEntry entry(name, regex);
-    char* str = const_cast<char*>(wkt_def.c_str());
+
+    const auto* str = wkt_def.c_str();
 
     int ret = entry.cs->importFromWkt(&str);
 
@@ -170,6 +170,8 @@ void CRSRegistry::register_wkt(const std::string& name,
         return;
       }
     }
+
+    entry.cs->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
 
     entry.attrib_map["swapCoord"] = swap_coord;
 

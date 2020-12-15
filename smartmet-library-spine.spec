@@ -3,73 +3,70 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.12.10
-Release: 3%{?dist}.fmi
+Version: 20.12.15
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
 Source0: %{name}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-BuildRequires: rpm-build
-BuildRequires: gcc-c++
-BuildRequires: make
-BuildRequires: boost169-devel
-BuildRequires: smartmet-library-newbase-devel >= 20.12.10
-BuildRequires: smartmet-library-macgyver-devel >= 20.12.10
-BuildRequires: libconfig >= 1.7.2
-BuildRequires: libconfig-devel >= 1.7.2
-BuildRequires: ctpp2-devel
-BuildRequires: libicu-devel
-BuildRequires: dtl
-BuildRequires: glibc-devel
-BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 20.12.10
-BuildRequires: fmt-devel >= 7.1.0
-BuildRequires: mariadb-devel
-BuildRequires: boost169-chrono
-BuildRequires: boost169-timer
-Requires: smartmet-library-newbase >= 20.12.10
-Requires: smartmet-library-macgyver >= 20.12.10
-Requires: smartmet-timezones >= 20.5.5
-Requires: smartmet-library-gis >= 20.12.10
-Requires: boost169-filesystem
-Requires: boost169-iostreams
-Requires: boost169-date-time
-Requires: boost169-regex
-Requires: boost169-thread
-Requires: boost169-program-options
-Requires: boost169-system
-Requires: boost169-timer
-Requires: boost169-chrono
-Requires: libicu
-Requires: ctpp2
-Requires: hdf5
-Requires: jsoncpp
-Requires: libconfig >= 1.7.2
-Requires: fmt >= 7.1.0
 
 %if 0%{rhel} >= 8
-BuildRequires: gdal32-devel
-Requires: gdal32-libs
 Requires: mariadb-connector-c
-#TestRequires: gdal32-devel
 #TestRequires: mariadb-connector-c
 %else
-BuildRequires: gdal-devel
-Requires: gdal-libs
 Requires: mariadb-libs
-#TestRequires: gdal-devel
 #TestRequires: mariadb-devel
 %endif
 
-Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
-Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
+BuildRequires: boost169-chrono
+BuildRequires: boost169-devel
+BuildRequires: boost169-timer
+BuildRequires: ctpp2-devel
+BuildRequires: dtl
+BuildRequires: fmt-devel >= 7.1.0
+BuildRequires: gcc-c++
+BuildRequires: gdal32-devel
+BuildRequires: glibc-devel
+BuildRequires: jsoncpp-devel
+BuildRequires: libconfig >= 1.7.2
+BuildRequires: libconfig-devel >= 1.7.2
+BuildRequires: libicu-devel
+BuildRequires: make
+BuildRequires: mariadb-devel
+BuildRequires: rpm-build
+BuildRequires: smartmet-library-gis-devel >= 20.12.15
+BuildRequires: smartmet-library-macgyver-devel >= 20.12.15
+BuildRequires: smartmet-library-newbase-devel >= 20.12.15
+Requires: boost169-chrono
+Requires: boost169-date-time
+Requires: boost169-filesystem
+Requires: boost169-iostreams
+Requires: boost169-program-options
+Requires: boost169-regex
+Requires: boost169-system
+Requires: boost169-thread
+Requires: boost169-timer
+Requires: ctpp2
+Requires: fmt >= 7.1.0
+Requires: gdal32-libs
+Requires: hdf5
+Requires: jsoncpp
+Requires: libconfig >= 1.7.2
+Requires: libicu
+Requires: smartmet-library-gis >= 20.12.15
+Requires: smartmet-library-macgyver >= 20.12.15
+Requires: smartmet-library-newbase >= 20.12.15
+Requires: smartmet-timezones >= 20.10.28
 #TestRequires: bzip2-devel
-#TestRequires: make
 #TestRequires: gcc-c++
+#TestRequires: gdal32-devel
 #TestRequires: jsoncpp-devel
+#TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
+Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
+Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
 %description
 FMI BrainStorm Spinal Cord Library
@@ -112,6 +109,9 @@ make %{_smp_mflags}
 %attr(0755,root,root) %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Dec 15 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.12.15-1.fmi
+- Upgrade to pgdg12
+
 * Thu Dec 10 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.10-1.fmi
 - Adapt to changes in makefile.inc
 
