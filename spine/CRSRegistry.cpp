@@ -96,6 +96,10 @@ void CRSRegistry::register_epsg(const std::string& name,
     {
       throw Fmi::Exception(BCP, "Failed to register projection EPSG:" + Fmi::to_string(epsg_code));
     }
+#if GDAL_VERSION_MAJOR >= 3
+    entry.cs->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+#endif
+
     entry.swap_coord = swap_coord;
 
     entry.attrib_map["epsg"] = epsg_code;
@@ -126,6 +130,10 @@ void CRSRegistry::register_proj4(const std::string& name,
     {
       throw Fmi::Exception(BCP, "Failed to parse PROJ.4 definition '" + proj4_def + "'!");
     }
+
+#if GDAL_VERSION_MAJOR >= 3
+    entry.cs->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+#endif
 
     entry.swap_coord = swap_coord;
 

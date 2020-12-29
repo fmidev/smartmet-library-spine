@@ -1,8 +1,8 @@
-#include <iostream>
+#include "CRSRegistry.h"
 #include <boost/thread.hpp>
 #include <newbase/NFmiPoint.h>
 #include <gdal_version.h>
-#include "CRSRegistry.h"
+#include <iostream>
 
 using namespace SmartMet::Spine;
 
@@ -52,16 +52,10 @@ void test_thread_proc(TestEnv *env)
     env->add_cnt(n1, e1);
   }
 }
-}
+}  // namespace
 
 int main(void)
 {
-#if GDAL_VERSION_MAJOR >= 3
-  std::cout << "CRSRegistry tester (parallel): test is broken for GDAL 3"
-	    << " -> ignoring for now" << std::endl;
-  (void)test_thread_proc;
-  return 0;
-#else
   const char *name = "CRSRegistry tester (parallel)";
   std::cout << "\n";
   std::cout << name << "\n";
@@ -96,5 +90,4 @@ int main(void)
   std::cout << "num_err=" << env.err_cnt << std::endl;
 
   return env.err_cnt ? 1 : 0;
-#endif
 }
