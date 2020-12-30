@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 20.12.30
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -79,12 +79,26 @@ Requires: dtl
 Requires: smartmet-library-macgyver-devel
 Requires: smartmet-library-gis-devel
 Requires: smartmet-library-newbase-devel
-Requires: smartmet-library-spine = %{version}-%{release}
 Requires: libconfig-devel
-Requires: %{SPECNAME}
+Requires: %{SPECNAME} = %{version}-%{release}
+# FIXME: Temporarily left in as dependence smartmet-library-spine-devel is
+# still used where smartmet-plugin-test would be sufficient
+Requires: smartmet-plugin-test
+#
 Obsoletes: libsmartmet-brainstorm-spine-devel < 16.11.1
 %description -n %{SPECNAME}-devel
 SmartMet Spine development files
+
+%package -n smartmet-plugin-test
+Summary: Tester program for Smartmet plugins
+Requires: boost169-program-options
+Requires: boost169-filesystem
+Requires: boost169-thread
+Requires: dtl
+Requires: libconfig >= 1.7.2
+Requires: %{SPECNAME} = %{version}-%{release}
+%description -n smartmet-plugin-test
+Tester program for Smartmet plugins
 
 %prep
 rm -rf $RPM_BUILD_ROOT
@@ -107,9 +121,15 @@ make %{_smp_mflags}
 %files -n %{SPECNAME}-devel
 %defattr(0644,root,root,0755)
 %{_includedir}/smartmet/%{DIRNAME}
+
+%files -n smartmet-plugin-test
 %attr(0755,root,root) %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Dec 30 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.30-2.fmi
+- Move smartmt-plugin-test to a separate RPM package (smartmet-plugin-test)
+- Fix dependency problem from previous version 20.12.30-1.fmi
+
 * Wed Dec 30 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.30-1.fmi
 - Rebuild due to jsoncpp upgrade for RHEL7 (also RHEL8 to avoid broken RPM dependencies)
 
