@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.12.15
+Version: 20.12.30
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -28,7 +28,7 @@ BuildRequires: fmt-devel >= 7.1.0
 BuildRequires: gcc-c++
 BuildRequires: gdal32-devel
 BuildRequires: glibc-devel
-BuildRequires: jsoncpp-devel
+BuildRequires: jsoncpp-devel >= 1.8.4
 BuildRequires: libconfig >= 1.7.2
 BuildRequires: libconfig-devel >= 1.7.2
 BuildRequires: libicu-devel
@@ -51,7 +51,7 @@ Requires: ctpp2
 Requires: fmt >= 7.1.0
 Requires: gdal32-libs
 Requires: hdf5
-Requires: jsoncpp
+Requires: jsoncpp >= 1.8.4
 Requires: libconfig >= 1.7.2
 Requires: libicu
 Requires: smartmet-library-gis >= 20.12.15
@@ -61,7 +61,7 @@ Requires: smartmet-timezones >= 20.10.28
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
 #TestRequires: gdal32-devel
-#TestRequires: jsoncpp-devel
+#TestRequires: jsoncpp-devel >= 1.8.4
 #TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
@@ -79,6 +79,7 @@ Requires: dtl
 Requires: smartmet-library-macgyver-devel
 Requires: smartmet-library-gis-devel
 Requires: smartmet-library-newbase-devel
+Requires: smartmet-library-spine = %{version}-%{release}
 Requires: libconfig-devel
 Requires: %{SPECNAME}
 Obsoletes: libsmartmet-brainstorm-spine-devel < 16.11.1
@@ -109,6 +110,9 @@ make %{_smp_mflags}
 %attr(0755,root,root) %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Dec 30 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.30-1.fmi
+- Rebuild due to jsoncpp upgrade for RHEL7 (also RHEL8 to avoid broken RPM dependencies)
+
 * Tue Dec 15 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.12.15-1.fmi
 - Upgrade to pgdg12
 
