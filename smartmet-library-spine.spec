@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 21.1.5
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -24,7 +24,7 @@ BuildRequires: boost169-devel
 BuildRequires: boost169-timer
 BuildRequires: ctpp2-devel
 BuildRequires: dtl
-BuildRequires: fmt-devel >= 7.1.0
+BuildRequires: fmt-devel >= 7.1.3
 BuildRequires: gcc-c++
 BuildRequires: gdal32-devel
 BuildRequires: glibc-devel
@@ -35,9 +35,9 @@ BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 21.1.4
-BuildRequires: smartmet-library-macgyver-devel >= 21.1.4
-BuildRequires: smartmet-library-newbase-devel >= 21.1.4
+BuildRequires: smartmet-library-gis-devel >= 21.1.5
+BuildRequires: smartmet-library-macgyver-devel >= 21.1.5
+BuildRequires: smartmet-library-newbase-devel >= 21.1.5
 Requires: boost169-chrono
 Requires: boost169-date-time
 Requires: boost169-filesystem
@@ -48,16 +48,16 @@ Requires: boost169-system
 Requires: boost169-thread
 Requires: boost169-timer
 Requires: ctpp2
-Requires: fmt >= 7.1.0
+Requires: fmt >= 7.1.3
 Requires: gdal32-libs
 Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig >= 1.7.2
 Requires: libicu
-Requires: smartmet-library-gis >= 21.1.4
-Requires: smartmet-library-macgyver >= 21.1.4
-Requires: smartmet-library-newbase >= 21.1.4
-Requires: smartmet-timezones >= 20.10.28
+Requires: smartmet-library-gis >= 21.1.5
+Requires: smartmet-library-macgyver >= 21.1.5
+Requires: smartmet-library-newbase >= 21.1.5
+Requires: smartmet-timezones >= 21.1.5
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
 #TestRequires: gdal32-devel
@@ -109,6 +109,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Jan  5 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.1.5-2.fmi
+- Upgrade to fmt 7.1.3
+
 * Tue Jan  5 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.1.5-1.fmi
 - Repackaged due to geos39 upgrade
 
