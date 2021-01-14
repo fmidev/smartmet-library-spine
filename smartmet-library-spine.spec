@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.1.5
-Release: 2%{?dist}.fmi
+Version: 21.1.14
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -35,9 +35,9 @@ BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 21.1.5
-BuildRequires: smartmet-library-macgyver-devel >= 21.1.5
-BuildRequires: smartmet-library-newbase-devel >= 21.1.5
+BuildRequires: smartmet-library-gis-devel >= 21.1.14
+BuildRequires: smartmet-library-macgyver-devel >= 21.1.14
+BuildRequires: smartmet-library-newbase-devel >= 21.1.14
 Requires: boost169-chrono
 Requires: boost169-date-time
 Requires: boost169-filesystem
@@ -54,9 +54,9 @@ Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig >= 1.7.2
 Requires: libicu
-Requires: smartmet-library-gis >= 21.1.5
-Requires: smartmet-library-macgyver >= 21.1.5
-Requires: smartmet-library-newbase >= 21.1.5
+Requires: smartmet-library-gis >= 21.1.14
+Requires: smartmet-library-macgyver >= 21.1.14
+Requires: smartmet-library-newbase >= 21.1.14
 Requires: smartmet-timezones >= 21.1.5
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -109,6 +109,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu Jan 14 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.1.14-1.fmi
+- Repackaged smartmet to resolve debuginfo issues
+
 * Tue Jan  5 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.1.5-2.fmi
 - Upgrade to fmt 7.1.3
 
