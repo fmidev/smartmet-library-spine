@@ -19,8 +19,7 @@ INCLUDES += -I../spine
 
 LIBS += ../libsmartmet-spine.so \
 	-lsmartmet-macgyver \
-	$(JSONCPP_LIBS) \
-	$(CONFIGPP_LIBS) \
+	$(REQUIRED_LIBS) \
 	-lboost_filesystem \
 	-lboost_iostreams \
 	-lboost_regex \

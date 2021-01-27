@@ -1,7 +1,8 @@
-#include <iostream>
+#include "CRSRegistry.h"
 #include <boost/thread.hpp>
 #include <newbase/NFmiPoint.h>
-#include "CRSRegistry.h"
+#include <gdal_version.h>
+#include <iostream>
 
 using namespace SmartMet::Spine;
 
@@ -51,7 +52,7 @@ void test_thread_proc(TestEnv *env)
     env->add_cnt(n1, e1);
   }
 }
-}
+}  // namespace
 
 int main(void)
 {

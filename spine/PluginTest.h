@@ -366,18 +366,32 @@ class PluginTest
   void setInputDir(const std::string& dir) { mInputDir = dir; }
   void setOutputDir(const std::string& dir) { mOutputDir = dir; }
   void setFailDir(const std::string& dir) { mFailDir = dir; }
+  void addIgnoreList(const std::string& fileName) { ignore_lists.push_back(fileName); }
 
  private:
+  struct IgnoreInfo
+  {
+    std::string description;
+    bool found;
+
+    IgnoreInfo(const std::string& description = "") : description(description), found(false) {}
+  };
+
+  typedef std::map<std::string, IgnoreInfo> IgnoreMap;
+
   bool mProcessResult = false;
   bool mNumThreads = 1;
 
   std::string mInputDir{"input"};
   std::string mOutputDir{"output"};
   std::string mFailDir{"failures"};
+  std::vector<std::string> ignore_lists;
 
-  bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor) const;
+  bool process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor, IgnoreMap& ignores) const;
 
-};  // class PluginTest
+  std::vector<std::string> read_ignore_list(const std::string & dir) const;
+  static std::vector<std::string> read_ignore_file(const std::string& fn);
+ };  // class PluginTest
 
 // Deprecated
 int PluginTest::test(SmartMet::Spine::Options& options,
@@ -406,14 +420,26 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
     reactor.init();
     prelude(reactor);
 
-    std::list<path> inputfiles = recursive_directory_contents("input");
+    const auto inputfiles = recursive_directory_contents(mInputDir);
+
+    IgnoreMap ignores;
+    for (const auto& ignore : read_ignore_list(mInputDir)) {
+        std::size_t pos = ignore.find_first_of(" \t");
+        if (pos == std::string::npos) {
+            ignores.emplace(ignore, IgnoreInfo());
+        } else {
+            ignores.emplace(
+                ignore.substr(0, pos),
+                IgnoreInfo(ba::trim_copy_if(ignore.substr(pos+1), ba::is_any_of(" \t"))));
+        }
+    }
 
     // Run tests in parallel
 
-    const auto executor = [this, &num_failed, &reactor](const path& fn) {
+    const auto executor = [this, &num_failed, &reactor, &ignores](const path& fn) {
       try
       {
-        bool ok = process_query(fn, reactor);
+        bool ok = process_query(fn, reactor, ignores);
         if (not ok)
           ++num_failed;
       }
@@ -431,6 +457,12 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
       workqueue(fn);
 
     workqueue.join_all();
+
+    for (const auto& item : ignores) {
+      if (not item.second.found) {
+        std::cout << "WARNING: test '" << item.first << "' specified in ignores is not found" << std::endl;
+      }
+    }
 
     if (num_failed > 0)
     {
@@ -452,7 +484,8 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
 
 // ----------------------------------------------------------------------
 
-bool PluginTest::process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor) const
+bool PluginTest::process_query(const fs::path& fn, SmartMet::Spine::Reactor& reactor,
+    IgnoreMap& ignores) const
 {
   using boost::filesystem::path;
 
@@ -495,52 +528,65 @@ bool PluginTest::process_query(const fs::path& fn, SmartMet::Spine::Reactor& rea
       }
       else
       {
-        view->handle(reactor, *query.second, response);
-
-        std::string result = get_full_response(response);
-
-        if (mProcessResult)
+        auto ignores_it = ignores.find(fn.string());
+        if(ignores_it != ignores.end())
         {
-          // Run script/executable to process the result (e.g. convert binary to ascii) for
-          // validation
-          //
-          path scriptfile = path("scripts") / fn;
-
-          if (exists(scriptfile))
-          {
-            ok = get_processed_response(response, scriptfile, result);
-
-            if (!ok)
-              out << "FAIL (result processing failed)";
+          ignores_it->second.found = true;
+          ok = true;
+          out << "IGNORED IN THIS SETUP";
+          if (ignores_it->second.description != "") {
+              out << ": " << ignores_it->second.description;
           }
         }
-
-        if (ok)
+        else
         {
-          path outputfile = path(mOutputDir) / fn;
-          path failure_fn = path(mFailDir) / fn;
-          if (exists(outputfile) and is_regular_file(outputfile))
+          view->handle(reactor, *query.second, response);
+          
+          std::string result = get_full_response(response);
+          
+          if (mProcessResult)
           {
-            std::string output = get_file_contents(outputfile);
-
-            if (result == output)
-              out << "OK";
-            else
+            // Run script/executable to process the result (e.g. convert binary to ascii) for
+            // validation
+            //
+            path scriptfile = path("scripts") / fn;
+            
+            if (exists(scriptfile))
             {
-              // printMessage(&response);
-              ok = false;
-              out << "FAIL";
-              boost::filesystem::create_directories(failure_fn.parent_path());
-              put_file_contents(failure_fn, result);
-              out << get_diff(outputfile.string(), failure_fn.string());
+              ok = get_processed_response(response, scriptfile, result);
+              
+              if (!ok)
+                out << "FAIL (result processing failed)";
             }
           }
-          else
+        
+          if (ok)
           {
-            ok = false;
-            boost::filesystem::create_directories(failure_fn.parent_path());
-            put_file_contents(failure_fn, result);
-            out << "FAIL (expected result file '" << outputfile.string() << "' missing)";
+            path outputfile = path(mOutputDir) / fn;
+            path failure_fn = path(mFailDir) / fn;
+            if (exists(outputfile) and is_regular_file(outputfile))
+            {
+              std::string output = get_file_contents(outputfile);
+              
+              if (result == output)
+                out << "OK";
+              else
+              {
+                // printMessage(&response);
+                ok = false;
+                out << "FAIL";
+                boost::filesystem::create_directories(failure_fn.parent_path());
+                put_file_contents(failure_fn, result);
+                out << get_diff(outputfile.string(), failure_fn.string());
+              }
+            }
+            else
+            {
+              ok = false;
+              boost::filesystem::create_directories(failure_fn.parent_path());
+              put_file_contents(failure_fn, result);
+              out << "FAIL (expected result file '" << outputfile.string() << "' missing)";
+            }
           }
         }
       }
@@ -568,6 +614,57 @@ bool PluginTest::process_query(const fs::path& fn, SmartMet::Spine::Reactor& rea
     std::cout << out.str() + "PARSED REQUEST ONLY PARTIALLY\n" << std::flush;
   }
   return ok;
+}
+
+std::vector<std::string> PluginTest::read_ignore_list(const std::string & dir) const
+{
+  auto files = ignore_lists;
+  if (files.empty()) {
+    files.push_back(dir + "/" + ".testignore");
+  }
+
+  std::vector<std::string> result, a1;
+  for (const auto& fn : files) {
+      std::vector<std::string> a2 = read_ignore_file(fn);
+      std::copy(a2.begin(), a2.end(), std::back_inserter(result));
+  }
+  std::sort(result.begin(), result.end());
+  return result;
+}
+
+std::vector<std::string> PluginTest::read_ignore_file(const std::string& fn)
+{
+  try
+  {
+    std::ifstream input(fn.c_str());
+    std::vector<std::string> result;
+    std::string line;
+    bool input_ok = bool(input);
+    if (input_ok) {
+        std::cout << "### Reading test ignores from " << fn << std::endl;
+    }
+    while (std::getline(input, line))
+    {
+      ba::trim_if(line, ba::is_any_of(" \t\r\n"));
+      std::string prefix = "      ";
+      if (line.length() > 0) {
+          if (line[0] != ';' and line[0] != '#') {
+              result.push_back(line);
+              prefix="IGNORE";
+          }
+      }
+      std::cout << prefix << " | " << line << std::endl;
+    }
+    if (input_ok) {
+        std::cout << "### " << result.size() << " ignores read from " << fn
+                  << std::endl << std::endl;
+    }
+    return result;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
 }
 
 }  // namespace Spine

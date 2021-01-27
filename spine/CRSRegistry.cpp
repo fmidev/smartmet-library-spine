@@ -15,6 +15,10 @@ namespace qi = boost::spirit::qi;
 namespace ac = boost::spirit::ascii;
 namespace fs = boost::filesystem;
 
+#if GDAL_VERSION_MAJOR >= 3
+#define OGRFree(x) CPLFree(x)
+#endif
+
 namespace SmartMet
 {
 namespace Spine
@@ -90,10 +94,11 @@ void CRSRegistry::register_epsg(const std::string& name,
     MapEntry entry(name, regex);
     if (entry.cs->importFromEPSG(epsg_code) != OGRERR_NONE)
     {
-      throw Fmi::Exception(BCP,
-                             "Failed to register projection EPSG:" + Fmi::to_string(epsg_code));
+      throw Fmi::Exception(BCP, "Failed to register projection EPSG:" + Fmi::to_string(epsg_code));
     }
+#if GDAL_VERSION_MAJOR >= 3
     entry.cs->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+#endif
 
     entry.swap_coord = swap_coord;
 
@@ -126,6 +131,10 @@ void CRSRegistry::register_proj4(const std::string& name,
       throw Fmi::Exception(BCP, "Failed to parse PROJ.4 definition '" + proj4_def + "'!");
     }
     entry.cs->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+
+#if GDAL_VERSION_MAJOR >= 3
+    entry.cs->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
+#endif
 
     entry.swap_coord = swap_coord;
 
@@ -482,17 +491,8 @@ CRSRegistry::TransformationImpl::TransformationImpl(const CRSRegistry::MapEntry&
 
 CRSRegistry::TransformationImpl::~TransformationImpl()
 {
-  try
-  {
-    if (conv)
-    {
-      OGRCoordinateTransformation::DestroyCT(conv);
-    }
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
+  if (conv)
+    OGRCoordinateTransformation::DestroyCT(conv);
 }
 
 std::string CRSRegistry::TransformationImpl::get_src_name() const

@@ -3,6 +3,7 @@
 #include "JsonCache.h"
 #include <macgyver/Exception.h>
 #include <boost/filesystem/operations.hpp>
+#include <boost/functional/hash.hpp>
 #include <fstream>
 #include <stdexcept>
 
@@ -35,10 +36,12 @@ Json::Value JsonCache::get(const boost::filesystem::path& thePath) const
   {
     std::time_t mtime = boost::filesystem::last_write_time(thePath);
 
+    std::size_t hash = boost::filesystem::hash_value(thePath);
+    
     // Try using the cache with a lock first
     {
       ReadLock lock{itsMutex};
-      auto iter = itsCache.find(thePath);
+      auto iter = itsCache.find(hash);
       if (iter != itsCache.end())
       {
         if (mtime == iter->second.modification_time)
@@ -70,7 +73,7 @@ Json::Value JsonCache::get(const boost::filesystem::path& thePath) const
     Data data{mtime, json};
 
     WriteLock lock{itsMutex};
-    itsCache[thePath] = data;  // overwrites old contents
+    itsCache[hash] = data;
     return json;
   }
   catch (...)

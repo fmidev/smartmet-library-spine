@@ -1,8 +1,9 @@
 // FIXME: move to smartmet-engine-gis
-#include <iostream>
+#include "CRSRegistry.h"
 #include <boost/test/included/unit_test.hpp>
 #include <newbase/NFmiPoint.h>
-#include "CRSRegistry.h"
+#include <gdal_version.h>
+#include <iostream>
 
 using namespace boost::unit_test;
 using namespace SmartMet::Spine;
@@ -20,8 +21,6 @@ test_suite* init_unit_test_suite(int argc, char* argv[])
 
 BOOST_AUTO_TEST_CASE(test_coordinate_transformation_1)
 {
-  // namespace pt = boost::posix_time;
-
   BOOST_TEST_MESSAGE("+ [Coordinate system registry class]");
 
   CRSRegistry registry;
@@ -62,8 +61,6 @@ BOOST_AUTO_TEST_CASE(test_coordinate_transformation_1)
 
 BOOST_AUTO_TEST_CASE(test_coordinate_transformation_2)
 {
-  // namespace pt = boost::posix_time;
-
   BOOST_TEST_MESSAGE("+ [Coordinate system registry class] conversion (swap coordinates)");
 
   CRSRegistry registry;

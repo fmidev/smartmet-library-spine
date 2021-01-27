@@ -172,14 +172,14 @@ void adjustfield()
 
     SmartMet::Spine::ValueFormatter fmt(req);
 
-    if ((result = fmt.format(1, precision)) != "     1")
-      TEST_FAILED("Formatting 1 failed: " + result);
+    if ((result = fmt.format(1, precision)) != " 00001")
+      TEST_FAILED("Formatting 1 failed: '" + result + "'");
 
-    if ((result = fmt.format(1.23, precision)) != "  1.23")
-      TEST_FAILED("Formatting 1.23 failed: " + result);
+    if ((result = fmt.format(1.23, precision)) != " 01.23")
+      TEST_FAILED("Formatting 1.23 failed: '" + result + "'");
 
-    if ((result = fmt.format(-1.23, precision)) != "- 1.23")
-      TEST_FAILED("Formatting -1.23 failed: " + result);
+    if ((result = fmt.format(-1.23, precision)) != "-01.23")
+      TEST_FAILED("Formatting -1.23 failed: '" + result + "'");
   }
 
   TEST_PASSED();

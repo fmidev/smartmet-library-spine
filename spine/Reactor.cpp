@@ -98,6 +98,13 @@ Reactor::~Reactor()
 {
   // Debug output
   std::cout << "SmartMet Server stopping..." << std::endl;
+
+  // Manual cleanup
+  itsInitTasks->stop();
+  itsInitTasks.reset();
+  itsHandlers.clear();
+  itsPlugins.clear();
+  itsEngines.clear();
 }
 
 // ----------------------------------------------------------------------
@@ -332,7 +339,7 @@ bool Reactor::addContentHandlerImpl(bool itsPrivate,
       filter = itsFilter->second;
     }
 
-    boost::shared_ptr<HandlerView> theView(new HandlerView(theHandler,
+    HandlerPtr theView(new HandlerView(theHandler,
                                                            filter,
                                                            thePlugin,
                                                            theUri,
@@ -369,7 +376,7 @@ bool Reactor::setNoMatchHandler(ContentHandler theHandler)
     if (theHandler != nullptr)
     {
       // Set the data members
-      boost::shared_ptr<HandlerView> theView(new HandlerView(theHandler));
+      HandlerPtr theView(new HandlerView(theHandler));
       itsCatchNoMatchHandler = theView;
       itsCatchNoMatch = true;
     }

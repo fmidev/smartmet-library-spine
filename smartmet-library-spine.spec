@@ -3,71 +3,70 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 20.10.14
+Version: 21.1.14
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
 Source0: %{name}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-BuildRequires: rpm-build
-BuildRequires: gcc-c++
-BuildRequires: make
-BuildRequires: boost169-devel
-BuildRequires: smartmet-library-newbase-devel >= 20.10.9
-BuildRequires: smartmet-library-macgyver-devel >= 20.10.9
-BuildRequires: libconfig
-BuildRequires: libconfig-devel
-BuildRequires: ctpp2-devel
-BuildRequires: libicu-devel
-BuildRequires: dtl
-BuildRequires: glibc-devel
-BuildRequires: jsoncpp-devel
-BuildRequires: smartmet-library-gis-devel >= 20.9.25
-BuildRequires: fmt-devel >= 6.2.1
-BuildRequires: mariadb-devel
-BuildRequires: boost169-chrono
-BuildRequires: boost169-timer
-BuildRequires: gdal30-devel
-Requires: smartmet-library-newbase >= 20.10.9
-Requires: smartmet-library-macgyver >= 20.10.9
-Requires: smartmet-timezones >= 20.5.5
-Requires: smartmet-library-gis >= 20.9.25
-Requires: boost169-filesystem
-Requires: boost169-iostreams
-Requires: boost169-date-time
-Requires: boost169-regex
-Requires: boost169-thread
-Requires: boost169-program-options
-Requires: boost169-system
-Requires: boost169-timer
-Requires: boost169-chrono
-Requires: libicu
-Requires: ctpp2
-Requires: hdf5
-Requires: jsoncpp
-Requires: libconfig
-Requires: fmt >= 6.2.1
-Requires: gdal30-libs
-
-BuildRequires: gdal30-devel
-Requires: gdal30-libs
 
 %if 0%{rhel} >= 8
 Requires: mariadb-connector-c
+#TestRequires: mariadb-connector-c
 %else
 Requires: mariadb-libs
+#TestRequires: mariadb-devel
 %endif
 
-Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
-Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
+BuildRequires: boost169-chrono
+BuildRequires: boost169-devel
+BuildRequires: boost169-timer
+BuildRequires: ctpp2-devel
+BuildRequires: dtl
+BuildRequires: fmt-devel >= 7.1.3
+BuildRequires: gcc-c++
+BuildRequires: gdal32-devel
+BuildRequires: glibc-devel
+BuildRequires: jsoncpp-devel >= 1.8.4
+BuildRequires: libconfig >= 1.7.2
+BuildRequires: libconfig-devel >= 1.7.2
+BuildRequires: libicu-devel
+BuildRequires: make
+BuildRequires: mariadb-devel
+BuildRequires: rpm-build
+BuildRequires: smartmet-library-gis-devel >= 21.1.14
+BuildRequires: smartmet-library-macgyver-devel >= 21.1.14
+BuildRequires: smartmet-library-newbase-devel >= 21.1.14
+Requires: boost169-chrono
+Requires: boost169-date-time
+Requires: boost169-filesystem
+Requires: boost169-iostreams
+Requires: boost169-program-options
+Requires: boost169-regex
+Requires: boost169-system
+Requires: boost169-thread
+Requires: boost169-timer
+Requires: ctpp2
+Requires: fmt >= 7.1.3
+Requires: gdal32-libs
+Requires: hdf5
+Requires: jsoncpp >= 1.8.4
+Requires: libconfig >= 1.7.2
+Requires: libicu
+Requires: smartmet-library-gis >= 21.1.14
+Requires: smartmet-library-macgyver >= 21.1.14
+Requires: smartmet-library-newbase >= 21.1.14
+Requires: smartmet-timezones >= 21.1.5
 #TestRequires: bzip2-devel
-#TestRequires: make
 #TestRequires: gcc-c++
-#TestRequires: jsoncpp-devel
+#TestRequires: gdal32-devel
+#TestRequires: jsoncpp-devel >= 1.8.4
+#TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
-#TestRequires: gdal30-devel
+Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
+Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
 %description
 FMI BrainStorm Spinal Cord Library
@@ -81,7 +80,7 @@ Requires: smartmet-library-macgyver-devel
 Requires: smartmet-library-gis-devel
 Requires: smartmet-library-newbase-devel
 Requires: libconfig-devel
-Requires: %{SPECNAME}
+Requires: %{SPECNAME} = %{version}-%{release}
 Obsoletes: libsmartmet-brainstorm-spine-devel < 16.11.1
 %description -n %{SPECNAME}-devel
 SmartMet Spine development files
@@ -103,12 +102,66 @@ make %{_smp_mflags}
 %files
 %defattr(0755,root,root,0755)
 %{_libdir}/lib%{LIBNAME}.so
+%{_bindir}/smartmet-plugin-test
 
 %files -n %{SPECNAME}-devel
 %defattr(0644,root,root,0755)
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu Jan 14 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.1.14-1.fmi
+- Repackaged smartmet to resolve debuginfo issues
+
+* Tue Jan  5 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.1.5-2.fmi
+- Upgrade to fmt 7.1.3
+
+* Tue Jan  5 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.1.5-1.fmi
+- Repackaged due to geos39 upgrade
+
+* Wed Dec 30 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.30-3.fmi
+- Install /usr/bin/smartmet-plugin-test with smartmet-library-spine instead of separate RPM
+
+* Wed Dec 30 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.30-2.fmi
+- Move smartmet-plugin-test to a separate RPM package (smartmet-plugin-test)
+- Fix dependency problem from previous version 20.12.30-1.fmi
+
+* Wed Dec 30 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.30-1.fmi
+- Rebuild due to jsoncpp upgrade for RHEL7 (also RHEL8 to avoid broken RPM dependencies)
+
+* Tue Dec 15 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.12.15-1.fmi
+- Upgrade to pgdg12
+
+* Thu Dec 10 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.10-1.fmi
+- Adapt to changes in makefile.inc
+
+* Fri Dec  4 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.4-3.fmi
+- Import PluginTest from WFS plugin, modify for use with all plugins
+- install as part of smartmet-library-spine-devel package
+
+* Fri Dec  4 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.4-2.fmi
+- PluginTest.h updates (support comments in ignore list, warn about ignores not found)
+
+* Thu Dec  3 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.12.3-1.fmi
+- Additional manual cleanup in Reactor destructor
+
+* Mon Nov 23 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.11.23-1.fmi
+- Small PluginTest.h update (supports specifying ignore lists)
+
+* Wed Oct 28 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.10.28-2.fmi
+- Rebuild due to fmt upgrade
+
+* Wed Oct 28 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.28-1.fmi
+- Optimized JsonCache for speed
+
+* Mon Oct 26 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.26-1.fmi
+- Enabled .testignore files in plugin tests
+
+* Tue Oct 20 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.10.20-1.fmi
+- Rebuild to API incompatible libconfig replacement (libconfig update to 1.7.2)
+
+* Thu Oct 15 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.15-1.fmi
+- libmft internal alignment has been deprecated, use zero fill automatically instead
+
 * Wed Oct 14 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.10.14-1.fmi
 - Do not use stringstreams in TableFormatter API due to GNU std::locale locks
 
