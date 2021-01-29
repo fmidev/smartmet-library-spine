@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.1.14
+Version: 21.1.29
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -109,6 +109,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Fri Jan 29 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.1.29-1.fmi
+- Always run test scripts by default if the script exists
+
 * Thu Jan 14 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.1.14-1.fmi
 - Repackaged smartmet to resolve debuginfo issues
 
