@@ -381,6 +381,7 @@ class PluginTest
   std::vector<std::string> ignore_lists;
 
   bool process_query(const fs::path& fn,
+                     std::size_t padding,
                      SmartMet::Spine::Reactor& reactor,
                      IgnoreMap& ignores) const;
 
@@ -413,6 +414,12 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
 
     const auto inputfiles = recursive_directory_contents(mInputDir);
 
+    // Establish required padding
+    std::size_t padding = 20;
+    for (const auto& name : inputfiles)
+      padding = std::max(padding, name.native().size() + mInputDir.size() + 1);
+    padding += 5;
+
     IgnoreMap ignores;
     for (const auto& ignore : read_ignore_list(mInputDir))
     {
@@ -430,10 +437,10 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
 
     // Run tests in parallel
 
-    const auto executor = [this, &num_failed, &reactor, &ignores](const path& fn) {
+    const auto executor = [this, &padding, &num_failed, &reactor, &ignores](const path& fn) {
       try
       {
-        bool ok = process_query(fn, reactor, ignores);
+        bool ok = process_query(fn, padding, reactor, ignores);
         if (not ok)
           ++num_failed;
       }
@@ -482,6 +489,7 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
 // ----------------------------------------------------------------------
 
 bool PluginTest::process_query(const fs::path& fn,
+                               std::size_t padding,
                                SmartMet::Spine::Reactor& reactor,
                                IgnoreMap& ignores) const
 {
@@ -490,7 +498,6 @@ bool PluginTest::process_query(const fs::path& fn,
   path inputfile(mInputDir);
   inputfile /= fn;
 
-  const std::size_t padding = 90;
   const int dots = static_cast<int>(padding - inputfile.native().size());
 
   std::ostringstream out;

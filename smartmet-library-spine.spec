@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.1.29
+Version: 21.2.5
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -109,6 +109,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Fri Feb  5 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.2.5-1.fmi
+- Improved padding of PluginTest output for clarity
+
 * Fri Jan 29 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.1.29-1.fmi
 - Always run test scripts by default if the script exists
 
