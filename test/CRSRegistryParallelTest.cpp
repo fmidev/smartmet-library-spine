@@ -1,4 +1,5 @@
 #include "CRSRegistry.h"
+#include <atomic>
 #include <boost/thread.hpp>
 #include <newbase/NFmiPoint.h>
 #include <gdal_version.h>
@@ -15,12 +16,12 @@ namespace
 {
 struct TestEnv
 {
-  volatile bool done;
+  std::atomic<bool> done;
   boost::mutex mutex;
   boost::shared_ptr<CRSRegistry::Transformation> conv;
   boost::shared_ptr<CRSRegistry::Transformation> conv2;
-  volatile long long num_run;
-  volatile long long err_cnt;
+  std::atomic<long long> num_run;
+  std::atomic<long long> err_cnt;
 
   void add_cnt(int n1, int e1)
   {
