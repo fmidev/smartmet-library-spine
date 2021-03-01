@@ -534,7 +534,7 @@ std::string ParameterFactory::parse_parameter_functions(
         if (paramreq[pos2] == '(' || paramreq[pos2] == ')')
           break;
       if (pos2 - pos1 > 0)
-        parts.push_back(paramreq.substr(pos1, pos2 - pos1));
+        parts.emplace_back(paramreq.substr(pos1, pos2 - pos1));
 
       pos1 = pos2 + 1;
     }
@@ -784,11 +784,16 @@ Parameter ParameterFactory::parse(const std::string& paramname,
 {
   try
   {
+    bool ok = (paramname == "geoid" || paramname == "GEOID");
+
     if (paramname.empty())
       throw Fmi::Exception(BCP, "Empty parameters are not allowed!");
 
     // Metaparameters are required to have a FmiParameterName too
     FmiParameterName number = FmiParameterName(converter.ToEnum(paramname));
+
+    if (ok)
+      std::cout << "GEOID NUMBER = " << number << std::endl;
 
     if (number == kFmiBadParameter && Fmi::looks_signed_int(paramname))
       number = FmiParameterName(Fmi::stol(paramname));
@@ -808,6 +813,9 @@ Parameter ParameterFactory::parse(const std::string& paramname,
 
     if (number == kFmiBadParameter && !ignoreBadParameter)
       throw Fmi::Exception(BCP, "Unknown parameter '" + paramname + "'");
+
+    if (ok)
+      std::cout << "GEOID TYPE = " << static_cast<int>(number) << std::endl;
 
     return Parameter(paramname, type, number);
   }
