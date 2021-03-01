@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.2.5
+Version: 21.2.27
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -109,6 +109,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Sat Feb 27 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.2.27-1.fmi
+- Added support for metaparameter enumerations
+
 * Fri Feb  5 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.2.5-1.fmi
 - Improved padding of PluginTest output for clarity
 

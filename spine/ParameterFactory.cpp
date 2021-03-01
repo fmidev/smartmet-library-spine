@@ -1,17 +1,10 @@
-// ======================================================================
-/*!
- * \brief generate parameter descriptor from parameter name
- */
-// ======================================================================
-
 #include "ParameterFactory.h"
 #include "Convenience.h"
+#include "Parameters.h"
 #include <boost/algorithm/string.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <stdexcept>
-
-using namespace std;
 
 namespace SmartMet
 {
@@ -30,7 +23,7 @@ std::ostream& operator<<(std::ostream& out, const ParameterAndFunctions& paramfu
   return out;
 }
 
-int get_function_index(const string& theFunction)
+int get_function_index(const std::string& theFunction)
 {
   static const char* names[] = {"mean_a",
                                 "mean_t",
@@ -186,7 +179,7 @@ int ParameterFactory::number(const std::string& name) const
  */
 // ----------------------------------------------------------------------
 
-FunctionId ParameterFactory::parse_function(const string& theFunction) const
+FunctionId ParameterFactory::parse_function(const std::string& theFunction) const
 {
   try
   {
@@ -264,16 +257,16 @@ FunctionId ParameterFactory::parse_function(const string& theFunction) const
  * \return The function modified alone (possibly empty string)
  */
 // ----------------------------------------------------------------------
-string ParameterFactory::extract_limits(const string& theString) const
+std::string ParameterFactory::extract_limits(const std::string& theString) const
 {
   try
   {
-    string::size_type pos1 = theString.find('[');
-    if (pos1 == string::npos)
+    auto pos1 = theString.find('[');
+    if (pos1 == std::string::npos)
       return "";
 
-    string::size_type pos2 = theString.find(']', pos1);
-    if (pos2 == string::npos && pos2 != theString.size() - 1)
+    auto pos2 = theString.find(']', pos1);
+    if (pos2 == std::string::npos && pos2 != theString.size() - 1)
       throw Fmi::Exception(BCP, "Invalid function modifier in '" + theString + "'!");
 
     return theString.substr(pos1 + 1, pos2 - pos1 - 1);
@@ -298,50 +291,46 @@ string ParameterFactory::extract_limits(const string& theString) const
  */
 // ----------------------------------------------------------------------
 
-string ParameterFactory::extract_function(const string& theString,
-                                          double& theLowerLimit,
-                                          double& theUpperLimit) const
+std::string ParameterFactory::extract_function(const std::string& theString,
+                                               double& theLowerLimit,
+                                               double& theUpperLimit) const
 {
   try
   {
-    string::size_type pos = theString.find('[');
+    auto pos = theString.find('[');
 
     theLowerLimit = -std::numeric_limits<double>::max();
     theUpperLimit = std::numeric_limits<double>::max();
 
-    if (pos == string::npos)
-    {
+    if (pos == std::string::npos)
       return theString;
-    }
-    else
+
+    auto function_name = theString.substr(0, pos);
+
+    auto limits = extract_limits(theString);
+
+    if (!limits.empty())
     {
-      string function_name(theString.substr(0, pos));
+      const auto pos = limits.find(':');
 
-      string limits(extract_limits(theString));
+      if (pos == std::string::npos)
+        throw Fmi::Exception(BCP, "Unrecognized modifier format '" + limits + "'!");
 
-      if (!limits.empty())
-      {
-        const string::size_type pos = limits.find(':');
+      auto lo = limits.substr(0, pos);
+      auto hi = limits.substr(pos + 1);
+      Fmi::trim(lo);
+      Fmi::trim(hi);
 
-        if (pos == string::npos)
-          throw Fmi::Exception(BCP, "Unrecognized modifier format '" + limits + "'!");
+      if (lo.empty() && hi.empty())
+        throw Fmi::Exception(BCP, "Both lower and upper limit are missing from the modifier!");
 
-        string lo = limits.substr(0, pos);
-        string hi = limits.substr(pos + 1);
-        Fmi::trim(lo);
-        Fmi::trim(hi);
-
-        if (lo.empty() && hi.empty())
-          throw Fmi::Exception(BCP, "Both lower and upper limit are missing from the modifier!");
-
-        if (!lo.empty())
-          theLowerLimit = Fmi::stod(lo);
-        if (!hi.empty())
-          theUpperLimit = Fmi::stod(hi);
-      }
-
-      return function_name;
+      if (!lo.empty())
+        theLowerLimit = Fmi::stod(lo);
+      if (!hi.empty())
+        theUpperLimit = Fmi::stod(hi);
     }
+
+    return function_name;
   }
   catch (...)
   {
@@ -361,7 +350,7 @@ string ParameterFactory::extract_function(const string& theString,
  */
 // ----------------------------------------------------------------------
 
-string parse_parameter_name(const string& param_name)
+std::string parse_parameter_name(const std::string& param_name)
 {
   try
   {
@@ -470,7 +459,7 @@ string parse_parameter_name(const string& param_name)
         "MaximumWind"               // "wmax"
     };
 
-    for (unsigned int i = 0; strlen(names[i]) > 0; i++)
+    for (unsigned int i = 0; names[i][0] != 0; i++)
     {
       if (param_name == names[i])
         return parameters[i];
@@ -489,6 +478,7 @@ string parse_parameter_name(const string& param_name)
  * \brief Parse the given parameter name and functions
  */
 // ----------------------------------------------------------------------
+
 std::string ParameterFactory::parse_parameter_functions(
     const std::string& theParameterRequest,
     std::string& theOriginalName,
@@ -535,11 +525,11 @@ std::string ParameterFactory::parse_parameter_functions(
       return paramreq + date_formatting_string;
     }
 
-    list<string> parts;
-    string::size_type pos1 = 0;
+    std::list<std::string> parts;
+    std::string::size_type pos1 = 0;
     while (pos1 < paramreq.size())
     {
-      string::size_type pos2 = pos1;
+      std::string::size_type pos2 = pos1;
       for (; pos2 < paramreq.size(); ++pos2)
         if (paramreq[pos2] == '(' || paramreq[pos2] == ')')
           break;
@@ -552,19 +542,19 @@ std::string ParameterFactory::parse_parameter_functions(
     if (parts.size() == 0 || parts.size() > 3)
       throw Fmi::Exception(BCP, "Errorneous parameter request '" + theParameterRequest + "'!");
 
-    string paramname = parts.back();
+    std::string paramname = parts.back();
 
     unsigned int aggregation_interval_behind = std::numeric_limits<unsigned int>::max();
     unsigned int aggregation_interval_ahead = std::numeric_limits<unsigned int>::max();
     std::string intervalSeparator(":");
-    if (paramname.find("/") != string::npos)
+    if (paramname.find("/") != std::string::npos)
       intervalSeparator = "/";
-    else if (paramname.find(";") != string::npos)
+    else if (paramname.find(";") != std::string::npos)
       intervalSeparator = ";";
-    else if (paramname.find(":") != string::npos)
+    else if (paramname.find(":") != std::string::npos)
       intervalSeparator = ":";
 
-    if (paramname.find(intervalSeparator) != string::npos)
+    if (paramname.find(intervalSeparator) != std::string::npos)
     {
       std::string aggregation_interval_string_behind =
           paramname.substr(paramname.find(intervalSeparator) + 1);
@@ -574,7 +564,7 @@ std::string ParameterFactory::parse_parameter_functions(
       int agg_interval_behind = 0;
       int agg_interval_ahead = 0;
       // check if second aggregation interval is defined
-      if (aggregation_interval_string_behind.find(intervalSeparator) != string::npos)
+      if (aggregation_interval_string_behind.find(intervalSeparator) != std::string::npos)
       {
         aggregation_interval_string_ahead = aggregation_interval_string_behind.substr(
             aggregation_interval_string_behind.find(intervalSeparator) + 1);
@@ -589,25 +579,25 @@ std::string ParameterFactory::parse_parameter_functions(
       if (agg_interval_behind < 0 || agg_interval_ahead < 0)
       {
         throw Fmi::Exception(BCP,
-                               "The 'interval' option for '" + paramname + "' must be positive!");
+                             "The 'interval' option for '" + paramname + "' must be positive!");
       }
       aggregation_interval_behind = boost::numeric_cast<unsigned int>(agg_interval_behind);
     }
 
     parts.pop_back();
-    const string functionname1 = (parts.empty() ? "" : parts.front());
+    const std::string functionname1 = (parts.empty() ? "" : parts.front());
     if (!parts.empty())
       parts.pop_front();
-    const string functionname2 = (parts.empty() ? "" : parts.front());
+    const std::string functionname2 = (parts.empty() ? "" : parts.front());
     if (!parts.empty())
       parts.pop_front();
 
     if (functionname1.size() > 0 && functionname2.size() > 0)
     {
       // inner and outer functions exist
-      string f_name = (extract_function(functionname2,
-                                        theInnerParameterFunction.itsLowerLimit,
-                                        theInnerParameterFunction.itsUpperLimit));
+      auto f_name = extract_function(functionname2,
+                                     theInnerParameterFunction.itsLowerLimit,
+                                     theInnerParameterFunction.itsUpperLimit);
 
       theInnerParameterFunction.itsFunctionId = parse_function(f_name);
       theInnerParameterFunction.itsFunctionType =
@@ -645,9 +635,9 @@ std::string ParameterFactory::parse_parameter_functions(
     else if (functionname1.size() > 0)
     {
       // only inner function exists,
-      string f_name = (extract_function(functionname1,
-                                        theInnerParameterFunction.itsLowerLimit,
-                                        theInnerParameterFunction.itsUpperLimit));
+      auto f_name = extract_function(functionname1,
+                                     theInnerParameterFunction.itsLowerLimit,
+                                     theInnerParameterFunction.itsUpperLimit);
       theInnerParameterFunction.itsFunctionId = parse_function(f_name);
       theInnerParameterFunction.itsFunctionType =
           (f_name.substr(f_name.size() - 2).compare("_t") == 0 ? FunctionType::TimeFunction
@@ -726,11 +716,11 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
       if (get_function_index(innermost_name) < 0)
       {
         // Sensor info
-        size_t len = innermost_item.find(")") - innermost_item.find("(") + 1;
-        std::string sensor_info = innermost_item.substr(innermost_item.find("("), len);
+        auto len = innermost_item.find(")") - innermost_item.find("(") + 1;
+        auto sensor_info = innermost_item.substr(innermost_item.find("("), len);
         if (sensor_info.find(":") != sensor_info.rfind(":"))
         {
-          size_t len = sensor_info.rfind(")") - sensor_info.rfind(":") - 1;
+          auto len = sensor_info.rfind(")") - sensor_info.rfind(":") - 1;
           sensor_parameter = sensor_info.substr(sensor_info.rfind(":") + 1, len);
           len = sensor_info.rfind(":") - sensor_info.find(":") - 1;
           sensor_no = sensor_info.substr(sensor_info.find(":") + 1, len);
@@ -750,8 +740,8 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
             (sensor_parameter.empty() ||
              (sensor_parameter != "qc" && sensor_parameter != "longitude" &&
               sensor_parameter != "latitude")))
-          throw Fmi::Exception(
-              BCP, "Sensor parameter must be of the following: qc,longitide,latitude!");
+          throw Fmi::Exception(BCP,
+                               "Sensor parameter must be of the following: qc,longitide,latitude!");
 
         boost::algorithm::replace_first(tmpname, sensor_info, "");
       }
@@ -797,82 +787,29 @@ Parameter ParameterFactory::parse(const std::string& paramname,
     if (paramname.empty())
       throw Fmi::Exception(BCP, "Empty parameters are not allowed!");
 
-    // Allow both WindChill and windchill
-    auto p = boost::algorithm::to_lower_copy(paramname);
+    // Metaparameters are required to have a FmiParameterName too
+    FmiParameterName number = FmiParameterName(converter.ToEnum(paramname));
 
-    auto name = paramname;
+    if (number == kFmiBadParameter && Fmi::looks_signed_int(paramname))
+      number = FmiParameterName(Fmi::stol(paramname));
+
     Parameter::Type type = Parameter::Type::Data;
 
-    // some metaparameters may have a matching number (WindUMS, WindVMS)
-    FmiParameterName number = FmiParameterName(converter.ToEnum(p));
-
-    if (p == "dewpoint" || p == "temperature" || p == "minimumtemperature06" ||
-        p == "maximumtemperature06" || p == "minimumtemperature24h" ||
-        p == "maximumtemperature24h" || p == "dailymeantemperature" || p == "temperaturef0" ||
-        p == "temperaturef10" || p == "temperaturef25" || p == "temperaturef50" ||
-        p == "temperaturef75" || p == "temperaturef90" || p == "temperaturef100")
-    {
+    if (Parameters::IsLandscaped(number))
       type = Parameter::Type::Landscaped;
-      if (number == kFmiBadParameter)
-        if (!ignoreBadParameter)
-          throw Fmi::Exception(BCP, "Unknown parameter to be landscaped '" + paramname + "'!");
-    }
-
-    else if (p == "country" || p == "covertype" || p == "dark" || p == "daylength" || p == "dem" ||
-             p == "direction" || p == "distance" || p == "elevation" || p == "epochtime" ||
-             p == "feature" || p == "fmisid" || p == "geoid" || p == "hour" || p == "iso2" ||
-             p == "isotime" || p == "level" || p == "localtime" || p == "localtz" || p == "lpnn" ||
-             p == "model" || p == "modtime" || p == "mtime" || p == "mon" || p == "month" ||
-             p == "moondown24h" || p == "moonphase" || p == "moonrise" || p == "moonrise2" ||
-             p == "moonrise2today" || p == "moonrisetoday" || p == "moonset" || p == "moonset2" ||
-             p == "moonset2today" || p == "moonsettoday" || p == "moonup24h" || p == "name" ||
-             p == "noon" || p == "origintime" || p == "place" || p == "population" ||
-             p == "region" || p == "rwsid" || p == "sensor_no" || p == "stationary" ||
-             p == "station_elevation" || p == "stationlat" || p == "stationlatitude" ||
-             p == "stationlon" || p == "stationlongitude" || p == "station_name" ||
-             p == "stationname" || p == "sunazimuth" || p == "sundeclination" ||
-             p == "sunelevation" || p == "sunrise" || p == "sunrisetoday" || p == "sunset" ||
-             p == "sunsettoday" || p == "time" || p == "timestring" || p == "tz" ||
-             p == "utctime" || p == "wday" || p == "weekday" || p == "wmo" || p == "xmltime" ||
-             p == "timestring" || p == "nearlatitude" || p == "nearlongitude" ||
-             p == "nearlatlon" || p == "nearlonlat" || p == "gridnorth")
-    {
+    else if (Parameters::IsDataIndependent(number))
       type = Parameter::Type::DataIndependent;
-    }
-    else if (p == "windcompass8" || p == "windcompass16" || p == "windcompass32" ||
-             p == "cloudiness8th" || p == "windchill" || p == "summersimmerindex" || p == "ssi" ||
-             p == "feelslike" || p == "weather" || p == "weathersymbol" ||
-             p == "apparenttemperature" || p == "snow1hlower" || p == "snow1hupper" ||
-             p == "snow1h" || p == "smartsymbol" || p == "smartsymboltext" ||
-             p == "weathernumber" || p == "windums" || p == "windvms" || p == "lat" ||
-             p == "latitude" || p == "latlon" || p == "lon" || p == "longitude" || p == "lonlat" ||
-             p == "data_source")
-    {
+    else if (Parameters::IsDataDerived(number))
       type = Parameter::Type::DataDerived;
-    }
-
-    // Allow date(...)
-    else if (p.substr(0, 5) == "date(" && p[p.size() - 1] == ')')
-    {
+    else if (paramname.substr(0, 5) == "date(" && paramname[paramname.size() - 1] == ')')
       type = Parameter::Type::DataIndependent;
-    }
-    else
-    {
-      if (!boost::algorithm::iends_with(p, ".raw"))
-        number = FmiParameterName(converter.ToEnum(p));
-      else
-        number = FmiParameterName(converter.ToEnum(p.substr(0, p.size() - 4)));
+    else if (boost::algorithm::iends_with(paramname, ".raw"))
+      number = FmiParameterName(converter.ToEnum(paramname.substr(0, paramname.size() - 4)));
 
-      if (number == kFmiBadParameter)
-      {
-        if (Fmi::looks_signed_int(p))
-          number = FmiParameterName(Fmi::stol(p));
-        else if (!ignoreBadParameter)
-          throw Fmi::Exception(BCP, "Unknown parameter '" + paramname + "'!");
-      }
-    }
+    if (number == kFmiBadParameter && !ignoreBadParameter)
+      throw Fmi::Exception(BCP, "Unknown parameter '" + paramname + "'");
 
-    return Parameter(name, type, number);
+    return Parameter(paramname, type, number);
   }
   catch (...)
   {
@@ -881,5 +818,3 @@ Parameter ParameterFactory::parse(const std::string& paramname,
 }
 }  // namespace Spine
 }  // namespace SmartMet
-
-// ======================================================================
