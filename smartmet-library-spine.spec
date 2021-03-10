@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.3.1
+Version: 21.3.9
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -37,7 +37,7 @@ BuildRequires: mariadb-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 21.2.26
 BuildRequires: smartmet-library-macgyver-devel >= 21.2.25
-BuildRequires: smartmet-library-newbase-devel >= 21.3.1
+BuildRequires: smartmet-library-newbase-devel >= 21.3.2
 Requires: boost169-chrono
 Requires: boost169-date-time
 Requires: boost169-filesystem
@@ -56,7 +56,7 @@ Requires: libconfig >= 1.7.2
 Requires: libicu
 Requires: smartmet-library-gis >= 21.2.26
 Requires: smartmet-library-macgyver >= 21.2.25
-Requires: smartmet-library-newbase >= 21.3.1
+Requires: smartmet-library-newbase >= 21.3.2
 Requires: smartmet-timezones >= 21.2.2
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -109,6 +109,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Mar  9 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.3.9-1.fmi
+- Print active requests when the alert script is triggered if verbose mode is on
+
 * Mon Mar  1 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.3.1-1.fmi
 - Prefer emplace_back over push_back for speed
 

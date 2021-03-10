@@ -5,10 +5,10 @@
 // ======================================================================
 
 #include "Reactor.h"
-
 #include "ConfigTools.h"
 #include "Convenience.h"
 #include "DynamicPlugin.h"
+#include "FmiApiKey.h"
 #include "Names.h"
 #include "Options.h"
 #include "SmartMet.h"
@@ -340,12 +340,12 @@ bool Reactor::addContentHandlerImpl(bool itsPrivate,
     }
 
     HandlerPtr theView(new HandlerView(theHandler,
-                                                           filter,
-                                                           thePlugin,
-                                                           theUri,
-                                                           itsLoggingEnabled,
-                                                           itsPrivate,
-                                                           itsOptions.accesslogdir));
+                                       filter,
+                                       thePlugin,
+                                       theUri,
+                                       itsLoggingEnabled,
+                                       itsPrivate,
+                                       itsOptions.accesslogdir));
 
     std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
               << (itsPrivate ? "private " : "") << "URI " << theUri << " for plugin "
@@ -533,6 +533,47 @@ ActiveRequests::Requests Reactor::getActiveRequests() const
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Print the given request list
+ */
+// ----------------------------------------------------------------------
+
+void print_requests(const Spine::ActiveRequests::Requests& requests)
+{
+  // Based on Admin::Plugin::requestActiveRequests
+
+  auto now = boost::posix_time::microsec_clock::universal_time();
+
+  std::cout << "Printing active requests due to high load:\n"
+            << "Number\tID\tTime\tDuration\tIP\tAPIKEY\t\tURI\n";
+
+  std::size_t row = 0;
+  for (const auto& id_info : requests)
+  {
+    const auto id = id_info.first;
+    const auto& time = id_info.second.time;
+    const auto& req = id_info.second.request;
+
+    auto duration = now - time;
+
+    const bool check_access_token = false;
+    auto apikey = FmiApiKey::getFmiApiKey(req, check_access_token);
+
+    // clang-format off
+    std::cout << row++ << "\t"
+              << Fmi::to_string(id) << "\t"
+              << Fmi::to_iso_extended_string(time.time_of_day()) << "\t"
+              << Fmi::to_string(duration.total_milliseconds() / 1000.0) << "\t"
+              << req.getClientIP() << "\t"
+              << (apikey ? *apikey : "-\t") << "\t"
+              << req.getURI() << "\n";
+    // clang-format on
+    ++row;
+  }
+  std::cout << std::flush;
+}
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Add a new active request
  */
 // ----------------------------------------------------------------------
@@ -544,8 +585,8 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
   auto n = itsActiveRequests.size();
 
   // Run alert script if needed
-  
-  if(n >= itsOptions.throttle.alert_limit && !itsOptions.throttle.alert_script.empty())
+
+  if (n >= itsOptions.throttle.alert_limit && !itsOptions.throttle.alert_script.empty())
   {
     if (itsActiveRequestsLimit < itsOptions.throttle.limit)
     {
@@ -553,12 +594,19 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
     }
     else if (itsRunningAlertScript)
     {
-      if (itsOptions.verbose)
-        std::cerr << Spine::log_time_str() << " Alert script already running" << std::endl;
+      // This turns out to be a bit too verbose
+      // if (itsOptions.verbose)
+      // std::cerr << Spine::log_time_str() << " Alert script already running" << std::endl;
     }
     else
     {
       itsRunningAlertScript = true;
+
+      // First print the active requests since the alert script may be slow
+      if (itsOptions.verbose)
+        print_requests(getActiveRequests());
+
+      // Run the alert script in a separate thread not to delay the user response too much
       if (itsOptions.verbose)
         std::cerr << Spine::log_time_str() << " Running alert script "
                   << itsOptions.throttle.alert_script << std::endl;
@@ -573,7 +621,7 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
   }
 
   // Check if we should report high load
-  
+
   if (n < itsActiveRequestsLimit)
   {
     itsHighLoadFlag = false;
@@ -582,7 +630,7 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
 
   // Load is now high
 
-  itsActiveRequestsCounter = 0; // now new finished active requests yet
+  itsActiveRequestsCounter = 0;  // now new finished active requests yet
 
   itsHighLoadFlag = true;
 
@@ -863,8 +911,8 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool /* verbose */)
 
       if (is_file_readable(configfile) != 0)
         throw Fmi::Exception(BCP,
-                               "plugin " + pluginname + " config " + configfile +
-                                   " is unreadable: " + std::strerror(errno));
+                             "plugin " + pluginname + " config " + configfile +
+                                 " is unreadable: " + std::strerror(errno));
     }
 
     // Find the ip filters
@@ -1039,8 +1087,8 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
       absolutize_path(configfile);
       if (is_file_readable(configfile) != 0)
         throw Fmi::Exception(BCP,
-                               "engine " + enginename + " config " + configfile +
-                                   " is unreadable: " + std::strerror(errno));
+                             "engine " + enginename + " config " + configfile +
+                                 " is unreadable: " + std::strerror(errno));
     }
 
     itsEngineConfigs.insert(ConfigList::value_type(enginename, configfile));
@@ -1065,7 +1113,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     if (itsNamePointer == nullptr || itsCreatorPointer == nullptr)
     {
       throw Fmi::Exception(BCP,
-                             "Cannot resolve dynamic library symbols: " + std::string(dlerror()));
+                           "Cannot resolve dynamic library symbols: " + std::string(dlerror()));
     }
 
     // Create a permanent string out of engines human readable name
@@ -1287,8 +1335,8 @@ void* Reactor::getEnginePtr(const std::string& theClassName, void* user_data)
   {
     if (itsShutdownRequested)
     {
-      throw Fmi::Exception::Trace(BCP,
-                             "Shutdown in progress - engine " + theClassName + " is not available")
+      throw Fmi::Exception::Trace(
+          BCP, "Shutdown in progress - engine " + theClassName + " is not available")
           .disableStackTrace();
     }
     else
