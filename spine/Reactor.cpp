@@ -567,7 +567,6 @@ void print_requests(const Spine::ActiveRequests::Requests& requests)
               << (apikey ? *apikey : "-\t") << "\t"
               << req.getURI() << "\n";
     // clang-format on
-    ++row;
   }
   std::cout << std::flush;
 }
