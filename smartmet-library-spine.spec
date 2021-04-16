@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.4.15
+Version: 21.4.16
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -109,6 +109,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Fri Apr 16 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.4.16-1.fmi
+- Handle errors when running the configured alert script
+
 * Thu Apr 15 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.4.15-1.fmi
 - Fixed active requests log cleaning code to handle exceptions
 

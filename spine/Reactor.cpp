@@ -605,17 +605,33 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
       if (itsOptions.verbose)
         print_requests(getActiveRequests());
 
-      // Run the alert script in a separate thread not to delay the user response too much
-      if (itsOptions.verbose)
-        std::cerr << Spine::log_time_str() << " Running alert script "
-                  << itsOptions.throttle.alert_script << std::endl;
+      if (!boost::filesystem::exists(itsOptions.throttle.alert_script))
+      {
+        std::cerr << Spine::log_time_str() << " Configured alert script  "
+                  << itsOptions.throttle.alert_script << " does not exist" << std::endl;
+      }
+      else
+      {
+        // Run the alert script in a separate thread not to delay the user response too much
+        if (itsOptions.verbose)
+          std::cerr << Spine::log_time_str() << " Running alert script "
+                    << itsOptions.throttle.alert_script << std::endl;
 
-      std::thread thr([this] {
-        boost::process::child cld(itsOptions.throttle.alert_script);
-        cld.wait();
-        itsRunningAlertScript = false;
-      });
-      thr.detach();
+        std::thread thr([this] {
+          try
+          {
+            boost::process::child cld(itsOptions.throttle.alert_script);
+            cld.wait();
+          }
+          catch (...)
+          {
+            std::cerr << Spine::log_time_str() << " Running alert script "
+                      << itsOptions.throttle.alert_script << " failed!" << std::endl;
+          }
+          itsRunningAlertScript = false;
+        });
+        thr.detach();
+      }
     }
   }
 
