@@ -6,10 +6,10 @@
 
 #include "ValueFormatter.h"
 #include "Convenience.h"
-#include <macgyver/Exception.h>
 #include <boost/optional.hpp>
 #include <fmt/format.h>
 #include <fmt/printf.h>
+#include <macgyver/Exception.h>
 #include <cmath>
 #include <stdexcept>
 
@@ -80,7 +80,7 @@ void ValueFormatter::buildFormat(const ValueFormatterParam& param)
     else if (param.adjustField == "right")
       fmt += '>';
     else if (param.adjustField == "internal")
-      ; // deprecated in newer fmt in favour of sign aware zero padding
+      ;  // deprecated in newer fmt in favour of sign aware zero padding
     else if (param.adjustField == "center")  // libfmt extension
       fmt += '^';
   }
@@ -118,16 +118,12 @@ void ValueFormatter::buildFormat(const ValueFormatterParam& param)
       ntype = 'g';
   }
 
+  itsFormat = fmt + '}';
+
   if (ntype)
-  {
-    itsFormat = fmt + *ntype + '}';
     itsPrecisionFormat = fmt + ".{}" + *ntype + '}';
-  }
   else
-  {
-    itsFormat = fmt + '}';
     itsPrecisionFormat = fmt + ".{}" + '}';
-  }
 }
 
 // ----------------------------------------------------------------------

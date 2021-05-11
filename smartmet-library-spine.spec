@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.4.16
+Version: 21.5.11
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -109,6 +109,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue May 11 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.5.11-1.fmi
+- Changed meaning of precision -1 in ValueFormatter to mean shortest possible presentation by {fmt}
+
 * Fri Apr 16 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.4.16-1.fmi
 - Handle errors when running the configured alert script
 

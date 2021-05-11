@@ -197,13 +197,13 @@ void floatfield()
     req.setParameter("floatfield", "fixed");
     SmartMet::Spine::ValueFormatter fmt(req);
 
-    if ((result = fmt.format(1, precision)) != "1.000000")
+    if ((result = fmt.format(1, precision)) != "1")
       TEST_FAILED("Formatting 1 failed: " + result);
 
-    if ((result = fmt.format(1.23, precision)) != "1.230000")
+    if ((result = fmt.format(1.23, precision)) != "1.23")
       TEST_FAILED("Formatting 1.23 failed: " + result);
 
-    if ((result = fmt.format(-1.23, precision)) != "-1.230000")
+    if ((result = fmt.format(-1.23, precision)) != "-1.23")
       TEST_FAILED("Formatting -1.23 failed: " + result);
   }
 
@@ -212,13 +212,13 @@ void floatfield()
     req.setParameter("floatfield", "scientific");
     SmartMet::Spine::ValueFormatter fmt(req);
 
-    if ((result = fmt.format(1, precision)) != "1.000000e+00")
+    if ((result = fmt.format(1, precision)) != "1")
       TEST_FAILED("Formatting 1 failed: " + result);
 
-    if ((result = fmt.format(1.23, precision)) != "1.230000e+00")
+    if ((result = fmt.format(1.23, precision)) != "1.23")
       TEST_FAILED("Formatting 1.23 failed: " + result);
 
-    if ((result = fmt.format(-1.23, precision)) != "-1.230000e+00")
+    if ((result = fmt.format(-1.23, precision)) != "-1.23")
       TEST_FAILED("Formatting -1.23 failed: " + result);
 
     if ((result = fmt.format(2.3e-2, 1)) != "2.3e-02")
@@ -339,13 +339,13 @@ void uppercase()
   int precision = -1;
   SmartMet::Spine::ValueFormatter fmt(req);
 
-  if ((result = fmt.format(1, precision)) != "1.000000E+00")
+  if ((result = fmt.format(1, precision)) != "1")
     TEST_FAILED("Formatting 1 failed: " + result);
 
-  if ((result = fmt.format(1.23, precision)) != "1.230000E+00")
+  if ((result = fmt.format(1.23, precision)) != "1.23")
     TEST_FAILED("Formatting 1.23 failed: " + result);
 
-  if ((result = fmt.format(-1.23, precision)) != "-1.230000E+00")
+  if ((result = fmt.format(-1.23, precision)) != "-1.23")
     TEST_FAILED("Formatting -1.23 failed: " + result);
 
   TEST_PASSED();
