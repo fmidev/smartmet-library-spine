@@ -144,14 +144,16 @@ Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::
 
     itsInitTasks->stop_on_error(true);
 
-    itsInitTasks->on_task_error([this](const std::string& name) {
-      if (!isShutdownRequested())
-      {
-        Fmi::Exception::Trace(BCP, "Operation failed").printError();
-        std::cout << __FILE__ << ":" << __LINE__ << ": init task " << name << " failed"
-                  << std::endl;
-      }
-    });
+    itsInitTasks->on_task_error(
+        [this](const std::string& name)
+        {
+          if (!isShutdownRequested())
+          {
+            Fmi::Exception::Trace(BCP, "Operation failed").printError();
+            std::cout << __FILE__ << ":" << __LINE__ << ": init task " << name << " failed"
+                      << std::endl;
+          }
+        });
   }
   catch (...)
   {
@@ -212,6 +214,8 @@ void Reactor::init()
     // recognized
 
     setLogging(itsOptions.defaultlogging);
+
+    itsInitializing = false;
   }
   catch (...)
   {
@@ -617,19 +621,21 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
           std::cerr << Spine::log_time_str() << " Running alert script "
                     << itsOptions.throttle.alert_script << std::endl;
 
-        std::thread thr([this] {
-          try
-          {
-            boost::process::child cld(itsOptions.throttle.alert_script);
-            cld.wait();
-          }
-          catch (...)
-          {
-            std::cerr << Spine::log_time_str() << " Running alert script "
-                      << itsOptions.throttle.alert_script << " failed!" << std::endl;
-          }
-          itsRunningAlertScript = false;
-        });
+        std::thread thr(
+            [this]
+            {
+              try
+              {
+                boost::process::child cld(itsOptions.throttle.alert_script);
+                cld.wait();
+              }
+              catch (...)
+              {
+                std::cerr << Spine::log_time_str() << " Running alert script "
+                          << itsOptions.throttle.alert_script << " failed!" << std::endl;
+              }
+              itsRunningAlertScript = false;
+            });
         thr.detach();
       }
     }
@@ -966,9 +972,9 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool /* verbose */)
     {
       // Start to initialize the plugin
 
-      itsInitTasks->add("Load plugin[" + theFilename + "]", [this, plugin, pluginname]() {
-        initializePlugin(plugin.get(), pluginname);
-      });
+      itsInitTasks->add("Load plugin[" + theFilename + "]",
+                        [this, plugin, pluginname]()
+                        { initializePlugin(plugin.get(), pluginname); });
 
       itsPlugins.push_back(plugin);
       return true;
@@ -1014,9 +1020,9 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
     SmartMetEngine* theEngine = reinterpret_cast<SmartMetEngine*>(engineInstance);
 
     // Fire the initialization thread
-    itsInitTasks->add(
-        "New engine instance[" + theClassName + "]",
-        [this, theEngine, theClassName]() { initializeEngine(theEngine, theClassName); });
+    itsInitTasks->add("New engine instance[" + theClassName + "]",
+                      [this, theEngine, theClassName]()
+                      { initializeEngine(theEngine, theClassName); });
 
     return engineInstance;
   }
@@ -1367,6 +1373,11 @@ bool Reactor::isShutdownRequested()
   return itsShutdownRequested;
 }
 
+bool Reactor::isInitializing() const
+{
+  return itsInitializing;
+}
+
 void Reactor::shutdown()
 {
   try
@@ -1409,10 +1420,12 @@ void Reactor::shutdown()
     {
       std::cout << ANSI_FG_RED << "* Plugin [" << (*it)->pluginname() << "] shutting down\n"
                 << ANSI_FG_DEFAULT;
-      shutdownTasks.add("Plugin [" + (*it)->pluginname() + "] shutdown", [it]() {
-        (*it)->shutdownPlugin();
-        it->reset();
-      });
+      shutdownTasks.add("Plugin [" + (*it)->pluginname() + "] shutdown",
+                        [it]()
+                        {
+                          (*it)->shutdownPlugin();
+                          it->reset();
+                        });
     }
 
     shutdownTasks.wait();
@@ -1430,13 +1443,15 @@ void Reactor::shutdown()
            << '\n';
       std::cout << tmp1.str() << std::flush;
       SmartMetEngine* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-      shutdownTasks.add("Engine [" + it->first + "] shutdown", [engine, it]() {
-        engine->shutdownEngine();
-        std::ostringstream tmp2;
-        tmp2 << ANSI_FG_MAGENTA << "* Engine [" << it->first << "] shutdown complete"
-             << ANSI_FG_DEFAULT << '\n';
-        std::cout << tmp2.str() << std::flush;
-      });
+      shutdownTasks.add("Engine [" + it->first + "] shutdown",
+                        [engine, it]()
+                        {
+                          engine->shutdownEngine();
+                          std::ostringstream tmp2;
+                          tmp2 << ANSI_FG_MAGENTA << "* Engine [" << it->first
+                               << "] shutdown complete" << ANSI_FG_DEFAULT << '\n';
+                          std::cout << tmp2.str() << std::flush;
+                        });
     }
 
     shutdownTasks.wait();

@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.5.11
+Version: 21.5.19
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -35,9 +35,9 @@ BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 21.3.23
-BuildRequires: smartmet-library-macgyver-devel >= 21.2.25
-BuildRequires: smartmet-library-newbase-devel >= 21.3.20
+BuildRequires: smartmet-library-gis-devel >= 21.5.5
+BuildRequires: smartmet-library-macgyver-devel >= 21.5.19
+BuildRequires: smartmet-library-newbase-devel >= 21.5.6
 Requires: boost169-chrono
 Requires: boost169-date-time
 Requires: boost169-filesystem
@@ -54,9 +54,9 @@ Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig >= 1.7.2
 Requires: libicu
-Requires: smartmet-library-gis >= 21.3.23
-Requires: smartmet-library-macgyver >= 21.2.25
-Requires: smartmet-library-newbase >= 21.3.20
+Requires: smartmet-library-gis >= 21.5.5
+Requires: smartmet-library-macgyver >= 21.5.19
+Requires: smartmet-library-newbase >= 21.5.6
 Requires: smartmet-timezones >= 21.2.2
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -109,6 +109,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed May 19 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.5.19-1.fmi
+- Added Reactor::isInitializing() to be used by the backend plugin
+
 * Tue May 11 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.5.11-1.fmi
 - Changed meaning of precision -1 in ValueFormatter to mean shortest possible presentation by {fmt}
 
