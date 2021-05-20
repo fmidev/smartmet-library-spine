@@ -5,8 +5,8 @@
 // ======================================================================
 
 #include "Parameter.h"
-#include <boost/functional/hash.hpp>
 #include <macgyver/Exception.h>
+#include <macgyver/Hash.h>
 #include <sstream>
 #include <stdexcept>
 
@@ -84,10 +84,10 @@ std::size_t hash_value(const Parameter& theParam)
   try
   {
     std::size_t seed = 0;
-    boost::hash_combine(seed, theParam.itsName);
-    boost::hash_combine(seed, theParam.itsAlias);
-    boost::hash_combine(seed, theParam.itsType);
-    boost::hash_combine(seed, theParam.itsNumber);
+    Fmi::hash_combine(seed, Fmi::hash_value(theParam.itsName));
+    Fmi::hash_combine(seed, Fmi::hash_value(theParam.itsAlias));
+    Fmi::hash_combine(seed, Fmi::hash_value(static_cast<int>(theParam.itsType)));
+    Fmi::hash_combine(seed, Fmi::hash_value(static_cast<int>(theParam.itsNumber)));
     return seed;
   }
   catch (...)

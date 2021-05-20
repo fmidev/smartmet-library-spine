@@ -1,6 +1,6 @@
 #include "TimeSeriesGeneratorCache.h"
-#include <boost/functional/hash.hpp>
 #include <macgyver/Exception.h>
+#include <macgyver/Hash.h>
 
 namespace SmartMet
 {
@@ -43,7 +43,7 @@ TimeSeriesGeneratorCache::TimeList TimeSeriesGeneratorCache::generate(
   {
     // hash value for the query
     std::size_t hash = theOptions.hash_value();
-    boost::hash_combine(hash, boost::hash_value(theZone));
+    Fmi::hash_combine(hash, Fmi::hash_value(theZone));
 
     // use cached result if possible
     auto cached_result = itsCache.find(hash);
