@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 21.5.20
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -109,6 +109,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu May 20 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.5.20-2.fmi
+- Added Parameter::hashValue()
+
 * Thu May 20 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.5.20-1.fmi
 - Use Fmi hash functions, boost::hash_combine produces too many collisions
 

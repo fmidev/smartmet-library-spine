@@ -50,6 +50,8 @@ class Parameter
   void setSensorNumber(int nbr) { itsSensorNumber = nbr; }
   void setSensorParameter(const std::string& param) { itsSensorParameter = param; }
 
+  std::size_t hashValue() const;
+
   friend std::size_t hash_value(const Parameter& theParam);
 
  private:
