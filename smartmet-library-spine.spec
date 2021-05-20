@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 21.5.20
-Release: 2%{?dist}.fmi
+Release: 3%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -36,7 +36,7 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 21.5.20
-BuildRequires: smartmet-library-macgyver-devel >= 21.5.19
+BuildRequires: smartmet-library-macgyver-devel >= 21.5.20
 BuildRequires: smartmet-library-newbase-devel >= 21.5.6
 Requires: boost169-chrono
 Requires: boost169-date-time
@@ -55,7 +55,7 @@ Requires: jsoncpp >= 1.8.4
 Requires: libconfig >= 1.7.2
 Requires: libicu
 Requires: smartmet-library-gis >= 21.5.20
-Requires: smartmet-library-macgyver >= 21.5.19
+Requires: smartmet-library-macgyver >= 21.5.20
 Requires: smartmet-library-newbase >= 21.5.6
 Requires: smartmet-timezones >= 21.2.2
 #TestRequires: bzip2-devel
@@ -109,6 +109,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Thu May 20 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.5.20-3.fmi
+- Repackaged with improved hashing functions
+
 * Thu May 20 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.5.20-2.fmi
 - Added Parameter::hashValue()
 
