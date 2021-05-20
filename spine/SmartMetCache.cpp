@@ -1,8 +1,8 @@
 #include "SmartMetCache.h"
-#include <macgyver/Exception.h>
-#include <vector>
 #include <boost/bind.hpp>
 #include <boost/make_shared.hpp>
+#include <macgyver/Exception.h>
+#include <vector>
 
 namespace SmartMet
 {

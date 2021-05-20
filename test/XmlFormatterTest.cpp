@@ -5,8 +5,8 @@
  */
 // ======================================================================
 
-#include "Table.h"
 #include "HTTP.h"
+#include "Table.h"
 #include "TableFormatterOptions.h"
 #include "XmlFormatter.h"
 #include <regression/tframe.h>
@@ -177,8 +177,8 @@ void empty()
   SmartMet::Spine::XmlFormatter fmt;
   auto out = fmt.format(tab, names, req, config);
 
-  const char * res = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<result>\n</result>\n";
-  
+  const char* res = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<result>\n</result>\n";
+
   if (out != res)
     TEST_FAILED("Incorrect result: " + out + "\nExpected:\n" + res);
 

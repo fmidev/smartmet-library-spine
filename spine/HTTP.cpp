@@ -778,7 +778,7 @@ boost::optional<std::string> Request::getParameter(const std::string& paramName)
     std::size_t numParams = std::distance(params.first, params.second);
     if (numParams > 1)
       throw Fmi::Exception(BCP,
-                             "More than one parameter value for parameter \"" + paramName + "\"");
+                           "More than one parameter value for parameter \"" + paramName + "\"");
 
     if (numParams == 0)
       return boost::optional<std::string>();

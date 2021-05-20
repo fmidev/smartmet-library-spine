@@ -5,8 +5,8 @@
 // ======================================================================
 
 #include "Parameter.h"
-#include <macgyver/Exception.h>
 #include <boost/functional/hash.hpp>
+#include <macgyver/Exception.h>
 #include <sstream>
 #include <stdexcept>
 

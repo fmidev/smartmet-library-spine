@@ -437,7 +437,8 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
 
     // Run tests in parallel
 
-    const auto executor = [this, &padding, &num_failed, &reactor, &ignores](const path& fn) {
+    const auto executor = [this, &padding, &num_failed, &reactor, &ignores](const path& fn)
+    {
       try
       {
         bool ok = process_query(fn, padding, reactor, ignores);

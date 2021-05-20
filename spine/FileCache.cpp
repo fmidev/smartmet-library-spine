@@ -1,8 +1,8 @@
 // ======================================================================
 
 #include "FileCache.h"
-#include <macgyver/Exception.h>
 #include <boost/filesystem/operations.hpp>
+#include <macgyver/Exception.h>
 #include <fstream>
 #include <stdexcept>
 
@@ -39,7 +39,7 @@ std::string FileCache::get(const boost::filesystem::path& thePath) const
     std::ifstream in(thePath.c_str());
     if (!in)
       throw Fmi::Exception(BCP,
-                             "Failed to open '" + std::string(thePath.c_str()) + "' for reading!");
+                           "Failed to open '" + std::string(thePath.c_str()) + "' for reading!");
 
     content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
 

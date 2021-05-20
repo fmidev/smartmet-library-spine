@@ -1,9 +1,9 @@
 // ======================================================================
 
 #include "JsonCache.h"
-#include <macgyver/Exception.h>
 #include <boost/filesystem/operations.hpp>
 #include <boost/functional/hash.hpp>
+#include <macgyver/Exception.h>
 #include <fstream>
 #include <stdexcept>
 
@@ -37,7 +37,7 @@ Json::Value JsonCache::get(const boost::filesystem::path& thePath) const
     std::time_t mtime = boost::filesystem::last_write_time(thePath);
 
     std::size_t hash = boost::filesystem::hash_value(thePath);
-    
+
     // Try using the cache with a lock first
     {
       ReadLock lock{itsMutex};
@@ -55,7 +55,7 @@ Json::Value JsonCache::get(const boost::filesystem::path& thePath) const
     std::ifstream in{thePath.c_str()};
     if (!in)
       throw Fmi::Exception{BCP,
-                             "Failed to open '" + std::string(thePath.c_str()) + "' for reading!"};
+                           "Failed to open '" + std::string(thePath.c_str()) + "' for reading!"};
 
     content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
 

@@ -5,8 +5,8 @@
  */
 // ======================================================================
 
-#include "Table.h"
 #include "HTTP.h"
+#include "Table.h"
 #include "TableFormatterOptions.h"
 #include "WxmlFormatter.h"
 #include <regression/tframe.h>
@@ -159,11 +159,12 @@ void empty()
   SmartMet::Spine::WxmlFormatter fmt;
   auto out = fmt.format(tab, names, req, config);
 
-  const char * res = "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<pointweather "
-                     "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
-                     "xsi:schemaLocation=\"http://services.weatherproof.fi/schemas/pointweather_2.00.xsd\">\n</"
-                     "pointweather>";
-  
+  const char* res =
+      "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<pointweather "
+      "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" "
+      "xsi:schemaLocation=\"http://services.weatherproof.fi/schemas/pointweather_2.00.xsd\">\n</"
+      "pointweather>";
+
   if (out != res)
     TEST_FAILED("Incorrect result: '" + out + "'\nExpected: '" + res + "'");
 

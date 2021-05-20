@@ -84,7 +84,8 @@ std::string WxmlFormatter::format_100(const Table& theTable,
 {
   try
   {
-    std::string out = R"(<?xml version="1.0" encoding="UTF-8" ?>)" "\n";
+    std::string out = R"(<?xml version="1.0" encoding="UTF-8" ?>)"
+                      "\n";
 
     std::string schema = theConfig.wxmlSchema();
 
@@ -219,7 +220,8 @@ std::string WxmlFormatter::format_200(const Table& theTable,
 {
   try
   {
-    std::string out = R"(<?xml version="1.0" encoding="UTF-8" ?>)" "\n";
+    std::string out = R"(<?xml version="1.0" encoding="UTF-8" ?>)"
+                      "\n";
 
     const auto& formatType = theConfig.formatType();
     std::string schema = theConfig.wxmlSchema();

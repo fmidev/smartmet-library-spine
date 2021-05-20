@@ -720,8 +720,7 @@ boost::posix_time::ptime string2ptime(const std::string& value,
   }
   catch (...)
   {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!")
-        .disableStackTrace();  // user input error
+    throw Fmi::Exception::Trace(BCP, "Operation failed!").disableStackTrace();  // user input error
   }
 }
 

@@ -5,8 +5,8 @@
  */
 // ======================================================================
 
-#include "JsonFormatter.h"
 #include "HTTP.h"
+#include "JsonFormatter.h"
 #include "Table.h"
 #include "TableFormatterOptions.h"
 #include <regression/tframe.h>

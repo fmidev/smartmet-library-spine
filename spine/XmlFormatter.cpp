@@ -52,7 +52,8 @@ std::string XmlFormatter::format(const Table& theTable,
 {
   try
   {
-    std::string out = R"(<?xml version="1.0" encoding="UTF-8" ?>)" "\n";
+    std::string out = R"(<?xml version="1.0" encoding="UTF-8" ?>)"
+                      "\n";
 
     const auto& tag = theConfig.xmlTag();
 

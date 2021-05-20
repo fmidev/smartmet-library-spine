@@ -6,12 +6,12 @@
 // ======================================================================
 
 #include "SmartMetCache.h"
+#include <boost/make_shared.hpp>
 #include <regression/tframe.h>
+#include <sys/types.h>
 #include <sstream>
 #include <string>
-#include <boost/make_shared.hpp>
 #include <unistd.h>
-#include <sys/types.h>
 
 template <typename T>
 std::string tostr(const T& theValue)
@@ -30,8 +30,7 @@ void basic()
 {
   uid_t uid = getuid();
 
-  SmartMet::Spine::SmartMetCache cache(16, 11,
-      "/tmp/" + std::to_string(int(uid)) + "/bscachetest");
+  SmartMet::Spine::SmartMetCache cache(16, 11, "/tmp/" + std::to_string(int(uid)) + "/bscachetest");
 
   std::vector<std::size_t> keys = {1, 2, 3, 4, 5};
 
@@ -74,8 +73,7 @@ void find()
 {
   uid_t uid = getuid();
 
-  SmartMet::Spine::SmartMetCache cache(3, 2,
-      "/tmp/" + std::to_string(int(uid)) + "/bscachetest2");
+  SmartMet::Spine::SmartMetCache cache(3, 2, "/tmp/" + std::to_string(int(uid)) + "/bscachetest2");
 
   std::vector<std::size_t> keys = {1, 2, 3, 4, 5, 6, 7};
 
@@ -126,8 +124,8 @@ void promote()
 {
   uid_t uid = getuid();
 
-  SmartMet::Spine::SmartMetCache cache(10, 10,
-      "/tmp/" + std::to_string(int(uid)) + "/bscachetest3");
+  SmartMet::Spine::SmartMetCache cache(
+      10, 10, "/tmp/" + std::to_string(int(uid)) + "/bscachetest3");
 
   std::vector<std::size_t> keys1 = {1, 2, 3, 4, 5};
 
