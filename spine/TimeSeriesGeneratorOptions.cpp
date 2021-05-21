@@ -53,14 +53,16 @@ std::size_t TimeSeriesGeneratorOptions::hash_value() const
     Fmi::hash_combine(hash, Fmi::hash_value(startTimeUTC));
     Fmi::hash_combine(hash, Fmi::hash_value(endTimeUTC));
     if (timeSteps)
+    {
       Fmi::hash_combine(hash, Fmi::hash_value(*timeSteps));
+    }
     if (timeStep)
+    {
       Fmi::hash_combine(hash, Fmi::hash_value(*timeStep));
+    }
     for (const auto& t : timeList)
       Fmi::hash_combine(hash, Fmi::hash_value(t));
-    // We only need to hash the address of the valid times, since the
-    // address stays constant during the lifetime of a single Q object
-    Fmi::hash_combine(hash, Fmi::hash_value(dataTimes.get()));
+    Fmi::hash_combine(hash, Fmi::hash_value(*dataTimes));
     Fmi::hash_combine(hash, Fmi::hash_value(startTimeData));
     Fmi::hash_combine(hash, Fmi::hash_value(endTimeData));
     Fmi::hash_combine(hash, Fmi::hash_value(isClimatology));
