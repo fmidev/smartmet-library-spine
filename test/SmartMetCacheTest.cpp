@@ -12,6 +12,7 @@
 #include <sstream>
 #include <string>
 #include <unistd.h>
+#include <macgyver/AsyncTask.h>
 
 template <typename T>
 std::string tostr(const T& theValue)
@@ -201,6 +202,26 @@ void promote()
   // TEST_PASSED();
 }
 
+// Verify that creating/destroying SmartMetCache works when boost::thread::interrupt is called
+// when SmartMetCache destructory is executed in thread to be interrupted (causes std::terminate
+// to be called with following SIGABRT if care not taken in destructor)
+void cache_in_async_task()
+{
+  uid_t uid = getuid();
+
+  Fmi::AsyncTask task(
+      "test",
+      [&uid]() {
+	SmartMet::Spine::SmartMetCache cache(
+	    10, 10, "/tmp/" + std::to_string(int(uid)) + "/bscachetest4");
+	cache.shutdown();
+      });
+  boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
+  task.cancel();
+  task.wait();
+  TEST_PASSED();
+}
+
 // ----------------------------------------------------------------------
 
 class tests : public tframe::tests
@@ -211,6 +232,7 @@ class tests : public tframe::tests
     TEST(basic);
     TEST(find);
     TEST(promote);
+    TEST(cache_in_async_task);
   }
 };
 
