@@ -108,7 +108,11 @@ void AccessLogger::stop()
 
 AccessLogger::~AccessLogger()
 {
-  this->stop();
+  try {
+    this->stop();
+  } catch (...) {
+    std::cout << Fmi::Exception::Trace(BCP, "Operation failed!").getStackTrace() << std::endl;
+  }
 }
 
 void AccessLogger::log(const LoggedRequest& theRequest)
