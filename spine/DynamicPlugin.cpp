@@ -77,7 +77,13 @@ DynamicPlugin::~DynamicPlugin()
   std::cout << "\t  + [Destructing dynamic plugin '" << itsFilename << "']" << std::endl;
 
   // Call the actual module destroy implementation (private method)
-  pluginClose();
+  try {
+    // Long operations must be handled in shutdown instead
+    boost::this_thread::disable_interruption do_not_disturb;
+    pluginClose();
+  } catch (...) {
+    std::cout << Fmi::Exception::Trace(BCP, "Operation failed!").getStackTrace() << std::endl;
+  }
 }
 
 // ----------------------------------------------------------------------
