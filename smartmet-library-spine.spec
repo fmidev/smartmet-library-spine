@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.5.31
+Version: 21.6.15
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -109,6 +109,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Tue Jul 15 2021 Andris Pavēnis <andris.pavenis@fmi.fi> 21.6.15-1.fmi
+- Avoid thread interruption in destructors
+
 * Mon May 31 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.5.31-1.fmi
 - Deprecated Hash.h, use macgyver library Hash.h instead
 
