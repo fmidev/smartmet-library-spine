@@ -6,8 +6,8 @@
 // ======================================================================
 
 #include "Convenience.h"
-#include <macgyver/Exception.h>
 #include <boost/test/included/unit_test.hpp>
+#include <macgyver/Exception.h>
 #include <sstream>
 
 using namespace boost::unit_test;

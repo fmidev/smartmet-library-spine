@@ -5,8 +5,8 @@
 // ======================================================================
 
 #include "TimeSeriesGeneratorOptions.h"
-#include <boost/functional/hash.hpp>
 #include <macgyver/Exception.h>
+#include <macgyver/Hash.h>
 #include <macgyver/StringConversion.h>
 
 namespace SmartMet
@@ -47,23 +47,25 @@ std::size_t TimeSeriesGeneratorOptions::hash_value() const
   try
   {
     std::size_t hash = 0;
-    boost::hash_combine(hash, boost::hash_value(mode));
-    boost::hash_combine(hash, boost::hash_value(Fmi::to_iso_string(startTime)));
-    boost::hash_combine(hash, boost::hash_value(Fmi::to_iso_string(endTime)));
-    boost::hash_combine(hash, boost::hash_value(startTimeUTC));
-    boost::hash_combine(hash, boost::hash_value(endTimeUTC));
+    Fmi::hash_combine(hash, Fmi::hash_value(static_cast<int>(mode)));
+    Fmi::hash_combine(hash, Fmi::hash_value(Fmi::to_iso_string(startTime)));
+    Fmi::hash_combine(hash, Fmi::hash_value(Fmi::to_iso_string(endTime)));
+    Fmi::hash_combine(hash, Fmi::hash_value(startTimeUTC));
+    Fmi::hash_combine(hash, Fmi::hash_value(endTimeUTC));
     if (timeSteps)
-      boost::hash_combine(hash, boost::hash_value(*timeSteps));
+    {
+      Fmi::hash_combine(hash, Fmi::hash_value(*timeSteps));
+    }
     if (timeStep)
-      boost::hash_combine(hash, boost::hash_value(*timeStep));
+    {
+      Fmi::hash_combine(hash, Fmi::hash_value(*timeStep));
+    }
     for (const auto& t : timeList)
-      boost::hash_combine(hash, boost::hash_value(t));
-    // We only need to hash the address of the valid times, since the
-    // address stays constant during the lifetime of a single Q object
-    boost::hash_combine(hash, boost::hash_value(dataTimes.get()));
-    boost::hash_combine(hash, boost::hash_value(startTimeData));
-    boost::hash_combine(hash, boost::hash_value(endTimeData));
-    boost::hash_combine(hash, boost::hash_value(isClimatology));
+      Fmi::hash_combine(hash, Fmi::hash_value(t));
+    Fmi::hash_combine(hash, Fmi::hash_value(*dataTimes));
+    Fmi::hash_combine(hash, Fmi::hash_value(startTimeData));
+    Fmi::hash_combine(hash, Fmi::hash_value(endTimeData));
+    Fmi::hash_combine(hash, Fmi::hash_value(isClimatology));
     return hash;
   }
   catch (...)

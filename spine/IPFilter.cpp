@@ -1,8 +1,8 @@
 
 #include "IPFilter.h"
-#include <macgyver/Exception.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/spirit/include/qi.hpp>
+#include <macgyver/Exception.h>
 
 #include <vector>
 
@@ -193,8 +193,8 @@ IPConfig::IPConfig(const std::string& configFile, const std::string& root) : Con
     if (!success)
     {
       throw Fmi::Exception(BCP,
-                             "Group '" + (root.empty() ? "ip_filters" : (root + ".ip_filters")) +
-                                 "' not found in configuration");
+                           "Group '" + (root.empty() ? "ip_filters" : (root + ".ip_filters")) +
+                               "' not found in configuration");
     }
 
     itsMatchTokens = matchTokens;
@@ -225,8 +225,8 @@ IPConfig::IPConfig(boost::shared_ptr<libconfig::Config> configPtr, const std::st
     if (!success)
     {
       throw Fmi::Exception(BCP,
-                             "Group '" + (root.empty() ? "ip_filters" : (root + ".ip_filters")) +
-                                 "' not found in configuration");
+                           "Group '" + (root.empty() ? "ip_filters" : (root + ".ip_filters")) +
+                               "' not found in configuration");
     }
 
     itsMatchTokens = matchTokens;

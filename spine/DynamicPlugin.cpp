@@ -136,8 +136,7 @@ void DynamicPlugin::pluginOpen()
     if (itsHandle == nullptr)
     {
       // Error occurred while opening the dynamic library
-      throw Fmi::Exception(BCP,
-                             "Unable to load dynamic library plugin: " + std::string(dlerror()));
+      throw Fmi::Exception(BCP, "Unable to load dynamic library plugin: " + std::string(dlerror()));
     }
 
     // Load the symbols (pointers to functions in dynamic library)

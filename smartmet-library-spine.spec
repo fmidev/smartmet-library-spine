@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.1.14
+Version: 21.5.31
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -35,9 +35,9 @@ BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 21.1.14
-BuildRequires: smartmet-library-macgyver-devel >= 21.1.14
-BuildRequires: smartmet-library-newbase-devel >= 21.1.14
+BuildRequires: smartmet-library-gis-devel >= 21.5.20
+BuildRequires: smartmet-library-macgyver-devel >= 21.5.20
+BuildRequires: smartmet-library-newbase-devel >= 21.5.6
 Requires: boost169-chrono
 Requires: boost169-date-time
 Requires: boost169-filesystem
@@ -54,10 +54,10 @@ Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig >= 1.7.2
 Requires: libicu
-Requires: smartmet-library-gis >= 21.1.14
-Requires: smartmet-library-macgyver >= 21.1.14
-Requires: smartmet-library-newbase >= 21.1.14
-Requires: smartmet-timezones >= 21.1.5
+Requires: smartmet-library-gis >= 21.5.20
+Requires: smartmet-library-macgyver >= 21.5.20
+Requires: smartmet-library-newbase >= 21.5.6
+Requires: smartmet-timezones >= 21.2.2
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
 #TestRequires: gdal32-devel
@@ -109,6 +109,51 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon May 31 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.5.31-1.fmi
+- Deprecated Hash.h, use macgyver library Hash.h instead
+
+* Fri May 21 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.5.21-1.fmi
+- Fixed TimeSeriesGeneratorOptions hash_value generation
+
+* Thu May 20 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.5.20-3.fmi
+- Repackaged with improved hashing functions
+
+* Thu May 20 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.5.20-2.fmi
+- Added Parameter::hashValue()
+
+* Thu May 20 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.5.20-1.fmi
+- Use Fmi hash functions, boost::hash_combine produces too many collisions
+
+* Wed May 19 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.5.19-1.fmi
+- Added Reactor::isInitializing() to be used by the backend plugin
+
+* Tue May 11 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.5.11-1.fmi
+- Changed meaning of precision -1 in ValueFormatter to mean shortest possible presentation by {fmt}
+
+* Fri Apr 16 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.4.16-1.fmi
+- Handle errors when running the configured alert script
+
+* Thu Apr 15 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.4.15-1.fmi
+- Fixed active requests log cleaning code to handle exceptions
+
+* Sat Mar 27 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.3.27-1.fmi
+- Fixed alert print of active requests to count rows correctly
+
+* Tue Mar  9 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.3.9-1.fmi
+- Print active requests when the alert script is triggered if verbose mode is on
+
+* Mon Mar  1 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.3.1-1.fmi
+- Prefer emplace_back over push_back for speed
+
+* Sat Feb 27 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.2.27-1.fmi
+- Added support for metaparameter enumerations
+
+* Fri Feb  5 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.2.5-1.fmi
+- Improved padding of PluginTest output for clarity
+
+* Fri Jan 29 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.1.29-1.fmi
+- Always run test scripts by default if the script exists
+
 * Thu Jan 14 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.1.14-1.fmi
 - Repackaged smartmet to resolve debuginfo issues
 

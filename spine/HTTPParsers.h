@@ -56,17 +56,20 @@ struct RawResponse
 }  // namespace Spine
 }  // namespace SmartMet
 
-BOOST_FUSION_ADAPT_STRUCT(SmartMet::Spine::HTTP::RawRequest,
-                          (std::string, type)(std::string, resource)(
-                              std::vector<SmartMet::Spine::HTTP::StringPair>,
-                              params)(SmartMet::Spine::HTTP::VersionPair,
-                                      version)(std::vector<SmartMet::Spine::HTTP::StringPair>,
-                                               headers)(std::string, body))
+BOOST_FUSION_ADAPT_STRUCT(
+    SmartMet::Spine::HTTP::RawRequest,
+    (std::string, type)(std::string,
+                        resource)(std::vector<SmartMet::Spine::HTTP::StringPair>,
+                                  params)(SmartMet::Spine::HTTP::VersionPair,
+                                          version)(std::vector<SmartMet::Spine::HTTP::StringPair>,
+                                                   headers)(std::string, body))
 
 BOOST_FUSION_ADAPT_STRUCT(SmartMet::Spine::HTTP::RawResponse,
-                          (SmartMet::Spine::HTTP::VersionPair, version)(unsigned int, code)(
-                              std::string, reason)(std::vector<SmartMet::Spine::HTTP::StringPair>,
-                                                   headers))
+                          (SmartMet::Spine::HTTP::VersionPair,
+                           version)(unsigned int,
+                                    code)(std::string,
+                                          reason)(std::vector<SmartMet::Spine::HTTP::StringPair>,
+                                                  headers))
 
 namespace SmartMet
 {

@@ -1,10 +1,10 @@
 #include "ConfigBase.h"
-#include <macgyver/Exception.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/lambda/lambda.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 #include <boost/spirit/include/qi.hpp>
+#include <macgyver/Exception.h>
 #include <cassert>
 #include <iostream>
 #include <vector>

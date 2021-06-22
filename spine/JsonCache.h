@@ -9,8 +9,8 @@
 #include "Thread.h"
 #include <boost/filesystem/path.hpp>
 #include <json/json.h>
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
 
 namespace SmartMet
 {

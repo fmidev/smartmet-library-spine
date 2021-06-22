@@ -6,7 +6,7 @@
 
 #include "Parameter.h"
 #include <macgyver/Exception.h>
-#include <boost/functional/hash.hpp>
+#include <macgyver/Hash.h>
 #include <sstream>
 #include <stdexcept>
 
@@ -73,6 +73,16 @@ std::string Parameter::typestring() const
   }
 }
 
+std::size_t Parameter::hashValue() const
+{
+  std::size_t seed = 0;
+  Fmi::hash_combine(seed, Fmi::hash_value(itsName));
+  Fmi::hash_combine(seed, Fmi::hash_value(itsAlias));
+  Fmi::hash_combine(seed, Fmi::hash_value(static_cast<int>(itsType)));
+  Fmi::hash_combine(seed, Fmi::hash_value(static_cast<int>(itsNumber)));
+  return seed;
+}
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Generate a hash value for the parameter definition
@@ -81,19 +91,7 @@ std::string Parameter::typestring() const
 
 std::size_t hash_value(const Parameter& theParam)
 {
-  try
-  {
-    std::size_t seed = 0;
-    boost::hash_combine(seed, theParam.itsName);
-    boost::hash_combine(seed, theParam.itsAlias);
-    boost::hash_combine(seed, theParam.itsType);
-    boost::hash_combine(seed, theParam.itsNumber);
-    return seed;
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
+  return theParam.hashValue();
 }
 
 // ----------------------------------------------------------------------

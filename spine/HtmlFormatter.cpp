@@ -64,7 +64,7 @@ std::string HtmlFormatter::format(const Table& theTable,
     const Table::Indexes rows = theTable.rows();
 
     // Output headers
-    
+
     std::string out = "<table><tr>";
     for (const auto& nam : cols)
     {

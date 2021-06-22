@@ -171,16 +171,16 @@ bool Options::parseOptions(int argc, char* argv[])
     if (compresslimit < 100)
       throw Fmi::Exception(BCP, "Compression size limit below 100 makes no sense!");
 
-    if(throttle.alert_limit > throttle.limit)
+    if (throttle.alert_limit > throttle.limit)
       throw Fmi::Exception(BCP, "Alert limit > limit makes no sense")
           .addParameter("Alert limit", Fmi::to_string(throttle.alert_limit))
           .addParameter("Limit", Fmi::to_string(throttle.limit));
-    
+
     if (throttle.start_limit == 0 || throttle.limit == 0 || throttle.increase_rate == 0)
       throw Fmi::Exception(BCP, "Active request settings must be > 0")
           .addParameter("Start limit", Fmi::to_string(throttle.start_limit))
-          .addParameter("Limit",Fmi::to_string(throttle.limit))
-          .addParameter("Increase rate",Fmi::to_string(throttle.increase_rate));
+          .addParameter("Limit", Fmi::to_string(throttle.limit))
+          .addParameter("Increase rate", Fmi::to_string(throttle.increase_rate));
 
     return true;
   }
@@ -216,7 +216,7 @@ void Options::parseConfig()
       boost::filesystem::path p = configfile;
       p.remove_filename();
       itsConfig.setIncludeDir(p.c_str());
-      
+
       itsConfig.readFile(configfile.c_str());
 
       // Read options

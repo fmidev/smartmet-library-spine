@@ -152,6 +152,8 @@ class Reactor
   bool isShutdownRequested();
   void shutdown();
 
+  bool isInitializing() const;
+
  private:
   void initializeEngine(SmartMetEngine* theEngine, const std::string& theName);
   void initializePlugin(DynamicPlugin* thePlugin, const std::string& theName);
@@ -239,6 +241,8 @@ class Reactor
   std::atomic_size_t itsInitializedEngineCount{0};
 
   std::atomic_bool itsRunningAlertScript{false};
+
+  std::atomic_bool itsInitializing{true};
 
   // No void construction, options must be known
   Reactor();

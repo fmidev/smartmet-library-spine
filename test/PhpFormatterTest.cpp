@@ -5,8 +5,8 @@
  */
 // ======================================================================
 
-#include "PhpFormatter.h"
 #include "HTTP.h"
+#include "PhpFormatter.h"
 #include "Table.h"
 #include "TableFormatterOptions.h"
 #include <regression/tframe.h>

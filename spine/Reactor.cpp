@@ -5,10 +5,10 @@
 // ======================================================================
 
 #include "Reactor.h"
-
 #include "ConfigTools.h"
 #include "Convenience.h"
 #include "DynamicPlugin.h"
+#include "FmiApiKey.h"
 #include "Names.h"
 #include "Options.h"
 #include "SmartMet.h"
@@ -144,14 +144,16 @@ Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::
 
     itsInitTasks->stop_on_error(true);
 
-    itsInitTasks->on_task_error([this](const std::string& name) {
-      if (!isShutdownRequested())
-      {
-        Fmi::Exception::Trace(BCP, "Operation failed").printError();
-        std::cout << __FILE__ << ":" << __LINE__ << ": init task " << name << " failed"
-                  << std::endl;
-      }
-    });
+    itsInitTasks->on_task_error(
+        [this](const std::string& name)
+        {
+          if (!isShutdownRequested())
+          {
+            Fmi::Exception::Trace(BCP, "Operation failed").printError();
+            std::cout << __FILE__ << ":" << __LINE__ << ": init task " << name << " failed"
+                      << std::endl;
+          }
+        });
   }
   catch (...)
   {
@@ -212,6 +214,8 @@ void Reactor::init()
     // recognized
 
     setLogging(itsOptions.defaultlogging);
+
+    itsInitializing = false;
   }
   catch (...)
   {
@@ -340,12 +344,12 @@ bool Reactor::addContentHandlerImpl(bool itsPrivate,
     }
 
     HandlerPtr theView(new HandlerView(theHandler,
-                                                           filter,
-                                                           thePlugin,
-                                                           theUri,
-                                                           itsLoggingEnabled,
-                                                           itsPrivate,
-                                                           itsOptions.accesslogdir));
+                                       filter,
+                                       thePlugin,
+                                       theUri,
+                                       itsLoggingEnabled,
+                                       itsPrivate,
+                                       itsOptions.accesslogdir));
 
     std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
               << (itsPrivate ? "private " : "") << "URI " << theUri << " for plugin "
@@ -533,6 +537,46 @@ ActiveRequests::Requests Reactor::getActiveRequests() const
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Print the given request list
+ */
+// ----------------------------------------------------------------------
+
+void print_requests(const Spine::ActiveRequests::Requests& requests)
+{
+  // Based on Admin::Plugin::requestActiveRequests
+
+  auto now = boost::posix_time::microsec_clock::universal_time();
+
+  std::cout << "Printing active requests due to high load:\n"
+            << "Number\tID\tTime\tDuration\tIP\tAPIKEY\t\tURI\n";
+
+  std::size_t row = 0;
+  for (const auto& id_info : requests)
+  {
+    const auto id = id_info.first;
+    const auto& time = id_info.second.time;
+    const auto& req = id_info.second.request;
+
+    auto duration = now - time;
+
+    const bool check_access_token = false;
+    auto apikey = FmiApiKey::getFmiApiKey(req, check_access_token);
+
+    // clang-format off
+    std::cout << row++ << "\t"
+              << Fmi::to_string(id) << "\t"
+              << Fmi::to_iso_extended_string(time.time_of_day()) << "\t"
+              << Fmi::to_string(duration.total_milliseconds() / 1000.0) << "\t"
+              << req.getClientIP() << "\t"
+              << (apikey ? *apikey : "-\t") << "\t"
+              << req.getURI() << "\n";
+    // clang-format on
+  }
+  std::cout << std::flush;
+}
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Add a new active request
  */
 // ----------------------------------------------------------------------
@@ -544,8 +588,8 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
   auto n = itsActiveRequests.size();
 
   // Run alert script if needed
-  
-  if(n >= itsOptions.throttle.alert_limit && !itsOptions.throttle.alert_script.empty())
+
+  if (n >= itsOptions.throttle.alert_limit && !itsOptions.throttle.alert_script.empty())
   {
     if (itsActiveRequestsLimit < itsOptions.throttle.limit)
     {
@@ -553,27 +597,52 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
     }
     else if (itsRunningAlertScript)
     {
-      if (itsOptions.verbose)
-        std::cerr << Spine::log_time_str() << " Alert script already running" << std::endl;
+      // This turns out to be a bit too verbose
+      // if (itsOptions.verbose)
+      // std::cerr << Spine::log_time_str() << " Alert script already running" << std::endl;
     }
     else
     {
       itsRunningAlertScript = true;
-      if (itsOptions.verbose)
-        std::cerr << Spine::log_time_str() << " Running alert script "
-                  << itsOptions.throttle.alert_script << std::endl;
 
-      std::thread thr([this] {
-        boost::process::child cld(itsOptions.throttle.alert_script);
-        cld.wait();
-        itsRunningAlertScript = false;
-      });
-      thr.detach();
+      // First print the active requests since the alert script may be slow
+      if (itsOptions.verbose)
+        print_requests(getActiveRequests());
+
+      if (!boost::filesystem::exists(itsOptions.throttle.alert_script))
+      {
+        std::cerr << Spine::log_time_str() << " Configured alert script  "
+                  << itsOptions.throttle.alert_script << " does not exist" << std::endl;
+      }
+      else
+      {
+        // Run the alert script in a separate thread not to delay the user response too much
+        if (itsOptions.verbose)
+          std::cerr << Spine::log_time_str() << " Running alert script "
+                    << itsOptions.throttle.alert_script << std::endl;
+
+        std::thread thr(
+            [this]
+            {
+              try
+              {
+                boost::process::child cld(itsOptions.throttle.alert_script);
+                cld.wait();
+              }
+              catch (...)
+              {
+                std::cerr << Spine::log_time_str() << " Running alert script "
+                          << itsOptions.throttle.alert_script << " failed!" << std::endl;
+              }
+              itsRunningAlertScript = false;
+            });
+        thr.detach();
+      }
     }
   }
 
   // Check if we should report high load
-  
+
   if (n < itsActiveRequestsLimit)
   {
     itsHighLoadFlag = false;
@@ -582,7 +651,7 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
 
   // Load is now high
 
-  itsActiveRequestsCounter = 0; // now new finished active requests yet
+  itsActiveRequestsCounter = 0;  // now new finished active requests yet
 
   itsHighLoadFlag = true;
 
@@ -863,8 +932,8 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool /* verbose */)
 
       if (is_file_readable(configfile) != 0)
         throw Fmi::Exception(BCP,
-                               "plugin " + pluginname + " config " + configfile +
-                                   " is unreadable: " + std::strerror(errno));
+                             "plugin " + pluginname + " config " + configfile +
+                                 " is unreadable: " + std::strerror(errno));
     }
 
     // Find the ip filters
@@ -903,9 +972,9 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool /* verbose */)
     {
       // Start to initialize the plugin
 
-      itsInitTasks->add("Load plugin[" + theFilename + "]", [this, plugin, pluginname]() {
-        initializePlugin(plugin.get(), pluginname);
-      });
+      itsInitTasks->add("Load plugin[" + theFilename + "]",
+                        [this, plugin, pluginname]()
+                        { initializePlugin(plugin.get(), pluginname); });
 
       itsPlugins.push_back(plugin);
       return true;
@@ -951,9 +1020,9 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
     SmartMetEngine* theEngine = reinterpret_cast<SmartMetEngine*>(engineInstance);
 
     // Fire the initialization thread
-    itsInitTasks->add(
-        "New engine instance[" + theClassName + "]",
-        [this, theEngine, theClassName]() { initializeEngine(theEngine, theClassName); });
+    itsInitTasks->add("New engine instance[" + theClassName + "]",
+                      [this, theEngine, theClassName]()
+                      { initializeEngine(theEngine, theClassName); });
 
     return engineInstance;
   }
@@ -1039,8 +1108,8 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
       absolutize_path(configfile);
       if (is_file_readable(configfile) != 0)
         throw Fmi::Exception(BCP,
-                               "engine " + enginename + " config " + configfile +
-                                   " is unreadable: " + std::strerror(errno));
+                             "engine " + enginename + " config " + configfile +
+                                 " is unreadable: " + std::strerror(errno));
     }
 
     itsEngineConfigs.insert(ConfigList::value_type(enginename, configfile));
@@ -1065,7 +1134,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     if (itsNamePointer == nullptr || itsCreatorPointer == nullptr)
     {
       throw Fmi::Exception(BCP,
-                             "Cannot resolve dynamic library symbols: " + std::string(dlerror()));
+                           "Cannot resolve dynamic library symbols: " + std::string(dlerror()));
     }
 
     // Create a permanent string out of engines human readable name
@@ -1287,8 +1356,8 @@ void* Reactor::getEnginePtr(const std::string& theClassName, void* user_data)
   {
     if (itsShutdownRequested)
     {
-      throw Fmi::Exception::Trace(BCP,
-                             "Shutdown in progress - engine " + theClassName + " is not available")
+      throw Fmi::Exception::Trace(
+          BCP, "Shutdown in progress - engine " + theClassName + " is not available")
           .disableStackTrace();
     }
     else
@@ -1302,6 +1371,11 @@ void* Reactor::getEnginePtr(const std::string& theClassName, void* user_data)
 bool Reactor::isShutdownRequested()
 {
   return itsShutdownRequested;
+}
+
+bool Reactor::isInitializing() const
+{
+  return itsInitializing;
 }
 
 void Reactor::shutdown()
@@ -1346,10 +1420,12 @@ void Reactor::shutdown()
     {
       std::cout << ANSI_FG_RED << "* Plugin [" << (*it)->pluginname() << "] shutting down\n"
                 << ANSI_FG_DEFAULT;
-      shutdownTasks.add("Plugin [" + (*it)->pluginname() + "] shutdown", [it]() {
-        (*it)->shutdownPlugin();
-        it->reset();
-      });
+      shutdownTasks.add("Plugin [" + (*it)->pluginname() + "] shutdown",
+                        [it]()
+                        {
+                          (*it)->shutdownPlugin();
+                          it->reset();
+                        });
     }
 
     shutdownTasks.wait();
@@ -1367,13 +1443,15 @@ void Reactor::shutdown()
            << '\n';
       std::cout << tmp1.str() << std::flush;
       SmartMetEngine* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-      shutdownTasks.add("Engine [" + it->first + "] shutdown", [engine, it]() {
-        engine->shutdownEngine();
-        std::ostringstream tmp2;
-        tmp2 << ANSI_FG_MAGENTA << "* Engine [" << it->first << "] shutdown complete"
-             << ANSI_FG_DEFAULT << '\n';
-        std::cout << tmp2.str() << std::flush;
-      });
+      shutdownTasks.add("Engine [" + it->first + "] shutdown",
+                        [engine, it]()
+                        {
+                          engine->shutdownEngine();
+                          std::ostringstream tmp2;
+                          tmp2 << ANSI_FG_MAGENTA << "* Engine [" << it->first
+                               << "] shutdown complete" << ANSI_FG_DEFAULT << '\n';
+                          std::cout << tmp2.str() << std::flush;
+                        });
     }
 
     shutdownTasks.wait();

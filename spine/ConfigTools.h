@@ -1,8 +1,8 @@
 #pragma once
 
-#include <macgyver/Exception.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/asio/ip/host_name.hpp>
+#include <macgyver/Exception.h>
 #include <libconfig.h++>
 
 namespace SmartMet

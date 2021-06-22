@@ -1,8 +1,8 @@
 #include "SmartMetPlugin.h"
 #include "Convenience.h"
-#include <macgyver/Exception.h>
 #include <boost/thread.hpp>
 #include <boost/timer/timer.hpp>
+#include <macgyver/Exception.h>
 
 SmartMetPlugin::SmartMetPlugin()
     : itsInitActive(false), itsShutdownRequested(false), requestCounter(0), responseCounter(0)
@@ -36,7 +36,8 @@ void SmartMetPlugin::initPlugin()
     catch (...)
     {
       Fmi::Exception exception(BCP, "Init call failed!", nullptr);
-      if (!itsShutdownRequested) {
+      if (!itsShutdownRequested)
+      {
         itsInitActive = false;
         throw exception;
       }
@@ -83,16 +84,18 @@ void SmartMetPlugin::shutdownPlugin()
 
     while (itsInitActive)
     {
-      std::cout << ("  -- waiting the plugin (" + getPluginName()
-          + ") to complete its initialization phase\n") << std::flush;
+      std::cout << ("  -- waiting the plugin (" + getPluginName() +
+                    ") to complete its initialization phase\n")
+                << std::flush;
       boost::this_thread::sleep(boost::posix_time::milliseconds(3000));
     }
 
     while (responseCounter < requestCounter)
     {
-      std::cout << ("  -- waiting the plugin (" + getPluginName()
-          + ") to complete its processing (" + std::to_string(responseCounter) + "/"
-          + std::to_string(requestCounter) + "\n") << std::flush;
+      std::cout << ("  -- waiting the plugin (" + getPluginName() +
+                    ") to complete its processing (" + std::to_string(responseCounter) + "/" +
+                    std::to_string(requestCounter) + "\n")
+                << std::flush;
       boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
     }
   }

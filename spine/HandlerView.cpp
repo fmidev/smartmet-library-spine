@@ -86,7 +86,16 @@ bool HandlerView::handle(Reactor& theReactor,
     {
       auto key = theReactor.insertActiveRequest(theRequest);
       auto before = boost::posix_time::microsec_clock::universal_time();
-      itsHandler(theReactor, theRequest, theResponse);
+
+      std::exception_ptr error;
+      try
+      {
+        itsHandler(theReactor, theRequest, theResponse);
+      }
+      catch (...)
+      {
+        error = std::current_exception();
+      }
       auto accessDuration = boost::posix_time::microsec_clock::universal_time() - before;
       theReactor.removeActiveRequest(key, theResponse.getStatus());
 
@@ -107,6 +116,9 @@ bool HandlerView::handle(Reactor& theReactor,
                                                  theResponse.getContentLength(),
                                                  (etag ? *etag : "-")));
       }
+
+      if (error)
+        std::rethrow_exception(error);
     }
 
     return true;

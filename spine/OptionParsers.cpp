@@ -207,7 +207,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
 
         if (num > 0 && 1440 % num != 0)
           throw Fmi::Exception(BCP,
-                                 "Timestep must be a divisor of 24*60 or zero for all timesteps!");
+                               "Timestep must be a divisor of 24*60 or zero for all timesteps!");
 
         options.timeStep = num;
       }

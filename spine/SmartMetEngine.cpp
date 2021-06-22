@@ -36,11 +36,11 @@ void SmartMetEngine::wait()
   try
   {
     boost::unique_lock<boost::mutex> theLock(itsInitMutex);
-    while (!isReady && !itsShutdownRequested) {
-      itsCond.wait_for(
-        theLock,
-        boost::chrono::seconds(1),
-        [this]() -> bool { return isReady || itsShutdownRequested; });
+    while (!isReady && !itsShutdownRequested)
+    {
+      itsCond.wait_for(theLock,
+                       boost::chrono::seconds(1),
+                       [this]() -> bool { return isReady || itsShutdownRequested; });
     }
   }
   catch (...)
