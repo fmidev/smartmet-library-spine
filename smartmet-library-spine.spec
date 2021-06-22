@@ -278,6 +278,9 @@ make %{_smp_mflags}
 * Mon Aug 10 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.8.10-1.fmi
 - Added throttling for slowing down the server during high load
 
+* Fri Jul 31 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.7.31-1.fmi
+- Repackaged due to libpqxx upgrade
+
 * Tue Jul 28 2020 Mika Heiskanen <mika.heiskanen@fmi.fi> - 20.6.28-2.fmi
 - Log also response size and ETag (or "-" if not set)
 
@@ -296,6 +299,7 @@ make %{_smp_mflags}
 - In addition to ':'-character also '/'- and ';'-characters are supported
 
 * Tue May 12 2020 Anssi Reponen <anssi.reponen@fmi.fi> - 20.5.12-1.fmi
+- Ported to use GDAL 3.0
 - Support for sensors, TaggedFMISIDs (BRAINSTORM-1678)
 
 * Thu May  7 2020 Andris Pavenis <andris.pavenis@fmi.fi> - 20.5.7-1.fmi

@@ -130,6 +130,7 @@ void CRSRegistry::register_proj4(const std::string& name,
     {
       throw Fmi::Exception(BCP, "Failed to parse PROJ.4 definition '" + proj4_def + "'!");
     }
+    entry.cs->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
 
 #if GDAL_VERSION_MAJOR >= 3
     entry.cs->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
@@ -281,7 +282,7 @@ std::string CRSRegistry::get_proj4(const std::string& name)
     auto& entry = get_entry(name);
     entry.cs->exportToProj4(&tmp);
     std::string result(tmp);
-    OGRFree(tmp);
+    CPLFree(tmp);
     return result;
   }
   catch (...)
@@ -570,7 +571,7 @@ void CRSRegistry::TransformationImpl::transform(OGRGeometry& geometry)
       char* gText = nullptr;
       geometry.exportToWkt(&gText);
       msg << "Failed to transform geometry " << gText << " to " << to_name;
-      OGRFree(gText);
+      CPLFree(gText);
       throw Fmi::Exception(BCP, msg.str());
     }
   }

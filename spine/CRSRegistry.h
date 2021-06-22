@@ -13,6 +13,8 @@
 #include <macgyver/TypeName.h>
 #include <newbase/NFmiPoint.h>
 #include <map>
+#include <ogr_geometry.h>
+#include <ogr_spatialref.h>
 #include <ostream>
 #include <typeinfo>
 
