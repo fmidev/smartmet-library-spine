@@ -1466,6 +1466,7 @@ void Reactor::shutdown()
     {
       std::cout << ANSI_FG_RED << "* Deleting engine [" << it->first << "]\n" << ANSI_FG_DEFAULT;
       SmartMetEngine* engine = reinterpret_cast<SmartMetEngine*>(it->second);
+      boost::this_thread::disable_interruption do_not_disturb;
       delete engine;
     }
   }

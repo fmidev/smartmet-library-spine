@@ -26,6 +26,7 @@ LIBS += ../libsmartmet-spine.so \
 	-lboost_date_time \
 	-lboost_thread \
 	-lboost_program_options \
+	-lboost_chrono \
 	-lboost_system \
 	-lbz2 -lz -lpthread -ldl
 
