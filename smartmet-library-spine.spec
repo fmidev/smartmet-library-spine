@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.6.22
+Version: 21.7.5
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -109,6 +109,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Mon Jul  5 2021 Andris Pavēnis <andris.pavenis@fmi.fi> 21.7.5-1.fmi
+- Move DataFilter from obsengine to spine
+
 * Tue Jun 22 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.6.22-1.fmi
 - Merged WGS84 branch to master
 
