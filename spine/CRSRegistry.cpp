@@ -74,7 +74,7 @@ class CRSRegistry::TransformationImpl : public CRSRegistry::Transformation
 
 #define CHECK_NAME(name)   \
   if (crs_map.count(name)) \
-    throw Fmi::Exception(BCP, "Duplicate name of coordinate system (" + name + ")!");
+    throw Fmi::Exception(BCP, "Duplicate name of coordinate system (" + (name) + ")!");
 
 CRSRegistry::CRSRegistry() {}
 
