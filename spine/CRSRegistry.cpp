@@ -295,7 +295,7 @@ void CRSRegistry::dump_info(std::ostream& output)
 {
   try
   {
-    BOOST_FOREACH (const auto& item, crs_map)
+    for (const auto& item : crs_map)
     {
       output << "CRSRegistry: name='" << item.second.name << "' regex='" << item.second.regex
              << "' proj4='" << get_proj4(item.second.name) << "'" << std::endl;
@@ -312,7 +312,7 @@ std::vector<std::string> CRSRegistry::get_crs_keys() const
   try
   {
     std::vector<std::string> result;
-    BOOST_FOREACH (const auto& item, crs_map)
+    for (const auto& item : crs_map)
     {
       result.push_back(item.first);
     }
@@ -359,7 +359,7 @@ CRSRegistry::MapEntry& CRSRegistry::get_entry(const std::string& name)
       }
 
       // Not found by name: try searching using regex match
-      BOOST_FOREACH (auto& item, crs_map)
+      for (auto& item : crs_map)
       {
         if (not item.second.regex.empty())
         {
