@@ -22,7 +22,7 @@ SequenceFilterPtr makeFilter(const std::string& formatToken)
     {
       return SequenceFilterPtr(new AnyFilter(formatToken));
     }
-    else if (formatToken.find("-") != std::string::npos)
+    else if (formatToken.find('-') != std::string::npos)
     {
       return SequenceFilterPtr(new RangeFilter(formatToken));
     }

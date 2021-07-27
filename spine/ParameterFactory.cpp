@@ -507,17 +507,17 @@ std::string ParameterFactory::parse_parameter_functions(
       size_t startIndex = paramreq.find("date(") + 4;
       std::string restOfTheParamReq = paramreq.substr(startIndex);
 
-      if (restOfTheParamReq.find(")") == std::string::npos)
+      if (restOfTheParamReq.find(')') == std::string::npos)
         throw Fmi::Exception(BCP, "Errorneous parameter request '" + theParameterRequest + "'!");
 
-      size_t sizeOfTimeFormatString = restOfTheParamReq.find(")") + 1;
+      size_t sizeOfTimeFormatString = restOfTheParamReq.find(')') + 1;
       restOfTheParamReq = restOfTheParamReq.substr(sizeOfTimeFormatString);
       date_formatting_string = paramreq.substr(startIndex, sizeOfTimeFormatString);
       paramreq.erase(startIndex, sizeOfTimeFormatString);
     }
 
     // If there is no timeseries functions involved, don't continue parsing
-    if (paramreq.find("(") == std::string::npos)
+    if (paramreq.find('(') == std::string::npos)
     {
       theOriginalName = paramreq + date_formatting_string;
       Fmi::ascii_tolower(paramreq);
@@ -547,11 +547,11 @@ std::string ParameterFactory::parse_parameter_functions(
     unsigned int aggregation_interval_behind = std::numeric_limits<unsigned int>::max();
     unsigned int aggregation_interval_ahead = std::numeric_limits<unsigned int>::max();
     std::string intervalSeparator(":");
-    if (paramname.find("/") != std::string::npos)
+    if (paramname.find('/') != std::string::npos)
       intervalSeparator = "/";
-    else if (paramname.find(";") != std::string::npos)
+    else if (paramname.find(';') != std::string::npos)
       intervalSeparator = ";";
-    else if (paramname.find(":") != std::string::npos)
+    else if (paramname.find(':') != std::string::npos)
       intervalSeparator = ":";
 
     if (paramname.find(intervalSeparator) != std::string::npos)
@@ -694,21 +694,21 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
 
     std::string innermost_item = tmpname;
     // If sensor info exists it is inside the innermost parenthesis
-    while (innermost_item.find_first_of("(") != innermost_item.find_last_of("("))
+    while (innermost_item.find_first_of('(') != innermost_item.find_last_of('('))
     {
-      size_t count = innermost_item.find_last_of(")") - innermost_item.find_first_of("(") - 1;
+      size_t count = innermost_item.find_last_of(')') - innermost_item.find_first_of('(') - 1;
       innermost_item = innermost_item.substr(innermost_item.find_first_of("(") + 1, count);
     }
 
     if (!boost::algorithm::istarts_with(name, "date(") &&
-        innermost_item.find("(") != std::string::npos)
+        innermost_item.find('(') != std::string::npos)
     {
       Fmi::trim(innermost_item);
-      std::string innermost_name = innermost_item.substr(0, innermost_item.find("("));
-      if (innermost_item.find("[") != std::string::npos)
+      std::string innermost_name = innermost_item.substr(0, innermost_item.find('('));
+      if (innermost_item.find('[') != std::string::npos)
       {
         // Remove [..., for example percentage_t[0:60](TotalCloudCover)
-        innermost_name = innermost_name.substr(0, innermost_item.find("["));
+        innermost_name = innermost_name.substr(0, innermost_item.find('['));
       }
       bool sensor_parameter_exists = false;
       // If the name before innermost parenthesis is not a function it must be a parameter
@@ -716,20 +716,20 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
       if (get_function_index(innermost_name) < 0)
       {
         // Sensor info
-        auto len = innermost_item.find(")") - innermost_item.find("(") + 1;
-        auto sensor_info = innermost_item.substr(innermost_item.find("("), len);
-        if (sensor_info.find(":") != sensor_info.rfind(":"))
+        auto len = innermost_item.find(')') - innermost_item.find('(') + 1;
+        auto sensor_info = innermost_item.substr(innermost_item.find('('), len);
+        if (sensor_info.find(':') != sensor_info.rfind(':'))
         {
-          auto len = sensor_info.rfind(")") - sensor_info.rfind(":") - 1;
-          sensor_parameter = sensor_info.substr(sensor_info.rfind(":") + 1, len);
-          len = sensor_info.rfind(":") - sensor_info.find(":") - 1;
-          sensor_no = sensor_info.substr(sensor_info.find(":") + 1, len);
+          auto len = sensor_info.rfind(')') - sensor_info.rfind(':') - 1;
+          sensor_parameter = sensor_info.substr(sensor_info.rfind(':') + 1, len);
+          len = sensor_info.rfind(':') - sensor_info.find(':') - 1;
+          sensor_no = sensor_info.substr(sensor_info.find(':') + 1, len);
           sensor_parameter_exists = true;
         }
-        else if (sensor_info.find(":") != std::string::npos)
+        else if (sensor_info.find(':') != std::string::npos)
         {
-          size_t len = sensor_info.rfind(")") - sensor_info.find(":") - 1;
-          sensor_no = sensor_info.substr(sensor_info.find(":") + 1, len);
+          size_t len = sensor_info.rfind(')') - sensor_info.find(':') - 1;
+          sensor_no = sensor_info.substr(sensor_info.find(':') + 1, len);
         }
         Fmi::trim(sensor_parameter);
         Fmi::trim(sensor_no);
