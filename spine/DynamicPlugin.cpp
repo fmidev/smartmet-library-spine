@@ -77,11 +77,14 @@ DynamicPlugin::~DynamicPlugin()
   std::cout << "\t  + [Destructing dynamic plugin '" << itsFilename << "']" << std::endl;
 
   // Call the actual module destroy implementation (private method)
-  try {
+  try
+  {
     // Long operations must be handled in shutdown instead
     boost::this_thread::disable_interruption do_not_disturb;
     pluginClose();
-  } catch (...) {
+  }
+  catch (...)
+  {
     std::cout << Fmi::Exception::Trace(BCP, "Operation failed!").getStackTrace() << std::endl;
   }
 }
@@ -142,7 +145,9 @@ void DynamicPlugin::pluginOpen()
     if (itsHandle == nullptr)
     {
       // Error occurred while opening the dynamic library
-      throw Fmi::Exception(BCP, "Unable to load dynamic library plugin: " + std::string(dlerror()));
+      throw Fmi::Exception(BCP,
+                           "Unable to load dynamic library plugin: " +
+                               std::string(dlerror()));  // NOLINT dlerror is not thread safe
     }
 
     // Load the symbols (pointers to functions in dynamic library)
@@ -154,7 +159,9 @@ void DynamicPlugin::pluginOpen()
     // Check that pointers to function were loaded succesfully
     if (plugin_create_func == nullptr || plugin_destroy_func == nullptr)
     {
-      throw Fmi::Exception(BCP, "Cannot load symbols: " + std::string(dlerror()));
+      throw Fmi::Exception(
+          BCP,
+          "Cannot load symbols: " + std::string(dlerror()));  // NOLINT dlerror is not thread safe
     }
 
     // Create an instance of the class using the pointer to "create" function

@@ -208,7 +208,7 @@ void Reactor::init()
     catch (...)
     {
       std::cout << "Initialization failed" << std::endl;
-      exit(1);
+      exit(1);  // NOLINT not thread safe
     }
     // Set ContentEngine default logging. Do this after plugins are loaded so handlers are
     // recognized
@@ -932,8 +932,8 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool /* verbose */)
 
       if (is_file_readable(configfile) != 0)
         throw Fmi::Exception(BCP,
-                             "plugin " + pluginname + " config " + configfile +
-                                 " is unreadable: " + std::strerror(errno));
+                             "plugin " + pluginname + " config " + configfile + " is unreadable: " +
+                                 std::strerror(errno));  // NOLINT not thread safe
     }
 
     // Find the ip filters
@@ -1108,8 +1108,8 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
       absolutize_path(configfile);
       if (is_file_readable(configfile) != 0)
         throw Fmi::Exception(BCP,
-                             "engine " + enginename + " config " + configfile +
-                                 " is unreadable: " + std::strerror(errno));
+                             "engine " + enginename + " config " + configfile + " is unreadable: " +
+                                 std::strerror(errno));  // NOLINT not thread safe
     }
 
     itsEngineConfigs.insert(ConfigList::value_type(enginename, configfile));
@@ -1118,8 +1118,9 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     if (itsHandle == nullptr)
     {
       // Error occurred while opening the dynamic library
-      throw Fmi::Exception(
-          BCP, "Unable to load dynamic engine class library: " + std::string(dlerror()));
+      throw Fmi::Exception(BCP,
+                           "Unable to load dynamic engine class library: " +
+                               std::string(dlerror()));  // NOLINT not thread safe
     }
 
     // Load the symbols (pointers to functions in dynamic library)
@@ -1134,7 +1135,8 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
     if (itsNamePointer == nullptr || itsCreatorPointer == nullptr)
     {
       throw Fmi::Exception(BCP,
-                           "Cannot resolve dynamic library symbols: " + std::string(dlerror()));
+                           "Cannot resolve dynamic library symbols: " +
+                               std::string(dlerror()));  // NOLINT not thread safe
     }
 
     // Create a permanent string out of engines human readable name
