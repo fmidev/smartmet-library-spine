@@ -297,7 +297,7 @@ bool get_processed_response(const SmartMet::Spine::HTTP::Response& response,
       put_file_contents(temp_fn, result);
       std::string cmd = scriptfile.string() + " " + temp_fn.string();
 
-      handle = popen(cmd.c_str(), "r");
+      handle = popen(cmd.c_str(), "r");  // NOLINT this is safe enough in tests
 
       if (!handle)
         throw Fmi::Exception(BCP, "The 'popen()' function call failed!");
