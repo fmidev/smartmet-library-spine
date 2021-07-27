@@ -588,12 +588,12 @@ std::string boost_any_to_string(const boost::any& anyvalue, const ValueFormatter
     }
     else if (type == typeid(double))
     {
-      double doublevalue(boost::any_cast<double>(anyvalue));
+      auto doublevalue = boost::any_cast<double>(anyvalue);
       retval = vf.format(doublevalue, precision);
     }
     else if (type == typeid(long double))
     {
-      double doublevalue(static_cast<double>(boost::any_cast<long double>(anyvalue)));
+      auto doublevalue = static_cast<double>(boost::any_cast<long double>(anyvalue));
       retval = vf.format(doublevalue, precision);
     }
     else if (type == typeid(std::string))
@@ -609,7 +609,7 @@ std::string boost_any_to_string(const boost::any& anyvalue, const ValueFormatter
     }
     else if (type == typeid(std::vector<boost::any>))
     {
-      std::vector<boost::any> anyvector = boost::any_cast<std::vector<boost::any> >(anyvalue);
+      auto anyvector = boost::any_cast<std::vector<boost::any> >(anyvalue);
 
       bool matrix_data(anyvector.size() > 1);
       if (matrix_data)

@@ -581,9 +581,9 @@ void CRSRegistry::parse_single_crs_def(Spine::ConfigBase& theConfig, libconfig::
     const std::string name = theConfig.get_mandatory_config_param<std::string>(theEntry, "name");
     bool swap_coord = theConfig.get_optional_config_param<bool>(theEntry, "swapCoord", false);
     bool show_height = theConfig.get_optional_config_param<bool>(theEntry, "showHeight", false);
-    const std::string axis_labels =
+    const auto axis_labels =
         theConfig.get_mandatory_config_param<std::string>(theEntry, "axisLabels");
-    const std::string proj_epoch_uri =
+    const auto proj_epoch_uri =
         theConfig.get_mandatory_config_param<std::string>(theEntry, "projEpochUri");
     std::string proj_uri;
 
@@ -594,18 +594,15 @@ void CRSRegistry::parse_single_crs_def(Spine::ConfigBase& theConfig, libconfig::
       const std::string def_regex = str(format("(?:urn:ogc:def:crs:|)EPSG:{1,2}%04u") % epsg);
       const std::string def_proj_uri =
           str(format("http://www.opengis.net/def/crs/EPSG/0/%04u") % epsg);
-      std::string regex =
-          theConfig.get_optional_config_param<std::string>(theEntry, "regex", def_regex);
+      auto regex = theConfig.get_optional_config_param<std::string>(theEntry, "regex", def_regex);
       proj_uri =
           theConfig.get_optional_config_param<std::string>(theEntry, "projUri", def_proj_uri);
       register_epsg(name, epsg, regex, swap_coord);
     }
     else
     {
-      const std::string proj4 =
-          theConfig.get_mandatory_config_param<std::string>(theEntry, "proj4");
-      const std::string regex =
-          theConfig.get_mandatory_config_param<std::string>(theEntry, "regex");
+      const auto proj4 = theConfig.get_mandatory_config_param<std::string>(theEntry, "proj4");
+      const auto regex = theConfig.get_mandatory_config_param<std::string>(theEntry, "regex");
       proj_uri = theConfig.get_mandatory_config_param<std::string>(theEntry, "projUri");
       register_proj4(name, proj4, regex, swap_coord);
       if (theEntry.exists("epsgCode"))

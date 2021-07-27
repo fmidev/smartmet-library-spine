@@ -1011,7 +1011,7 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
     // Construct the new engine instance
     void* engineInstance = it->second(configfile.c_str(), user_data);
 
-    SmartMetEngine* theEngine = reinterpret_cast<SmartMetEngine*>(engineInstance);
+    auto* theEngine = reinterpret_cast<SmartMetEngine*>(engineInstance);
 
     // Fire the initialization thread
     itsInitTasks->add("New engine instance[" + theClassName + "]",
@@ -1065,7 +1065,7 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
 
     // Engines must be wait() - ed before use, do it here so plugins don't have worry about it
 
-    SmartMetEngine* thisEngine = reinterpret_cast<SmartMetEngine*>(result);
+    auto* thisEngine = reinterpret_cast<SmartMetEngine*>(result);
 
     thisEngine->wait();
 
@@ -1117,10 +1117,9 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
 
     // Load the symbols (pointers to functions in dynamic library)
 
-    EngineNamePointer itsNamePointer =
-        reinterpret_cast<EngineNamePointer>(dlsym(itsHandle, "engine_name"));
+    auto itsNamePointer = reinterpret_cast<EngineNamePointer>(dlsym(itsHandle, "engine_name"));
 
-    EngineInstanceCreator itsCreatorPointer =
+    auto itsCreatorPointer =
         reinterpret_cast<EngineInstanceCreator>(dlsym(itsHandle, "engine_class_creator"));
 
     // Check that pointers to function were loaded succesfully
@@ -1394,7 +1393,7 @@ void Reactor::shutdown()
 
     for (auto it = itsSingletons.begin(); it != itsSingletons.end(); it++)
     {
-      SmartMetEngine* engine = reinterpret_cast<SmartMetEngine*>(it->second);
+      auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
       engine->setShutdownRequestedFlag();
     }
 
@@ -1434,7 +1433,7 @@ void Reactor::shutdown()
       tmp1 << ANSI_FG_RED << "* Engine [" << it->first << "] shutting down" << ANSI_FG_DEFAULT
            << '\n';
       std::cout << tmp1.str() << std::flush;
-      SmartMetEngine* engine = reinterpret_cast<SmartMetEngine*>(it->second);
+      auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
       shutdownTasks.add("Engine [" + it->first + "] shutdown",
                         [engine, it]()
                         {
@@ -1457,7 +1456,7 @@ void Reactor::shutdown()
     for (auto it = itsSingletons.begin(); it != itsSingletons.end(); it++)
     {
       std::cout << ANSI_FG_RED << "* Deleting engine [" << it->first << "]\n" << ANSI_FG_DEFAULT;
-      SmartMetEngine* engine = reinterpret_cast<SmartMetEngine*>(it->second);
+      auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
       boost::this_thread::disable_interruption do_not_disturb;
       delete engine;
     }

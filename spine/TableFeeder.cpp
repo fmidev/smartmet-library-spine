@@ -101,7 +101,7 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeriesVector& ts_vector)
       return *this;
 
     unsigned int startRow(itsTableVisitor.getCurrentRow());
-    for (TimeSeriesVector::const_iterator it = ts_vector.begin(); it != ts_vector.end(); ++it)
+    for (auto it = ts_vector.cbegin(); it != ts_vector.cend(); ++it)
     {
       itsTableVisitor.setCurrentRow(startRow);
 
@@ -129,8 +129,7 @@ const TableFeeder& TableFeeder::operator<<(const std::vector<Value>& value_vecto
     if (value_vector.size() == 0)
       return *this;
 
-    for (std::vector<Value>::const_iterator it = value_vector.begin(); it != value_vector.end();
-         ++it)
+    for (auto it = value_vector.cbegin(); it != value_vector.cend(); ++it)
     {
       boost::apply_visitor(itsTableVisitor, *it);
     }

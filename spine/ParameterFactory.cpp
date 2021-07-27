@@ -788,7 +788,7 @@ Parameter ParameterFactory::parse(const std::string& paramname,
       throw Fmi::Exception(BCP, "Empty parameters are not allowed!");
 
     // Metaparameters are required to have a FmiParameterName too
-    FmiParameterName number = FmiParameterName(converter.ToEnum(paramname));
+    auto number = FmiParameterName(converter.ToEnum(paramname));
 
     if (number == kFmiBadParameter && Fmi::looks_signed_int(paramname))
       number = FmiParameterName(Fmi::stol(paramname));
