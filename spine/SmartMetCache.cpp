@@ -166,7 +166,7 @@ void SmartMetCache::queueFileWrites(const std::vector<std::pair<KeyType, ValueTy
   try
   {
     boost::unique_lock<boost::mutex> theLock(itsMutex);
-    for (auto& entry_pair : items)
+    for (const auto& entry_pair : items)
     {
       // Insert this entry into the pending writes queue
       itsPendingWrites.emplace_front(entry_pair.first, entry_pair.second);

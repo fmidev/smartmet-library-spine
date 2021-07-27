@@ -765,7 +765,7 @@ URIMap Reactor::getURIMap() const
     ReadLock lock(itsContentMutex);
     URIMap theMap;
 
-    for (auto& handlerPair : itsHandlers)
+    for (const auto& handlerPair : itsHandlers)
     {
       // Getting plugin names during shutdown may throw due to a call to a pure virtual method.
       // This mitigates the problem, but does not solve it. The shutdown flag should be
@@ -1148,7 +1148,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
       return false;
 
     // Begin constructing the engine
-    auto theSingleton = newInstance(itsNamePointer(), nullptr);
+    auto* theSingleton = newInstance(itsNamePointer(), nullptr);
 
     // Check whether the preliminary creation succeeded
     if (theSingleton == nullptr)

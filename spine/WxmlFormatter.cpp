@@ -309,7 +309,7 @@ std::string WxmlFormatter::format_200(const Table& theTable,
       out += theTable.get(col_xmltime, j);
       out += "\"";
 
-      auto& tstring = theTable.get(col_timestring, j);
+      const auto& tstring = theTable.get(col_timestring, j);
       if (tstring != theTable.getMissingText() && !tstring.empty())
       {
         out += " timestring=\"";
