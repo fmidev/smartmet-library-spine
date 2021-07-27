@@ -306,20 +306,17 @@ libconfig::Setting& ConfigBase::assert_is_group(libconfig::Setting& setting)
   try
   {
     if (setting.isGroup())
-    {
+
       return setting;
-    }
-    else
-    {
-      std::ostringstream msg;
-      const std::string path = setting.getPath();
-      msg << "The libconfig group expected in the '" << format_path(nullptr, path) << " path!";
 
-      std::ostringstream msg2;
-      dump_setting(msg2, setting);
+    std::ostringstream msg;
+    const std::string path = setting.getPath();
+    msg << "The libconfig group expected in the '" << format_path(nullptr, path) << " path!";
 
-      throw Fmi::Exception(BCP, msg.str()).addDetail(msg2.str());
-    }
+    std::ostringstream msg2;
+    dump_setting(msg2, setting);
+
+    throw Fmi::Exception(BCP, msg.str()).addDetail(msg2.str());
   }
   catch (...)
   {
@@ -373,20 +370,17 @@ libconfig::Setting* ConfigBase::find_setting_impl(libconfig::Setting& search_sta
               .addParameter("Path", format_path(&search_start, path))
               .addDetail(curr->getPath() + "' is group when array or list is expected");
         }
-        else if (ind < 0 or ind >= curr->getLength())
+
+        if (ind < 0 or ind >= curr->getLength())
         {
-          if (mandatory)
-          {
-            throw Fmi::Exception(BCP, "Index in path is out of range!")
-                .addParameter("Configuration file", file_name)
-                .addParameter("Path", format_path(&search_start, path))
-                .addParameter("Index", std::to_string(ind))
-                .addParameter("Range", "0 .. " + std::to_string(curr->getLength() - 1));
-          }
-          else
-          {
+          if (!mandatory)
             return nullptr;
-          }
+
+          throw Fmi::Exception(BCP, "Index in path is out of range!")
+              .addParameter("Configuration file", file_name)
+              .addParameter("Path", format_path(&search_start, path))
+              .addParameter("Index", std::to_string(ind))
+              .addParameter("Range", "0 .. " + std::to_string(curr->getLength() - 1));
         }
         else
         {

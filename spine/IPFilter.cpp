@@ -19,21 +19,15 @@ SequenceFilterPtr makeFilter(const std::string& formatToken)
   try
   {
     if (formatToken == "*")
-    {
       return SequenceFilterPtr(new AnyFilter(formatToken));
-    }
-    else if (formatToken.find('-') != std::string::npos)
-    {
+
+    if (formatToken.find('-') != std::string::npos)
       return SequenceFilterPtr(new RangeFilter(formatToken));
-    }
-    else if (boost::algorithm::all(formatToken, boost::is_digit()))
-    {
+
+    if (boost::algorithm::all(formatToken, boost::is_digit()))
       return SequenceFilterPtr(new SingleFilter(formatToken));
-    }
-    else
-    {
-      throw Fmi::Exception(BCP, "Unrecognized format token: " + formatToken);
-    }
+
+    throw Fmi::Exception(BCP, "Unrecognized format token: " + formatToken);
   }
   catch (...)
   {
@@ -54,14 +48,7 @@ SingleFilter::SingleFilter(const std::string& format) : itsMatch(format) {}
 bool SingleFilter::match(const std::string& sequence) const
 {
   // Matches if match is exact
-  if (sequence == itsMatch)
-  {
-    return true;
-  }
-  else
-  {
-    return false;
-  }
+  return (sequence == itsMatch);
 }
 
 RangeFilter::RangeFilter(const std::string& format)
@@ -104,14 +91,7 @@ bool RangeFilter::match(const std::string& sequence) const
   {
     unsigned long compare = std::strtoul(sequence.c_str(), nullptr, 10);
 
-    if ((itsLowLimit <= compare) && (compare <= itsHighLimit))
-    {
-      return true;
-    }
-    else
-    {
-      return false;
-    }
+    return ((itsLowLimit <= compare) && (compare <= itsHighLimit));
   }
   catch (...)
   {

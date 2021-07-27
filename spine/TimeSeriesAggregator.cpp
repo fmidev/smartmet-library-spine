@@ -108,7 +108,8 @@ std::string StatCalculator::getStringStatValue(const ParameterFunction& func) co
     {
       return boost::get<std::string>(itsTimeSeries[0].value);
     }
-    else if (fid == FunctionId::Nearest || fid == FunctionId::Interpolate)
+
+    if (fid == FunctionId::Nearest || fid == FunctionId::Interpolate)
     {
       if (itsTimestep)
       {
@@ -120,11 +121,14 @@ std::string StatCalculator::getStringStatValue(const ParameterFunction& func) co
       }
       return boost::get<std::string>(itsTimeSeries[0].value);
     }
-    else if (fid == FunctionId::Maximum)
+
+    if (fid == FunctionId::Maximum)
       return boost::get<std::string>(itsTimeSeries[itsTimeSeries.size() - 1].value);
-    else if (fid == FunctionId::Minimum)
+
+    if (fid == FunctionId::Minimum)
       return boost::get<std::string>(itsTimeSeries[0].value);
-    else if (fid == FunctionId::Sum || fid == FunctionId::Integ)
+
+    if (fid == FunctionId::Sum || fid == FunctionId::Integ)
     {
       std::stringstream ss;
       ss << "[";
@@ -137,9 +141,11 @@ std::string StatCalculator::getStringStatValue(const ParameterFunction& func) co
       ss << "]";
       return ss.str();
     }
-    else if (fid == FunctionId::Median)
+
+    if (fid == FunctionId::Median)
       return boost::get<std::string>(itsTimeSeries[itsTimeSeries.size() / 2].value);
-    else if (fid == FunctionId::Count)
+
+    if (fid == FunctionId::Count)
     {
       // Fmi::Stat::Count functions can not be applid to strings, so
       // first add timesteps into data vector with double value 1.0,
@@ -150,12 +156,10 @@ std::string StatCalculator::getStringStatValue(const ParameterFunction& func) co
       Fmi::Stat::Stat stat(dataVector, kFloatMissing);
       return Fmi::to_string(stat.count(func.lowerLimit(), func.upperLimit()));
     }
-    else
-    {
-      std::stringstream ss;
-      ss << "Function " << func.hash() << " can not be applied for a string!";
-      throw Fmi::Exception(BCP, ss.str().c_str());
-    }
+
+    std::stringstream ss;
+    ss << "Function " << func.hash() << " can not be applied for a string!";
+    throw Fmi::Exception(BCP, ss.str().c_str());
   }
   catch (...)
   {

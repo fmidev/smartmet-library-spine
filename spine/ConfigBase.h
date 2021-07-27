@@ -68,10 +68,8 @@ class ConfigBase
         *result = get_mandatory_config_param<Type>(setting, theName);
         return true;
       }
-      else
-      {
-        return false;
-      }
+
+      return false;
     }
     catch (...)
     {
@@ -282,56 +280,50 @@ class ConfigBase
       {
         result.clear();
         libconfig::Setting* tmp1 = find_setting(parent, path, false);
-        if (tmp1)
-        {
-          libconfig::Setting& setting = *tmp1;
-
-          if (setting.isArray())
-          {
-            int len = setting.getLength();
-            if (len < min_size or len > max_size)
-            {
-              throw Fmi::Exception(BCP, "The size of the array setting is out of the range!")
-                  .addParameter("Configuration file", file_name)
-                  .addParameter("Size", std::to_string(len))
-                  .addParameter("Range",
-                                std::to_string(min_size) + " .. " + std::to_string(max_size));
-            }
-            for (int i = 0; i < len; i++)
-            {
-              MemberType member = get_setting_value<MemberType>(setting[i]);
-              result.push_back(member);
-            }
-            return true;
-          }
-          else if (setting.isScalar())
-          {
-            if (min_size > 1 or max_size < 1)
-            {
-              throw Fmi::Exception(BCP, "The size of the array setting is out of the range!")
-                  .addParameter("Configuration file", file_name)
-                  .addParameter("Size", "1")
-                  .addParameter("Range",
-                                std::to_string(min_size) + " .. " + std::to_string(max_size));
-            }
-            MemberType member = get_setting_value<MemberType>(setting);
-            result.push_back(member);
-            return true;
-          }
-          else
-          {
-            throw Fmi::Exception(BCP, "Incorrect configuration type!")
-                .addParameter("Configuration file", file_name)
-                .addParameter("Path", path)
-                .addDetail("Scalar or array of " +
-                           Fmi::demangle_cpp_type_name(typeid(MemberType).name()) +
-                           "was expected!");
-          }
-        }
-        else
-        {
+        if (!tmp1)
           return false;
+
+        libconfig::Setting& setting = *tmp1;
+
+        if (setting.isArray())
+        {
+          int len = setting.getLength();
+          if (len < min_size or len > max_size)
+          {
+            throw Fmi::Exception(BCP, "The size of the array setting is out of the range!")
+                .addParameter("Configuration file", file_name)
+                .addParameter("Size", std::to_string(len))
+                .addParameter("Range",
+                              std::to_string(min_size) + " .. " + std::to_string(max_size));
+          }
+          for (int i = 0; i < len; i++)
+          {
+            MemberType member = get_setting_value<MemberType>(setting[i]);
+            result.push_back(member);
+          }
+          return true;
         }
+
+        if (setting.isScalar())
+        {
+          if (min_size > 1 or max_size < 1)
+          {
+            throw Fmi::Exception(BCP, "The size of the array setting is out of the range!")
+                .addParameter("Configuration file", file_name)
+                .addParameter("Size", "1")
+                .addParameter("Range",
+                              std::to_string(min_size) + " .. " + std::to_string(max_size));
+          }
+          MemberType member = get_setting_value<MemberType>(setting);
+          result.push_back(member);
+          return true;
+        }
+
+        throw Fmi::Exception(BCP, "Incorrect configuration type!")
+            .addParameter("Configuration file", file_name)
+            .addParameter("Path", path)
+            .addDetail("Scalar or array of " +
+                       Fmi::demangle_cpp_type_name(typeid(MemberType).name()) + "was expected!");
       }
       catch (const libconfig::ConfigException&)
       {

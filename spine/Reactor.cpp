@@ -190,16 +190,14 @@ void Reactor::init()
     {
       throw Fmi::Exception(BCP, "plugins setting missing from the server configuration file");
     }
-    else
-    {
-      auto libs = findLibraries("plugin");
 
-      itsPluginCount = libs.size();
+    auto libs = findLibraries("plugin");
 
-      // Then load them in parallel, keeping track of how many have been loaded
-      for (const auto& libfile : libs)
-        loadPlugin(libfile, itsOptions.verbose);
-    }
+    itsPluginCount = libs.size();
+
+    // Then load them in parallel, keeping track of how many have been loaded
+    for (const auto& libfile : libs)
+      loadPlugin(libfile, itsOptions.verbose);
 
     try
     {
@@ -446,11 +444,9 @@ boost::optional<HandlerView&> Reactor::getHandlerView(const HTTP::Request& theRe
         // Return with true, as this was catched by external handler
         return boost::optional<HandlerView&>(*itsCatchNoMatchHandler);
       }
-      else
-      {
-        // No match found -- return with failure
-        return boost::optional<HandlerView&>();
-      }
+
+      // No match found -- return with failure
+      return boost::optional<HandlerView&>();
     }
 
     return boost::optional<HandlerView&>(*(it->second));
@@ -502,10 +498,8 @@ AccessLogStruct Reactor::getLoggedRequests() const
       }
       return std::make_tuple(true, requests, itsLogLastCleaned);
     }
-    else
-    {
-      return std::make_tuple(false, LoggedRequests(), boost::posix_time::ptime());
-    }
+
+    return std::make_tuple(false, LoggedRequests(), boost::posix_time::ptime());
   }
   catch (...)
   {
@@ -979,8 +973,8 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool /* verbose */)
       itsPlugins.push_back(plugin);
       return true;
     }
-    else
-      return false;  // Should we throw??
+
+    return false;  // Should we throw??
   }
   catch (...)
   {
@@ -1065,11 +1059,9 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
 
       return nullptr;
     }
-    else
-    {
-      // Found it, return the already-created instance of class.
-      result = it->second;
-    }
+
+    // Found it, return the already-created instance of class.
+    result = it->second;
 
     // Engines must be wait() - ed before use, do it here so plugins don't have worry about it
 
@@ -1362,10 +1354,8 @@ void* Reactor::getEnginePtr(const std::string& theClassName, void* user_data)
           BCP, "Shutdown in progress - engine " + theClassName + " is not available")
           .disableStackTrace();
     }
-    else
-    {
-      throw Fmi::Exception::Trace(BCP, "No " + theClassName + " engine available");
-    }
+
+    throw Fmi::Exception::Trace(BCP, "No " + theClassName + " engine available");
   }
   return ptr;
 }

@@ -75,13 +75,9 @@ const std::vector<std::string>& MultiLanguageStringArray::get(const std::string&
   {
     auto pos = data.find(Fmi::ascii_tolower_copy(language));
     if (pos == data.end())
-    {
       return get(default_language);
-    }
-    else
-    {
-      return pos->second;
-    }
+
+    return pos->second;
   }
   catch (...)
   {

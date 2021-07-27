@@ -120,13 +120,9 @@ std::string MultiLanguageString::get(const std::string& language) const
   {
     auto pos = data.find(Fmi::ascii_tolower_copy(language));
     if (pos == data.end())
-    {
       return get(default_language);
-    }
-    else
-    {
-      return pos->second;
-    }
+
+    return pos->second;
   }
   catch (...)
   {

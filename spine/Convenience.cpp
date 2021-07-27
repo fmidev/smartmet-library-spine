@@ -42,8 +42,7 @@ std::string optional_string(const boost::optional<std::string>& theValue,
   {
     if (!theValue)
       return theDefault;
-    else
-      return *theValue;
+    return *theValue;
   }
   catch (...)
   {
@@ -57,8 +56,7 @@ bool optional_bool(const char* theValue, bool theDefault)
   {
     if (theValue == nullptr)
       return theDefault;
-    else
-      return (Fmi::stoi(theValue) != 0);
+    return (Fmi::stoi(theValue) != 0);
   }
   catch (...)
   {
@@ -72,8 +70,7 @@ bool optional_bool(const boost::optional<std::string>& theValue, bool theDefault
   {
     if (!theValue)
       return theDefault;
-    else
-      return (Fmi::stoi(*theValue) != 0);
+    return (Fmi::stoi(*theValue) != 0);
   }
   catch (...)
   {
@@ -87,8 +84,7 @@ int optional_int(const char* theValue, int theDefault)
   {
     if (theValue == nullptr)
       return theDefault;
-    else
-      return Fmi::stoi(theValue);
+    return Fmi::stoi(theValue);
   }
   catch (...)
   {
@@ -102,8 +98,7 @@ int optional_int(const boost::optional<std::string>& theValue, int theDefault)
   {
     if (!theValue)
       return theDefault;
-    else
-      return Fmi::stoi(*theValue);
+    return Fmi::stoi(*theValue);
   }
   catch (...)
   {
@@ -117,8 +112,7 @@ std::size_t optional_size(const char* theValue, std::size_t theDefault)
   {
     if (theValue == nullptr)
       return theDefault;
-    else
-      return Fmi::stoul(theValue);
+    return Fmi::stoul(theValue);
   }
   catch (...)
   {
@@ -132,8 +126,7 @@ std::size_t optional_size(const boost::optional<std::string>& theValue, std::siz
   {
     if (!theValue)
       return theDefault;
-    else
-      return Fmi::stoul(*theValue);
+    return Fmi::stoul(*theValue);
   }
   catch (...)
   {
@@ -147,8 +140,7 @@ unsigned long optional_unsigned_long(const char* theValue, unsigned long theDefa
   {
     if (theValue == nullptr)
       return theDefault;
-    else
-      return Fmi::stoul(theValue);
+    return Fmi::stoul(theValue);
   }
   catch (...)
   {
@@ -163,8 +155,7 @@ unsigned long optional_unsigned_long(const boost::optional<std::string>& theValu
   {
     if (!theValue)
       return theDefault;
-    else
-      return Fmi::stoul(*theValue);
+    return Fmi::stoul(*theValue);
   }
   catch (...)
   {
@@ -178,8 +169,7 @@ char optional_char(const char* theValue, char theDefault)
   {
     if (theValue == nullptr)
       return theDefault;
-    else
-      return std::string(theValue).at(0);
+    return std::string(theValue).at(0);
   }
   catch (...)
   {
@@ -193,8 +183,7 @@ char optional_char(const boost::optional<std::string>& theValue, char theDefault
   {
     if (!theValue)
       return theDefault;
-    else
-      return std::string(*theValue).at(0);
+    return std::string(*theValue).at(0);
   }
   catch (...)
   {
@@ -208,8 +197,7 @@ double optional_double(const char* theValue, double theDefault)
   {
     if (theValue == nullptr)
       return theDefault;
-    else
-      return Fmi::stod(theValue);
+    return Fmi::stod(theValue);
   }
   catch (...)
   {
@@ -223,8 +211,7 @@ double optional_double(const boost::optional<std::string>& theValue, double theD
   {
     if (!theValue)
       return theDefault;
-    else
-      return Fmi::stod(*theValue);
+    return Fmi::stod(*theValue);
   }
   catch (...)
   {
@@ -239,8 +226,7 @@ boost::posix_time::ptime optional_time(const char* theValue,
   {
     if (theValue == nullptr)
       return theDefault;
-    else
-      return Fmi::TimeParser::parse(theValue);
+    return Fmi::TimeParser::parse(theValue);
   }
   catch (...)
   {
@@ -255,8 +241,7 @@ boost::posix_time::ptime optional_time(const boost::optional<std::string>& theVa
   {
     if (!theValue)
       return theDefault;
-    else
-      return Fmi::TimeParser::parse(*theValue);
+    return Fmi::TimeParser::parse(*theValue);
   }
   catch (...)
   {
@@ -268,16 +253,14 @@ std::string required_string(const char* theValue, const char* theError)
 {
   if (theValue == nullptr)
     throw Fmi::Exception(BCP, theError);
-  else
-    return theValue;
+  return theValue;
 }
 
 std::string required_string(const boost::optional<std::string>& theValue, const char* theError)
 {
   if (!theValue)
     throw Fmi::Exception(BCP, theError);
-  else
-    return *theValue;
+  return *theValue;
 }
 
 bool required_bool(const char* theValue, const char* theError)
@@ -286,8 +269,7 @@ bool required_bool(const char* theValue, const char* theError)
   {
     if (theValue == nullptr)
       throw Fmi::Exception(BCP, theError);
-    else
-      return (Fmi::stoi(theValue) != 0);
+    return (Fmi::stoi(theValue) != 0);
   }
   catch (...)
   {
@@ -301,8 +283,7 @@ bool required_bool(const boost::optional<std::string>& theValue, const char* the
   {
     if (!theValue)
       throw Fmi::Exception(BCP, theError);
-    else
-      return (Fmi::stoi(*theValue) != 0);
+    return (Fmi::stoi(*theValue) != 0);
   }
   catch (...)
   {
@@ -316,8 +297,7 @@ int required_int(const char* theValue, const char* theError)
   {
     if (theValue == nullptr)
       throw Fmi::Exception(BCP, theError);
-    else
-      return Fmi::stoi(theValue);
+    return Fmi::stoi(theValue);
   }
   catch (...)
   {
@@ -331,8 +311,7 @@ int required_int(const boost::optional<std::string>& theValue, const char* theEr
   {
     if (!theValue)
       throw Fmi::Exception(BCP, theError);
-    else
-      return Fmi::stoi(*theValue);
+    return Fmi::stoi(*theValue);
   }
   catch (...)
   {
@@ -346,8 +325,7 @@ std::size_t required_size(const char* theValue, const char* theError)
   {
     if (theValue == nullptr)
       throw Fmi::Exception(BCP, theError);
-    else
-      return Fmi::stoul(theValue);
+    return Fmi::stoul(theValue);
   }
   catch (...)
   {
@@ -361,8 +339,7 @@ std::size_t required_size(const boost::optional<std::string>& theValue, const ch
   {
     if (!theValue)
       throw Fmi::Exception(BCP, theError);
-    else
-      return Fmi::stoul(*theValue);
+    return Fmi::stoul(*theValue);
   }
   catch (...)
   {
@@ -376,8 +353,7 @@ unsigned long required_unsigned_long(const char* theValue, const char* theError)
   {
     if (theValue == nullptr)
       throw Fmi::Exception(BCP, theError);
-    else
-      return Fmi::stoul(theValue);
+    return Fmi::stoul(theValue);
   }
   catch (...)
   {
@@ -392,8 +368,7 @@ unsigned long required_unsigned_long(const boost::optional<std::string>& theValu
   {
     if (!theValue)
       throw Fmi::Exception(BCP, theError);
-    else
-      return Fmi::stoul(*theValue);
+    return Fmi::stoul(*theValue);
   }
   catch (...)
   {
@@ -407,8 +382,7 @@ char required_char(const char* theValue, const char* theError)
   {
     if (theValue == nullptr)
       throw Fmi::Exception(BCP, theError);
-    else
-      return std::string(theValue).at(0);
+    return std::string(theValue).at(0);
   }
   catch (...)
   {
@@ -422,8 +396,7 @@ char required_char(const boost::optional<std::string>& theValue, const char* the
   {
     if (!theValue)
       throw Fmi::Exception(BCP, theError);
-    else
-      return std::string(*theValue).at(0);
+    return std::string(*theValue).at(0);
   }
   catch (...)
   {
@@ -437,8 +410,7 @@ double required_double(const char* theValue, const char* theError)
   {
     if (theValue == nullptr)
       throw Fmi::Exception(BCP, theError);
-    else
-      return Fmi::stod(theValue);
+    return Fmi::stod(theValue);
   }
   catch (...)
   {
@@ -452,8 +424,7 @@ double required_double(const boost::optional<std::string>& theValue, const char*
   {
     if (!theValue)
       throw Fmi::Exception(BCP, theError);
-    else
-      return Fmi::stod(*theValue);
+    return Fmi::stod(*theValue);
   }
   catch (...)
   {
@@ -467,8 +438,7 @@ boost::posix_time::ptime required_time(const char* theValue, const char* theErro
   {
     if (theValue == nullptr)
       throw Fmi::Exception(BCP, theError);
-    else
-      return Fmi::TimeParser::parse(theValue);
+    return Fmi::TimeParser::parse(theValue);
   }
   catch (...)
   {
@@ -483,8 +453,7 @@ boost::posix_time::ptime required_time(const boost::optional<std::string>& theVa
   {
     if (!theValue)
       throw Fmi::Exception(BCP, theError);
-    else
-      return Fmi::TimeParser::parse(*theValue);
+    return Fmi::TimeParser::parse(*theValue);
   }
   catch (...)
   {
@@ -591,8 +560,7 @@ std::string boost_any_to_string(const boost::any& anyvalue, const ValueFormatter
     {
       if (type == typeid(char*) || type == typeid(std::string))
         return retval;
-      else
-        return vf.missing();
+      return vf.missing();
     }
 
     if (type == typeid(char*))

@@ -337,46 +337,41 @@ CRSRegistry::MapEntry& CRSRegistry::get_entry(const std::string& name)
       // Found entry by name ==> return it
       return it->second;
     }
-    else
+
+    const std::string opengisPrefix = "http://www.opengis.net/def/crs/epsg/";
+    bool isOpengis =
+        qi::phrase_parse(name_lower.begin(),
+                         name_lower.end(),
+                         qi::string(opengisPrefix) >> qi::ushort_ >> '/' >> qi::ushort_ >> qi::eps,
+                         ac::space);
+    std::string epsgCode = "EPSG::";
+
+    if (isOpengis)
     {
-      const std::string opengisPrefix = "http://www.opengis.net/def/crs/epsg/";
-      bool isOpengis = qi::phrase_parse(
-          name_lower.begin(),
-          name_lower.end(),
-          qi::string(opengisPrefix) >> qi::ushort_ >> '/' >> qi::ushort_ >> qi::eps,
-          ac::space);
-      std::string epsgCode = "EPSG::";
-
-      if (isOpengis)
+      std::string::size_type pos = name_lower.find_last_of('/');
+      if (pos != std::string::npos)
       {
-        std::string::size_type pos = name_lower.find_last_of('/');
-        if (pos != std::string::npos)
-        {
-          epsgCode.append(name_lower.substr(pos + 1));
-        }
-        else
-          isOpengis = false;
+        epsgCode.append(name_lower.substr(pos + 1));
       }
-
-      // Not found by name: try searching using regex match
-      for (auto& item : crs_map)
-      {
-        if (not item.second.regex.empty())
-        {
-          if (isOpengis and boost::regex_match(epsgCode, item.second.regex))
-          {
-            return item.second;
-          }
-          else if (boost::regex_match(name, item.second.regex))
-          {
-            return item.second;
-          }
-        }
-      }
-
-      // Still not found ==> throw an error
-      throw Fmi::Exception(BCP, "Coordinate system '" + name + "' not found!");
+      else
+        isOpengis = false;
     }
+
+    // Not found by name: try searching using regex match
+    for (auto& item : crs_map)
+    {
+      if (not item.second.regex.empty())
+      {
+        if (isOpengis and boost::regex_match(epsgCode, item.second.regex))
+          return item.second;
+
+        if (boost::regex_match(name, item.second.regex))
+          return item.second;
+      }
+    }
+
+    // Still not found ==> throw an error
+    throw Fmi::Exception(BCP, "Coordinate system '" + name + "' not found!");
   }
   catch (...)
   {
@@ -516,13 +511,11 @@ NFmiPoint CRSRegistry::TransformationImpl::transform(const NFmiPoint& src)
       NFmiPoint result(swap2 ? y : x, swap2 ? x : y);
       return result;
     }
-    else
-    {
-      std::ostringstream msg;
-      msg << "Coordinate transformatiom from " << from_name << " to " << to_name << " failed for ("
-          << src.X() << ", " << src.Y() << ")";
-      throw Fmi::Exception(BCP, msg.str());
-    }
+
+    std::ostringstream msg;
+    msg << "Coordinate transformatiom from " << from_name << " to " << to_name << " failed for ("
+        << src.X() << ", " << src.Y() << ")";
+    throw Fmi::Exception(BCP, msg.str());
   }
   catch (...)
   {
@@ -546,13 +539,11 @@ boost::array<double, 3> CRSRegistry::TransformationImpl::transform(
       result[2] = z;
       return result;
     }
-    else
-    {
-      std::ostringstream msg;
-      msg << "Coordinate transformatiom from " << from_name << " to " << to_name << " failed for ("
-          << src[0] << ", " << src[1] << ", " << src[1] << ")";
-      throw Fmi::Exception(BCP, msg.str());
-    }
+
+    std::ostringstream msg;
+    msg << "Coordinate transformatiom from " << from_name << " to " << to_name << " failed for ("
+        << src[0] << ", " << src[1] << ", " << src[1] << ")";
+    throw Fmi::Exception(BCP, msg.str());
   }
   catch (...)
   {

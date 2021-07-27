@@ -87,8 +87,7 @@ std::string formatLocation(const Location& loc, const std::string& key)
     {
       if (loc.fmisid)
         return Fmi::to_string(*loc.fmisid);
-      else
-        return "-";
+      return "-";
     }
     throw Fmi::Exception(BCP, "Unsupported location parameter name '" + key + "'!");
   }

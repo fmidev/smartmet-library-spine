@@ -72,12 +72,10 @@ bool Authentication::authenticateRequest(const Request& request, Response& respo
         unauthorizedResponse(response);
         return false;
       }
-      else
-      {
-        // Not supported or invalid authentication type
-        badRequestResponse(response);
-        return false;
-      }
+
+      // Not supported or invalid authentication type
+      badRequestResponse(response);
+      return false;
     }
     else
     {

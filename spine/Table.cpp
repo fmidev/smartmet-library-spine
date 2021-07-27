@@ -156,11 +156,9 @@ std::string Table::get(std::size_t theColumn,
     {
       return missing_text;
     }
-    else
-    {
-      const std::string& value = get(theColumn, theRow);
-      return value == "" ? missing_text : value;
-    }
+
+    const std::string& value = get(theColumn, theRow);
+    return value == "" ? missing_text : value;
   }
   catch (...)
   {
