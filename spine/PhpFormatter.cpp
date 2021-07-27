@@ -198,7 +198,7 @@ std::string format_attributes(const Table& theTable,
       std::set<std::string> values;
       for (std::size_t j : theRows)
       {
-        std::string value = theTable.get(nam, j);
+        const std::string& value = theTable.get(nam, j);
         if (!value.empty())
           values.insert(value);
       }

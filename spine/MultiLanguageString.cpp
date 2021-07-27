@@ -46,7 +46,7 @@ MultiLanguageString::MultiLanguageString(const std::string& default_language,
     if (setting.getType() == libconfig::Setting::TypeString)
     {
       const std::string value = setting;
-      const std::string name = default_language;
+      const std::string& name = default_language;
       data[name] = value;
     }
     else if (setting.getType() == libconfig::Setting::TypeGroup)

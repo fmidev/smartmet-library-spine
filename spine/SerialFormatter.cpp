@@ -110,7 +110,7 @@ std::string format_plain(const Table& theTable,
       for (std::size_t i : theCols)
       {
         const std::string& name = theNames[i];
-        std::string value = theTable.get(i, j);
+        const std::string& value = theTable.get(i, j);
 
         out += "s:";
         out += Fmi::to_string(name.size());
@@ -196,7 +196,7 @@ std::string format_attributes(const Table& theTable,
           out += name;
           out += "\";";
 
-          std::string value = theTable.get(i, j);
+          const std::string& value = theTable.get(i, j);
           out += "s:";
           out += (Fmi::to_string(value.empty() ? miss.size() : value.size()));
           out += ":\"";
@@ -223,7 +223,7 @@ std::string format_attributes(const Table& theTable,
       std::set<std::string> values;
       for (std::size_t j : theRows)
       {
-        std::string value = theTable.get(nam, j);
+        const std::string& value = theTable.get(nam, j);
         if (!value.empty())
           values.insert(value);
       }

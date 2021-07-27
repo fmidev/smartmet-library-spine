@@ -135,7 +135,7 @@ std::string WxmlFormatter::format_100(const Table& theTable,
     std::string origintime;
     for (std::size_t j : rows)
     {
-      auto t = theTable.get(col_origintime, j);
+      const auto& t = theTable.get(col_origintime, j);
       if (looks_time(t) && t > origintime)
         origintime = t;
     }
@@ -269,7 +269,7 @@ std::string WxmlFormatter::format_200(const Table& theTable,
     std::string origintime;
     for (std::size_t j : rows)
     {
-      auto t = theTable.get(col_origintime, j);
+      const auto& t = theTable.get(col_origintime, j);
       if (looks_time(t) && t > origintime)
         origintime = t;
     }
