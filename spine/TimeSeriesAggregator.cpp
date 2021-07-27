@@ -547,7 +547,7 @@ TimeSeriesPtr aggregate(const TimeSeries& ts, const ParameterFunctions& pf)
         // Do filtering
         TimeSeries local_ts = *ret;
         ret->clear();
-        for (auto tv : local_ts)
+        for (const auto& tv : local_ts)
         {
           if (include_value(tv, pf.outerFunction))
             ret->push_back(tv);
