@@ -231,7 +231,8 @@ std::string format_attributes(const Table& theTable,
       // Remove the attribute column temporarily
 
       theCols.erase(nam);
-      std::remove(theAttributes.begin(), theAttributes.end(), attribute);
+      std::remove(
+          theAttributes.begin(), theAttributes.end(), attribute);  // NOLINT not using return value
 
       // Process unique attribute values one at a time
 
