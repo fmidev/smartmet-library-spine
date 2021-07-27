@@ -1620,7 +1620,8 @@ std::string urldecode(std::string const& url)
 {
   try
   {
-    std::string::size_type pos = 0, next;
+    std::string::size_type pos = 0;
+    std::string::size_type next;
     std::string result;
     result.reserve(url.length());
 

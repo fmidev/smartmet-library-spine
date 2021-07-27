@@ -60,7 +60,8 @@ bool looks_number(const std::string& theValue)
   try
   {
     double result;
-    std::string::const_iterator begin = theValue.begin(), end = theValue.end();
+    auto begin = theValue.cbegin();
+    auto end = theValue.cend();
     if (boost::spirit::qi::parse(begin, end, boost::spirit::qi::double_, result))
     {
       if (begin == end)
