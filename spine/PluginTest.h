@@ -280,9 +280,7 @@ std::string get_full_response(SmartMet::Spine::HTTP::Response& response)
 
 // ----------------------------------------------------------------------
 
-bool get_processed_response(const SmartMet::Spine::HTTP::Response& response,
-                            const boost::filesystem::path& scriptfile,
-                            std::string& result)
+bool get_processed_response(const boost::filesystem::path& scriptfile, std::string& result)
 {
   try
   {
@@ -558,7 +556,7 @@ bool PluginTest::process_query(const fs::path& fn,
 
           if (exists(scriptfile))
           {
-            ok = get_processed_response(response, scriptfile, result);
+            ok = get_processed_response(scriptfile, result);
 
             if (!ok)
               out << "FAIL (result processing failed)";

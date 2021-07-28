@@ -1082,7 +1082,7 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
  */
 // ----------------------------------------------------------------------
 
-bool Reactor::loadEngine(const std::string& theFilename, bool verbose)
+bool Reactor::loadEngine(const std::string& theFilename, bool /* verbose */)
 {
   try
   {
