@@ -517,7 +517,7 @@ Spine::TimeSeries::Value time_parameter(const std::string paramname,
       ret = minutes;
     }
     if (paramname == TIMESTRING_PARAM)
-      ret = format_date(ldt, outlocale, timestring.c_str());
+      ret = format_date(ldt, outlocale, timestring);
 
     if (paramname == WDAY_PARAM)
       ret = format_date(ldt, outlocale, "%a");

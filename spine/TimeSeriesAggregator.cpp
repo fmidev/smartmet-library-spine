@@ -159,7 +159,7 @@ std::string StatCalculator::getStringStatValue(const ParameterFunction& func) co
 
     std::stringstream ss;
     ss << "Function " << func.hash() << " can not be applied for a string!";
-    throw Fmi::Exception(BCP, ss.str().c_str());
+    throw Fmi::Exception(BCP, ss.str());
   }
   catch (...)
   {
@@ -187,7 +187,7 @@ boost::local_time::local_date_time StatCalculator::getLocalDateTimeStatValue(
 
     std::stringstream ss;
     ss << "Function " << func.hash() << " can not be applied for a date!";
-    throw Fmi::Exception(BCP, ss.str().c_str());
+    throw Fmi::Exception(BCP, ss.str());
   }
   catch (...)
   {
@@ -245,7 +245,7 @@ LonLat StatCalculator::getLonLatStatValue(const ParameterFunction& func) const
     {
       std::stringstream ss;
       ss << "Function " << func.hash() << " can not be applied for a lonlat-coordinate!";
-      throw Fmi::Exception(BCP, ss.str().c_str());
+      throw Fmi::Exception(BCP, ss.str());
     }
   }
   catch (...)
