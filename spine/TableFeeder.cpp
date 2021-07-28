@@ -15,9 +15,9 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeries& ts)
     if (ts.empty())
       return *this;
 
-    for (unsigned int i = 0; i < ts.size(); i++)
+    for (auto& t : ts)
     {
-      Value val = ts[i].value;
+      Value val = t.value;
       boost::apply_visitor(itsTableVisitor, val);
     }
 
@@ -101,14 +101,15 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeriesVector& ts_vector)
       return *this;
 
     unsigned int startRow(itsTableVisitor.getCurrentRow());
-    for (auto it = ts_vector.cbegin(); it != ts_vector.cend(); ++it)
+
+    for (const auto& tvalue : ts_vector)
     {
       itsTableVisitor.setCurrentRow(startRow);
 
-      TimeSeries ts(*it);
-      for (size_t i = 0; i < ts.size(); i++)
+      TimeSeries ts(tvalue);
+      for (auto& t : ts)
       {
-        boost::apply_visitor(itsTableVisitor, ts[i].value);
+        boost::apply_visitor(itsTableVisitor, t.value);
       }
       itsTableVisitor.setCurrentColumn(itsTableVisitor.getCurrentColumn() + 1);
     }
@@ -129,9 +130,9 @@ const TableFeeder& TableFeeder::operator<<(const std::vector<Value>& value_vecto
     if (value_vector.size() == 0)
       return *this;
 
-    for (auto it = value_vector.cbegin(); it != value_vector.cend(); ++it)
+    for (auto& val : value_vector)
     {
-      boost::apply_visitor(itsTableVisitor, *it);
+      boost::apply_visitor(itsTableVisitor, val);
     }
 
     return *this;

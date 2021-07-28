@@ -615,11 +615,11 @@ std::string boost_any_to_string(const boost::any& anyvalue, const ValueFormatter
       if (matrix_data)
         retval.append("[");
 
-      for (unsigned int i = 0; i < anyvector.size(); i++)
+      for (const auto& value : anyvector)
       {
         if ((matrix_data && retval.size() > 1) || (!matrix_data && retval.size() > 0))
           retval.append(" ");
-        retval.append(boost_any_to_string(anyvector[i], vf, precision));
+        retval.append(boost_any_to_string(value, vf, precision));
       }
 
       if (matrix_data)

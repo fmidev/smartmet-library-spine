@@ -576,10 +576,10 @@ std::vector<std::string> ConfigBase::get_mandatory_path_array(const std::string&
 
     boost::filesystem::path p(file_name);
 
-    for (auto i = 0u; i < paths.size(); i++)
+    for (auto& path : paths)
     {
-      if (!paths[i].empty() && paths[i][0] != '/')
-        paths[i] = p.parent_path().string() + "/" + paths[i];
+      if (!path.empty() && path[0] != '/')
+        path = p.parent_path().string() + "/" + path;
     }
     return paths;
   }

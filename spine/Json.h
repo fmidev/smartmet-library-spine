@@ -64,9 +64,8 @@ void extract_array(const std::string& theName,
     if (!theJson.isArray())
       throw Fmi::Exception(BCP, theName + " setting must be an array");
 
-    for (unsigned int i = 0; i < theJson.size(); i++)
+    for (const auto& json : theJson)
     {
-      const Json::Value& json = theJson[i];
       typename Container::value_type value;
       value.init(json, theConf);
       theContainer.push_back(value);

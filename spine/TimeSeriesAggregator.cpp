@@ -433,9 +433,9 @@ TimeSeries area_aggregate(const TimeSeriesGroup& ts_group, const ParameterFuncti
       StatCalculator statcalculator;
 
       // iterate through locations
-      for (size_t k = 0; k < ts_group.size(); k++)
+      for (const auto& t : ts_group)
       {
-        const TimedValue& tv = ts_group[k].timeseries[i];
+        const TimedValue& tv = t.timeseries[i];
         if (include_value(tv, func))
           statcalculator(tv);
       }
@@ -500,11 +500,11 @@ TimeSeriesGroupPtr time_aggregate(const TimeSeriesGroup& ts_group, const Paramet
     TimeSeriesGroupPtr ret(new TimeSeriesGroup());
 
     // iterate through locations
-    for (size_t i = 0; i < ts_group.size(); i++)
+    for (const auto& t : ts_group)
     {
-      TimeSeries ts(ts_group[i].timeseries);
+      TimeSeries ts(t.timeseries);
       TimeSeriesPtr aggregated_timeseries(time_aggregate(ts, func));
-      ret->emplace_back(LonLatTimeSeries(ts_group[i].lonlat, *aggregated_timeseries));
+      ret->emplace_back(LonLatTimeSeries(t.lonlat, *aggregated_timeseries));
     }
 
     return ret;

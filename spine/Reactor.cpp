@@ -491,9 +491,9 @@ AccessLogStruct Reactor::getLoggedRequests() const
     {
       LoggedRequests requests;
       ReadLock lock(itsContentMutex);
-      for (auto it = itsHandlers.begin(); it != itsHandlers.end(); ++it)
+      for (const auto& handler : itsHandlers)
       {
-        requests.insert(std::make_pair(it->first, it->second->getLoggedRequests()));
+        requests.insert(std::make_pair(handler.first, handler.second->getLoggedRequests()));
       }
       return std::make_tuple(true, requests, itsLogLastCleaned);
     }
@@ -889,10 +889,10 @@ void Reactor::listPlugins() const
 
     std::cout << std::endl << "List of plugins:" << std::endl;
 
-    for (auto it = itsPlugins.begin(); it != itsPlugins.end(); it++)
+    for (const auto& plugin : itsPlugins)
     {
-      std::cout << "  " << (*it)->filename() << '\t' << (*it)->pluginname() << '\t'
-                << (*it)->apiversion() << std::endl;
+      std::cout << "  " << plugin->filename() << '\t' << plugin->pluginname() << '\t'
+                << plugin->apiversion() << std::endl;
     }
 
     // Number of plugins
@@ -1228,9 +1228,9 @@ void Reactor::listEngines() const
   {
     std::cout << std::endl << "List of engines:" << std::endl;
 
-    for (auto it = itsEngines.begin(); it != itsEngines.end(); it++)
+    for (const auto& engine : itsEngines)
     {
-      std::cout << "  " << it->first << std::endl;
+      std::cout << "  " << engine.first << std::endl;
     }
 
     // Number of engines
@@ -1382,17 +1382,15 @@ void Reactor::shutdown()
     // STEP 1: Informing all plugins that the shutdown is in progress. Otherwise
     //         they might start new jobs meanwhile other components are shutting down.
 
-    for (auto it = itsPlugins.begin(); it != itsPlugins.end(); it++)
-    {
-      (*it)->setShutdownRequestedFlag();
-    }
+    for (auto& plugin : itsPlugins)
+      plugin->setShutdownRequestedFlag();
 
     // STEP 2: Informing all engines that the shutdown is in progress. Otherwise
     //         they might start new jobs meanwhile other components are shutting down.
 
-    for (auto it = itsSingletons.begin(); it != itsSingletons.end(); it++)
+    for (auto& singleton : itsSingletons)
     {
-      auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
+      auto* engine = reinterpret_cast<SmartMetEngine*>(singleton.second);
       engine->setShutdownRequestedFlag();
     }
 
@@ -1406,15 +1404,15 @@ void Reactor::shutdown()
     std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown plugins" << ANSI_BOLD_OFF
               << ANSI_FG_DEFAULT << std::endl;
 
-    for (auto it = itsPlugins.begin(); it != itsPlugins.end(); it++)
+    for (auto& plugin : itsPlugins)
     {
-      std::cout << ANSI_FG_RED << "* Plugin [" << (*it)->pluginname() << "] shutting down\n"
+      std::cout << ANSI_FG_RED << "* Plugin [" << plugin->pluginname() << "] shutting down\n"
                 << ANSI_FG_DEFAULT;
-      shutdownTasks.add("Plugin [" + (*it)->pluginname() + "] shutdown",
-                        [it]()
+      shutdownTasks.add("Plugin [" + plugin->pluginname() + "] shutdown",
+                        [&plugin]()
                         {
-                          (*it)->shutdownPlugin();
-                          it->reset();
+                          plugin->shutdownPlugin();
+                          plugin.reset();
                         });
     }
 
@@ -1426,19 +1424,19 @@ void Reactor::shutdown()
     std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown engines" << ANSI_BOLD_OFF
               << ANSI_FG_DEFAULT << std::endl;
 
-    for (auto it = itsSingletons.begin(); it != itsSingletons.end(); it++)
+    for (auto& singleton : itsSingletons)
     {
       std::ostringstream tmp1;
-      tmp1 << ANSI_FG_RED << "* Engine [" << it->first << "] shutting down" << ANSI_FG_DEFAULT
+      tmp1 << ANSI_FG_RED << "* Engine [" << singleton.first << "] shutting down" << ANSI_FG_DEFAULT
            << '\n';
       std::cout << tmp1.str() << std::flush;
-      auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-      shutdownTasks.add("Engine [" + it->first + "] shutdown",
-                        [engine, it]()
+      auto* engine = reinterpret_cast<SmartMetEngine*>(singleton.second);
+      shutdownTasks.add("Engine [" + singleton.first + "] shutdown",
+                        [&engine, singleton]()
                         {
                           engine->shutdownEngine();
                           std::ostringstream tmp2;
-                          tmp2 << ANSI_FG_MAGENTA << "* Engine [" << it->first
+                          tmp2 << ANSI_FG_MAGENTA << "* Engine [" << singleton.first
                                << "] shutdown complete" << ANSI_FG_DEFAULT << '\n';
                           std::cout << tmp2.str() << std::flush;
                         });
@@ -1452,10 +1450,11 @@ void Reactor::shutdown()
     std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nDeleting engines" << ANSI_BOLD_OFF
               << ANSI_FG_DEFAULT << std::endl;
 
-    for (auto it = itsSingletons.begin(); it != itsSingletons.end(); it++)
+    for (auto& singleton : itsSingletons)
     {
-      std::cout << ANSI_FG_RED << "* Deleting engine [" << it->first << "]\n" << ANSI_FG_DEFAULT;
-      auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
+      std::cout << ANSI_FG_RED << "* Deleting engine [" << singleton.first << "]\n"
+                << ANSI_FG_DEFAULT;
+      auto* engine = reinterpret_cast<SmartMetEngine*>(singleton.second);
       boost::this_thread::disable_interruption do_not_disturb;
       delete engine;
     }
