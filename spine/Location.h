@@ -37,25 +37,25 @@ class Location
     Wkt
   };
 
-  GeoId geoid;          // unique numeric ID
-  std::string name;     // name of the place
-  std::string iso2;     // country isocode
-  int municipality;     // municipality or 0
-  std::string area;     // municipality or country name
-  std::string feature;  // feature code
-  std::string country;  // country name, depends on translation, is not const
+  GeoId geoid = 0;       // unique numeric ID
+  std::string name;      // name of the place
+  std::string iso2;      // country isocode
+  int municipality = 0;  // municipality or 0
+  std::string area;      // municipality or country name
+  std::string feature;   // feature code
+  std::string country;   // country name, depends on translation, is not const
 
   boost::optional<int> fmisid;  // station id
 
-  double longitude;                // longitude
-  double latitude;                 // latitude
-  double radius;                   // radius
-  std::string timezone;            // timezone
-  int population;                  // population (negative for unknown)
-  float elevation;                 // elevation from database
-  float dem;                       // elevation from dem
-  Fmi::LandCover::Type covertype;  // cover type from global land cover data
-  int priority;                    // autocomplete priority
+  double longitude = std::numeric_limits<double>::quiet_NaN();  // longitude
+  double latitude = std::numeric_limits<double>::quiet_NaN();   // latitude
+  double radius = 0;                                            // radius
+  std::string timezone;                                         // timezone
+  int population = -1;                                          // population (negative for unknown)
+  float elevation = std::numeric_limits<float>::quiet_NaN();    // elevation from database
+  float dem = std::numeric_limits<float>::quiet_NaN();          // elevation from dem
+  Fmi::LandCover::Type covertype = Fmi::LandCover::NoData;      // from global land cover data
+  int priority = -1;                                            // autocomplete priority
   LocationType type;  // tells in which context location is queried (needed by areaforecast plugin)
 
   Location(const Location& other) = default;
@@ -87,7 +87,6 @@ class Location
         country(theCountry),
         longitude(theLongitude),
         latitude(theLatitude),
-        radius(0.0),
         timezone(theTimeZone),
         population(thePopulation),
         elevation(theElevation),
@@ -105,13 +104,7 @@ class Location
       : name(theName),
         longitude(theLongitude),
         latitude(theLatitude),
-        radius(0.0),
         timezone(theTimezone),
-        population(-1),
-        elevation(std::numeric_limits<float>::quiet_NaN()),
-        dem(std::numeric_limits<float>::quiet_NaN()),
-        covertype(Fmi::LandCover::NoData),
-        priority(-1),
         type(Place)
   {
   }
@@ -122,29 +115,15 @@ class Location
            Fmi::LandCover::Type theCoverType)
       : longitude(theLongitude),
         latitude(theLatitude),
-        radius(0.0),
-        population(-1),
         elevation(theElevation),
         dem(theElevation),
         covertype(theCoverType),
-        priority(-1),
         type(Place)
   {
   }
 
   Location(const std::string& theArea, const double& theRadius)
-      : name(theArea),
-        area(theArea),
-        longitude(std::numeric_limits<double>::quiet_NaN()),
-        latitude(std::numeric_limits<double>::quiet_NaN()),
-        radius(theRadius),
-        timezone("localtime"),
-        population(-1),
-        elevation(std::numeric_limits<float>::quiet_NaN()),
-        dem(std::numeric_limits<float>::quiet_NaN()),
-        covertype(Fmi::LandCover::NoData),
-        priority(-1),
-        type(Place)
+      : name(theArea), area(theArea), radius(theRadius), timezone("localtime"), type(Place)
   {
   }
 };  // class Location
