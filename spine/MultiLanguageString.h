@@ -30,7 +30,7 @@ class MultiLanguageString
   std::map<std::string, std::string> data;
 };
 
-typedef std::shared_ptr<MultiLanguageString> MultiLanguageStringP;
+using MultiLanguageStringP = std::shared_ptr<MultiLanguageString>;
 
 }  // namespace Spine
 }  // namespace SmartMet

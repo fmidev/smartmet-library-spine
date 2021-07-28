@@ -30,7 +30,7 @@ class MultiLanguageStringArray
     return data;
   }
 
-  typedef std::shared_ptr<MultiLanguageStringArray> Ptr;
+  using Ptr = std::shared_ptr<MultiLanguageStringArray>;
 
  private:
   void parse_content(libconfig::Setting& setting);

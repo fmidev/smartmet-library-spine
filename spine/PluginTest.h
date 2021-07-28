@@ -369,7 +369,7 @@ class PluginTest
     IgnoreInfo(const std::string& description = "") : description(description), found(false) {}
   };
 
-  typedef std::map<std::string, IgnoreInfo> IgnoreMap;
+  using IgnoreMap = std::map<std::string, IgnoreInfo>;
 
   int mNumThreads = 1;
 

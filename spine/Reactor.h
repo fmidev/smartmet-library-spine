@@ -44,7 +44,7 @@ namespace Spine
 {
 class DynamicPlugin;
 
-typedef std::map<std::string, std::string> URIMap;
+using URIMap = std::map<std::string, std::string>;
 
 // SmartMet base class
 class Reactor
@@ -205,8 +205,9 @@ class Reactor
   // Engines
 
   // Typedefs for pointer-to-functions for easier code readability.
-  typedef const char* (*EngineNamePointer)();
-  typedef void* (*EngineInstanceCreator)(const char*, void*);
+  using EngineNamePointer = const char* (*)();
+  using EngineInstanceCreator = void* (*)(const char*, void*);
+  // typedef void* (*EngineInstanceCreator)(const char*, void*);
 
   // List of class names and pointer-to-functions to creator functions
   using EngineList = std::map<std::string, EngineInstanceCreator>;

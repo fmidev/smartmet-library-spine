@@ -69,7 +69,7 @@ class SmartMetPlugin
   std::atomic<unsigned long long> responseCounter;
 };
 
-typedef SmartMetPlugin *plugin_create_t(SmartMet::Spine::Reactor *, const char *);
-typedef void plugin_destroy_t(SmartMetPlugin *);
+using plugin_create_t = SmartMetPlugin *(SmartMet::Spine::Reactor *, const char *);
+using plugin_destroy_t = void(SmartMetPlugin *);
 
 // ======================================================================
