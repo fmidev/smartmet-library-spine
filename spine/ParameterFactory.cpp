@@ -117,7 +117,7 @@ const ParameterFactory& ParameterFactory::instance()
  */
 // ----------------------------------------------------------------------
 
-ParameterFactory::ParameterFactory() : converter()
+ParameterFactory::ParameterFactory()
 {
   try
   {

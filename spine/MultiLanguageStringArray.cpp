@@ -40,7 +40,7 @@ In this case it is assumed that strings are provided for the default language.
 MultiLanguageStringArray::MultiLanguageStringArray(const std::string& default_language,
                                                    libconfig::Setting& setting)
 
-    : default_language(default_language), data()
+    : default_language(default_language)
 {
   try
   {

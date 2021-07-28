@@ -256,7 +256,7 @@ IPFilter::IPFilter(boost::shared_ptr<libconfig::Config> configPtr, const std::st
   }
 }
 
-IPFilter::IPFilter(const std::vector<std::string>& formatTokens) : itsConfig()
+IPFilter::IPFilter(const std::vector<std::string>& formatTokens)
 {
   try
   {

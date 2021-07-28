@@ -114,8 +114,6 @@ class TableVisitor : public boost::static_visitor<>
         itsPrecisions(precisions),
         itsCurrentColumn(currentcolumn),
         itsCurrentRow(currentrow),
-        itsTimeFormatter(),
-        itsTimeZonePtr(),
         itsLonLatFormat(LonLatFormat::LONLAT)
   {
   }

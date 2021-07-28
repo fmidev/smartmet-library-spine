@@ -21,20 +21,7 @@ namespace Spine
  */
 // ----------------------------------------------------------------------
 
-Table::Table()
-    : itsMinI(),
-      itsMaxI(),
-      itsMinJ(),
-      itsMaxJ(),
-      itsMissingText(),
-      itsList(),
-      itsArray(),
-      itsBuildingDone(false),
-      itsEmptyValue(),
-      itsStartRow(0),
-      itsMaxResults(0)
-{
-}
+Table::Table() : itsBuildingDone(false), itsStartRow(0), itsMaxResults(0) {}
 
 // ----------------------------------------------------------------------
 /*!
