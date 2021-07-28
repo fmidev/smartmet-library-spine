@@ -32,7 +32,7 @@ struct ThrottleOptions
   unsigned int limit = 100;         // final max active requests
   unsigned int increase_rate = 10;  // increment current limit every 10 succesfull requests
   unsigned int alert_limit = 100;   // start alert script at this many requests
-  std::string alert_script = "";    // system command to run when the limit is broken
+  std::string alert_script;         // system command to run when the limit is broken
 };
 
 // Storage for parsed options

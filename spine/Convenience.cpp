@@ -550,7 +550,7 @@ std::string boost_any_to_string(const boost::any& anyvalue, const ValueFormatter
 {
   try
   {
-    std::string retval("");
+    std::string retval;
 
     const std::type_info& type = anyvalue.type();
 

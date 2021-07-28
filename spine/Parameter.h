@@ -70,7 +70,7 @@ class Parameter
   Type itsType;
   FmiParameterName itsNumber;
   boost::optional<int> itsSensorNumber;
-  std::string itsSensorParameter{""};
+  std::string itsSensorParameter;
 
 };  // class Parameter
 

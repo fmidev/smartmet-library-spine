@@ -438,7 +438,7 @@ boost::optional<HandlerView&> Reactor::getHandlerView(const HTTP::Request& theRe
     if (it == itsHandlers.end())
     {
       // No specific match found, decide what we should do
-      if (itsCatchNoMatch == true)
+      if (itsCatchNoMatch)
       {
         // Return with true, as this was catched by external handler
         return boost::optional<HandlerView&>(*itsCatchNoMatchHandler);

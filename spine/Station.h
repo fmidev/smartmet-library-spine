@@ -113,10 +113,10 @@ using Stations = std::vector<Station>;
 
 struct TaggedFMISID
 {
-  std::string tag{""};
+  std::string tag;
   int fmisid{-1};
   double direction{-1};
-  std::string distance{""};
+  std::string distance;
 
   TaggedFMISID() = delete;
   TaggedFMISID(const std::string& t, int sid, double dir = 0.0, std::string dis = "")
