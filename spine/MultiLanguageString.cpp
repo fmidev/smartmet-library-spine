@@ -32,7 +32,6 @@ In this case it is assumed that it is provided for the default language.
 
 */
 
-namespace ba = boost::algorithm;
 using SmartMet::Spine::MultiLanguageString;
 
 MultiLanguageString::MultiLanguageString(const std::string& default_language,

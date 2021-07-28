@@ -46,7 +46,6 @@ extern "C"
 }
 
 namespace fs = boost::filesystem;
-namespace ba = boost::algorithm;
 
 namespace
 {

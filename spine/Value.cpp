@@ -728,7 +728,6 @@ boost::posix_time::ptime parse_xml_time(const std::string& value)
 {
   try
   {
-    namespace ba = boost::algorithm;
     namespace bl = boost::lambda;
     namespace ns = boost::spirit::standard;
     namespace qi = boost::spirit::qi;
@@ -808,8 +807,6 @@ bool string2bool(const std::string src)
 {
   try
   {
-    namespace ba = boost::algorithm;
-
     std::string arg = src;
     Fmi::ascii_tolower(arg);
     Fmi::trim(arg);
