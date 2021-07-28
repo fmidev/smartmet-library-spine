@@ -626,7 +626,8 @@ std::vector<std::string> PluginTest::read_ignore_list(const std::string& dir) co
     files.push_back(dir + "/" + ".testignore");
   }
 
-  std::vector<std::string> result, a1;
+  std::vector<std::string> result;
+  std::vector<std::string> a1;
   for (const auto& fn : files)
   {
     std::vector<std::string> a2 = read_ignore_file(fn);
