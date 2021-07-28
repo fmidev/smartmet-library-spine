@@ -46,8 +46,8 @@ class Table : private boost::noncopyable
   // Elements are stored like this into a list
   struct element
   {
-    std::size_t i;
-    std::size_t j;
+    std::size_t i = 0;
+    std::size_t j = 0;
     std::string value;
 
     element(std::size_t theI, std::size_t theJ, const std::string& theValue)
@@ -57,10 +57,10 @@ class Table : private boost::noncopyable
   };
 
   // array limits
-  std::size_t itsMinI;
-  std::size_t itsMaxI;
-  std::size_t itsMinJ;
-  std::size_t itsMaxJ;
+  std::size_t itsMinI = 0;
+  std::size_t itsMaxI = 0;
+  std::size_t itsMinJ = 0;
+  std::size_t itsMaxJ = 0;
 
   std::string itsMissingText;
 
@@ -71,13 +71,13 @@ class Table : private boost::noncopyable
   mutable std::vector<const std::string*> itsArray;
 
   // false if get has not been accessed yet
-  mutable bool itsBuildingDone;
+  mutable bool itsBuildingDone = false;
 
   const std::string itsEmptyValue;
 
   // paging
-  std::size_t itsStartRow;    // 0 == first
-  std::size_t itsMaxResults;  // 0 == all
+  std::size_t itsStartRow = 0;    // 0 == first
+  std::size_t itsMaxResults = 0;  // 0 == all
 };
 
 }  // namespace Spine
