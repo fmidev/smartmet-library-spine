@@ -44,13 +44,13 @@ class ValueFormatter
  public:
   ValueFormatter(const HTTP::Request& theReq);
   ValueFormatter(const ValueFormatterParam& param);
+  ValueFormatter() = delete;
 
   std::string format(double theValue, int thePrecision) const;
   const std::string& missing() const { return itsMissingText; }
   void setMissingText(const std::string& theMissingText) { itsMissingText = theMissingText; }
 
  private:
-  ValueFormatter();
   void buildFormat(const ValueFormatterParam& param);
   std::string itsFormat;           // when no precision is given
   std::string itsPrecisionFormat;  // when precision is given

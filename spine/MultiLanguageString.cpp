@@ -111,7 +111,7 @@ std::shared_ptr<MultiLanguageString> MultiLanguageString::create(
   }
 }
 
-MultiLanguageString::~MultiLanguageString() {}
+MultiLanguageString::~MultiLanguageString() = default;
 
 std::string MultiLanguageString::get(const std::string& language) const
 {

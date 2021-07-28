@@ -12,7 +12,7 @@ namespace Spine
 {
 namespace IPFilter
 {
-SequenceFilter::~SequenceFilter() {}
+SequenceFilter::~SequenceFilter() = default;
 
 SequenceFilterPtr makeFilter(const std::string& formatToken)
 {
@@ -152,7 +152,7 @@ bool AddressFilter::match(const std::vector<std::string>& ipTokens) const
   }
 }
 
-IPConfig::~IPConfig() {}
+IPConfig::~IPConfig() = default;
 
 IPConfig::IPConfig(const std::string& configFile, const std::string& root) : ConfigBase(configFile)
 {

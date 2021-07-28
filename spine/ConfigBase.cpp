@@ -63,7 +63,7 @@ ConfigBase::ConfigBase(boost::shared_ptr<libconfig::Config> config, const std::s
   }
 }
 
-ConfigBase::~ConfigBase() {}
+ConfigBase::~ConfigBase() = default;
 
 void ConfigBase::handle_libconfig_exceptions(const std::string& location) const
 {

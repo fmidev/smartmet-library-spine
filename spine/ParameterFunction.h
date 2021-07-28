@@ -121,7 +121,7 @@ struct ParameterFunction
 
 struct ParameterFunctions
 {
-  ParameterFunctions() {}
+  ParameterFunctions() = default;
   ParameterFunctions(const ParameterFunction& theInnerFunction,
                      const ParameterFunction& theOuterFunction)
       : innerFunction(theInnerFunction), outerFunction(theOuterFunction)

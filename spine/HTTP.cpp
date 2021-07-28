@@ -1566,7 +1566,7 @@ ContentStreamer::StreamerStatus MessageContent::getStreamingStatus() const
   }
 }
 
-ContentStreamer::~ContentStreamer() {}
+ContentStreamer::~ContentStreamer() = default;
 
 /**
  * Base64 decoder copied from here with some typecasting to c++11 upgrade

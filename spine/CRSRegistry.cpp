@@ -76,9 +76,9 @@ class CRSRegistry::TransformationImpl : public CRSRegistry::Transformation
   if (crs_map.count(name)) \
     throw Fmi::Exception(BCP, "Duplicate name of coordinate system (" + (name) + ")!");
 
-CRSRegistry::CRSRegistry() {}
+CRSRegistry::CRSRegistry() = default;
 
-CRSRegistry::~CRSRegistry() {}
+CRSRegistry::~CRSRegistry() = default;
 
 void CRSRegistry::register_epsg(const std::string& name,
                                 int epsg_code,
@@ -397,9 +397,9 @@ void CRSRegistry::handle_get_attribute_error(const std::string& crs_name,
   }
 }
 
-CRSRegistry::Transformation::Transformation() {}
+CRSRegistry::Transformation::Transformation() = default;
 
-CRSRegistry::Transformation::~Transformation() {}
+CRSRegistry::Transformation::~Transformation() = default;
 
 CRSRegistry::MapEntry::MapEntry(const std::string& theName, boost::optional<std::string> text)
     : name(theName), cs(new OGRSpatialReference)

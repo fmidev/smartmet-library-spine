@@ -117,13 +117,12 @@ struct TaggedFMISID
   int fmisid{-1};
   double direction{-1};
   std::string distance{""};
+
+  TaggedFMISID() = delete;
   TaggedFMISID(const std::string& t, int sid, double dir = 0.0, std::string dis = "")
       : tag(t), fmisid(sid), direction(dir), distance(dis)
   {
   }
-
- private:
-  TaggedFMISID();
 };
 
 using TaggedFMISIDList = std::list<TaggedFMISID>;

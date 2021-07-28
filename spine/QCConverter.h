@@ -47,7 +47,10 @@ class QCConverter
 {
  public:
   explicit QCConverter();
-  virtual ~QCConverter() {}
+  virtual ~QCConverter() = default;
+  QCConverter(const QCConverter& other) = delete;
+  QCConverter& operator=(const QCConverter& other) = delete;
+
   /**
    *  \brief Convert an old code to a new one.
    *
@@ -58,9 +61,6 @@ class QCConverter
   virtual bool convert(std::string& newCode, const std::string& oldCode);
 
  private:
-  QCConverter(const QCConverter& other);
-  QCConverter& operator=(const QCConverter& other);
-
   // Key of an elemet in the container express
   // the first character of an old key. The value
   // is the new key.

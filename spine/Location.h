@@ -37,10 +37,6 @@ class Location
     Wkt
   };
 
- private:
-  Location();
-
- public:
   GeoId geoid;          // unique numeric ID
   std::string name;     // name of the place
   std::string iso2;     // country isocode
@@ -62,9 +58,9 @@ class Location
   int priority;                    // autocomplete priority
   LocationType type;  // tells in which context location is queried (needed by areaforecast plugin)
 
- public:
   Location(const Location& other) = default;
   Location& operator=(const Location& other) = default;
+  Location() = delete;
 
   Location(GeoId theGeoID,
            const std::string& theName,
@@ -188,8 +184,7 @@ struct TaggedLocation
   LocationPtr loc;
   TaggedLocation(const std::string& t, LocationPtr& p) : tag(t), loc(p) {}
 
- private:
-  TaggedLocation();
+  TaggedLocation() = delete;
 };
 
 using TaggedLocationList = std::list<TaggedLocation>;

@@ -67,7 +67,7 @@ std::shared_ptr<MultiLanguageStringArray> MultiLanguageStringArray::create(
   }
 }
 
-MultiLanguageStringArray::~MultiLanguageStringArray() {}
+MultiLanguageStringArray::~MultiLanguageStringArray() = default;
 
 const std::vector<std::string>& MultiLanguageStringArray::get(const std::string& language) const
 {

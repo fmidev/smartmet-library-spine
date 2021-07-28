@@ -28,6 +28,8 @@ class Parameter
   };
 
  public:
+  Parameter() = delete;
+
   Parameter(const std::string& theName,
             Type theType,
             FmiParameterName theNumber = kFmiBadParameter);
@@ -57,7 +59,6 @@ class Parameter
  private:
   friend std::ostream& operator<<(std::ostream& out, const Parameter& param);
 
-  Parameter();
   // name contains plain parameter name, for example t2m
   std::string itsName;
   // extended name may contain parameter name with possible

@@ -97,6 +97,9 @@ class Reactor
   // Destructor
   ~Reactor();
 
+  // No default construction, options must be given
+  Reactor() = delete;
+
   void init();
 
   // Content handling
@@ -244,8 +247,6 @@ class Reactor
 
   std::atomic_bool itsInitializing{true};
 
-  // No void construction, options must be known
-  Reactor();
   /* [[noreturn]] */ void cleanLog();
 };
 

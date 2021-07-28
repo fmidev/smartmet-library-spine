@@ -16,7 +16,7 @@ namespace HTTP
 {
 Authentication::Authentication(bool denyByDefault) : denyByDefault(denyByDefault) {}
 
-Authentication::~Authentication() {}
+Authentication::~Authentication() = default;
 
 void Authentication::addUser(const std::string& name,
                              const std::string& password,

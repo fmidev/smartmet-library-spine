@@ -73,7 +73,7 @@ struct Point
   double y = 0.0;
   std::string crs;
 
-  inline Point() {}
+  inline Point() = default;
   inline Point(const std::string& src) { parse_string(src); }
   inline Point(double x, double y, const std::string& crs = "EPSG:4326") : x(x), y(y), crs(crs) {}
   void parse_string(const std::string& src);
@@ -94,7 +94,7 @@ struct BoundingBox
   double yMax = 0.0;
   std::string crs;
 
-  inline BoundingBox() {}
+  inline BoundingBox() = default;
   inline BoundingBox(const std::string& src) { parse_string(src); }
   inline BoundingBox(
       double xMin, double yMin, double xMax, double yMax, const std::string& crs = "EPSG:4326")
