@@ -77,24 +77,18 @@ bool Authentication::authenticateRequest(const Request& request, Response& respo
       badRequestResponse(response);
       return false;
     }
-    else
-    {
-      // Ask whether authentication is required for request if not provided there
-      if (not isAuthenticationRequired(request))
-      {
-        return true;
-      }
 
-      printf("%s: No credentials available\n", METHOD_NAME.c_str());
+    // Ask whether authentication is required for request if not provided there
+    if (!isAuthenticationRequired(request))
+      return true;
 
-      if (userMap.empty() and not denyByDefault)
-      {
-        return true;
-      }
+    printf("%s: No credentials available\n", METHOD_NAME.c_str());
 
-      unauthorizedResponse(response);
-      return false;
-    }
+    if (userMap.empty() and not denyByDefault)
+      return true;
+
+    unauthorizedResponse(response);
+    return false;
   }
   catch (...)
   {

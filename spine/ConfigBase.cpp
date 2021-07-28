@@ -382,10 +382,8 @@ libconfig::Setting* ConfigBase::find_setting_impl(libconfig::Setting& search_sta
               .addParameter("Index", std::to_string(ind))
               .addParameter("Range", "0 .. " + std::to_string(curr->getLength() - 1));
         }
-        else
-        {
-          curr = &(*curr)[ind];
-        }
+
+        curr = &(*curr)[ind];
       }
       else
       {

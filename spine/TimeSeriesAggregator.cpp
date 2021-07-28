@@ -177,17 +177,17 @@ boost::local_time::local_date_time StatCalculator::getLocalDateTimeStatValue(
     if (fid == FunctionId::Maximum)
       return boost::get<boost::local_time::local_date_time>(
           itsTimeSeries[itsTimeSeries.size() - 1].value);
-    else if (fid == FunctionId::Minimum)
+
+    if (fid == FunctionId::Minimum)
       return boost::get<boost::local_time::local_date_time>(itsTimeSeries[0].value);
-    else if (fid == FunctionId::Median)
+
+    if (fid == FunctionId::Median)
       return boost::get<boost::local_time::local_date_time>(
           itsTimeSeries[itsTimeSeries.size() / 2].value);
-    else
-    {
-      std::stringstream ss;
-      ss << "Function " << func.hash() << " can not be applied for a date!";
-      throw Fmi::Exception(BCP, ss.str().c_str());
-    }
+
+    std::stringstream ss;
+    ss << "Function " << func.hash() << " can not be applied for a date!";
+    throw Fmi::Exception(BCP, ss.str().c_str());
   }
   catch (...)
   {

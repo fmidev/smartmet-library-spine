@@ -151,7 +151,7 @@ void add_to_path_list(fs::directory_entry& entry,
   try
   {
     std::vector<fs::path> curr_parts;
-    fs::path item = entry.path();
+    auto& item = entry.path();
     std::copy(item.begin(), item.end(), std::back_inserter(curr_parts));
     if ((top_parts->size() < curr_parts.size()) && fs::is_regular_file(item))
     {

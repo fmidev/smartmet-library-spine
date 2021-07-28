@@ -104,20 +104,16 @@ class CRSRegistry : protected virtual boost::noncopyable
     const MapEntry& entry = get_entry(crs_name);
     auto it = entry.attrib_map.find(attrib_name);
     if (it == entry.attrib_map.end())
-    {
       return false;
-    }
-    else
+
+    try
     {
-      try
-      {
-        *value = boost::any_cast<Type>(it->second);
-        return true;
-      }
-      catch (const boost::bad_any_cast&)
-      {
-        handle_get_attribute_error(crs_name, attrib_name, it->second.type(), typeid(Type));
-      }
+      *value = boost::any_cast<Type>(it->second);
+      return true;
+    }
+    catch (const boost::bad_any_cast&)
+    {
+      handle_get_attribute_error(crs_name, attrib_name, it->second.type(), typeid(Type));
     }
   }
 

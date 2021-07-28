@@ -26,8 +26,7 @@ std::string optional_string(const char* theValue, const std::string& theDefault)
   {
     if (theValue == nullptr)
       return theDefault;
-    else
-      return theValue;
+    return theValue;
   }
   catch (...)
   {
