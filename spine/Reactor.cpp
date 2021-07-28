@@ -1147,7 +1147,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool /* verbose */)
       std::cout << ANSI_FG_RED << "No engine '" << itsNamePointer()
                 << "' was found loaded in memory." << ANSI_FG_DEFAULT << std::endl;
 
-      return 0;
+      return false;
     }
 
     itsSingletons.insert(SingletonList::value_type(itsNamePointer(), theSingleton));
