@@ -371,7 +371,7 @@ class PluginTest
 
   typedef std::map<std::string, IgnoreInfo> IgnoreMap;
 
-  bool mNumThreads = 1;
+  int mNumThreads = 1;
 
   std::string mInputDir{"input"};
   std::string mOutputDir{"output"};
