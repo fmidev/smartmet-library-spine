@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.7.5
+Version: 21.7.28
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -35,9 +35,9 @@ BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 21.5.20
-BuildRequires: smartmet-library-macgyver-devel >= 21.5.20
-BuildRequires: smartmet-library-newbase-devel >= 21.5.6
+BuildRequires: smartmet-library-gis-devel >= 21.7.27
+BuildRequires: smartmet-library-macgyver-devel >= 21.7.27
+BuildRequires: smartmet-library-newbase-devel >= 21.6.16
 Requires: boost169-chrono
 Requires: boost169-date-time
 Requires: boost169-filesystem
@@ -54,9 +54,9 @@ Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig >= 1.7.2
 Requires: libicu
-Requires: smartmet-library-gis >= 21.5.20
-Requires: smartmet-library-macgyver >= 21.5.20
-Requires: smartmet-library-newbase >= 21.5.6
+Requires: smartmet-library-gis >= 21.7.27
+Requires: smartmet-library-macgyver >= 21.7.27
+Requires: smartmet-library-newbase >= 21.6.16
 Requires: smartmet-timezones >= 21.2.2
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -109,6 +109,10 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Wed Jul 28 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.7.28-1.fmi
+- Silenced several compiler warnings
+- Initialize locations to NaN coordinates by default
+
 * Mon Jul  5 2021 Andris Pavēnis <andris.pavenis@fmi.fi> 21.7.5-1.fmi
 - Move DataFilter from obsengine to spine
 
