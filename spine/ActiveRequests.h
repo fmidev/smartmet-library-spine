@@ -34,7 +34,6 @@ class ActiveRequests : private boost::noncopyable
 
   using Requests = std::map<std::size_t, Info>;
 
- public:
   std::size_t insert(const HTTP::Request& theRequest);
   void remove(std::size_t theKey);
   Requests requests() const;

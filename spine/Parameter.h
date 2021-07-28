@@ -27,7 +27,6 @@ class Parameter
     Landscaped        // topography, land/sea corrections
   };
 
- public:
   Parameter() = delete;
 
   Parameter(const std::string& theName,

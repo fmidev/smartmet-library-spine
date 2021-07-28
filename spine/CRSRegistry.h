@@ -54,7 +54,6 @@ class CRSRegistry : protected virtual boost::noncopyable
   class IdentityTransformation;
   class TransformationImpl;
 
- public:
   CRSRegistry();
 
   virtual ~CRSRegistry();
@@ -125,7 +124,6 @@ class CRSRegistry : protected virtual boost::noncopyable
                                   const std::type_info& actual_type,
                                   const std::type_info& expected_type) __attribute__((noreturn));
 
- private:
   mutable SmartMet::Spine::MutexType rw_lock;
   std::map<std::string, MapEntry> crs_map;
 };

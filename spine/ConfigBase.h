@@ -416,7 +416,6 @@ class ConfigBase
                                         bool mandatory,
                                         int max_depth) const;
 
- private:
   const std::string file_name;
   const std::string name;
   boost::shared_ptr<libconfig::Config> itsConfig;

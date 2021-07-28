@@ -35,7 +35,6 @@ class MultiLanguageStringArray
  private:
   void parse_content(libconfig::Setting& setting);
 
- private:
   const std::string default_language;
   std::map<std::string, std::vector<std::string> > data;
 };
