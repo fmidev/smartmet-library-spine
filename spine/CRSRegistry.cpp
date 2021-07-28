@@ -578,7 +578,7 @@ void CRSRegistry::parse_single_crs_def(Spine::ConfigBase& theConfig, libconfig::
   {
     theConfig.assert_is_group(theEntry);
 
-    const std::string name = theConfig.get_mandatory_config_param<std::string>(theEntry, "name");
+    const auto name = theConfig.get_mandatory_config_param<std::string>(theEntry, "name");
     bool swap_coord = theConfig.get_optional_config_param<bool>(theEntry, "swapCoord", false);
     bool show_height = theConfig.get_optional_config_param<bool>(theEntry, "showHeight", false);
     const auto axis_labels =

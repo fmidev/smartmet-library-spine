@@ -583,7 +583,7 @@ std::string boost_any_to_string(const boost::any& anyvalue, const ValueFormatter
       retval = std::to_string(boost::any_cast<unsigned long long>(anyvalue));
     else if (type == typeid(float))
     {
-      float floatvalue(boost::any_cast<float>(anyvalue));
+      auto floatvalue = boost::any_cast<float>(anyvalue);
       retval = vf.format(static_cast<double>(floatvalue), precision);
     }
     else if (type == typeid(double))
