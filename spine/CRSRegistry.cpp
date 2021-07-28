@@ -31,7 +31,7 @@ class CRSRegistry::IdentityTransformation : public CRSRegistry::Transformation
   const std::string crs_name;
 
  public:
-  IdentityTransformation(const std::string& crs_name);
+  IdentityTransformation(const std::string& theCrsName);
 
   ~IdentityTransformation() override = default;
 

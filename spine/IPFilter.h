@@ -90,7 +90,7 @@ class IPConfig : public ConfigBase
 
   IPConfig();
 
-  IPConfig(const std::string& confFile, const std::string& root = "");
+  IPConfig(const std::string& configFile, const std::string& root = "");
 
   IPConfig(boost::shared_ptr<libconfig::Config> configPtr, const std::string& root = "");
 

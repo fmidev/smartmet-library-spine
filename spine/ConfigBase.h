@@ -117,7 +117,7 @@ class ConfigBase
    *   Other template parameter types (except these mentioned above) are not supported.
    */
   template <typename Type>
-  Type get_mandatory_config_param(libconfig::Setting& setting, const std::string& theName)
+  Type get_mandatory_config_param(libconfig::Setting& setting, const std::string& name)
   {
     try
     {
@@ -125,7 +125,7 @@ class ConfigBase
 
       try
       {
-        const libconfig::Setting& item = *find_setting(setting, theName, true);
+        const libconfig::Setting& item = *find_setting(setting, name, true);
         result = get_setting_value<Type>(item);
       }
       catch (const libconfig::ConfigException&)
@@ -137,7 +137,7 @@ class ConfigBase
     }
     catch (...)
     {
-      throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Parameter", theName);
+      throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Parameter", name);
     }
   }
 

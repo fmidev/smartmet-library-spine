@@ -319,7 +319,7 @@ bool Reactor::addPrivateContentHandler(SmartMetPlugin* thePlugin,
  */
 // ----------------------------------------------------------------------
 
-bool Reactor::addContentHandlerImpl(bool itsPrivate,
+bool Reactor::addContentHandlerImpl(bool isPrivate,
                                     SmartMetPlugin* thePlugin,
                                     const std::string& theUri,
                                     ContentHandler theHandler)
@@ -345,11 +345,11 @@ bool Reactor::addContentHandlerImpl(bool itsPrivate,
                                        thePlugin,
                                        theUri,
                                        itsLoggingEnabled,
-                                       itsPrivate,
+                                       isPrivate,
                                        itsOptions.accesslogdir));
 
     std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
-              << (itsPrivate ? "private " : "") << "URI " << theUri << " for plugin "
+              << (isPrivate ? "private " : "") << "URI " << theUri << " for plugin "
               << thePlugin->getPluginName() << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
 
     // Set the handler and filter

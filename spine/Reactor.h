@@ -147,7 +147,7 @@ class Reactor
   void callBackendConnectionFinishedHooks(
       const std::string& theHostName,
       int thePort,
-      SmartMet::Spine::HTTP::ContentStreamer::StreamerStatus error_code);
+      SmartMet::Spine::HTTP::ContentStreamer::StreamerStatus theStatus);
 
   void callClientConnectionFinishedHooks(const std::string& theClientIP,
                                          const boost::system::error_code& theError);
@@ -164,8 +164,8 @@ class Reactor
 
   bool addContentHandlerImpl(bool isPrivate,
                              SmartMetPlugin* thePlugin,
-                             const std::string& theDir,
-                             ContentHandler theCallBackFunction);
+                             const std::string& theUri,
+                             ContentHandler theHandler);
 
   void* getEnginePtr(const std::string& theClassName, void* user_data);
 
