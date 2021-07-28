@@ -118,6 +118,7 @@ const ParameterFactory& ParameterFactory::instance()
 // ----------------------------------------------------------------------
 
 ParameterFactory::ParameterFactory()
+
 {
   try
   {
@@ -601,10 +602,10 @@ std::string ParameterFactory::parse_parameter_functions(
 
       theInnerParameterFunction.itsFunctionId = parse_function(f_name);
       theInnerParameterFunction.itsFunctionType =
-          (f_name.substr(f_name.size() - 2).compare("_t") == 0 ? FunctionType::TimeFunction
-                                                               : FunctionType::AreaFunction);
+          (f_name.substr(f_name.size() - 2) == "_t" ? FunctionType::TimeFunction
+                                                    : FunctionType::AreaFunction);
 
-      theInnerParameterFunction.itsNaNFunction = (f_name.substr(0, 3).compare("nan") == 0);
+      theInnerParameterFunction.itsNaNFunction = (f_name.substr(0, 3) == "nan");
       // Nearest && Interpolate functions always accepts NaNs in time series
       if (theInnerParameterFunction.itsFunctionId == FunctionId::Nearest ||
           theInnerParameterFunction.itsFunctionId == FunctionId::Interpolate)
@@ -621,10 +622,10 @@ std::string ParameterFactory::parse_parameter_functions(
 
       theOuterParameterFunction.itsFunctionId = parse_function(f_name);
       theOuterParameterFunction.itsFunctionType =
-          (f_name.substr(f_name.size() - 2).compare("_t") == 0 ? FunctionType::TimeFunction
-                                                               : FunctionType::AreaFunction);
+          (f_name.substr(f_name.size() - 2) == "_t" ? FunctionType::TimeFunction
+                                                    : FunctionType::AreaFunction);
 
-      theOuterParameterFunction.itsNaNFunction = (f_name.substr(0, 3).compare("nan") == 0);
+      theOuterParameterFunction.itsNaNFunction = (f_name.substr(0, 3) == "nan");
 
       if (theOuterParameterFunction.itsFunctionType == FunctionType::TimeFunction)
       {
@@ -640,9 +641,9 @@ std::string ParameterFactory::parse_parameter_functions(
                                      theInnerParameterFunction.itsUpperLimit);
       theInnerParameterFunction.itsFunctionId = parse_function(f_name);
       theInnerParameterFunction.itsFunctionType =
-          (f_name.substr(f_name.size() - 2).compare("_t") == 0 ? FunctionType::TimeFunction
-                                                               : FunctionType::AreaFunction);
-      theInnerParameterFunction.itsNaNFunction = (f_name.substr(0, 3).compare("nan") == 0);
+          (f_name.substr(f_name.size() - 2) == "_t" ? FunctionType::TimeFunction
+                                                    : FunctionType::AreaFunction);
+      theInnerParameterFunction.itsNaNFunction = (f_name.substr(0, 3) == "nan");
       // Nearest && Interpolate functions always accepts NaNs in time series
       if (theInnerParameterFunction.itsFunctionId == FunctionId::Nearest ||
           theInnerParameterFunction.itsFunctionId == FunctionId::Interpolate)
