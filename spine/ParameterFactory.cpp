@@ -697,7 +697,7 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
     while (innermost_item.find_first_of('(') != innermost_item.find_last_of('('))
     {
       size_t count = innermost_item.find_last_of(')') - innermost_item.find_first_of('(') - 1;
-      innermost_item = innermost_item.substr(innermost_item.find_first_of("(") + 1, count);
+      innermost_item = innermost_item.substr(innermost_item.find_first_of('(') + 1, count);
     }
 
     if (!boost::algorithm::istarts_with(name, "date(") &&
