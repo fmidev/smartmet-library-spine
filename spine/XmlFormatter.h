@@ -20,9 +20,9 @@ class XmlFormatter : public TableFormatter
   std::string format(const Table& theTable,
                      const TableFormatter::Names& theNames,
                      const HTTP::Request& theReq,
-                     const TableFormatterOptions& theConfig) const;
+                     const TableFormatterOptions& theConfig) const override;
 
-  const std::string mimetype() const { return "application/xml"; }
+  const std::string mimetype() const override { return "application/xml"; }
 
  private:
   std::string format_attributes(const Table& theTable,

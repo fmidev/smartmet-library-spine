@@ -41,7 +41,7 @@ class AnyFilter : public SequenceFilter
  public:
   AnyFilter(const std::string& format);
 
-  virtual bool match(const std::string& sequence) const;
+  bool match(const std::string& sequence) const override;
 };
 
 // Matches a single ip token (128)
@@ -50,7 +50,7 @@ class SingleFilter : public SequenceFilter
  public:
   SingleFilter(const std::string& format);
 
-  virtual bool match(const std::string& sequence) const;
+  bool match(const std::string& sequence) const override;
 
  private:
   std::string itsMatch;
@@ -62,7 +62,7 @@ class RangeFilter : public SequenceFilter
  public:
   RangeFilter(const std::string& format);
 
-  virtual bool match(const std::string& sequence) const;
+  bool match(const std::string& sequence) const override;
 
  private:
   unsigned long itsLowLimit;
@@ -86,7 +86,7 @@ class AddressFilter
 class IPConfig : public ConfigBase
 {
  public:
-  ~IPConfig();
+  ~IPConfig() override;
 
   IPConfig();
 

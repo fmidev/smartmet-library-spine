@@ -76,7 +76,7 @@ class QCConverterOpen : private QCConverter
   /**
    *  \brief If one character string, oldCode is the newCode.
    */
-  bool convert(std::string& newCode, const std::string& oldCode);
+  bool convert(std::string& newCode, const std::string& oldCode) override;
 };
 
 }  // namespace Spine

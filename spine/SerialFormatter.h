@@ -20,9 +20,9 @@ class SerialFormatter : public TableFormatter
   std::string format(const Table& theTable,
                      const TableFormatter::Names& theNames,
                      const HTTP::Request& theReq,
-                     const TableFormatterOptions& theConfig) const;
+                     const TableFormatterOptions& theConfig) const override;
 
-  const std::string mimetype() const { return "text/plain"; }
+  const std::string mimetype() const override { return "text/plain"; }
 };
 
 }  // namespace Spine

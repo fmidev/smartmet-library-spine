@@ -505,7 +505,7 @@ class Request : public Message
    * \brief Asio::Buffer representation of the headers for socket writing
    */
   // ----------------------------------------------------------------------
-  virtual boost::asio::const_buffer headersToBuffer();
+  boost::asio::const_buffer headersToBuffer() override;
 
   // ----------------------------------------------------------------------
   /*!
@@ -519,9 +519,9 @@ class Request : public Message
    * \brief Asio::Buffer representation the content for socket writing
    */
   // ----------------------------------------------------------------------
-  virtual boost::asio::const_buffer contentToBuffer();
+  boost::asio::const_buffer contentToBuffer() override;
 
-  virtual ~Request();
+  ~Request() override;
 
  protected:
   std::string itsContent;
@@ -721,7 +721,7 @@ class Response : public Message
    * \brief Asio::Buffer representation the response headers for socket writing
    */
   // ----------------------------------------------------------------------
-  virtual boost::asio::const_buffer headersToBuffer();
+  boost::asio::const_buffer headersToBuffer() override;
 
   // ----------------------------------------------------------------------
   /*!
@@ -735,9 +735,9 @@ class Response : public Message
    * \brief Asio::Buffer representation the response content for socket writing
    */
   // ----------------------------------------------------------------------
-  virtual boost::asio::const_buffer contentToBuffer();
+  boost::asio::const_buffer contentToBuffer() override;
 
-  virtual ~Response();
+  ~Response() override;
 
  protected:
   ContentStreamer::StreamerStatus getStreamingStatus() const;

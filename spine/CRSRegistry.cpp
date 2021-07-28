@@ -33,17 +33,17 @@ class CRSRegistry::IdentityTransformation : public CRSRegistry::Transformation
  public:
   IdentityTransformation(const std::string& crs_name);
 
-  virtual ~IdentityTransformation() = default;
+  ~IdentityTransformation() override = default;
 
-  virtual std::string get_src_name() const;
+  std::string get_src_name() const override;
 
-  virtual std::string get_dest_name() const;
+  std::string get_dest_name() const override;
 
-  virtual NFmiPoint transform(const NFmiPoint& src);
+  NFmiPoint transform(const NFmiPoint& src) override;
 
-  virtual boost::array<double, 3> transform(const boost::array<double, 3>& src);
+  boost::array<double, 3> transform(const boost::array<double, 3>& src) override;
 
-  virtual void transform(OGRGeometry& geometry);
+  void transform(OGRGeometry& geometry) override;
 };
 
 /**
@@ -59,17 +59,17 @@ class CRSRegistry::TransformationImpl : public CRSRegistry::Transformation
  public:
   TransformationImpl(const CRSRegistry::MapEntry& from, const CRSRegistry::MapEntry& to);
 
-  virtual ~TransformationImpl();
+  ~TransformationImpl() override;
 
-  virtual std::string get_src_name() const;
+  std::string get_src_name() const override;
 
-  virtual std::string get_dest_name() const;
+  std::string get_dest_name() const override;
 
-  virtual NFmiPoint transform(const NFmiPoint& src);
+  NFmiPoint transform(const NFmiPoint& src) override;
 
-  virtual boost::array<double, 3> transform(const boost::array<double, 3>& src);
+  boost::array<double, 3> transform(const boost::array<double, 3>& src) override;
 
-  virtual void transform(OGRGeometry& geometry);
+  void transform(OGRGeometry& geometry) override;
 };
 
 #define CHECK_NAME(name)   \
