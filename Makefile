@@ -97,9 +97,6 @@ install:
 test:
 	$(MAKE) -C test $@
 
-objdir:
-	@mkdir -p $(objdir)
-
 rpm: clean $(SPEC).spec
 	rm -f $(SPEC).tar.gz # Clean a possible leftover from previous attempt
 	tar -czvf $(SPEC).tar.gz --exclude test --exclude-vcs --transform "s,^,$(SPEC)/," *
@@ -108,12 +105,11 @@ rpm: clean $(SPEC).spec
 
 .SUFFIXES: $(SUFFIXES) .cpp
 
-obj/%.o : %.cpp
-	@mkdir -p obj
-	@#echo Compiling $<
-	$(CXX) $(CFLAGS) $(INCLUDES) -c -MD -MF $(patsubst obj/%.o, obj/%.d.new, $@) -o $@ $<
-	@sed -e "s|^$(notdir $@):|$@:|" $(patsubst obj/%.o, obj/%.d.new, $@) >$(patsubst obj/%.o, obj/%.d, $@)
-	@rm -f $(patsubst obj/%.o, obj/%.d.new, $@)
+objdir:
+	mkdir -p $(objdir)
+
+obj/%.o : %.cpp objdir
+	$(CXX) $(CFLAGS) $(INCLUDES) -c -MD -MF $(patsubst obj/%.o, obj/%.d, $@) -MT $@ -o $@ $<
 
 ifneq ($(wildcard obj/*.d),)
 -include $(wildcard obj/*.d)
