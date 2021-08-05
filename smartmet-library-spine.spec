@@ -36,7 +36,7 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 21.7.27
-BuildRequires: smartmet-library-macgyver-devel >= 21.7.27
+BuildRequires: smartmet-library-macgyver-devel >= 21.8.5
 BuildRequires: smartmet-library-newbase-devel >= 21.6.16
 Requires: boost169-chrono
 Requires: boost169-date-time
@@ -55,7 +55,7 @@ Requires: jsoncpp >= 1.8.4
 Requires: libconfig >= 1.7.2
 Requires: libicu
 Requires: smartmet-library-gis >= 21.7.27
-Requires: smartmet-library-macgyver >= 21.7.27
+Requires: smartmet-library-macgyver >= 21.8.5
 Requires: smartmet-library-newbase >= 21.6.16
 Requires: smartmet-timezones >= 21.2.2
 #TestRequires: bzip2-devel
