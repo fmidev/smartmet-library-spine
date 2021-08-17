@@ -152,7 +152,7 @@ class Reactor
   void callClientConnectionFinishedHooks(const std::string& theClientIP,
                                          const boost::system::error_code& theError);
 
-  bool isShutdownRequested();
+  static bool isShuttingDown();
   void shutdown();
 
   bool isInitializing() const;
@@ -227,7 +227,6 @@ class Reactor
   mutable MutexType itsLoggingMutex;
   boost::posix_time::ptime itsLogLastCleaned;
   boost::shared_ptr<boost::thread> itsLogCleanerThread;
-  bool itsShutdownRequested = false;
 
   mutable std::atomic_bool itsHighLoadFlag{false};       // is the load high
   mutable std::atomic_uint itsActiveRequestsLimit{0};    // current maximum

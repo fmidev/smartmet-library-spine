@@ -41,7 +41,6 @@ class DynamicPlugin
   // Initialize the plugin (call the init-method in a new thread)
   void initializePlugin();
 
-  void setShutdownRequestedFlag();
   void shutdownPlugin();
 
   bool isInitialized() { return initialized; }

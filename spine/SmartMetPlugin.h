@@ -47,8 +47,6 @@ class SmartMetPlugin
 
   // Plugin shutdown
   void shutdownPlugin();
-  bool isShutdownRequested();
-  void setShutdownRequestedFlag();
 
   // Method to process incoming requests
   void callRequestHandler(SmartMet::Spine::Reactor &theReactor,
@@ -63,10 +61,9 @@ class SmartMetPlugin
                               const SmartMet::Spine::HTTP::Request &theRequest,
                               SmartMet::Spine::HTTP::Response &theResponse) = 0;
 
-  bool itsInitActive;
-  bool itsShutdownRequested;
-  std::atomic<unsigned long long> requestCounter;
-  std::atomic<unsigned long long> responseCounter;
+  bool itsInitActive{false};
+  std::atomic_ullong requestCounter{0};
+  std::atomic_ullong responseCounter{0};
 };
 
 using plugin_create_t = SmartMetPlugin *(SmartMet::Spine::Reactor *, const char *);

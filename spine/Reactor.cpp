@@ -49,6 +49,8 @@ namespace fs = boost::filesystem;
 
 namespace
 {
+std::atomic_bool gIsShuttingDown{false};
+
 void absolutize_path(std::string& file_name)
 {
   if (!file_name.empty() && fs::exists(file_name))
@@ -146,7 +148,7 @@ Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::
     itsInitTasks->on_task_error(
         [this](const std::string& name)
         {
-          if (!isShutdownRequested())
+          if (!isShuttingDown())
           {
             Fmi::Exception::Trace(BCP, "Operation failed").printError();
             std::cout << __FILE__ << ":" << __LINE__ << ": init task " << name << " failed"
@@ -216,6 +218,8 @@ void Reactor::init()
   }
   catch (...)
   {
+    // Inform engines and plugings polling the status that we're going down
+    gIsShuttingDown = true;
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
@@ -326,7 +330,7 @@ bool Reactor::addContentHandlerImpl(bool isPrivate,
 {
   try
   {
-    if (itsShutdownRequested)
+    if (isShuttingDown())
       return true;
 
     WriteLock lock(itsContentMutex);
@@ -763,7 +767,7 @@ URIMap Reactor::getURIMap() const
       // Getting plugin names during shutdown may throw due to a call to a pure virtual method.
       // This mitigates the problem, but does not solve it. The shutdown flag should be
       // locked for the duration of this loop.
-      if (itsShutdownRequested)
+      if (isShuttingDown())
         return {};
 
       if (not handlerPair.second->isPrivate())
@@ -794,7 +798,7 @@ URIMap Reactor::getURIMap() const
 
     auto maxAge = boost::posix_time::hours(24);  // Here we give the maximum log time span, 24 hours
 
-    while (!itsShutdownRequested)
+    while (!isShuttingDown())
     {
       // Sleep for some time
       boost::this_thread::sleep(boost::posix_time::seconds(5));
@@ -802,7 +806,7 @@ URIMap Reactor::getURIMap() const
       auto firstValidTime = boost::posix_time::second_clock::local_time() - maxAge;
       for (auto& handlerPair : itsHandlers)
       {
-        if (itsShutdownRequested)
+        if (isShuttingDown())
           return;
 
         handlerPair.second->cleanLog(firstValidTime);
@@ -1036,7 +1040,7 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
 {
   try
   {
-    if (itsShutdownRequested)
+    if (isShuttingDown())
     {
       // Notice that this exception most likely terminates a plugin's initialization
       // phase when the plugin requests an engine. This exception is usually
@@ -1068,7 +1072,7 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
 
     thisEngine->wait();
 
-    return itsShutdownRequested ? nullptr : thisEngine;
+    return isShuttingDown() ? nullptr : thisEngine;
   }
   catch (...)
   {
@@ -1346,7 +1350,7 @@ void* Reactor::getEnginePtr(const std::string& theClassName, void* user_data)
   void* ptr = getSingleton(theClassName, user_data);
   if (ptr == nullptr)
   {
-    if (itsShutdownRequested)
+    if (isShuttingDown())
     {
       throw Fmi::Exception::Trace(
           BCP, "Shutdown in progress - engine " + theClassName + " is not available")
@@ -1358,9 +1362,9 @@ void* Reactor::getEnginePtr(const std::string& theClassName, void* user_data)
   return ptr;
 }
 
-bool Reactor::isShutdownRequested()
+bool Reactor::isShuttingDown()
 {
-  return itsShutdownRequested;
+  return gIsShuttingDown;
 }
 
 bool Reactor::isInitializing() const
@@ -1375,26 +1379,11 @@ void Reactor::shutdown()
     // We are no more interested about init task errors when shutdown has been requested
     itsInitTasks->stop_on_error(false);
 
-    itsShutdownRequested = true;
+    gIsShuttingDown = true;
 
     Fmi::AsyncTaskGroup shutdownTasks;
 
-    // STEP 1: Informing all plugins that the shutdown is in progress. Otherwise
-    //         they might start new jobs meanwhile other components are shutting down.
-
-    for (auto& plugin : itsPlugins)
-      plugin->setShutdownRequestedFlag();
-
-    // STEP 2: Informing all engines that the shutdown is in progress. Otherwise
-    //         they might start new jobs meanwhile other components are shutting down.
-
-    for (auto& singleton : itsSingletons)
-    {
-      auto* engine = reinterpret_cast<SmartMetEngine*>(singleton.second);
-      engine->setShutdownRequestedFlag();
-    }
-
-    // STEP 3: Requesting all plugins to shutdown. Notice that now the plugins know
+    // Requesting all plugins to shutdown. Notice that now the plugins know
     // how many requests they have received and how many responses they have sent.
     // In the other words, the plugins wait until the number of responses equals to
     // the number of the requests. This was implemented on the top level, because

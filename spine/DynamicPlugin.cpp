@@ -238,20 +238,5 @@ void DynamicPlugin::shutdownPlugin()
   }
 }
 
-void DynamicPlugin::setShutdownRequestedFlag()
-{
-  try
-  {
-    if (itsPlugin != nullptr)
-    {
-      itsPlugin->setShutdownRequestedFlag();
-    }
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
-}
-
 }  // namespace Spine
 }  // namespace SmartMet
