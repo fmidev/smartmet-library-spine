@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.8.17
+Version: 21.8.19
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -35,7 +35,7 @@ BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 21.7.27
+BuildRequires: smartmet-library-gis-devel >= 21.8.3
 BuildRequires: smartmet-library-macgyver-devel >= 21.8.5
 BuildRequires: smartmet-library-newbase-devel >= 21.6.16
 Requires: boost169-chrono
@@ -54,7 +54,7 @@ Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig >= 1.7.2
 Requires: libicu
-Requires: smartmet-library-gis >= 21.7.27
+Requires: smartmet-library-gis >= 21.8.3
 Requires: smartmet-library-macgyver >= 21.8.5
 Requires: smartmet-library-newbase >= 21.6.16
 Requires: smartmet-timezones >= 21.2.2
@@ -109,7 +109,7 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
-* Tue Aug 17 2021 Anssi Reponen <anssi.reponen@fmi.fi> - 21.8.17-1.fmi
+* Thu Aug 19 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.8.19-1.fmi
 - Start using local time pool to avoid unnecessary allocations of local_date_time objects (BRAINSTORM-2122)
 
 * Wed Jul 28 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.7.28-1.fmi
