@@ -441,8 +441,8 @@ TimeSeries area_aggregate(const TimeSeriesGroup& ts_group, const ParameterFuncti
           statcalculator(tv);
       }
       // take timestamps from first location (they are same for all locations inside area)
-      const boost::local_time::local_date_time&  timestamp = ts_group[0].timeseries[i].time;
-      
+      const boost::local_time::local_date_time& timestamp = ts_group[0].timeseries[i].time;
+
       ret.emplace_back(TimedValue(timestamp, statcalculator.getStatValue(func, false)));
     }
 
