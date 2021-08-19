@@ -36,26 +36,12 @@ void SmartMetEngine::wait()
   try
   {
     boost::unique_lock<boost::mutex> theLock(itsInitMutex);
-    while (!isReady && !itsShutdownRequested)
+    while (!isReady && !Reactor::isShuttingDown())
     {
       itsCond.wait_for(theLock,
                        boost::chrono::seconds(1),
-                       [this]() -> bool { return isReady || itsShutdownRequested; });
+                       [this]() -> bool { return isReady || Reactor::isShuttingDown(); });
     }
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
-}
-
-void SmartMetEngine::setShutdownRequestedFlag()
-{
-  try
-  {
-    itsShutdownRequested = true;
-    shutdownRequestFlagSet();
-    itsCond.notify_all();
   }
   catch (...)
   {
@@ -67,7 +53,6 @@ void SmartMetEngine::shutdownEngine()
 {
   try
   {
-    itsShutdownRequested = true;
     itsCond.notify_all();
     shutdown();
   }
@@ -75,12 +60,6 @@ void SmartMetEngine::shutdownEngine()
   {
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
-}
-
-void SmartMetEngine::shutdownRequestFlagSet()
-{
-  // This method can be overridden if a plugin wants to be informed when the
-  // shutdownRequestedFlag is set.
 }
 
 }  // namespace Spine

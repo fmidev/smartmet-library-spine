@@ -1,13 +1,11 @@
 #include "SmartMetPlugin.h"
 #include "Convenience.h"
+#include "Reactor.h"
 #include <boost/thread.hpp>
 #include <boost/timer/timer.hpp>
 #include <macgyver/Exception.h>
 
-SmartMetPlugin::SmartMetPlugin()
-    : itsInitActive(false), itsShutdownRequested(false), requestCounter(0), responseCounter(0)
-{
-}
+SmartMetPlugin::SmartMetPlugin() = default;
 
 // ----------------------------------------------------------------------
 /*!
@@ -30,13 +28,13 @@ void SmartMetPlugin::initPlugin()
 
     try
     {
-      if (!itsShutdownRequested)
+      if (!SmartMet::Spine::Reactor::isShuttingDown())
         init();
     }
     catch (...)
     {
       Fmi::Exception exception(BCP, "Init call failed!", nullptr);
-      if (!itsShutdownRequested)
+      if (!SmartMet::Spine::Reactor::isShuttingDown())
       {
         itsInitActive = false;
         throw exception;
@@ -65,20 +63,11 @@ bool SmartMetPlugin::isInitActive()
 {
   return itsInitActive;
 }
-bool SmartMetPlugin::isShutdownRequested()
-{
-  return itsShutdownRequested;
-}
-void SmartMetPlugin::setShutdownRequestedFlag()
-{
-  itsShutdownRequested = true;
-}
+
 void SmartMetPlugin::shutdownPlugin()
 {
   try
   {
-    itsShutdownRequested = true;
-
     // Calling the plugin specific shutdown() -method.
     shutdown();
 
@@ -116,7 +105,7 @@ void SmartMetPlugin::callRequestHandler(SmartMet::Spine::Reactor &theReactor,
 
   try
   {
-    if (itsShutdownRequested || itsInitActive)
+    if (SmartMet::Spine::Reactor::isShuttingDown() || itsInitActive)
     {
       theResponse.setStatus(SmartMet::Spine::HTTP::Status::service_unavailable);
       return;
