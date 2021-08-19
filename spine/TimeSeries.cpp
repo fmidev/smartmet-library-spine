@@ -1,6 +1,6 @@
 #include "TableFeeder.h"
 #include <boost/make_shared.hpp>
-#include <macgyver/StringConversion.h>
+#include <macgyver/Hash.h>
 
 namespace SmartMet
 {
@@ -17,7 +17,8 @@ std::ostream& operator<<(std::ostream& os, const LocalTimePool& localTimePool)
 const boost::local_time::local_date_time& LocalTimePool::create(
     const boost::posix_time::ptime& t, const boost::local_time::time_zone_ptr& tz)
 {
-  std::string key = (Fmi::to_iso_string(t) + tz->to_posix_string());
+  auto key = Fmi::hash_value(t);
+  Fmi::hash_combine(key, Fmi::hash_value(tz));
 
   if (localtimes.find(key) == localtimes.end())
     localtimes.insert(std::make_pair(key, boost::local_time::local_date_time(t, tz)));

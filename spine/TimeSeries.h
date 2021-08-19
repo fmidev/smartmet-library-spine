@@ -53,7 +53,7 @@ class LocalTimePool
   void print(std::ostream& os) const;
 
  private:
-  std::map<std::string, boost::local_time::local_date_time> localtimes;
+  std::map<std::size_t, boost::local_time::local_date_time> localtimes;
 };
 
 using LocalTimePoolPtr = boost::shared_ptr<LocalTimePool>;
