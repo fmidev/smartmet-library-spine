@@ -1,5 +1,5 @@
-#include <boost/test/included/unit_test.hpp>
 #include "DataFilter.h"
+#include <boost/test/included/unit_test.hpp>
 
 using SmartMet::Spine::DataFilter;
 
@@ -65,7 +65,7 @@ BOOST_AUTO_TEST_CASE(test_and)
 {
   DataFilter filter;
   filter.setDataFilter("name", "ge 1 AND lt 9");
-  BOOST_CHECK_EQUAL(filter.getSqlClause("name", "x"),std::string("(x < 9 AND x >= 1)"));
+  BOOST_CHECK_EQUAL(filter.getSqlClause("name", "x"), std::string("(x < 9 AND x >= 1)"));
 }
 BOOST_AUTO_TEST_CASE(test_or)
 {

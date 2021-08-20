@@ -10,6 +10,7 @@
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/local_time/local_time.hpp>
 #include <boost/foreach.hpp>
+#include <boost/make_shared.hpp>
 #include <regression/tframe.h>
 
 namespace bp = boost::posix_time;
@@ -27,7 +28,8 @@ ts::TimeSeries generate_observation_timeseries()
 
   bl::time_zone_ptr zone(new bl::posix_time_zone("EET+2"));
 
-  ts::TimeSeries timeseries;
+  auto pool = boost::make_shared<ts::LocalTimePool>();
+  ts::TimeSeries timeseries(pool);
 
   timeseries.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22)), zone), ts::None()));
@@ -73,7 +75,8 @@ ts::TimeSeries generate_timeseries(bool add_missing_value = false)
 
   bl::time_zone_ptr zone(new bl::posix_time_zone("EET+2"));
 
-  ts::TimeSeries timeseries;
+  auto pool = boost::make_shared<ts::LocalTimePool>();
+  ts::TimeSeries timeseries(pool);
 
   timeseries.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22)), zone), 1.0));
@@ -99,7 +102,8 @@ ts::TimeSeriesGroup generate_timeseries_group()
 
   bl::time_zone_ptr zone(new bl::posix_time_zone("EET+2"));
 
-  ts::TimeSeries timeseries_helsinki;
+  auto pool = boost::make_shared<ts::LocalTimePool>();
+  ts::TimeSeries timeseries_helsinki(pool);
 
   timeseries_helsinki.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22)), zone), 1.0));
@@ -112,7 +116,7 @@ ts::TimeSeriesGroup generate_timeseries_group()
   timeseries_helsinki.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(26)), zone), 21.0));
 
-  ts::TimeSeries timeseries_tampere;
+  ts::TimeSeries timeseries_tampere(pool);
 
   timeseries_tampere.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22)), zone), 2.0));
@@ -125,7 +129,7 @@ ts::TimeSeriesGroup generate_timeseries_group()
   timeseries_tampere.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(26)), zone), 22.0));
 
-  ts::TimeSeries timeseries_oulu;
+  ts::TimeSeries timeseries_oulu(pool);
 
   timeseries_oulu.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22)), zone), 3.0));
@@ -138,7 +142,7 @@ ts::TimeSeriesGroup generate_timeseries_group()
   timeseries_oulu.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(26)), zone), 23.0));
 
-  ts::TimeSeries timeseries_kuopio;
+  ts::TimeSeries timeseries_kuopio(pool);
 
   timeseries_kuopio.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22)), zone), 4.0));
@@ -151,7 +155,7 @@ ts::TimeSeriesGroup generate_timeseries_group()
   timeseries_kuopio.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(26)), zone), 24.0));
 
-  ts::TimeSeries timeseries_turku;
+  ts::TimeSeries timeseries_turku(pool);
 
   timeseries_turku.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22)), zone), 5.0));
@@ -186,7 +190,8 @@ ts::TimeSeriesGroup generate_timeseries_group_nans()
 
   bl::time_zone_ptr zone(new bl::posix_time_zone("EET+2"));
 
-  ts::TimeSeries timeseries_helsinki;
+  auto pool = boost::make_shared<ts::LocalTimePool>();
+  ts::TimeSeries timeseries_helsinki(pool);
 
   timeseries_helsinki.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22)), zone), 1.0));
@@ -200,7 +205,7 @@ ts::TimeSeriesGroup generate_timeseries_group_nans()
   timeseries_helsinki.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(26)), zone), 21.0));
 
-  ts::TimeSeries timeseries_tampere;
+  ts::TimeSeries timeseries_tampere(pool);
 
   timeseries_tampere.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22)), zone), 2.0));
@@ -214,7 +219,7 @@ ts::TimeSeriesGroup generate_timeseries_group_nans()
   timeseries_tampere.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(26)), zone), 22.0));
 
-  ts::TimeSeries timeseries_oulu;
+  ts::TimeSeries timeseries_oulu(pool);
 
   timeseries_oulu.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22)), zone), 3.0));
@@ -227,7 +232,7 @@ ts::TimeSeriesGroup generate_timeseries_group_nans()
   timeseries_oulu.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(26)), zone), 23.0));
 
-  ts::TimeSeries timeseries_kuopio;
+  ts::TimeSeries timeseries_kuopio(pool);
 
   timeseries_kuopio.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22)), zone), 4.0));
@@ -240,7 +245,7 @@ ts::TimeSeriesGroup generate_timeseries_group_nans()
   timeseries_kuopio.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(26)), zone), 24.0));
 
-  ts::TimeSeries timeseries_turku;
+  ts::TimeSeries timeseries_turku(pool);
 
   timeseries_turku.push_back(ts::TimedValue(
       bl::local_date_time(bp::ptime(bg::date(2015, 9, 2), bp::hours(22)), zone), 5.0));

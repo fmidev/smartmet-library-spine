@@ -7,12 +7,12 @@
 
 #include "SmartMetCache.h"
 #include <boost/make_shared.hpp>
+#include <macgyver/AsyncTask.h>
 #include <regression/tframe.h>
 #include <sys/types.h>
 #include <sstream>
 #include <string>
 #include <unistd.h>
-#include <macgyver/AsyncTask.h>
 
 template <typename T>
 std::string tostr(const T& theValue)
@@ -209,13 +209,13 @@ void cache_in_async_task()
 {
   uid_t uid = getuid();
 
-  Fmi::AsyncTask task(
-      "test",
-      [&uid]() {
-	SmartMet::Spine::SmartMetCache cache(
-	    10, 10, "/tmp/" + std::to_string(int(uid)) + "/bscachetest4");
-	cache.shutdown();
-      });
+  Fmi::AsyncTask task("test",
+                      [&uid]()
+                      {
+                        SmartMet::Spine::SmartMetCache cache(
+                            10, 10, "/tmp/" + std::to_string(int(uid)) + "/bscachetest4");
+                        cache.shutdown();
+                      });
   boost::this_thread::sleep_for(boost::chrono::milliseconds(10));
   task.cancel();
   task.wait();

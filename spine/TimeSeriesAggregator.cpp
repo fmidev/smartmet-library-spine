@@ -41,6 +41,7 @@ class StatCalculator
   boost::optional<boost::local_time::local_date_time> itsTimestep;
 
  public:
+  StatCalculator(LocalTimePoolPtr time_pool) : itsTimeSeries(time_pool) {}
   void operator()(const TimedValue& tv);
   Value getStatValue(const ParameterFunction& func, bool useWeights) const;
   void setTimestep(const boost::local_time::local_date_time& timestep) { itsTimestep = timestep; }
@@ -417,7 +418,7 @@ TimeSeries area_aggregate(const TimeSeriesGroup& ts_group, const ParameterFuncti
 {
   try
   {
-    TimeSeries ret;
+    TimeSeries ret(ts_group.empty() ? nullptr : ts_group[0].timeseries.getLocalTimePool());
 
     if (ts_group.empty())
     {
@@ -430,7 +431,7 @@ TimeSeries area_aggregate(const TimeSeriesGroup& ts_group, const ParameterFuncti
     // iterate through timesteps
     for (size_t i = 0; i < ts_size; i++)
     {
-      StatCalculator statcalculator;
+      StatCalculator statcalculator(ts_group[0].timeseries.getLocalTimePool());
 
       // iterate through locations
       for (const auto& t : ts_group)
@@ -440,7 +441,7 @@ TimeSeries area_aggregate(const TimeSeriesGroup& ts_group, const ParameterFuncti
           statcalculator(tv);
       }
       // take timestamps from first location (they are same for all locations inside area)
-      boost::local_time::local_date_time timestamp(ts_group[0].timeseries[i].time);
+      const boost::local_time::local_date_time& timestamp = ts_group[0].timeseries[i].time;
 
       ret.emplace_back(TimedValue(timestamp, statcalculator.getStatValue(func, false)));
     }
@@ -457,7 +458,7 @@ TimeSeriesPtr time_aggregate(const TimeSeries& ts, const ParameterFunction& func
 {
   try
   {
-    TimeSeriesPtr ret(new TimeSeries());
+    TimeSeriesPtr ret(new TimeSeries(ts.getLocalTimePool()));
 
     std::vector<std::pair<int, int> > agg_indexes = get_aggregation_indexes(func, ts);
 
@@ -472,7 +473,7 @@ TimeSeriesPtr time_aggregate(const TimeSeries& ts, const ParameterFunction& func
         continue;
       }
 
-      StatCalculator statcalculator;
+      StatCalculator statcalculator(ts.getLocalTimePool());
       statcalculator.setTimestep(ts[i].time);
       for (int k = agg_index_start; k <= agg_index_end; k++)
       {
@@ -521,11 +522,11 @@ TimeSeriesPtr aggregate(const TimeSeries& ts, const ParameterFunctions& pf)
 {
   try
   {
-    TimeSeriesPtr ret(new TimeSeries);
+    TimeSeriesPtr ret(new TimeSeries(ts.getLocalTimePool()));
 
     if (pf.innerFunction.type() == FunctionType::AreaFunction)
     {
-      TimeSeries local_ts;
+      TimeSeries local_ts(ts.getLocalTimePool());
       // Do filtering
       for (const auto& tv : ts)
       {
