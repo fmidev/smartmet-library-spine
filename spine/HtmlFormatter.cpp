@@ -65,7 +65,10 @@ std::string HtmlFormatter::format(const Table& theTable,
 
     // Output headers
 
-    std::string out = "<table><tr>";
+    std::string out;
+    out.reserve(TableFormatter::default_minimum_size);
+
+    out += "<table><tr>";
     for (const auto& nam : cols)
     {
       const std::string& name = theNames[nam];

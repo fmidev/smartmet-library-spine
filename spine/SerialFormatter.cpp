@@ -7,9 +7,9 @@
 #include "SerialFormatter.h"
 #include "Convenience.h"
 #include "HTTP.h"
-#include "Table.h"
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <fmt/format.h>
 #include <macgyver/Exception.h>
 #include <algorithm>
 #include <iostream>
@@ -70,21 +70,24 @@ std::list<std::string> parse_attributes(const std::string& theStr)
   }
 }
 
+}  // namespace
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Format without attributes
  */
 // ----------------------------------------------------------------------
 
-std::string format_plain(const Table& theTable,
-                         const TableFormatter::Names& theNames,
-                         const HTTP::Request& theReq,
-                         Table::Indexes& theCols,
-                         Table::Indexes& theRows)
+std::string SerialFormatter::format_plain(const Table& theTable,
+                                          const TableFormatter::Names& theNames,
+                                          const HTTP::Request& theReq,
+                                          Table::Indexes& theCols,
+                                          Table::Indexes& theRows) const
 {
   try
   {
     std::string out;
+    out.reserve(TableFormatter::default_minimum_size);
 
     std::string miss;
     auto missing = theReq.getParameter("missingtext");
@@ -95,16 +98,16 @@ std::string format_plain(const Table& theTable,
       miss = *missing;
 
     out += "a:";
-    out += Fmi::to_string(theRows.size());
+    appendNumber(out, theRows.size());
     out += ":{";
 
     std::size_t row = 0;
     for (std::size_t j : theRows)
     {
       out += "i:";
-      out += Fmi::to_string(row++);
+      appendNumber(out, row++);
       out += ";a:";
-      out += Fmi::to_string(theCols.size());
+      appendNumber(out, theCols.size());
       out += ":{";
 
       for (std::size_t i : theCols)
@@ -113,13 +116,13 @@ std::string format_plain(const Table& theTable,
         const std::string& value = theTable.get(i, j);
 
         out += "s:";
-        out += Fmi::to_string(name.size());
+        appendNumber(out, name.size());
         out += ":\"";
         out += name;
         out += "\";";
 
         out += "s:";
-        out += (Fmi::to_string(value.empty() ? miss.size() : value.size()));
+        appendNumber(out, value.empty() ? miss.size() : value.size());
         out += ":\"";
         if (value.empty())
           out += miss;
@@ -145,16 +148,17 @@ std::string format_plain(const Table& theTable,
  */
 // ----------------------------------------------------------------------
 
-std::string format_attributes(const Table& theTable,
-                              const TableFormatter::Names& theNames,
-                              const HTTP::Request& theReq,
-                              Table::Indexes& theCols,
-                              Table::Indexes& theRows,
-                              std::list<std::string>& theAttributes)
+std::string SerialFormatter::format_attributes(const Table& theTable,
+                                               const TableFormatter::Names& theNames,
+                                               const HTTP::Request& theReq,
+                                               Table::Indexes& theCols,
+                                               Table::Indexes& theRows,
+                                               std::list<std::string>& theAttributes) const
 {
   try
   {
     std::string out;
+    out.reserve(TableFormatter::default_minimum_size);
 
     std::string miss;
     auto missing = theReq.getParameter("missingtext");
@@ -169,7 +173,7 @@ std::string format_attributes(const Table& theTable,
       if (theRows.size() > 1)
       {
         out += "a:";
-        out += Fmi::to_string(theRows.size());
+        appendNumber(out, theRows.size());
         out += ":{";
       }
 
@@ -179,26 +183,26 @@ std::string format_attributes(const Table& theTable,
         if (theRows.size() > 1)
         {
           out += "i:";
-          out += Fmi::to_string(row++);
+          appendNumber(out, row++);
           out += ';';
         }
 
         out += "a:";
-        out += Fmi::to_string(theCols.size());
+        appendNumber(out, theCols.size());
         out += ":{";
 
         for (std::size_t i : theCols)
         {
           const std::string& name = theNames[i];
           out += "s:";
-          out += Fmi::to_string(name.size());
+          appendNumber(out, name.size());
           out += ":\"";
           out += name;
           out += "\";";
 
           const std::string& value = theTable.get(i, j);
           out += "s:";
-          out += (Fmi::to_string(value.empty() ? miss.size() : value.size()));
+          appendNumber(out, value.empty() ? miss.size() : value.size());
           out += ":\"";
           if (value.empty())
             out += miss;
@@ -237,7 +241,7 @@ std::string format_attributes(const Table& theTable,
       // Process unique attribute values one at a time
 
       out += "a:";
-      out += Fmi::to_string(values.size());
+      appendNumber(out, values.size());
       out += ":{";
 
       for (const std::string& value : values)
@@ -249,7 +253,7 @@ std::string format_attributes(const Table& theTable,
             rows.insert(j);
         }
         out += "s:";
-        out += Fmi::to_string(value.size());
+        appendNumber(out, value.size());
         out += ":\"";
         out += value;
         out += "\";";
@@ -271,7 +275,6 @@ std::string format_attributes(const Table& theTable,
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
-}  // namespace
 
 // ----------------------------------------------------------------------
 /*!
@@ -307,6 +310,13 @@ std::string SerialFormatter::format(const Table& theTable,
   {
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
+}
+
+// Avoid std::string allocations by appending via a buffer
+void SerialFormatter::appendNumber(std::string& theOutput, std::size_t theNumber) const
+{
+  fmt::format_int f(theNumber);
+  theOutput.append(f.data(), f.size());
 }
 
 }  // namespace Spine

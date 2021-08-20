@@ -63,7 +63,10 @@ std::string DebugFormatter::format(const Table& theTable,
     const Table::Indexes cols = theTable.columns();
     const Table::Indexes rows = theTable.rows();
 
-    std::string out =
+    std::string out;
+    out.reserve(TableFormatter::default_minimum_size);
+
+    out +=
         "<!DOCTYPE html><html><head><title>Debug mode output</title>"
         "<style>"
         "table {border-collapse: collapse;}"

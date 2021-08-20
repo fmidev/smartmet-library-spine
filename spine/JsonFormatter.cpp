@@ -141,6 +141,7 @@ std::string format_recursively(const Table& theTable,
   try
   {
     std::string out;
+    out.reserve(TableFormatter::default_minimum_size);
 
     const std::string miss = "null";
     if (theAttributes.empty())

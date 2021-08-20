@@ -92,7 +92,9 @@ std::string format_plain(const Table& theTable,
     else
       miss = *missing;
 
-    std::string out = "array(\n";
+    std::string out;
+    out.reserve(TableFormatter::default_minimum_size);
+    out += "array(\n";
 
     bool jfirst = true;
     for (std::size_t j : theRows)
@@ -146,6 +148,7 @@ std::string format_attributes(const Table& theTable,
   try
   {
     std::string out;
+    out.reserve(TableFormatter::default_minimum_size);
 
     std::string miss;
     auto missing = theReq.getParameter("missingtext");

@@ -33,6 +33,7 @@ std::string AsciiFormatter::format(const Table& theTable,
   try
   {
     std::string out;
+    out.reserve(TableFormatter::default_minimum_size);
 
     std::string sep;
     auto separator = theReq.getParameter("separator");

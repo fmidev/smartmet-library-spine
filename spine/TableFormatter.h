@@ -34,6 +34,8 @@ class TableFormatter
 
   virtual const std::string mimetype() const = 0;
 
+  static const std::size_t default_minimum_size = 8191;
+
 };  // class TableFormatter
 
 }  // namespace Spine

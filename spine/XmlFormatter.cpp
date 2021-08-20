@@ -101,6 +101,7 @@ std::string XmlFormatter::format_attributes(const Table& theTable,
   try
   {
     std::string out;
+    out.reserve(TableFormatter::default_minimum_size);
 
     std::string miss;
     auto missing = theReq.getParameter("missingtext");
@@ -158,6 +159,7 @@ std::string XmlFormatter::format_tags(const Table& theTable,
   try
   {
     std::string out;
+    out.reserve(TableFormatter::default_minimum_size);
 
     std::string miss;
     auto missing = theReq.getParameter("missingtext");
@@ -217,6 +219,7 @@ std::string XmlFormatter::format_mixed(const Table& theTable,
   try
   {
     std::string out;
+    out.reserve(TableFormatter::default_minimum_size);
 
     std::string miss;
     auto missing = theReq.getParameter("missingtext");
