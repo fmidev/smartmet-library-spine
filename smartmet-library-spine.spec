@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.8.20
+Version: 21.8.21
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -109,6 +109,9 @@ make %{_smp_mflags}
 %{_includedir}/smartmet/%{DIRNAME}
 
 %changelog
+* Sat Aug 21 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.8.21-1.fmi
+- Faster LocalTimePool with unordered_map instead of map
+
 * Fri Aug 20 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.8.20-1.fmi
 - Faster TableFormatter code
 

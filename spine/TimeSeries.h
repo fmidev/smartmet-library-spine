@@ -6,15 +6,13 @@
 
 #pragma once
 
-#include <map>
-#include <string>
-#include <vector>
-
-#include <boost/date_time/local_time/local_time.hpp>
-#include <boost/variant.hpp>
-
 #include "Table.h"
 #include "ValueFormatter.h"
+#include <boost/date_time/local_time/local_time.hpp>
+#include <boost/variant.hpp>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace SmartMet
 {
@@ -53,7 +51,7 @@ class LocalTimePool
   void print(std::ostream& os) const;
 
  private:
-  std::map<std::size_t, boost::local_time::local_date_time> localtimes;
+  std::unordered_map<std::size_t, boost::local_time::local_date_time> localtimes;
 };
 
 using LocalTimePoolPtr = boost::shared_ptr<LocalTimePool>;

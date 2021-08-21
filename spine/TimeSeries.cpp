@@ -20,10 +20,18 @@ const boost::local_time::local_date_time& LocalTimePool::create(
   auto key = Fmi::hash_value(t);
   Fmi::hash_combine(key, Fmi::hash_value(tz));
 
-  if (localtimes.find(key) == localtimes.end())
-    localtimes.insert(std::make_pair(key, boost::local_time::local_date_time(t, tz)));
+  // TODO: In C++17 should use try_emplace
 
-  return localtimes.at(key);
+  auto pos = localtimes.find(key);
+  if (pos != localtimes.end())
+    return pos->second;
+
+  // Note: iterators may be invalidated by a rehash caused by this, but references are not
+  auto pos_bool =
+      localtimes.emplace(std::make_pair(key, boost::local_time::local_date_time(t, tz)));
+
+  assert(pos_bool.second == true);
+  return pos_bool.first->second;
 }
 
 size_t LocalTimePool::size() const
@@ -44,8 +52,8 @@ TimeSeries::TimeSeries(LocalTimePoolPtr time_pool)
 
 void TimeSeries::emplace_back(const TimedValue& tv)
 {
-  TimedValueVector::emplace_back(
-      TimedValue(local_time_pool->create(tv.time.utc_time(), tv.time.zone()), tv.value));
+  TimedValueVector::emplace_back(local_time_pool->create(tv.time.utc_time(), tv.time.zone()),
+                                 tv.value);
 }
 
 void TimeSeries::push_back(const TimedValue& tv)
