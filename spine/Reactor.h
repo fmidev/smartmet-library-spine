@@ -29,6 +29,7 @@
 #include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
 #include <macgyver/AsyncTaskGroup.h>
+#include <macgyver/CacheStats.h>
 
 #include <atomic>
 #include <libconfig.h++>
@@ -156,6 +157,8 @@ class Reactor
   void shutdown();
 
   bool isInitializing() const;
+
+  Fmi::Cache::CacheStatistics getCacheStats() const;
 
  private:
   void initializeEngine(SmartMetEngine* theEngine, const std::string& theName);

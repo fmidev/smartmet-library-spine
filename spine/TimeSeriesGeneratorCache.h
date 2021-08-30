@@ -24,6 +24,8 @@ class TimeSeriesGeneratorCache
   TimeList generate(const TimeSeriesGeneratorOptions& theOptions,
                     const boost::local_time::time_zone_ptr& theZone) const;
 
+  const Fmi::Cache::CacheStats& getCacheStats() const { return itsCache.statistics(); }
+
  private:
   mutable Fmi::Cache::Cache<std::size_t, TimeList> itsCache;
 };

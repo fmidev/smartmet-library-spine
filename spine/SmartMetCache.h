@@ -72,6 +72,9 @@ class SmartMetCache : boost::noncopyable
 
   void shutdown();
 
+  const Fmi::Cache::CacheStats& getMemoryCacheStats() const { return itsMemoryCache.statistics(); }
+  const Fmi::Cache::CacheStats& getFileCacheStats() const { return (itsFileCache ? itsFileCache->statistics() : Fmi::Cache::EMPTY_CACHE_STATS); }
+
  private:
   void operateFileCache();
 
