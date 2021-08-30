@@ -14,6 +14,7 @@
 #include <boost/thread.hpp>
 #include <atomic>
 #include <string>
+#include <macgyver/CacheStats.h>
 
 namespace SmartMet
 {
@@ -37,6 +38,11 @@ class SmartMetEngine : private boost::noncopyable
   virtual ~SmartMetEngine();
 
   virtual void shutdownEngine();
+
+  // Virtual method to return cache statistics
+  virtual Fmi::Cache::CacheStatistics getCacheStats() const { return Fmi::Cache::CacheStatistics(); }
+
+  bool ready() const { return isReady; }
 
  protected:
   /// This function contains the engine construction
