@@ -1459,73 +1459,28 @@ Fmi::Cache::CacheStatistics Reactor::getCacheStats() const
   Fmi::Cache::CacheStatistics ret;
 
   // Engines
-  auto it = itsSingletons.find("Geonames");
-  if (it != itsSingletons.end())
+
+  for (auto engine_item : itsSingletons)
+  {
+    auto* engine = reinterpret_cast<SmartMetEngine*>(engine_item.second);
+    if (engine->ready())
     {
-	  auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-	  std::cout << "step44: " << engine << std::endl;
-	  if(engine && engine->ready())
-		{
-		  Fmi::Cache::CacheStatistics geonames_stats = engine->getCacheStats();
-		  if(!geonames_stats.empty())
-			ret.insert(geonames_stats.begin(), geonames_stats.end());
-		}
-	}
-  it = itsSingletons.find("Gis");
-  if (it != itsSingletons.end())
-    {
-	  auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-	  if(engine->ready())
-		{
-		  Fmi::Cache::CacheStatistics gis_stats = engine->getCacheStats();
-		  if(!gis_stats.empty())
-			ret.insert(gis_stats.begin(), gis_stats.end());
-		}
-	}
-  it = itsSingletons.find("Querydata");
-  if (it != itsSingletons.end())
-    {
-	  auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-	  if(engine->ready())
-		{
-		  Fmi::Cache::CacheStatistics querydata_stats = engine->getCacheStats();
-		  if(!querydata_stats.empty())
-			ret.insert(querydata_stats.begin(), querydata_stats.end());
-		}
-	}
-  it = itsSingletons.find("Observation");
-  if (it != itsSingletons.end())
-    {
-	  auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-	  if(engine->ready())
-		{
-		  Fmi::Cache::CacheStatistics observation_stats = engine->getCacheStats();
-		  if(!observation_stats.empty())
-			ret.insert(observation_stats.begin(), observation_stats.end());
-		}
-	}
-  it = itsSingletons.find("Contour");
-  if (it != itsSingletons.end())
-    {
-	  auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-	  if(engine->ready())
-		{
-		  Fmi::Cache::CacheStatistics contour_stats = engine->getCacheStats();
-		  if(!contour_stats.empty())
-			ret.insert(contour_stats.begin(), contour_stats.end());
-		}
-	}
+      Fmi::Cache::CacheStatistics engine_stats = engine->getCacheStats();
+      if (!engine_stats.empty())
+        ret.insert(engine_stats.begin(), engine_stats.end());
+    }
+  }
 
   // Plugins
-  for(auto plugin_item : itsPlugins)
-	{
-	  auto* smartmet_plugin = plugin_item->getPlugin();
-	  if(smartmet_plugin && !smartmet_plugin->isInitActive())
-		{
-		  Fmi::Cache::CacheStatistics plugin_stats = smartmet_plugin->getCacheStats();
-		  ret.insert(plugin_stats.begin(), plugin_stats.end());
-		}
-	}
+  for (auto plugin_item : itsPlugins)
+  {
+    auto* smartmet_plugin = plugin_item->getPlugin();
+    if (smartmet_plugin && !smartmet_plugin->isInitActive())
+    {
+      Fmi::Cache::CacheStatistics plugin_stats = smartmet_plugin->getCacheStats();
+      ret.insert(plugin_stats.begin(), plugin_stats.end());
+    }
+  }
 
   return ret;
 }
