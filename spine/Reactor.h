@@ -127,7 +127,7 @@ class Reactor
   bool loadEngine(const std::string& theFilename, bool verbose);
   void listEngines() const;
   EngineInstance newInstance(const std::string& theClassName, void* user_data);
-  EngineInstance getSingleton(const std::string& theClassName, void* user_data);
+  SmartMetEngine* getSingleton(const std::string& theClassName, void* user_data);
 
   template <typename EngineType>
   EngineType* getEngine(const std::string& theClassName, void* user_data = nullptr);
@@ -170,7 +170,7 @@ class Reactor
                              const std::string& theUri,
                              ContentHandler theHandler);
 
-  void* getEnginePtr(const std::string& theClassName, void* user_data);
+  SmartMetEngine* getEnginePtr(const std::string& theClassName, void* user_data);
 
   // SmartMet API Version
   int APIVersion = SMARTMET_API_VERSION;
@@ -216,7 +216,7 @@ class Reactor
   using EngineList = std::map<std::string, EngineInstanceCreator>;
   EngineList itsEngines;
 
-  using SingletonList = std::map<std::string, EngineInstance>;
+  using SingletonList = std::map<std::string, SmartMetEngine*>;
   SingletonList itsSingletons;
 
   using ConfigList = std::map<std::string, std::string>;
