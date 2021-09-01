@@ -1035,8 +1035,7 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
  */
 // ----------------------------------------------------------------------
 
-Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
-                                              void* /* user_data */)
+SmartMetEngine* Reactor::getSingleton(const std::string& theClassName, void* /* user_data */)
 {
   try
   {
@@ -1048,8 +1047,6 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
 
       throw Fmi::Exception(BCP, "Shutdown active!").disableStackTrace();
     }
-
-    Reactor::EngineInstance result;
 
     // Search for the singleton in
     auto it = itsSingletons.find(theClassName);
@@ -1064,15 +1061,13 @@ Reactor::EngineInstance Reactor::getSingleton(const std::string& theClassName,
     }
 
     // Found it, return the already-created instance of class.
-    result = it->second;
+    auto* engine = it->second;
 
     // Engines must be wait() - ed before use, do it here so plugins don't have worry about it
 
-    auto* thisEngine = reinterpret_cast<SmartMetEngine*>(result);
+    engine->wait();
 
-    thisEngine->wait();
-
-    return isShuttingDown() ? nullptr : thisEngine;
+    return isShuttingDown() ? nullptr : engine;
   }
   catch (...)
   {
@@ -1142,10 +1137,10 @@ bool Reactor::loadEngine(const std::string& theFilename, bool /* verbose */)
       return false;
 
     // Begin constructing the engine
-    auto* theSingleton = newInstance(itsNamePointer(), nullptr);
+    auto* singleton = newInstance(itsNamePointer(), nullptr);
 
     // Check whether the preliminary creation succeeded
-    if (theSingleton == nullptr)
+    if (singleton == nullptr)
     {
       // Log error and return with zero
       std::cout << ANSI_FG_RED << "No engine '" << itsNamePointer()
@@ -1154,7 +1149,8 @@ bool Reactor::loadEngine(const std::string& theFilename, bool /* verbose */)
       return false;
     }
 
-    itsSingletons.insert(SingletonList::value_type(itsNamePointer(), theSingleton));
+    auto* engine = reinterpret_cast<SmartMetEngine*>(singleton);
+    itsSingletons.insert(SingletonList::value_type(itsNamePointer(), engine));
 
     return true;
   }
@@ -1345,21 +1341,20 @@ void Reactor::callClientConnectionFinishedHooks(const std::string& theClientIP,
   }
 }
 
-void* Reactor::getEnginePtr(const std::string& theClassName, void* user_data)
+SmartMetEngine* Reactor::getEnginePtr(const std::string& theClassName, void* user_data)
 {
-  void* ptr = getSingleton(theClassName, user_data);
-  if (ptr == nullptr)
-  {
-    if (isShuttingDown())
-    {
-      throw Fmi::Exception::Trace(
-          BCP, "Shutdown in progress - engine " + theClassName + " is not available")
-          .disableStackTrace();
-    }
+  auto* ptr = getSingleton(theClassName, user_data);
+  if (ptr != nullptr)
+    return ptr;
 
-    throw Fmi::Exception::Trace(BCP, "No " + theClassName + " engine available");
+  if (isShuttingDown())
+  {
+    throw Fmi::Exception::Trace(
+        BCP, "Shutdown in progress - engine " + theClassName + " is not available")
+        .disableStackTrace();
   }
-  return ptr;
+
+  throw Fmi::Exception::Trace(BCP, "No " + theClassName + " engine available");
 }
 
 bool Reactor::isShuttingDown()
@@ -1419,7 +1414,7 @@ void Reactor::shutdown()
       tmp1 << ANSI_FG_RED << "* Engine [" << singleton.first << "] shutting down" << ANSI_FG_DEFAULT
            << '\n';
       std::cout << tmp1.str() << std::flush;
-      auto* engine = reinterpret_cast<SmartMetEngine*>(singleton.second);
+      auto* engine = singleton.second;
       shutdownTasks.add("Engine [" + singleton.first + "] shutdown",
                         [&engine, singleton]()
                         {
@@ -1443,7 +1438,7 @@ void Reactor::shutdown()
     {
       std::cout << ANSI_FG_RED << "* Deleting engine [" << singleton.first << "]\n"
                 << ANSI_FG_DEFAULT;
-      auto* engine = reinterpret_cast<SmartMetEngine*>(singleton.second);
+      auto* engine = singleton.second;
       boost::this_thread::disable_interruption do_not_disturb;
       delete engine;
     }
@@ -1459,73 +1454,28 @@ Fmi::Cache::CacheStatistics Reactor::getCacheStats() const
   Fmi::Cache::CacheStatistics ret;
 
   // Engines
-  auto it = itsSingletons.find("Geonames");
-  if (it != itsSingletons.end())
+
+  for (auto engine_item : itsSingletons)
+  {
+    auto* engine = engine_item.second;
+    if (engine && engine->ready())
     {
-	  auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-	  std::cout << "step44: " << engine << std::endl;
-	  if(engine && engine->ready())
-		{
-		  Fmi::Cache::CacheStatistics geonames_stats = engine->getCacheStats();
-		  if(!geonames_stats.empty())
-			ret.insert(geonames_stats.begin(), geonames_stats.end());
-		}
-	}
-  it = itsSingletons.find("Gis");
-  if (it != itsSingletons.end())
-    {
-	  auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-	  if(engine->ready())
-		{
-		  Fmi::Cache::CacheStatistics gis_stats = engine->getCacheStats();
-		  if(!gis_stats.empty())
-			ret.insert(gis_stats.begin(), gis_stats.end());
-		}
-	}
-  it = itsSingletons.find("Querydata");
-  if (it != itsSingletons.end())
-    {
-	  auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-	  if(engine->ready())
-		{
-		  Fmi::Cache::CacheStatistics querydata_stats = engine->getCacheStats();
-		  if(!querydata_stats.empty())
-			ret.insert(querydata_stats.begin(), querydata_stats.end());
-		}
-	}
-  it = itsSingletons.find("Observation");
-  if (it != itsSingletons.end())
-    {
-	  auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-	  if(engine->ready())
-		{
-		  Fmi::Cache::CacheStatistics observation_stats = engine->getCacheStats();
-		  if(!observation_stats.empty())
-			ret.insert(observation_stats.begin(), observation_stats.end());
-		}
-	}
-  it = itsSingletons.find("Contour");
-  if (it != itsSingletons.end())
-    {
-	  auto* engine = reinterpret_cast<SmartMetEngine*>(it->second);
-	  if(engine->ready())
-		{
-		  Fmi::Cache::CacheStatistics contour_stats = engine->getCacheStats();
-		  if(!contour_stats.empty())
-			ret.insert(contour_stats.begin(), contour_stats.end());
-		}
-	}
+      Fmi::Cache::CacheStatistics engine_stats = engine->getCacheStats();
+      if (!engine_stats.empty())
+        ret.insert(engine_stats.begin(), engine_stats.end());
+    }
+  }
 
   // Plugins
-  for(auto plugin_item : itsPlugins)
-	{
-	  auto* smartmet_plugin = plugin_item->getPlugin();
-	  if(smartmet_plugin && !smartmet_plugin->isInitActive())
-		{
-		  Fmi::Cache::CacheStatistics plugin_stats = smartmet_plugin->getCacheStats();
-		  ret.insert(plugin_stats.begin(), plugin_stats.end());
-		}
-	}
+  for (auto plugin_item : itsPlugins)
+  {
+    auto* smartmet_plugin = plugin_item->getPlugin();
+    if (smartmet_plugin && !smartmet_plugin->isInitActive())
+    {
+      Fmi::Cache::CacheStatistics plugin_stats = smartmet_plugin->getCacheStats();
+      ret.insert(plugin_stats.begin(), plugin_stats.end());
+    }
+  }
 
   return ret;
 }
