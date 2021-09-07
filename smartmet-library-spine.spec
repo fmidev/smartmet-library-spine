@@ -29,8 +29,8 @@ BuildRequires: gcc-c++
 BuildRequires: gdal32-devel
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel >= 1.8.4
-BuildRequires: libconfig >= 1.7.2
-BuildRequires: libconfig-devel >= 1.7.2
+BuildRequires: libconfig17 >= 1.7.2
+BuildRequires: libconfig17-devel >= 1.7.2
 BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
@@ -52,7 +52,7 @@ Requires: fmt >= 7.1.3
 Requires: gdal32-libs
 Requires: hdf5
 Requires: jsoncpp >= 1.8.4
-Requires: libconfig >= 1.7.2
+Requires: libconfig17 >= 1.7.2
 Requires: libicu
 Requires: smartmet-library-gis >= 21.8.3
 Requires: smartmet-library-macgyver >= 21.8.30
@@ -79,7 +79,7 @@ Requires: dtl
 Requires: smartmet-library-macgyver-devel
 Requires: smartmet-library-gis-devel
 Requires: smartmet-library-newbase-devel
-Requires: libconfig-devel
+Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 Obsoletes: libsmartmet-brainstorm-spine-devel < 16.11.1
 %description -n %{SPECNAME}-devel
