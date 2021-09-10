@@ -32,6 +32,9 @@
 #include <string>
 #include <vector>
 
+// Needed only for WGS84 branch tests
+#include <newbase/NFmiGlobals.h>
+
 namespace ba = boost::algorithm;
 namespace fs = boost::filesystem;
 
@@ -566,6 +569,16 @@ bool PluginTest::process_query(const fs::path& fn,
           {
             path outputfile = path(mOutputDir) / fn;
             path failure_fn = path(mFailDir) / fn;
+
+#ifdef WGS84
+            path wgs84outputfile = path(mOutputDir) / (fn.native() + ".wgs84");
+            if (exists(wgs84outputfile))
+            {
+              outputfile = wgs84outputfile;
+              failure_fn = path(mFailDir) / (fn.native() + ".wgs84");
+            }
+#endif
+
             if (exists(outputfile) and is_regular_file(outputfile))
             {
               std::string output = get_file_contents(outputfile);
