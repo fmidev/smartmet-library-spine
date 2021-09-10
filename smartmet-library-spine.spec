@@ -81,9 +81,19 @@ Requires: smartmet-library-gis-devel
 Requires: smartmet-library-newbase-devel
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
+# Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
+Requires: %{SPECNAME}-plugin-test = %{version}-%{release}
 Obsoletes: libsmartmet-brainstorm-spine-devel < 16.11.1
 %description -n %{SPECNAME}-devel
 SmartMet Spine development files
+
+%package -n %{SPECNAME}-plugin-test
+Summary: SmartMet Spine development files: plugin test program
+Group: SmartMet/Development
+Requires: libconfig17
+Requires: %{SPECNAME} = %{version}-%{release}
+%description -n %{SPECNAME}-plugin-test
+SmartMet Spine development files: plugin test program
 
 %prep
 rm -rf $RPM_BUILD_ROOT
@@ -102,11 +112,13 @@ make %{_smp_mflags}
 %files
 %defattr(0755,root,root,0755)
 %{_libdir}/lib%{LIBNAME}.so
-%{_bindir}/smartmet-plugin-test
 
 %files -n %{SPECNAME}-devel
 %defattr(0644,root,root,0755)
 %{_includedir}/smartmet/%{DIRNAME}
+
+%files -n %{SPECNAME}-plugin-test
+%{_bindir}/smartmet-plugin-test
 
 %changelog
 * Tue Sep  7 2021 Andris Pavēnis <andris.pavenis@fmi.fi> 21.9.7-1.fmi
