@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.8.30
+Version: 21.9.13
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -29,14 +29,14 @@ BuildRequires: gcc-c++
 BuildRequires: gdal32-devel
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel >= 1.8.4
-BuildRequires: libconfig >= 1.7.2
-BuildRequires: libconfig-devel >= 1.7.2
+BuildRequires: libconfig17 >= 1.7.3
+BuildRequires: libconfig17-devel >= 1.7.3
 BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 21.8.3
-BuildRequires: smartmet-library-macgyver-devel >= 21.8.30
+BuildRequires: smartmet-library-gis-devel >= 21.9.13
+BuildRequires: smartmet-library-macgyver-devel >= 21.9.13
 BuildRequires: smartmet-library-newbase-devel >= 21.6.16
 Requires: boost169-chrono
 Requires: boost169-date-time
@@ -52,10 +52,10 @@ Requires: fmt >= 7.1.3
 Requires: gdal32-libs
 Requires: hdf5
 Requires: jsoncpp >= 1.8.4
-Requires: libconfig >= 1.7.2
+Requires: libconfig17 >= 1.7.3
 Requires: libicu
-Requires: smartmet-library-gis >= 21.8.3
-Requires: smartmet-library-macgyver >= 21.8.30
+Requires: smartmet-library-gis >= 21.9.13
+Requires: smartmet-library-macgyver >= 21.9.13
 Requires: smartmet-library-newbase >= 21.6.16
 Requires: smartmet-timezones >= 21.2.2
 #TestRequires: bzip2-devel
@@ -79,11 +79,21 @@ Requires: dtl
 Requires: smartmet-library-macgyver-devel
 Requires: smartmet-library-gis-devel
 Requires: smartmet-library-newbase-devel
-Requires: libconfig-devel
+Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
+# Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
+Requires: %{SPECNAME}-plugin-test = %{version}-%{release}
 Obsoletes: libsmartmet-brainstorm-spine-devel < 16.11.1
 %description -n %{SPECNAME}-devel
 SmartMet Spine development files
+
+%package -n %{SPECNAME}-plugin-test
+Summary: SmartMet Spine development files: plugin test program
+Group: SmartMet/Development
+Requires: libconfig17
+Requires: %{SPECNAME} = %{version}-%{release}
+%description -n %{SPECNAME}-plugin-test
+SmartMet Spine development files: plugin test program
 
 %prep
 rm -rf $RPM_BUILD_ROOT
@@ -102,13 +112,25 @@ make %{_smp_mflags}
 %files
 %defattr(0755,root,root,0755)
 %{_libdir}/lib%{LIBNAME}.so
-%{_bindir}/smartmet-plugin-test
 
 %files -n %{SPECNAME}-devel
 %defattr(0644,root,root,0755)
 %{_includedir}/smartmet/%{DIRNAME}
 
+%files -n %{SPECNAME}-plugin-test
+%{_bindir}/smartmet-plugin-test
+
 %changelog
+* Mon Sep 13 2021 Mika Heiskanen <mika.heiskanen@fmi.fi> - 21.9.13-1.fmi
+- Repackaged due to Fmi::Cache statistics fixes
+
+* Fri Sep 10 2021 Andris Pavēnis <andris.pavenis@fmi.fi> 21.9.10-1.fmi
+- Plugin tests now detect WGS84 branch mode
+- Move smartmet-plugin-test to a separate RPM package
+
+* Tue Sep  7 2021 Andris Pavēnis <andris.pavenis@fmi.fi> 21.9.7-1.fmi
+- Use libconfig17 ja libconfig17-devel
+
 * Mon Aug 30 2021 Anssi Reponen <anssi.reponen@fmi.fi> - 21.8.30-1.fmi
 - Cache counters added (BRAINSTORM-1005)
 
