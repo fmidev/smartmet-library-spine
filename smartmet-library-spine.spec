@@ -82,7 +82,6 @@ Requires: smartmet-library-newbase-devel
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
-Requires: %{SPECNAME}-plugin-test = %{version}-%{release}
 Obsoletes: libsmartmet-brainstorm-spine-devel < 16.11.1
 %description -n %{SPECNAME}-devel
 SmartMet Spine development files
