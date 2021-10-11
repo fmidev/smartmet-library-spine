@@ -454,6 +454,34 @@ TimeSeries area_aggregate(const TimeSeriesGroup& ts_group, const ParameterFuncti
   }
 }
 
+// Aggregate only to one timestep
+TimedValue time_aggregate(const TimeSeries& ts, const ParameterFunction& func, const boost::local_time::local_date_time& timestep)
+{
+  try
+  {
+	StatCalculator statcalculator(ts.getLocalTimePool());
+	statcalculator.setTimestep(timestep);
+
+	auto start_time = (timestep.utc_time() - boost::posix_time::minutes(func.getAggregationIntervalBehind()));
+	auto end_time = (timestep.utc_time() + boost::posix_time::minutes(func.getAggregationIntervalAhead()));
+	boost::posix_time::time_period aggregation_period(start_time, end_time);
+
+    for (std::size_t i = 0; i < ts.size(); i++)
+    {
+	  const TimedValue& tv = ts.at(i);
+
+	  if(aggregation_period.contains(tv.time.utc_time()) && include_value(tv, func))
+		statcalculator(tv);
+	}
+
+    return TimedValue(timestep, statcalculator.getStatValue(func, true));
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
 TimeSeriesPtr time_aggregate(const TimeSeries& ts, const ParameterFunction& func)
 {
   try
