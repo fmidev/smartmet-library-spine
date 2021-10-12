@@ -13,7 +13,8 @@ namespace Spine
 {
 namespace
 {
-const std::set<std::string> location_parameters = {LEVEL_PARAM,
+const std::set<std::string> location_parameters = {DEM_PARAM,
+												   LEVEL_PARAM,												   
                                                    LATITUDE_PARAM,
                                                    LONGITUDE_PARAM,
                                                    LAT_PARAM,
@@ -46,6 +47,7 @@ const std::map<std::string, Parameter::Type> special_parameter_map = {
     {HOUR_PARAM, Parameter::Type::DataIndependent},
     {ISO2_PARAM, Parameter::Type::DataIndependent},
     {ISOTIME_PARAM, Parameter::Type::DataIndependent},
+    {DEM_PARAM, Parameter::Type::DataIndependent},
     {LAT_PARAM, Parameter::Type::DataIndependent},
     {LATITUDE_PARAM, Parameter::Type::DataIndependent},
     {LATLON_PARAM, Parameter::Type::DataIndependent},
@@ -227,6 +229,8 @@ std::string location_parameter(const Spine::LocationPtr loc,
       return valueformatter.missing();
     if (paramName == NAME_PARAM)
       return loc->name;
+    if (paramName == DEM_PARAM)
+      return valueformatter.format(loc->dem, precision);
     if (paramName == STATIONNAME_PARAM)
       return loc->name;
     if (paramName == ISO2_PARAM)
