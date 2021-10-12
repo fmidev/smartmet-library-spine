@@ -76,3 +76,4 @@ const std::string STATIONTYPE_PARAM = "stationtype";
 const std::string FLASH_PRODUCER = "flash";
 const std::string SYKE_PRODUCER = "syke";
 const std::string MODEL_PARAM = "model";
+const std::string DEM_PARAM = "dem";

@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.10.11
+Version: 21.10.12
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -120,6 +120,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+
+* Tue Oct 12 2021 Anssi Reponen <anssi.reponen@fmi.fi> - 21.10.12-1.fmi
+- DEM-parameter added to location parameters (BRAINSTORM-2169)
 
 * Mon Oct 11 2021 Anssi Reponen <anssi.reponen@fmi.fi> - 21.10.11-1.fmi
 - New time aggregation function added
