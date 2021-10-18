@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.10.12
+Version: 21.10.18
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -120,6 +120,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+
+* Mon Oct 18 2021 Anssi Reponen <anssi.reponen@fmi.fi> - 21.10.18-1.fmi
+- Use resources directory for common resources (BRAINSTORM-2164)
 
 * Tue Oct 12 2021 Anssi Reponen <anssi.reponen@fmi.fi> - 21.10.12-1.fmi
 - DEM-parameter added to location parameters (BRAINSTORM-2169)

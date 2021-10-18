@@ -6,6 +6,7 @@
 #include <boost/regex.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
+#include <boost/filesystem/operations.hpp>
 
 namespace SmartMet
 {
@@ -139,10 +140,15 @@ void JSON::preprocess(Json::Value& theJson,
       if (boost::algorithm::starts_with(tmp, "json:"))
       {
         std::string json_file;
+		bool use_root_path = true;
         if (tmp.substr(5, 1) != "/")
-          json_file = thePath + "/" + tmp.substr(5, std::string::npos);
-        else
-          json_file = theRootPath + "/" + tmp.substr(6, std::string::npos);
+		  {
+			json_file = thePath + "/" + tmp.substr(5, std::string::npos);
+			if(boost::filesystem::exists(json_file))
+			  use_root_path = false;
+		  }
+		if(use_root_path)
+          json_file = theRootPath + "/resources/layers/" + tmp.substr(5, std::string::npos);
 
         // Replace old contents
         theJson = theJsonCache.get(json_file);
