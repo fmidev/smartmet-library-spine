@@ -139,16 +139,33 @@ void JSON::preprocess(Json::Value& theJson,
       std::string tmp = theJson.asString();
       if (boost::algorithm::starts_with(tmp, "json:"))
       {
+		std::string filename = tmp.substr(5, std::string::npos);
         std::string json_file;
-		bool use_root_path = true;
-        if (tmp.substr(5, 1) != "/")
+		// Check from thePath
+        if (filename[0] != '/')
 		  {
-			json_file = thePath + "/" + tmp.substr(5, std::string::npos);
-			if(boost::filesystem::exists(json_file))
-			  use_root_path = false;
+			// 1) Check from path
+			json_file = thePath + "/" + filename;
+			// If file not found, check from theRootPath
+			if(!boost::filesystem::exists(json_file))
+			  filename.insert(filename.begin(), '/');
 		  }
-		if(use_root_path)
-          json_file = theRootPath + "/resources/layers/" + tmp.substr(5, std::string::npos);
+		// Check from theRootPath
+		if(filename[0] == '/')
+		  {
+			// 1) Check from root-path
+			json_file = theRootPath + filename;
+			if(!boost::filesystem::exists(json_file))
+			  {
+				// 2) Check from root-path/resources/layers
+				json_file = theRootPath + "/resources/layers" + filename;
+				if(!boost::filesystem::exists(json_file))
+				  {
+					// 3) Check from root-path/resources
+					json_file = theRootPath + "/resources" + filename;
+				  }
+			  }
+		  }
 
         // Replace old contents
         theJson = theJsonCache.get(json_file);
