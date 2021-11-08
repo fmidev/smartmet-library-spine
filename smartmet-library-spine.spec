@@ -38,6 +38,7 @@ BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 21.9.24
 BuildRequires: smartmet-library-macgyver-devel >= 21.10.4
 BuildRequires: smartmet-library-newbase-devel >= 21.10.13
+BuildRequires: smartmet-utils-devel >= 21.11.4
 Requires: boost169-chrono
 Requires: boost169-date-time
 Requires: boost169-filesystem
@@ -65,6 +66,7 @@ Requires: smartmet-timezones >= 21.2.2
 #TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
+#TestRequires: smartmet-utils-devel >= 21.11.4
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 

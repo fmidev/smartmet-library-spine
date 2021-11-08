@@ -1,7 +1,7 @@
 
 REQUIRES = configpp
 
-include $(shell echo $${PREFIX-/usr})/share/smartmet/devel/makefile.inc
+include $(shell smartbuildcfg --prefix)/share/smartmet/devel/makefile.inc
 
 # ISO C++ forbids casting between pointer-to-function and pointer-to-object
 CFLAGS += -Wno-pedantic
