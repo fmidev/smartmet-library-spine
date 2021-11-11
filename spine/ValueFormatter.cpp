@@ -4,7 +4,6 @@
  */
 // ======================================================================
 
-
 #include "ValueFormatter.h"
 #include "Convenience.h"
 #include <boost/optional.hpp>
@@ -27,120 +26,21 @@ namespace
 double round(double theValue, int thePrecision, const std::string& theMode)
 {
   // Fix rounding issues inherent in floating point arithmetic ->
-  // https://www.dot.nd.gov/manuals/materials/testingmanual/rounding.pdf 
+  // https://www.dot.nd.gov/manuals/materials/testingmanual/rounding.pdf
   if (theMode == "none")
-	return (std::round(theValue * powers_of_ten[thePrecision - 1]) / static_cast<double>(powers_of_ten[thePrecision - 1]));
+    return (std::round(theValue * powers_of_ten[thePrecision - 1]) /
+            static_cast<double>(powers_of_ten[thePrecision - 1]));
 
-  return (std::round(theValue * powers_of_ten[thePrecision]) / static_cast<double>(powers_of_ten[thePrecision]));
+  return (std::round(theValue * powers_of_ten[thePrecision]) /
+          static_cast<double>(powers_of_ten[thePrecision]));
 }
-}
-
+}  // namespace
 
 // c++14 would not need this
 ValueFormatterParam::ValueFormatterParam(const std::string& theMissingText,
-                                         const std::string& theAdjustField,
-                                         const std::string& theFloatField,
-                                         int theWidth,
-                                         char theFill,
-                                         bool theShowPos,
-                                         bool theUpperCase)
-    : missingText(theMissingText),
-      adjustField(theAdjustField),
-      floatField(theFloatField),
-      width(theWidth),
-      fill(theFill),
-      showPos(theShowPos),
-      upperCase(theUpperCase)
+                                         const std::string& theFloatField)
+    : missingText(theMissingText), floatField(theFloatField)
 {
-}
- 
-// ----------------------------------------------------------------------
-/*!
- * \brief Create libfmt format string from iostream style settings
- *
- * Relevant options:
- *
- * missingtext - the replacement for NaN
- * width - the width manipulator argument
- * fill - the fill manipulator argument
- * adjustfield - left|right|internal
- * showpos - true|false
- * uppercase - true|false
- * floatfield - fixed|scientific
- *
- * From http://fmtlib.net/latest/syntax.html:
- *
- * format_spec ::=  [[fill]align][sign]["#"]["0"][width]["." precision][type]
- * fill        ::=  <a character other than '{' or '}'>
- * align       ::=  "<" | ">" | "^"
- * sign        ::=  "+" | "-" | " "
- * width       ::=  integer | "{" arg_id "}"
- * precision   ::=  integer | "{" arg_id "}"
- * type        ::=  int_type | "a" | "A" | "c" | "e" | "E" | "f" | "F" | "g" | "G" | "p" | "s"
- * int_type    ::=  "b" | "B" | "d" | "n" | "o" | "x" | "X"
- */
-// ----------------------------------------------------------------------
-
-void ValueFormatter::buildFormat(const ValueFormatterParam& param)
-{
-  itsMissingText = param.missingText;
-  itsFloatField = param.floatField;
-
-  std::string fmt = "{:";
-
-  if (param.width > 0)
-  {
-    fmt += param.fill;  // fill character
-
-    if (param.adjustField == "left")
-      fmt += '<';
-    else if (param.adjustField == "right")
-      fmt += '>';
-    else if (param.adjustField == "internal")
-      ;  // deprecated in newer fmt in favour of sign aware zero padding
-    else if (param.adjustField == "center")  // libfmt extension
-      fmt += '^';
-  }
-
-  if (param.showPos)  // sign for positive numbers
-    fmt += '+';
-
-  if (param.fill == '0' || param.adjustField == "internal")  // sign aware zero padding
-    fmt += '0';
-
-  if (param.width > 0)
-    fmt += fmt::sprintf("%d", param.width);
-
-  boost::optional<char> ntype;
-
-  if (param.floatField == "fixed")
-  {
-    if (param.upperCase)
-      ntype = 'F';
-    else
-      ntype = 'f';
-  }
-  else if (param.floatField == "scientific")
-  {
-    if (param.upperCase)
-      ntype = 'E';
-    else
-      ntype = 'e';
-  }
-  else if (param.floatField == "none")
-  {
-    if (param.upperCase)
-      ntype = 'G';
-    else
-      ntype = 'g';
-  }
-
-  itsFormat = fmt + '}';
-
-  if (ntype)
-    itsPrecisionFormat = fmt + ".{}" + *ntype + '}';
-  else
-    itsPrecisionFormat = fmt + ".{}" + '}';
 }
 
 // ----------------------------------------------------------------------
@@ -154,19 +54,12 @@ ValueFormatter::ValueFormatter(const HTTP::Request& theReq)
   try
   {
     ValueFormatterParam p{optional_string(theReq.getParameter("missingtext"), "nan"),
-                          optional_string(theReq.getParameter("adjustfield"), "right"),
-                          optional_string(theReq.getParameter("floatfield"), "fixed"),
-                          optional_int(theReq.getParameter("width"), -1),
-                          optional_char(theReq.getParameter("fill"), ' '),
-                          optional_bool(theReq.getParameter("showpos"), false),
-                          optional_bool(theReq.getParameter("uppercase"), false)};
-
-    buildFormat(p);
+                          optional_string(theReq.getParameter("floatfield"), "fixed")};
 
     // Override for WXML
     if (optional_string(theReq.getParameter("format"), "") == "WXML")
       p.missingText = "NaN";
-	itsFormatterParam = p;
+    itsFormatterParam = p;
   }
   catch (...)
   {
@@ -180,87 +73,51 @@ ValueFormatter::ValueFormatter(const HTTP::Request& theReq)
  */
 // ----------------------------------------------------------------------
 
-ValueFormatter::ValueFormatter(const ValueFormatterParam& param)
-{
-  buildFormat(param);
-  itsFormatterParam = param;
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Convert a float to a string
- *
- */
-// ----------------------------------------------------------------------
-
-std::string ValueFormatter::format_fmt(double theValue, int thePrecision) const
-{
-  try
-  {
-    if (std::isnan(theValue))
-      return itsMissingText;
-
-    if (thePrecision < 0)
-      return fmt::format(itsFormat, theValue);
-
-    auto value = theValue;
-
-    // Fix rounding only in fixed (or none) mode and only for reasonable precision settings
-    if ((itsFloatField == "fixed" || itsFloatField == "none") &&
-        (thePrecision >= 1 && thePrecision <= 7))
-    {
-	  value = round(theValue, thePrecision, itsFloatField);
-    }
-
-    return fmt::format(itsPrecisionFormat, value, thePrecision);
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
-}
+ValueFormatter::ValueFormatter(const ValueFormatterParam& param) : itsFormatterParam(param) {}
 
 std::string ValueFormatter::format(double theValue, int thePrecision) const
 {
-  //return format_fmt(theValue, thePrecision);
-
   if (itsFormatterParam.floatField == "scientific")
-	return format_double_conversion_scientific(theValue, thePrecision);
-  
+    return format_double_conversion_scientific(theValue, thePrecision);
+
   return format_double_conversion_fixed(theValue, thePrecision);
 }
 
-std::string ValueFormatter::format_double_conversion_scientific(double theValue, int thePrecision) const
+std::string ValueFormatter::format_double_conversion_scientific(double theValue,
+                                                                int thePrecision) const
 {
   try
   {
-	if(isnan(theValue))
-	  return itsFormatterParam.missingText;
+    if (isnan(theValue))
+      return itsFormatterParam.missingText;
 
     using namespace double_conversion;
 
     const int kBufferSize = 168;
     char buffer[kBufferSize];
     StringBuilder builder(buffer, kBufferSize);
-    int flags = (DoubleToStringConverter::EMIT_POSITIVE_EXPONENT_SIGN |  DoubleToStringConverter::UNIQUE_ZERO);
+    int flags = (DoubleToStringConverter::EMIT_POSITIVE_EXPONENT_SIGN |
+                 DoubleToStringConverter::UNIQUE_ZERO);
 
-    DoubleToStringConverter dc(flags, "Infinity", itsFormatterParam.missingText.c_str(), 'e', 0, 0, 0, 7);
+    DoubleToStringConverter dc(
+        flags, "Infinity", itsFormatterParam.missingText.c_str(), 'e', 0, 0, 0, 7);
 
-	if(!dc.ToExponential(theValue, thePrecision, &builder))
-	  return itsFormatterParam.missingText;
+    if (!dc.ToExponential(theValue, thePrecision, &builder))
+      return itsFormatterParam.missingText;
 
     auto pos = builder.position();  // must be called before next row!
 
-    builder.Finalize();             // required to avoid asserts in debug mode
+    builder.Finalize();  // required to avoid asserts in debug mode
 
-	if(thePrecision < 0 && pos > 1 && (buffer[pos-1] == '0'  && buffer[pos-2] == 'e'))
-	  {
-		pos -= 2;
-		while (pos > 0 && (buffer[pos-1] == '0' || (buffer[pos-1] == ',' || buffer[pos-1] == '.')))
-		  --pos;
-	  }
-	
-	return std::string(buffer, pos);
+    if (thePrecision < 0 && pos > 1 && (buffer[pos - 1] == '0' && buffer[pos - 2] == 'e'))
+    {
+      pos -= 2;
+      while (pos > 0 &&
+             (buffer[pos - 1] == '0' || (buffer[pos - 1] == ',' || buffer[pos - 1] == '.')))
+        --pos;
+    }
+
+    return std::string(buffer, pos);
   }
   catch (...)
   {
@@ -268,37 +125,35 @@ std::string ValueFormatter::format_double_conversion_scientific(double theValue,
   }
 }
 
-
 std::string ValueFormatter::format_double_conversion_fixed(double theValue, int thePrecision) const
 {
-
   try
   {
-	if(isnan(theValue))
-	  return itsFormatterParam.missingText;
+    if (isnan(theValue))
+      return itsFormatterParam.missingText;
 
-	bool negativeValue = (theValue < 0);
-	if(thePrecision == 0)
-	  {
-		double ipart;
-		double fractional = modf(theValue, &ipart);
-		// Halfway rounding
-		if(std::abs(fractional) == 0.5)
-		  {
-			if(static_cast<int>(ipart) % 2 == 0)
-			  theValue = (theValue < 0 ? std::ceil(theValue) : std::floor(theValue));
-			else
-			  theValue = (theValue < 0 ? std::floor(theValue) : std::ceil(theValue));
-		  }
+    bool negativeValue = (theValue < 0);
+    if (thePrecision == 0)
+    {
+      double ipart;
+      double fractional = modf(theValue, &ipart);
+      // Halfway rounding
+      if (std::abs(fractional) == 0.5)
+      {
+        if (static_cast<int>(ipart) % 2 == 0)
+          theValue = (theValue < 0 ? std::ceil(theValue) : std::floor(theValue));
+        else
+          theValue = (theValue < 0 ? std::floor(theValue) : std::ceil(theValue));
+      }
 
-		// If negative value is rounded up to zero, return here
-		if(theValue == 0 && negativeValue)
-		  return Fmi::to_string(theValue);
-	  }	
+      // If negative value is rounded up to zero, return here
+      if (theValue == 0 && negativeValue)
+        return Fmi::to_string(theValue);
+    }
 
-	// If precision is -1, return here
-	if(thePrecision < 0)
-	  return Fmi::to_string(theValue);
+    // If precision is -1, return here
+    if (thePrecision < 0)
+      return Fmi::to_string(theValue);
 
     using namespace double_conversion;
 
@@ -307,25 +162,27 @@ std::string ValueFormatter::format_double_conversion_fixed(double theValue, int 
     StringBuilder builder(buffer, kBufferSize);
     int flags = DoubleToStringConverter::UNIQUE_ZERO;
 
-    DoubleToStringConverter dc(flags, "Infinity", itsFormatterParam.missingText.c_str(), 'e', 0, 0, 0, 7);
+    DoubleToStringConverter dc(
+        flags, "Infinity", itsFormatterParam.missingText.c_str(), 'e', 0, 0, 0, 7);
 
     if (thePrecision >= 1 && thePrecision <= 7)
-	  theValue = round(theValue, thePrecision, itsFloatField);
+      theValue = round(theValue, thePrecision, itsFloatField);
 
-	if(!dc.ToFixed(theValue, thePrecision, &builder))
-	  return itsFormatterParam.missingText;
+    if (!dc.ToFixed(theValue, thePrecision, &builder))
+      return itsFormatterParam.missingText;
 
     auto pos = builder.position();  // must be called before next row!
 
-    builder.Finalize();             // required to avoid asserts in debug mode
+    builder.Finalize();  // required to avoid asserts in debug mode
 
-	if (itsFormatterParam.floatField == "none")
-	  {
-		while (pos > 0 && (buffer[pos-1] == '0' || (buffer[pos-1] == ',' || buffer[pos-1] == '.')))
-		  --pos;
-	  }
+    if (itsFormatterParam.floatField == "none")
+    {
+      while (pos > 0 &&
+             (buffer[pos - 1] == '0' || (buffer[pos - 1] == ',' || buffer[pos - 1] == '.')))
+        --pos;
+    }
 
-	return std::string(buffer, pos);
+    return std::string(buffer, pos);
   }
   catch (...)
   {

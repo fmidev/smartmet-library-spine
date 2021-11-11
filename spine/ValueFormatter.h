@@ -18,21 +18,10 @@ namespace Spine
 struct ValueFormatterParam
 {
   std::string missingText = "nan";
-  std::string adjustField = "right";
   std::string floatField = "fixed";
-  int width = -1;
-  char fill = ' ';
-  bool showPos = false;
-  bool upperCase = false;
 
   // c++14 would not need this, c++11 does because of the defaults above
-  ValueFormatterParam(const std::string& theMissingText,
-                      const std::string& theAdjustField,
-                      const std::string& theFloatField,
-                      int theWidth,
-                      char theFill,
-                      bool theShowPos,
-                      bool theUpperCase);
+  ValueFormatterParam(const std::string& theMissingText, const std::string& theFloatField);
 
   // and this is needed because above is needed
   ValueFormatterParam() = default;
@@ -51,14 +40,10 @@ class ValueFormatter
   void setMissingText(const std::string& theMissingText) { itsMissingText = theMissingText; }
 
  private:
-  void buildFormat(const ValueFormatterParam& param);
-  std::string format_fmt(double theValue, int thePrecision) const;
   std::string format_double_conversion_fixed(double theValue, int thePrecision) const;
   std::string format_double_conversion_scientific(double theValue, int thePrecision) const;
-  std::string itsFormat;           // when no precision is given
-  std::string itsPrecisionFormat;  // when precision is given
-  std::string itsFloatField;       // saved to enable school type rounding fixes
-  std::string itsMissingText;      // text for NaN
+  std::string itsFloatField;   // saved to enable school type rounding fixes
+  std::string itsMissingText;  // text for NaN
   ValueFormatterParam itsFormatterParam;
 };
 

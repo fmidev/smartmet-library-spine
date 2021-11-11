@@ -133,16 +133,16 @@ void precision()
     if ((result = fmt.format(1, precision)) != "1")
       TEST_FAILED("Formatting 1 failed: " + result);
 
-    if ((result = fmt.format(1.23, precision)) != "1.2")
+    if ((result = fmt.format(1.23, precision)) != "1.23")
       TEST_FAILED("Formatting 1.23 failed: " + result);
 
-    if ((result = fmt.format(-1.23, precision)) != "-1.2")
+    if ((result = fmt.format(-1.23, precision)) != "-1.23")
       TEST_FAILED("Formatting -1.23 failed: " + result);
 
-    if ((result = fmt.format(1.25, precision)) != "1.3")
+    if ((result = fmt.format(1.25, precision)) != "1.25")
       TEST_FAILED("Formatting 1.25 failed: " + result);
 
-    if ((result = fmt.format(-1.25, precision)) != "-1.3")
+    if ((result = fmt.format(-1.25, precision)) != "-1.25")
       TEST_FAILED("Formatting -1.25 failed: " + result);
 
     if ((result = fmt.format(0.10001, precision)) != "0.1")
