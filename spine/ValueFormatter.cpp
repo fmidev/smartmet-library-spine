@@ -166,7 +166,7 @@ std::string ValueFormatter::format_double_conversion_fixed(double theValue, int 
         flags, "Infinity", itsFormatterParam.missingText.c_str(), 'e', 0, 0, 0, 7);
 
     if (thePrecision >= 1 && thePrecision <= 7)
-      theValue = round(theValue, thePrecision, itsFloatField);
+      theValue = round(theValue, thePrecision, itsFormatterParam.floatField);
 
     if (!dc.ToFixed(theValue, thePrecision, &builder))
       return itsFormatterParam.missingText;

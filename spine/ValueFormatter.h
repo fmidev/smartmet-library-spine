@@ -36,14 +36,15 @@ class ValueFormatter
   ValueFormatter() = delete;
 
   std::string format(double theValue, int thePrecision) const;
-  const std::string& missing() const { return itsMissingText; }
-  void setMissingText(const std::string& theMissingText) { itsMissingText = theMissingText; }
+  const std::string& missing() const { return itsFormatterParam.missingText; }
+  void setMissingText(const std::string& theMissingText)
+  {
+    itsFormatterParam.missingText = theMissingText;
+  }
 
  private:
   std::string format_double_conversion_fixed(double theValue, int thePrecision) const;
   std::string format_double_conversion_scientific(double theValue, int thePrecision) const;
-  std::string itsFloatField;   // saved to enable school type rounding fixes
-  std::string itsMissingText;  // text for NaN
   ValueFormatterParam itsFormatterParam;
 };
 
