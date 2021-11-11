@@ -58,7 +58,7 @@ Requires: libicu
 Requires: smartmet-library-gis >= 21.9.24
 Requires: smartmet-library-macgyver >= 21.10.4
 Requires: smartmet-library-newbase >= 21.10.13
-Requires: smartmet-timezones >= 21.2.2
+Requires: smartmet-timezones >= 21.10.29
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
 #TestRequires: gdal32-devel
