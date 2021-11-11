@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.11.3
+Version: 21.11.10
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -123,7 +123,10 @@ make %{_smp_mflags}
 
 %changelog
 
-* Tue Nov 11 2021 Anssi Reponen <anssi.reponen@fmi.fi> - 21.11.3-1.fmi
+* Wed Nov 10 2021 Anssi Reponen <anssi.reponen@fmi.fi> - 21.11.10-1.fmi
+- Use double-conversion library in ValueFormatter (BRAINSTORM-2166)
+
+* Wed Nov 3 2021 Anssi Reponen <anssi.reponen@fmi.fi> - 21.11.3-1.fmi
 - Fixed search order of file-path starting with '/' (BRAINSTORM-2193)
 
 * Mon Oct 18 2021 Anssi Reponen <anssi.reponen@fmi.fi> - 21.10.18-1.fmi

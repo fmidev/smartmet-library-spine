@@ -52,10 +52,14 @@ class ValueFormatter
 
  private:
   void buildFormat(const ValueFormatterParam& param);
+  std::string format_fmt(double theValue, int thePrecision) const;
+  std::string format_double_conversion_fixed(double theValue, int thePrecision) const;
+  std::string format_double_conversion_scientific(double theValue, int thePrecision) const;
   std::string itsFormat;           // when no precision is given
   std::string itsPrecisionFormat;  // when precision is given
   std::string itsFloatField;       // saved to enable school type rounding fixes
   std::string itsMissingText;      // text for NaN
+  ValueFormatterParam itsFormatterParam;
 };
 
 }  // namespace Spine
