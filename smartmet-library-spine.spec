@@ -31,6 +31,7 @@ BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel >= 1.8.4
 BuildRequires: libconfig17 >= 1.7.3
 BuildRequires: libconfig17-devel >= 1.7.3
+BuildRequires: double-conversion-devel
 BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
@@ -55,6 +56,7 @@ Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
+Requires: double-conversion
 Requires: smartmet-library-gis >= 21.9.24
 Requires: smartmet-library-macgyver >= 21.10.4
 Requires: smartmet-library-newbase >= 21.10.13
