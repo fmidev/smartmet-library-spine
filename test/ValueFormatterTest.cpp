@@ -77,116 +77,6 @@ void nan()
 
 // ----------------------------------------------------------------------
 
-void width()
-{
-  SmartMet::Spine::HTTP::Request req;
-  req.setParameter("floatfield", "none");
-  req.setParameter("width", "6");
-  int precision = -1;
-  SmartMet::Spine::ValueFormatter fmt(req);
-  std::string result;
-
-  if ((result = fmt.format(1, precision)) != "     1")
-    TEST_FAILED("Formatting 1 failed: " + result);
-
-  if ((result = fmt.format(1.23, precision)) != "  1.23")
-    TEST_FAILED("Formatting 1.23 failed: " + result);
-
-  if ((result = fmt.format(-1.23, precision)) != " -1.23")
-    TEST_FAILED("Formatting -1.23 failed: " + result);
-
-  TEST_PASSED();
-}
-
-// ----------------------------------------------------------------------
-
-void fillchar()
-{
-  SmartMet::Spine::HTTP::Request req;
-  req.setParameter("floatfield", "none");
-  req.setParameter("width", "6");
-  req.setParameter("fill", "_");
-  int precision = -1;
-  SmartMet::Spine::ValueFormatter fmt(req);
-
-  std::string result;
-
-  if ((result = fmt.format(1, precision)) != "_____1")
-    TEST_FAILED("Formatting 1 failed: " + result);
-
-  if ((result = fmt.format(1.23, precision)) != "__1.23")
-    TEST_FAILED("Formatting 1.23 failed: " + result);
-
-  if ((result = fmt.format(-1.23, precision)) != "_-1.23")
-    TEST_FAILED("Formatting -1.23 failed: " + result);
-
-  TEST_PASSED();
-}
-
-// ----------------------------------------------------------------------
-
-void adjustfield()
-{
-  std::string result;
-  int precision = -1;
-
-  {
-    SmartMet::Spine::HTTP::Request req;
-    req.setParameter("floatfield", "none");
-    req.setParameter("width", "6");
-    req.setParameter("adjustfield", "right");
-    SmartMet::Spine::ValueFormatter fmt(req);
-
-    if ((result = fmt.format(1, precision)) != "     1")
-      TEST_FAILED("Formatting 1 failed: " + result);
-
-    if ((result = fmt.format(1.23, precision)) != "  1.23")
-      TEST_FAILED("Formatting 1.23 failed: " + result);
-
-    if ((result = fmt.format(-1.23, precision)) != " -1.23")
-      TEST_FAILED("Formatting -1.23 failed: " + result);
-  }
-
-  {
-    SmartMet::Spine::HTTP::Request req;
-    req.setParameter("floatfield", "none");
-    req.setParameter("width", "6");
-    req.setParameter("adjustfield", "left");
-    SmartMet::Spine::ValueFormatter fmt(req);
-
-    if ((result = fmt.format(1, precision)) != "1     ")
-      TEST_FAILED("Formatting 1 failed: " + result);
-
-    if ((result = fmt.format(1.23, precision)) != "1.23  ")
-      TEST_FAILED("Formatting 1.23 failed: " + result);
-
-    if ((result = fmt.format(-1.23, precision)) != "-1.23 ")
-      TEST_FAILED("Formatting -1.23 failed: " + result);
-  }
-
-  {
-    SmartMet::Spine::HTTP::Request req;
-    req.setParameter("floatfield", "none");
-    req.setParameter("width", "6");
-    req.setParameter("adjustfield", "internal");
-
-    SmartMet::Spine::ValueFormatter fmt(req);
-
-    if ((result = fmt.format(1, precision)) != " 00001")
-      TEST_FAILED("Formatting 1 failed: '" + result + "'");
-
-    if ((result = fmt.format(1.23, precision)) != " 01.23")
-      TEST_FAILED("Formatting 1.23 failed: '" + result + "'");
-
-    if ((result = fmt.format(-1.23, precision)) != "-01.23")
-      TEST_FAILED("Formatting -1.23 failed: '" + result + "'");
-  }
-
-  TEST_PASSED();
-}
-
-// ----------------------------------------------------------------------
-
 void floatfield()
 {
   std::string result;
@@ -304,54 +194,6 @@ void precision()
 }
 
 // ----------------------------------------------------------------------
-
-void showpos()
-{
-  std::string result;
-
-  SmartMet::Spine::HTTP::Request req;
-  req.setParameter("floatfield", "none");
-  req.setParameter("showpos", "1");
-  int precision = -1;
-  SmartMet::Spine::ValueFormatter fmt(req);
-
-  if ((result = fmt.format(1, precision)) != "+1")
-    TEST_FAILED("Formatting 1 failed: " + result);
-
-  if ((result = fmt.format(1.23, precision)) != "+1.23")
-    TEST_FAILED("Formatting 1.23 failed: " + result);
-
-  if ((result = fmt.format(-1.23, precision)) != "-1.23")
-    TEST_FAILED("Formatting -1.23 failed: " + result);
-
-  TEST_PASSED();
-}
-
-// ----------------------------------------------------------------------
-
-void uppercase()
-{
-  std::string result;
-
-  SmartMet::Spine::HTTP::Request req;
-  req.setParameter("uppercase", "1");
-  req.setParameter("floatfield", "scientific");
-  int precision = -1;
-  SmartMet::Spine::ValueFormatter fmt(req);
-
-  if ((result = fmt.format(1, precision)) != "1e+0")
-    TEST_FAILED("Formatting 1 failed: " + result);
-
-  if ((result = fmt.format(1.23, precision)) != "1.23e+0")
-    TEST_FAILED("Formatting 1.23 failed: " + result);
-
-  if ((result = fmt.format(-1.23, precision)) != "-1.23e+0")
-    TEST_FAILED("Formatting -1.23 failed: " + result);
-
-  TEST_PASSED();
-}
-
-// ----------------------------------------------------------------------
 /*!
  * The actual test suite
  */
@@ -363,13 +205,8 @@ class tests : public tframe::tests
   void test(void)
   {
     TEST(simple);
-	//    TEST(nan);
-	//    TEST(width);
-	//    TEST(fillchar);
+    TEST(nan);
     TEST(precision);
-	//    TEST(adjustfield);
-    //TEST(showpos);
-	//    TEST(uppercase);
     TEST(floatfield);
   }
 };
