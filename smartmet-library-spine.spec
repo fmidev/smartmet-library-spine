@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 21.11.10
+Version: 21.11.23
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -125,6 +125,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+
+* Tue Nov 23 2021 Anssi Reponen <anssi.reponen@fmi.fi> - 21.11.23-1.fmi
+- Added support for x and y query parameters (BRAINSTORM-2091)
 
 * Wed Nov 10 2021 Anssi Reponen <anssi.reponen@fmi.fi> - 21.11.10-1.fmi
 - Use double-conversion library in ValueFormatter (BRAINSTORM-2166)

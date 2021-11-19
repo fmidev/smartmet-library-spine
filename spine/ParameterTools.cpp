@@ -6,6 +6,8 @@
 #include <macgyver/StringConversion.h>
 #include <macgyver/TimeFormatter.h>
 #include <set>
+#include <gis/CoordinateTransformation.h>
+#include <gis/SpatialReference.h>
 
 namespace SmartMet
 {
@@ -13,6 +15,7 @@ namespace Spine
 {
 namespace
 {
+
 const std::set<std::string> location_parameters = {DEM_PARAM,
 												   LEVEL_PARAM,												   
                                                    LATITUDE_PARAM,
@@ -21,6 +24,8 @@ const std::set<std::string> location_parameters = {DEM_PARAM,
                                                    LON_PARAM,
                                                    LATLON_PARAM,
                                                    LONLAT_PARAM,
+												   X_PARAM,
+                                                   Y_PARAM,
                                                    GEOID_PARAM,
                                                    // PLACE_PARAM,
                                                    FEATURE_PARAM,
@@ -57,6 +62,8 @@ const std::map<std::string, Parameter::Type> special_parameter_map = {
     {LON_PARAM, Parameter::Type::DataIndependent},
     {LONGITUDE_PARAM, Parameter::Type::DataIndependent},
     {LONLAT_PARAM, Parameter::Type::DataIndependent},
+    {X_PARAM, Parameter::Type::DataIndependent},
+    {Y_PARAM, Parameter::Type::DataIndependent},
     {LPNN_PARAM, Parameter::Type::DataIndependent},
     {MODEL_PARAM, Parameter::Type::DataIndependent},
     {"modtime", Parameter::Type::DataIndependent},
@@ -146,6 +153,7 @@ bool special(const Parameter& theParam)
   }
 }
 
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Return true if the parameter if of aggregatable type
@@ -221,7 +229,8 @@ std::string location_parameter(const Spine::LocationPtr loc,
                                const std::string paramName,
                                const Spine::ValueFormatter& valueformatter,
                                const std::string& timezone,
-                               int precision)
+                               int precision,
+							   const std::string& crs /*="EPSG:4326"*/)
 {
   try
   {
@@ -269,6 +278,21 @@ std::string location_parameter(const Spine::LocationPtr loc,
       return valueformatter.format(loc->latitude, precision);
     if (paramName == LONGITUDE_PARAM || paramName == LON_PARAM)
       return valueformatter.format(loc->longitude, precision);
+    if (paramName == X_PARAM || paramName == Y_PARAM)
+	  {
+		double x_coord = loc->longitude;
+		double y_coord = loc->latitude;
+		if(!(crs.empty() || crs == "EPSG:4326"))
+		  {
+			Fmi::CoordinateTransformation transformation("WGS84", crs);
+			transformation.transform(x_coord, y_coord);
+		  }
+		
+		if (paramName == X_PARAM)
+		  return valueformatter.format(x_coord, precision);
+		else
+		  return valueformatter.format(y_coord, precision);
+	  }
     if (paramName == LATLON_PARAM)
       return (valueformatter.format(loc->latitude, precision) + ", " +
               valueformatter.format(loc->longitude, precision));
