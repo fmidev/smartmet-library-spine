@@ -27,7 +27,8 @@ std::string location_parameter(const Spine::LocationPtr loc,
                                const std::string paramName,
                                const Spine::ValueFormatter& valueformatter,
                                const std::string& timezone,
-                               int precision);
+                               int precision,
+							   const std::string& crs ="EPSG:4326");
 
 Spine::TimeSeries::Value time_parameter(const std::string paramname,
                                         const boost::local_time::local_date_time& ldt,
