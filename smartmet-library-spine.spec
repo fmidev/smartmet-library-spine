@@ -26,7 +26,7 @@ BuildRequires: ctpp2-devel
 BuildRequires: dtl
 BuildRequires: fmt-devel >= 7.1.3
 BuildRequires: gcc-c++
-BuildRequires: gdal32-devel
+BuildRequires: gdal33-devel
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel >= 1.8.4
 BuildRequires: libconfig17 >= 1.7.3
@@ -51,7 +51,7 @@ Requires: boost169-thread
 Requires: boost169-timer
 Requires: ctpp2
 Requires: fmt >= 7.1.3
-Requires: gdal32-libs
+Requires: gdal33-libs
 Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
@@ -63,12 +63,12 @@ Requires: smartmet-library-newbase >= 21.10.13
 Requires: smartmet-timezones >= 21.10.29
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
-#TestRequires: gdal32-devel
+#TestRequires: gdal33-devel
 #TestRequires: jsoncpp-devel >= 1.8.4
 #TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
-#TestRequires: smartmet-utils-devel >= 21.11.4
+#TestRequires: smartmet-utils-devel >= 21.11.23
 #TestRequires: smartmet-library-macgyver-devel >= 21.10.4
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
