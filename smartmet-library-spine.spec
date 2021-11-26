@@ -81,7 +81,7 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: boost169-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel
+Requires: smartmet-library-macgyver-devel >= 21.10.4
 Requires: smartmet-library-gis-devel
 Requires: smartmet-library-newbase-devel
 Requires: libconfig17-devel
