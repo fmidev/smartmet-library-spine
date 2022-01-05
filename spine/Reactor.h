@@ -76,7 +76,7 @@ class Reactor
   void setLogging(bool loggingEnabled);
   bool getLogging() const;
   bool lazyLinking() const;
-  AccessLogStruct getLoggedRequests() const;
+  AccessLogStruct getLoggedRequests(const std::string& thePlugin) const;
 
   bool isLoadHigh() const;
 
