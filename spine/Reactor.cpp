@@ -487,17 +487,19 @@ bool Reactor::lazyLinking() const
  */
 // ----------------------------------------------------------------------
 
-AccessLogStruct Reactor::getLoggedRequests() const
+AccessLogStruct Reactor::getLoggedRequests(const std::string& thePlugin) const
 {
   try
   {
     if (itsLoggingEnabled)
     {
+	  std::string pluginNameInLowerCase = Fmi::ascii_tolower_copy(thePlugin);
       LoggedRequests requests;
       ReadLock lock(itsContentMutex);
       for (const auto& handler : itsHandlers)
       {
-        requests.insert(std::make_pair(handler.first, handler.second->getLoggedRequests()));
+		if(pluginNameInLowerCase == "all" || pluginNameInLowerCase == Fmi::ascii_tolower_copy(handler.second->getPluginName()))
+		  requests.insert(std::make_pair(handler.first, handler.second->getLoggedRequests()));
       }
       return std::make_tuple(true, requests, itsLogLastCleaned);
     }
