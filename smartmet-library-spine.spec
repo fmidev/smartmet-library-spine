@@ -26,7 +26,7 @@ BuildRequires: ctpp2-devel
 BuildRequires: dtl
 BuildRequires: fmt-devel >= 7.1.3
 BuildRequires: gcc-c++
-BuildRequires: gdal33-devel
+BuildRequires: gdal34-devel
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel >= 1.8.4
 BuildRequires: libconfig17 >= 1.7.3
@@ -36,10 +36,10 @@ BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 21.12.1
-BuildRequires: smartmet-library-macgyver-devel >= 21.12.1
-BuildRequires: smartmet-library-newbase-devel >= 21.12.1
-BuildRequires: smartmet-utils-devel >= 21.11.23
+BuildRequires: smartmet-library-gis-devel >= 21.1.21
+BuildRequires: smartmet-library-macgyver-devel >= 21.1.21
+BuildRequires: smartmet-library-newbase-devel >= 21.1.21
+BuildRequires: smartmet-utils-devel >= 22.1.20
 Requires: boost169-chrono
 Requires: boost169-date-time
 Requires: boost169-filesystem
@@ -51,24 +51,24 @@ Requires: boost169-thread
 Requires: boost169-timer
 Requires: ctpp2
 Requires: fmt >= 7.1.3
-Requires: gdal33-libs
+Requires: gdal34-libs
 Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
-Requires: smartmet-library-gis >= 21.12.1
-Requires: smartmet-library-macgyver >= 21.12.1
-Requires: smartmet-library-newbase >= 21.12.1
+Requires: smartmet-library-gis >= 21.1.21
+Requires: smartmet-library-macgyver >= 21.1.21
+Requires: smartmet-library-newbase >= 21.1.21
 Requires: smartmet-timezones >= 21.10.29
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
-#TestRequires: gdal33-devel
+#TestRequires: gdal34-devel
 #TestRequires: jsoncpp-devel >= 1.8.4
 #TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
-#TestRequires: smartmet-library-macgyver-devel >= 21.12.1
+#TestRequires: smartmet-library-macgyver-devel >= 21.1.21
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -80,9 +80,9 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: boost169-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 21.12.1
-Requires: smartmet-library-gis-devel >= 21.12.1
-Requires: smartmet-library-newbase-devel >= 21.12.1
+Requires: smartmet-library-macgyver-devel >= 21.1.21
+Requires: smartmet-library-gis-devel >= 21.1.21
+Requires: smartmet-library-newbase-devel >= 21.1.21
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
