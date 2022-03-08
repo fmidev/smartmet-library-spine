@@ -1,10 +1,10 @@
 #pragma once
 
 #include "Table.h"
-#include "ValueFormatter.h"
-#include <timeseries/TimeSeriesInclude.h>
 #include <boost/date_time/local_time/local_time.hpp>
 #include <macgyver/TimeFormatter.h>
+#include <macgyver/ValueFormatter.h>
+#include <timeseries/TimeSeriesInclude.h>
 
 namespace SmartMet
 {
@@ -14,7 +14,7 @@ class TableVisitor : public boost::static_visitor<>
 {
  private:
   Table& itsTable;
-  const ValueFormatter& itsValueFormatter;
+  const Fmi::ValueFormatter& itsValueFormatter;
   std::vector<int> itsPrecisions;
   unsigned int itsCurrentColumn;
   unsigned int itsCurrentRow;
@@ -24,7 +24,7 @@ class TableVisitor : public boost::static_visitor<>
 
  public:
   TableVisitor(Table& table,
-               const ValueFormatter& valueformatter,
+               const Fmi::ValueFormatter& valueformatter,
                const std::vector<int>& precisions,
                unsigned int currentcolumn,
                unsigned int currentrow)
@@ -38,7 +38,7 @@ class TableVisitor : public boost::static_visitor<>
   }
 
   TableVisitor(Table& table,
-               const ValueFormatter& valueformatter,
+               const Fmi::ValueFormatter& valueformatter,
                const std::vector<int>& precisions,
                boost::shared_ptr<Fmi::TimeFormatter> timeformatter,
                boost::optional<boost::local_time::time_zone_ptr> timezoneptr,
@@ -51,7 +51,7 @@ class TableVisitor : public boost::static_visitor<>
         itsCurrentRow(currentrow),
         itsTimeFormatter(timeformatter),
         itsTimeZonePtr(timezoneptr),
-	itsLonLatFormat(TS::LonLatFormat::LONLAT)
+        itsLonLatFormat(TS::LonLatFormat::LONLAT)
   {
   }
 

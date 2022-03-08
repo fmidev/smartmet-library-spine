@@ -5,11 +5,11 @@
 // ======================================================================
 
 #include "Convenience.h"
-#include "ValueFormatter.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
+#include <macgyver/ValueFormatter.h>
 #include <stdexcept>
 #include <string>
 
@@ -534,9 +534,8 @@ std::string boost_any_to_string(const boost::any& anyvalue)
 {
   try
   {
-    ValueFormatterParam vfp;
-
-    ValueFormatter vf(vfp);
+    Fmi::ValueFormatterParam vfp;
+    Fmi::ValueFormatter vf(vfp);
 
     return boost_any_to_string(anyvalue, vf, 3);
   }
@@ -546,7 +545,9 @@ std::string boost_any_to_string(const boost::any& anyvalue)
   }
 }
 
-std::string boost_any_to_string(const boost::any& anyvalue, const ValueFormatter& vf, int precision)
+std::string boost_any_to_string(const boost::any& anyvalue,
+                                const Fmi::ValueFormatter& vf,
+                                int precision)
 {
   try
   {

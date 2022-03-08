@@ -3,11 +3,15 @@
 #include "Location.h"
 #include "OptionParsers.h"
 #include "Parameter.h"
-#include <timeseries/TimeSeriesInclude.h>
-#include "ValueFormatter.h"
 #include <macgyver/Exception.h>
 #include <macgyver/TimeFormatter.h>
 #include <macgyver/TimeZones.h>
+#include <timeseries/TimeSeriesInclude.h>
+
+namespace Fmi
+{
+class ValueFormatter;
+}
 
 namespace SmartMet
 {
@@ -25,20 +29,20 @@ bool is_time_parameter(std::string paramname);
 
 std::string location_parameter(const Spine::LocationPtr loc,
                                const std::string paramName,
-                               const Spine::ValueFormatter& valueformatter,
+                               const Fmi::ValueFormatter& valueformatter,
                                const std::string& timezone,
                                int precision,
-							   const std::string& crs ="EPSG:4326");
+                               const std::string& crs = "EPSG:4326");
 
 TS::Value time_parameter(const std::string paramname,
-                                        const boost::local_time::local_date_time& ldt,
-                                        const boost::posix_time::ptime now,
-                                        const Spine::Location& loc,
-                                        const std::string& timezone,
-                                        const Fmi::TimeZones& timezones,
-                                        const std::locale& outlocale,
-                                        const Fmi::TimeFormatter& timeformatter,
-                                        const std::string& timestring);
+                         const boost::local_time::local_date_time& ldt,
+                         const boost::posix_time::ptime now,
+                         const Spine::Location& loc,
+                         const std::string& timezone,
+                         const Fmi::TimeZones& timezones,
+                         const std::locale& outlocale,
+                         const Fmi::TimeFormatter& timeformatter,
+                         const std::string& timestring);
 
 Parameter makeParameter(const std::string& name);
 

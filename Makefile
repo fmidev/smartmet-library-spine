@@ -8,7 +8,7 @@ REQUIRES = gdal jsoncpp mariadb icu-i18n configpp
 include $(shell smartbuildcfg --prefix)/share/smartmet/devel/makefile.inc
 
 # ISO C++ forbids casting between pointer-to-function and pointer-to-object
-CFLAGS += -Wno-pedantic
+CFLAGS += -Wno-pedantic -Wno-deprecated-declarations
 
 DEFINES = -DUNIX -D_REENTRANT
 

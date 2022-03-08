@@ -1,13 +1,12 @@
 #pragma once
 
+#include "Table.h"
+#include "TableVisitor.h"
+#include <macgyver/ValueFormatter.h>
+#include <timeseries/TimeSeriesInclude.h>
 #include <list>
 #include <string>
 #include <vector>
-
-#include "Table.h"
-#include "TableVisitor.h"
-#include <timeseries/TimeSeriesInclude.h>
-#include "ValueFormatter.h"
 
 namespace SmartMet
 {
@@ -20,14 +19,14 @@ namespace Spine
 class TableFeeder
 {
  private:
-  const ValueFormatter& itsValueFormatter;
+  const Fmi::ValueFormatter& itsValueFormatter;
   const std::vector<int>& itsPrecisions;
   TableVisitor itsTableVisitor;
   TS::LonLatFormat itsLonLatFormat;
 
  public:
   TableFeeder(Table& table,
-              const ValueFormatter& valueformatter,
+              const Fmi::ValueFormatter& valueformatter,
               const std::vector<int>& precisions,
               unsigned int currentcolumn = 0)
       : itsValueFormatter(valueformatter),
@@ -39,7 +38,7 @@ class TableFeeder
   }
 
   TableFeeder(Table& table,
-              const ValueFormatter& valueformatter,
+              const Fmi::ValueFormatter& valueformatter,
               const std::vector<int>& precisions,
               boost::shared_ptr<Fmi::TimeFormatter> timeformatter,
               boost::optional<boost::local_time::time_zone_ptr> timezoneptr,
