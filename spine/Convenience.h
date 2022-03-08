@@ -5,26 +5,25 @@
 // ======================================================================
 #pragma once
 
-#include <macgyver/StringConversion.h>
-#include <macgyver/TimeParser.h>
-
 #include <boost/any.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/optional.hpp>
-
-#include <boost/any.hpp>
-#include <boost/optional.hpp>
+#include <macgyver/StringConversion.h>
+#include <macgyver/TimeParser.h>
 #include <functional>
 #include <locale>
 #include <stdexcept>
 #include <string>
 
+namespace Fmi
+{
+class ValueFormatter;
+}
+
 namespace SmartMet
 {
 namespace Spine
 {
-class ValueFormatter;
-
 std::string optional_string(const char* theValue, const std::string& theDefault);
 std::string optional_string(const boost::optional<std::string>& theValue,
                             const std::string& theDefault);
@@ -71,7 +70,7 @@ std::string htmlescape(const std::string& theValue);
  *  @brief Returns content of boost::any as string
  */
 std::string boost_any_to_string(const boost::any& anyvalue,
-                                const ValueFormatter& vf,
+                                const Fmi::ValueFormatter& vf,
                                 int precision);
 
 /**

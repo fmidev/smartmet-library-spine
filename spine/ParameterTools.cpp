@@ -1,13 +1,14 @@
 #include "ParameterTools.h"
 #include "ParameterKeywords.h"
 #include <boost/algorithm/string.hpp>
+#include <gis/CoordinateTransformation.h>
+#include <gis/SpatialReference.h>
 #include <macgyver/Astronomy.h>
 #include <macgyver/CharsetTools.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TimeFormatter.h>
+#include <macgyver/ValueFormatter.h>
 #include <set>
-#include <gis/CoordinateTransformation.h>
-#include <gis/SpatialReference.h>
 
 namespace SmartMet
 {
@@ -15,16 +16,15 @@ namespace Spine
 {
 namespace
 {
-
 const std::set<std::string> location_parameters = {DEM_PARAM,
-												   LEVEL_PARAM,												   
+                                                   LEVEL_PARAM,
                                                    LATITUDE_PARAM,
                                                    LONGITUDE_PARAM,
                                                    LAT_PARAM,
                                                    LON_PARAM,
                                                    LATLON_PARAM,
                                                    LONLAT_PARAM,
-												   X_PARAM,
+                                                   X_PARAM,
                                                    Y_PARAM,
                                                    GEOID_PARAM,
                                                    // PLACE_PARAM,
@@ -153,7 +153,6 @@ bool special(const Parameter& theParam)
   }
 }
 
-
 // ----------------------------------------------------------------------
 /*!
  * \brief Return true if the parameter if of aggregatable type
@@ -227,10 +226,10 @@ bool is_location_parameter(const std::string& paramname)
 
 std::string location_parameter(const Spine::LocationPtr loc,
                                const std::string paramName,
-                               const Spine::ValueFormatter& valueformatter,
+                               const Fmi::ValueFormatter& valueformatter,
                                const std::string& timezone,
                                int precision,
-							   const std::string& crs /*="EPSG:4326"*/)
+                               const std::string& crs /*="EPSG:4326"*/)
 {
   try
   {
@@ -279,20 +278,20 @@ std::string location_parameter(const Spine::LocationPtr loc,
     if (paramName == LONGITUDE_PARAM || paramName == LON_PARAM)
       return valueformatter.format(loc->longitude, precision);
     if (paramName == X_PARAM || paramName == Y_PARAM)
-	  {
-		double x_coord = loc->longitude;
-		double y_coord = loc->latitude;
-		if(!(crs.empty() || crs == "EPSG:4326"))
-		  {
-			Fmi::CoordinateTransformation transformation("WGS84", crs);
-			transformation.transform(x_coord, y_coord);
-		  }
-		
-		if (paramName == X_PARAM)
-		  return valueformatter.format(x_coord, precision);
-		else
-		  return valueformatter.format(y_coord, precision);
-	  }
+    {
+      double x_coord = loc->longitude;
+      double y_coord = loc->latitude;
+      if (!(crs.empty() || crs == "EPSG:4326"))
+      {
+        Fmi::CoordinateTransformation transformation("WGS84", crs);
+        transformation.transform(x_coord, y_coord);
+      }
+
+      if (paramName == X_PARAM)
+        return valueformatter.format(x_coord, precision);
+      else
+        return valueformatter.format(y_coord, precision);
+    }
     if (paramName == LATLON_PARAM)
       return (valueformatter.format(loc->latitude, precision) + ", " +
               valueformatter.format(loc->longitude, precision));
@@ -347,21 +346,21 @@ bool is_time_parameter(std::string paramname)
  */
 // ----------------------------------------------------------------------
 
-Spine::TimeSeries::Value time_parameter(const std::string paramname,
-                                        const boost::local_time::local_date_time& ldt,
-                                        const boost::posix_time::ptime now,
-                                        const Spine::Location& loc,
-                                        const std::string& timezone,
-                                        const Fmi::TimeZones& timezones,
-                                        const std::locale& outlocale,
-                                        const Fmi::TimeFormatter& timeformatter,
-                                        const std::string& timestring)
+TS::Value time_parameter(const std::string paramname,
+                         const boost::local_time::local_date_time& ldt,
+                         const boost::posix_time::ptime now,
+                         const Spine::Location& loc,
+                         const std::string& timezone,
+                         const Fmi::TimeZones& timezones,
+                         const std::locale& outlocale,
+                         const Fmi::TimeFormatter& timeformatter,
+                         const std::string& timestring)
 {
   using boost::local_time::local_date_time;
 
   try
   {
-    Spine::TimeSeries::Value ret = Spine::TimeSeries::None();
+    TS::Value ret = TS::None();
 
     if (paramname == TIME_PARAM)
     {

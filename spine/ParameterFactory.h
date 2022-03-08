@@ -7,7 +7,7 @@
 #pragma once
 
 #include "Parameter.h"
-#include "ParameterFunction.h"
+#include <timeseries/TimeSeriesInclude.h>
 
 #include <newbase/NFmiEnumConverter.h>
 #include <string>
@@ -19,9 +19,9 @@ namespace Spine
 struct ParameterAndFunctions
 {
   Parameter parameter;
-  ParameterFunctions functions;
+  TS::DataFunctions functions;
 
-  ParameterAndFunctions(const Parameter& param, const ParameterFunctions& pfs)
+  ParameterAndFunctions(const Parameter& param, const TS::DataFunctions& pfs)
       : parameter(param), functions(pfs)
   {
   }
@@ -41,12 +41,12 @@ class ParameterFactory
   std::string extract_function(const std::string& theString,
                                double& theLowerLimit,
                                double& theUpperLimit) const;
-  FunctionId parse_function(const std::string& theFunction) const;
+  TS::FunctionId parse_function(const std::string& theFunction) const;
   std::string parse_parameter_functions(const std::string& theParameterRequest,
                                         std::string& theOriginalName,
                                         std::string& theParameterNameAlias,
-                                        ParameterFunction& theInnerParameterFunction,
-                                        ParameterFunction& theOuterParameterFunction) const;
+                                        TS::DataFunction& theInnerDataFunction,
+                                        TS::DataFunction& theOuterDataFunction) const;
 
  public:
   static const ParameterFactory& instance();

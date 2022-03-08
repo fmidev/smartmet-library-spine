@@ -1,14 +1,12 @@
 #include "TableFeeder.h"
-#include "TimeSeriesOutput.h"
 #include <macgyver/Exception.h>
 
 namespace SmartMet
 {
 namespace Spine
 {
-namespace TimeSeries
-{
-const TableFeeder& TableFeeder::operator<<(const TimeSeries& ts)
+
+const TableFeeder& TableFeeder::operator<<(const TS::TimeSeries& ts)
 {
   try
   {
@@ -17,7 +15,7 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeries& ts)
 
     for (auto& t : ts)
     {
-      Value val = t.value;
+      TS::Value val = t.value;
       boost::apply_visitor(itsTableVisitor, val);
     }
 
@@ -29,7 +27,7 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeries& ts)
   }
 }
 
-const TableFeeder& TableFeeder::operator<<(const TimeSeriesGroup& ts_group)
+const TableFeeder& TableFeeder::operator<<(const TS::TimeSeriesGroup& ts_group)
 {
   try
   {
@@ -48,7 +46,7 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeriesGroup& ts_group)
     for (size_t i = 0; i < n_timestamps; i++)
     {
       std::stringstream ss;
-      OStreamVisitor ostream_visitor(
+	  TS::OStreamVisitor ostream_visitor(
           ss, itsValueFormatter, itsPrecisions[itsTableVisitor.getCurrentColumn()]);
       ostream_visitor << itsLonLatFormat;
 
@@ -58,13 +56,13 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeriesGroup& ts_group)
       for (size_t k = 0; k < n_locations; k++)
       {
         // take time series from k:th location
-        const TimeSeries& timeseries = ts_group[k].timeseries;
+        const TS::TimeSeries& timeseries = ts_group[k].timeseries;
 
         if (k > 0)
           ss << " ";
 
         // take value from i:th timestep
-        Value val = timeseries[i].value;
+        TS::Value val = timeseries[i].value;
         // append value to the ostream
         boost::apply_visitor(ostream_visitor, val);
       }
@@ -80,7 +78,7 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeriesGroup& ts_group)
       while (str_value[str_value.size() - 2] == ' ')
         str_value.erase(str_value.size() - 2, 1);
 
-      Value dv = str_value;
+      TS::Value dv = str_value;
       boost::apply_visitor(itsTableVisitor, dv);
     }
 
@@ -92,7 +90,7 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeriesGroup& ts_group)
   }
 }
 
-const TableFeeder& TableFeeder::operator<<(const TimeSeriesVector& ts_vector)
+const TableFeeder& TableFeeder::operator<<(const TS::TimeSeriesVector& ts_vector)
 {
   try
   {
@@ -106,7 +104,7 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeriesVector& ts_vector)
     {
       itsTableVisitor.setCurrentRow(startRow);
 
-      TimeSeries ts(tvalue);
+      TS::TimeSeries ts(tvalue);
       for (auto& t : ts)
       {
         boost::apply_visitor(itsTableVisitor, t.value);
@@ -122,7 +120,7 @@ const TableFeeder& TableFeeder::operator<<(const TimeSeriesVector& ts_vector)
   }
 }
 
-const TableFeeder& TableFeeder::operator<<(const std::vector<Value>& value_vector)
+const TableFeeder& TableFeeder::operator<<(const std::vector<TS::Value>& value_vector)
 {
   try
   {
@@ -143,7 +141,7 @@ const TableFeeder& TableFeeder::operator<<(const std::vector<Value>& value_vecto
   }
 }
 
-TableFeeder& TableFeeder::operator<<(LonLatFormat newformat)
+TableFeeder& TableFeeder::operator<<(TS::LonLatFormat newformat)
 {
   try
   {
@@ -157,6 +155,5 @@ TableFeeder& TableFeeder::operator<<(LonLatFormat newformat)
   }
 }
 
-}  // namespace TimeSeries
 }  // namespace Spine
 }  // namespace SmartMet
