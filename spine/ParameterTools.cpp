@@ -347,7 +347,7 @@ bool is_time_parameter(std::string paramname)
  */
 // ----------------------------------------------------------------------
 
-Spine::TimeSeries::Value time_parameter(const std::string paramname,
+TS::Value time_parameter(const std::string paramname,
                                         const boost::local_time::local_date_time& ldt,
                                         const boost::posix_time::ptime now,
                                         const Spine::Location& loc,
@@ -361,7 +361,7 @@ Spine::TimeSeries::Value time_parameter(const std::string paramname,
 
   try
   {
-    Spine::TimeSeries::Value ret = Spine::TimeSeries::None();
+    TS::Value ret = TS::None();
 
     if (paramname == TIME_PARAM)
     {

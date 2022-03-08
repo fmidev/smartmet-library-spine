@@ -5,15 +5,13 @@
 #include <vector>
 
 #include "Table.h"
-#include "TimeSeries.h"
-#include "TimeSeriesOutput.h"
+#include "TableVisitor.h"
+#include <timeseries/TimeSeriesInclude.h>
 #include "ValueFormatter.h"
 
 namespace SmartMet
 {
 namespace Spine
-{
-namespace TimeSeries
 {
 // feed data to Table
 // usage1: tablefeeder << TimeSeries
@@ -25,7 +23,7 @@ class TableFeeder
   const ValueFormatter& itsValueFormatter;
   const std::vector<int>& itsPrecisions;
   TableVisitor itsTableVisitor;
-  LonLatFormat itsLonLatFormat;
+  TS::LonLatFormat itsLonLatFormat;
 
  public:
   TableFeeder(Table& table,
@@ -35,7 +33,7 @@ class TableFeeder
       : itsValueFormatter(valueformatter),
         itsPrecisions(precisions),
         itsTableVisitor(table, valueformatter, precisions, currentcolumn, currentcolumn),
-        itsLonLatFormat(LonLatFormat::LONLAT)
+        itsLonLatFormat(TS::LonLatFormat::LONLAT)
 
   {
   }
@@ -66,15 +64,14 @@ class TableFeeder
     itsTableVisitor.setCurrentColumn(currentColumn);
   }
 
-  const TableFeeder& operator<<(const TimeSeries& ts);
-  const TableFeeder& operator<<(const TimeSeriesGroup& ts_group);
-  const TableFeeder& operator<<(const TimeSeriesVector& ts_vector);
-  const TableFeeder& operator<<(const std::vector<Value>& value_vector);
+  const TableFeeder& operator<<(const TS::TimeSeries& ts);
+  const TableFeeder& operator<<(const TS::TimeSeriesGroup& ts_group);
+  const TableFeeder& operator<<(const TS::TimeSeriesVector& ts_vector);
+  const TableFeeder& operator<<(const std::vector<TS::Value>& value_vector);
 
   // Set LonLat formatting
-  TableFeeder& operator<<(LonLatFormat newformat);
+  TableFeeder& operator<<(TS::LonLatFormat newformat);
 };
 
-}  // namespace TimeSeries
 }  // namespace Spine
 }  // namespace SmartMet

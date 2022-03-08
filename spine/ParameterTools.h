@@ -3,7 +3,7 @@
 #include "Location.h"
 #include "OptionParsers.h"
 #include "Parameter.h"
-#include "TimeSeries.h"
+#include <timeseries/TimeSeriesInclude.h>
 #include "ValueFormatter.h"
 #include <macgyver/Exception.h>
 #include <macgyver/TimeFormatter.h>
@@ -30,7 +30,7 @@ std::string location_parameter(const Spine::LocationPtr loc,
                                int precision,
 							   const std::string& crs ="EPSG:4326");
 
-Spine::TimeSeries::Value time_parameter(const std::string paramname,
+TS::Value time_parameter(const std::string paramname,
                                         const boost::local_time::local_date_time& ldt,
                                         const boost::posix_time::ptime now,
                                         const Spine::Location& loc,

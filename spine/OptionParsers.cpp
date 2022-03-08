@@ -32,14 +32,14 @@ void ParameterOptions::expandParameter(const std::string& paramname)
 
   if (expand_index > -1)
   {
-    const ParameterFunctions& expand_func = itsParameterFunctions.at(expand_index).functions;
+    const TS::DataFunctions& expand_func = itsParameterFunctions.at(expand_index).functions;
 
     std::vector<Parameter> dataSourceParams;
     std::vector<ParameterAndFunctions> dataSourceParameterFunctions;
     for (const auto& p : itsParameters)
     {
-      if (p.type() == SmartMet::Spine::Parameter::Type::Data ||
-          p.type() == SmartMet::Spine::Parameter::Type::Landscaped)
+      if (p.type() == Parameter::Type::Data ||
+          p.type() == Parameter::Type::Landscaped)
       {
         if (!p.getSensorParameter().empty())
         {
@@ -75,10 +75,10 @@ void ParameterOptions::expandParameter(const std::string& paramname)
 void ParameterOptions::add(const Parameter& theParam)
 {
   itsParameters.push_back(theParam);
-  itsParameterFunctions.push_back(ParameterAndFunctions(theParam, ParameterFunctions()));
+  itsParameterFunctions.push_back(ParameterAndFunctions(theParam, TS::DataFunctions()));
 }
 
-void ParameterOptions::add(const Parameter& theParam, const ParameterFunctions& theParamFunctions)
+  void ParameterOptions::add(const Parameter& theParam, const TS::DataFunctions& theParamFunctions)
 {
   itsParameters.push_back(theParam);
   itsParameterFunctions.push_back(ParameterAndFunctions(theParam, theParamFunctions));
@@ -126,14 +126,14 @@ ParameterOptions parseParameters(const HTTP::Request& theReq)
  */
 // ----------------------------------------------------------------------
 
-TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
+TS::TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
 {
   try
   {
     boost::posix_time::ptime now = optional_time(theReq.getParameter("now"),
                                                  boost::posix_time::second_clock::universal_time());
 
-    TimeSeriesGeneratorOptions options(now);
+	TS::TimeSeriesGeneratorOptions options(now);
 
     // We first parse the options which imply the TimeMode
     // because the behaviour of some other options depend on it
@@ -141,7 +141,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
     // Parse hour option
     if (theReq.getParameter("hour"))
     {
-      options.mode = TimeSeriesGeneratorOptions::FixedTimes;
+      options.mode = TS::TimeSeriesGeneratorOptions::FixedTimes;
 
       const std::string hours = required_string(theReq.getParameter("hour"), "");
 
@@ -160,7 +160,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
     // Parse time option
     if (theReq.getParameter("time"))
     {
-      options.mode = TimeSeriesGeneratorOptions::FixedTimes;
+      options.mode = TS::TimeSeriesGeneratorOptions::FixedTimes;
       const std::string times = required_string(theReq.getParameter("time"), "");
 
       std::vector<std::string> parts;
@@ -181,7 +181,7 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
 
     if (theReq.getParameter("timestep"))
     {
-      if (options.mode != TimeSeriesGeneratorOptions::TimeSteps)
+      if (options.mode != TS::TimeSeriesGeneratorOptions::TimeSteps)
         throw Fmi::Exception(
             BCP, "Cannot use timestep option when another time mode is implied by another option");
 
@@ -189,17 +189,17 @@ TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq)
 
       if (step == "data" || step == "all")
       {
-        options.mode = TimeSeriesGeneratorOptions::DataTimes;
+        options.mode = TS::TimeSeriesGeneratorOptions::DataTimes;
         options.timeStep = 0;
       }
       else if (step == "graph")
       {
-        options.mode = TimeSeriesGeneratorOptions::GraphTimes;
+        options.mode = TS::TimeSeriesGeneratorOptions::GraphTimes;
         options.timeStep = 0;
       }
       else if (step != "current")
       {
-        options.mode = TimeSeriesGeneratorOptions::TimeSteps;
+        options.mode = TS::TimeSeriesGeneratorOptions::TimeSteps;
         int num = duration_string_to_minutes(step);
 
         if (num < 0)

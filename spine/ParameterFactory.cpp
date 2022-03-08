@@ -180,58 +180,58 @@ int ParameterFactory::number(const std::string& name) const
  */
 // ----------------------------------------------------------------------
 
-FunctionId ParameterFactory::parse_function(const std::string& theFunction) const
+TS::FunctionId ParameterFactory::parse_function(const std::string& theFunction) const
 {
   try
   {
-    static FunctionId functions[] = {FunctionId::Mean,
-                                     FunctionId::Mean,
-                                     FunctionId::Mean,
-                                     FunctionId::Mean,
-                                     FunctionId::Maximum,
-                                     FunctionId::Maximum,
-                                     FunctionId::Maximum,
-                                     FunctionId::Maximum,
-                                     FunctionId::Minimum,
-                                     FunctionId::Minimum,
-                                     FunctionId::Minimum,
-                                     FunctionId::Minimum,
-                                     FunctionId::Median,
-                                     FunctionId::Median,
-                                     FunctionId::Median,
-                                     FunctionId::Median,
-                                     FunctionId::Sum,
-                                     FunctionId::Sum,
-                                     FunctionId::Sum,
-                                     FunctionId::Sum,
-                                     FunctionId::Sum,
-                                     FunctionId::Integ,
-                                     FunctionId::Sum,
-                                     FunctionId::Integ,
-                                     FunctionId::StandardDeviation,
-                                     FunctionId::StandardDeviation,
-                                     FunctionId::StandardDeviation,
-                                     FunctionId::StandardDeviation,
-                                     FunctionId::Percentage,
-                                     FunctionId::Percentage,
-                                     FunctionId::Percentage,
-                                     FunctionId::Percentage,
-                                     FunctionId::Count,
-                                     FunctionId::Count,
-                                     FunctionId::Count,
-                                     FunctionId::Count,
-                                     FunctionId::Change,
-                                     FunctionId::Change,
-                                     FunctionId::Change,
-                                     FunctionId::Change,
-                                     FunctionId::Trend,
-                                     FunctionId::Trend,
-                                     FunctionId::Trend,
-                                     FunctionId::Trend,
-                                     FunctionId::Nearest,
-                                     FunctionId::Nearest,
-                                     FunctionId::Interpolate,
-                                     FunctionId::Interpolate};
+    static TS::FunctionId functions[] = {TS::FunctionId::Mean,
+                                     TS::FunctionId::Mean,
+                                     TS::FunctionId::Mean,
+                                     TS::FunctionId::Mean,
+                                     TS::FunctionId::Maximum,
+                                     TS::FunctionId::Maximum,
+                                     TS::FunctionId::Maximum,
+                                     TS::FunctionId::Maximum,
+                                     TS::FunctionId::Minimum,
+                                     TS::FunctionId::Minimum,
+                                     TS::FunctionId::Minimum,
+                                     TS::FunctionId::Minimum,
+                                     TS::FunctionId::Median,
+                                     TS::FunctionId::Median,
+                                     TS::FunctionId::Median,
+                                     TS::FunctionId::Median,
+                                     TS::FunctionId::Sum,
+                                     TS::FunctionId::Sum,
+                                     TS::FunctionId::Sum,
+                                     TS::FunctionId::Sum,
+                                     TS::FunctionId::Sum,
+                                     TS::FunctionId::Integ,
+                                     TS::FunctionId::Sum,
+                                     TS::FunctionId::Integ,
+                                     TS::FunctionId::StandardDeviation,
+                                     TS::FunctionId::StandardDeviation,
+                                     TS::FunctionId::StandardDeviation,
+                                     TS::FunctionId::StandardDeviation,
+                                     TS::FunctionId::Percentage,
+                                     TS::FunctionId::Percentage,
+                                     TS::FunctionId::Percentage,
+                                     TS::FunctionId::Percentage,
+                                     TS::FunctionId::Count,
+                                     TS::FunctionId::Count,
+                                     TS::FunctionId::Count,
+                                     TS::FunctionId::Count,
+                                     TS::FunctionId::Change,
+                                     TS::FunctionId::Change,
+                                     TS::FunctionId::Change,
+                                     TS::FunctionId::Change,
+                                     TS::FunctionId::Trend,
+                                     TS::FunctionId::Trend,
+                                     TS::FunctionId::Trend,
+                                     TS::FunctionId::Trend,
+                                     TS::FunctionId::Nearest,
+                                     TS::FunctionId::Nearest,
+                                     TS::FunctionId::Interpolate,
+                                     TS::FunctionId::Interpolate};
 
     int function_index = get_function_index(theFunction);
     if (function_index >= 0)
@@ -484,8 +484,8 @@ std::string ParameterFactory::parse_parameter_functions(
     const std::string& theParameterRequest,
     std::string& theOriginalName,
     std::string& theParameterNameAlias,
-    ParameterFunction& theInnerParameterFunction,
-    ParameterFunction& theOuterParameterFunction) const
+    TS::DataFunction& theInnerParameterFunction,
+    TS::DataFunction& theOuterParameterFunction) const
 {
   try
   {
@@ -593,74 +593,75 @@ std::string ParameterFactory::parse_parameter_functions(
     if (!parts.empty())
       parts.pop_front();
 
+	double lower_limit = std::numeric_limits<double>::lowest();
+	double upper_limit = std::numeric_limits<double>::max();
     if (functionname1.size() > 0 && functionname2.size() > 0)
     {
       // inner and outer functions exist
-      auto f_name = extract_function(functionname2,
-                                     theInnerParameterFunction.itsLowerLimit,
-                                     theInnerParameterFunction.itsUpperLimit);
+      auto f_name = extract_function(functionname2, lower_limit, upper_limit);
 
-      theInnerParameterFunction.itsFunctionId = parse_function(f_name);
-      theInnerParameterFunction.itsFunctionType =
-          (f_name.substr(f_name.size() - 2) == "_t" ? FunctionType::TimeFunction
-                                                    : FunctionType::AreaFunction);
+	  theInnerParameterFunction.setLimits(lower_limit, upper_limit);
 
-      theInnerParameterFunction.itsNaNFunction = (f_name.substr(0, 3) == "nan");
+      theInnerParameterFunction.setId(parse_function(f_name));
+      theInnerParameterFunction.setType(
+										(f_name.substr(f_name.size() - 2) == "_t" ? TS::FunctionType::TimeFunction
+										 : TS::FunctionType::AreaFunction));
+
+      theInnerParameterFunction.setIsNaNFunction(f_name.substr(0, 3) == "nan");
       // Nearest && Interpolate functions always accepts NaNs in time series
-      if (theInnerParameterFunction.itsFunctionId == FunctionId::Nearest ||
-          theInnerParameterFunction.itsFunctionId == FunctionId::Interpolate)
-        theInnerParameterFunction.itsNaNFunction = true;
-      if (theInnerParameterFunction.itsFunctionType == FunctionType::TimeFunction)
+      if (theInnerParameterFunction.id() == TS::FunctionId::Nearest ||
+          theInnerParameterFunction.id() == TS::FunctionId::Interpolate)
+        theInnerParameterFunction.setIsNaNFunction(true);
+      if (theInnerParameterFunction.type() == TS::FunctionType::TimeFunction)
       {
-        theInnerParameterFunction.itsAggregationIntervalBehind = aggregation_interval_behind;
-        theInnerParameterFunction.itsAggregationIntervalAhead = aggregation_interval_ahead;
+        theInnerParameterFunction.setAggregationIntervalBehind(aggregation_interval_behind);
+		theInnerParameterFunction.setAggregationIntervalAhead(aggregation_interval_ahead);
       }
+	  
+      f_name = extract_function(functionname1, lower_limit, upper_limit);
+	  theOuterParameterFunction.setLimits(lower_limit, upper_limit);
+	  
+	  theOuterParameterFunction.setId(parse_function(f_name));
+      theOuterParameterFunction.setType(
+										 (f_name.substr(f_name.size() - 2) == "_t" ? TS::FunctionType::TimeFunction
+										  : TS::FunctionType::AreaFunction));
 
-      f_name = (extract_function(functionname1,
-                                 theOuterParameterFunction.itsLowerLimit,
-                                 theOuterParameterFunction.itsUpperLimit));
+      theOuterParameterFunction.setIsNaNFunction(f_name.substr(0, 3) == "nan");
 
-      theOuterParameterFunction.itsFunctionId = parse_function(f_name);
-      theOuterParameterFunction.itsFunctionType =
-          (f_name.substr(f_name.size() - 2) == "_t" ? FunctionType::TimeFunction
-                                                    : FunctionType::AreaFunction);
-
-      theOuterParameterFunction.itsNaNFunction = (f_name.substr(0, 3) == "nan");
-
-      if (theOuterParameterFunction.itsFunctionType == FunctionType::TimeFunction)
+      if (theOuterParameterFunction.type() == TS::FunctionType::TimeFunction)
       {
-        theOuterParameterFunction.itsAggregationIntervalBehind = aggregation_interval_behind;
-        theOuterParameterFunction.itsAggregationIntervalAhead = aggregation_interval_ahead;
+        theOuterParameterFunction.setAggregationIntervalBehind(aggregation_interval_behind);
+		theOuterParameterFunction.setAggregationIntervalAhead(aggregation_interval_ahead);
       }
     }
     else if (functionname1.size() > 0)
     {
       // only inner function exists,
-      auto f_name = extract_function(functionname1,
-                                     theInnerParameterFunction.itsLowerLimit,
-                                     theInnerParameterFunction.itsUpperLimit);
-      theInnerParameterFunction.itsFunctionId = parse_function(f_name);
-      theInnerParameterFunction.itsFunctionType =
-          (f_name.substr(f_name.size() - 2) == "_t" ? FunctionType::TimeFunction
-                                                    : FunctionType::AreaFunction);
-      theInnerParameterFunction.itsNaNFunction = (f_name.substr(0, 3) == "nan");
-      // Nearest && Interpolate functions always accepts NaNs in time series
-      if (theInnerParameterFunction.itsFunctionId == FunctionId::Nearest ||
-          theInnerParameterFunction.itsFunctionId == FunctionId::Interpolate)
-        theInnerParameterFunction.itsNaNFunction = true;
+      auto f_name = extract_function(functionname1, lower_limit, upper_limit);
+	  theInnerParameterFunction.setLimits(lower_limit, upper_limit);
 
-      if (theInnerParameterFunction.itsFunctionType == FunctionType::TimeFunction)
+      theInnerParameterFunction.setId(parse_function(f_name));
+      theInnerParameterFunction.setType(
+										(f_name.substr(f_name.size() - 2) == "_t" ? TS::FunctionType::TimeFunction
+										 : TS::FunctionType::AreaFunction));
+      theInnerParameterFunction.setIsNaNFunction(f_name.substr(0, 3) == "nan");
+      // Nearest && Interpolate functions always accepts NaNs in time series
+      if (theInnerParameterFunction.id() == TS::FunctionId::Nearest ||
+          theInnerParameterFunction.id() == TS::FunctionId::Interpolate)
+        theInnerParameterFunction.setIsNaNFunction(true);
+
+      if (theInnerParameterFunction.type() == TS::FunctionType::TimeFunction)
       {
-        theInnerParameterFunction.itsAggregationIntervalBehind = aggregation_interval_behind;
-        theInnerParameterFunction.itsAggregationIntervalAhead = aggregation_interval_ahead;
+        theInnerParameterFunction.setAggregationIntervalBehind(aggregation_interval_behind);
+        theInnerParameterFunction.setAggregationIntervalAhead(aggregation_interval_ahead);
       }
     }
 
-    if (theOuterParameterFunction.itsFunctionType == theInnerParameterFunction.itsFunctionType &&
-        theOuterParameterFunction.itsFunctionType != FunctionType::NullFunctionType)
+    if (theOuterParameterFunction.type() == theInnerParameterFunction.type() &&
+        theOuterParameterFunction.type() != TS::FunctionType::NullFunctionType)
     {
       // remove outer function
-      theOuterParameterFunction = ParameterFunction();
+      theOuterParameterFunction = TS::DataFunction();
     }
 
     // We assume ASCII chars only in parameter names
@@ -681,8 +682,8 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
   {
     auto tmpname = Fmi::trim_copy(name);
 
-    ParameterFunction innerFunction;
-    ParameterFunction outerFunction;
+	TS::DataFunction innerFunction;
+	TS::DataFunction outerFunction;
 
     size_t parenhesis_start = std::count(tmpname.begin(), tmpname.end(), '(');
     size_t parenhesis_end = std::count(tmpname.begin(), tmpname.end(), ')');
@@ -766,7 +767,7 @@ ParameterAndFunctions ParameterFactory::parseNameAndFunctions(
     if (!sensor_parameter.empty())
       parameter.setSensorParameter(sensor_parameter);
 
-    return ParameterAndFunctions(parameter, ParameterFunctions(innerFunction, outerFunction));
+    return ParameterAndFunctions(parameter, TS::DataFunctions(innerFunction, outerFunction));
   }
   catch (...)
   {

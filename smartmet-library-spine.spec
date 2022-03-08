@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.2.10
+Version: 22.3.8
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -37,7 +37,8 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 21.1.21
-BuildRequires: smartmet-library-macgyver-devel >= 21.1.21
+BuildRequires: smartmet-library-macgyver-devel >= 22.3.8
+BuildRequires: smartmet-library-timeseries-devel >= 22.3.8
 BuildRequires: smartmet-library-newbase-devel >= 21.1.21
 BuildRequires: smartmet-utils-devel >= 22.1.20
 Requires: boost169-chrono
@@ -58,7 +59,8 @@ Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
 Requires: smartmet-library-gis >= 21.1.21
-Requires: smartmet-library-macgyver >= 21.1.21
+Requires: smartmet-library-macgyver >= 22.3.8
+Requires: smartmet-library-timeseries >= 22.3.8
 Requires: smartmet-library-newbase >= 21.1.21
 Requires: smartmet-timezones >= 21.10.29
 #TestRequires: bzip2-devel
@@ -124,6 +126,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Mar 8 2022 Anssi Reponen <anssi.reponen@fmi.fi> - 22.3.8-1.fmi
+- Timeseries-related code moved to timeseries-library (BRAINSTORM-2259)
+
 * Thu Feb 10 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.2.10-1.fmi
 - Improved error messages on engine/plugin init failure
 
