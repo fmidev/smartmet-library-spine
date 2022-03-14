@@ -3,7 +3,6 @@
 #include "HTTP.h"
 #include "Parameter.h"
 #include "ParameterFactory.h"
-#include <timeseries/TimeSeriesInclude.h>
 
 #include <vector>
 
@@ -34,7 +33,6 @@ class ParameterOptions
 };  // class ParameterOptions
 
 ParameterOptions parseParameters(const HTTP::Request& theReq);
-TS::TimeSeriesGeneratorOptions parseTimes(const HTTP::Request& theReq);
 
 }  // namespace OptionParsers
 }  // namespace Spine
