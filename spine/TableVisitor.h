@@ -2,9 +2,11 @@
 
 #include "Table.h"
 #include <boost/date_time/local_time/local_time.hpp>
+#include <boost/optional.hpp>
+#include <boost/variant.hpp>
 #include <macgyver/TimeFormatter.h>
 #include <macgyver/ValueFormatter.h>
-#include <timeseries/TimeSeriesInclude.h>
+//#include <timeseries/TimeSeriesInclude.h>
 
 namespace SmartMet
 {
