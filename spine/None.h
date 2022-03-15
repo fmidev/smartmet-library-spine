@@ -14,13 +14,13 @@ struct None
 };
 
 template <class T>
-bool None::operator==(const T& /* other */) const
+inline bool None::operator==(const T& /* other */) const
 {
   return false;
 }
 
 template <>
-bool None::operator==(const None& /* other */) const
+inline bool None::operator==(const None& /* other */) const
 {
   return true;
 }

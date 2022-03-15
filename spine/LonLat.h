@@ -14,7 +14,7 @@ struct LonLat
   double lat;
 };
 
-bool operator==(const LonLat& lonlat1, const LonLat& lonlat2)
+inline bool operator==(const LonLat& lonlat1, const LonLat& lonlat2)
 {
   return (lonlat1.lon == lonlat2.lon && lonlat1.lat == lonlat2.lat);
 }
