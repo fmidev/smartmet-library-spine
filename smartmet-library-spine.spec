@@ -38,7 +38,6 @@ BuildRequires: mariadb-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 21.1.21
 BuildRequires: smartmet-library-macgyver-devel >= 22.3.8
-BuildRequires: smartmet-library-timeseries-devel >= 22.3.8
 BuildRequires: smartmet-library-newbase-devel >= 21.1.21
 BuildRequires: smartmet-utils-devel >= 22.1.20
 Requires: boost169-chrono
@@ -60,7 +59,6 @@ Requires: libicu
 Requires: double-conversion
 Requires: smartmet-library-gis >= 21.1.21
 Requires: smartmet-library-macgyver >= 22.3.8
-Requires: smartmet-library-timeseries >= 22.3.8
 Requires: smartmet-library-newbase >= 21.1.21
 Requires: smartmet-timezones >= 21.10.29
 #TestRequires: bzip2-devel

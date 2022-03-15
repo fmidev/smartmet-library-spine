@@ -17,7 +17,6 @@ DEFINES = -DUNIX -D_REENTRANT
 LIBS +=	-L$(libdir) \
 	-lsmartmet-newbase \
 	-lsmartmet-macgyver \
-	-lsmartmet-timeseries \
         -ldouble-conversion \
 	-lboost_filesystem \
 	-lboost_regex \

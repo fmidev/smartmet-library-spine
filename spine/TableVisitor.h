@@ -73,9 +73,5 @@ class TableVisitor : public boost::static_visitor<>
   TableVisitor& operator<<(LonLatFormat newformat);
 };
 
-#pragma message "TODO: move method to timseries library"
-// write content of Value
-//TableVisitor& operator<<(TableVisitor& tf, const TS::Value& val);
-
 }  // namespace Spine
 }  // namespace SmartMet
