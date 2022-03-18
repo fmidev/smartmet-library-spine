@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.3.8
+Version: 22.3.18
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -124,6 +124,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Mar 18 2022 Andris Pavenis <andris.pavenis@fmi.fi> 22.3.18-1.fmi
+- Move part of code to smartmet-library-timeseries
+
 * Tue Mar 8 2022 Anssi Reponen <anssi.reponen@fmi.fi> - 22.3.8-1.fmi
 - Timeseries-related code moved to timeseries-library (BRAINSTORM-2259)
 
