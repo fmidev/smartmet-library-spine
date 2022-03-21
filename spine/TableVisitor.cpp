@@ -8,7 +8,7 @@ namespace Spine
 {
 /* TableVisitor */
 
-void TableVisitor::operator()(const TS::None& /* none */)
+void TableVisitor::operator()(const None& /* none */)
 {
   try
   {
@@ -64,20 +64,20 @@ void TableVisitor::operator()(int i)
   }
 }
 
-void TableVisitor::operator()(const TS::LonLat& lonlat)
+void TableVisitor::operator()(const LonLat& lonlat)
 {
   try
   {
     std::string res;
     switch (itsLonLatFormat)
     {
-      case TS::LonLatFormat::LATLON:
+      case LonLatFormat::LATLON:
         res.append(itsValueFormatter.format(lonlat.lat, itsPrecisions[itsCurrentColumn]))
             .append(", ")
             .append(itsValueFormatter.format(lonlat.lon, itsPrecisions[itsCurrentColumn]));
         break;
 
-      case TS::LonLatFormat::LONLAT:
+      case LonLatFormat::LONLAT:
       default:
         res.append(itsValueFormatter.format(lonlat.lon, itsPrecisions[itsCurrentColumn]))
             .append(", ")
@@ -124,37 +124,7 @@ void TableVisitor::operator()(const boost::local_time::local_date_time& ldt)
   }
 }
 
-TableVisitor& operator<<(TableVisitor& tf, const TS::Value& val)
-{
-  try
-  {
-    if (boost::get<int>(&val) != nullptr)
-      tf << *(boost::get<int>(&val));
-    else if (boost::get<double>(&val) != nullptr)
-      tf << *(boost::get<double>(&val));
-    else if (boost::get<std::string>(&val) != nullptr)
-      tf << *(boost::get<std::string>(&val));
-    else if (boost::get<TS::LonLat>(&val) != nullptr)
-    {
-      TS::LonLat coord = *(boost::get<TS::LonLat>(&val));
-      tf << coord;
-    }
-    else if (boost::get<boost::local_time::local_date_time>(&val) != nullptr)
-    {
-      boost::local_time::local_date_time ldt =
-          *(boost::get<boost::local_time::local_date_time>(&val));
-      tf << ldt;
-    }
-
-    return tf;
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
-}
-
-TableVisitor& TableVisitor::operator<<(TS::LonLatFormat newformat)
+TableVisitor& TableVisitor::operator<<(LonLatFormat newformat)
 {
   try
   {

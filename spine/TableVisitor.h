@@ -1,10 +1,13 @@
 #pragma once
 
 #include "Table.h"
+#include "LonLat.h"
+#include "None.h"
 #include <boost/date_time/local_time/local_time.hpp>
+#include <boost/optional.hpp>
+#include <boost/variant.hpp>
 #include <macgyver/TimeFormatter.h>
 #include <macgyver/ValueFormatter.h>
-#include <timeseries/TimeSeriesInclude.h>
 
 namespace SmartMet
 {
@@ -20,7 +23,7 @@ class TableVisitor : public boost::static_visitor<>
   unsigned int itsCurrentRow;
   boost::shared_ptr<Fmi::TimeFormatter> itsTimeFormatter;
   boost::optional<boost::local_time::time_zone_ptr> itsTimeZonePtr;
-  TS::LonLatFormat itsLonLatFormat;
+  LonLatFormat itsLonLatFormat;
 
  public:
   TableVisitor(Table& table,
@@ -33,7 +36,7 @@ class TableVisitor : public boost::static_visitor<>
         itsPrecisions(precisions),
         itsCurrentColumn(currentcolumn),
         itsCurrentRow(currentrow),
-        itsLonLatFormat(TS::LonLatFormat::LONLAT)
+        itsLonLatFormat(LonLatFormat::LONLAT)
   {
   }
 
@@ -51,7 +54,7 @@ class TableVisitor : public boost::static_visitor<>
         itsCurrentRow(currentrow),
         itsTimeFormatter(timeformatter),
         itsTimeZonePtr(timezoneptr),
-        itsLonLatFormat(TS::LonLatFormat::LONLAT)
+        itsLonLatFormat(LonLatFormat::LONLAT)
   {
   }
 
@@ -59,19 +62,16 @@ class TableVisitor : public boost::static_visitor<>
   unsigned int getCurrentColumn() const { return itsCurrentColumn; }
   void setCurrentRow(unsigned int currentRow) { itsCurrentRow = currentRow; }
   void setCurrentColumn(unsigned int currentColumn) { itsCurrentColumn = currentColumn; }
-  void operator()(const TS::None& none);
+  void operator()(const None& none);
   void operator()(const std::string& str);
   void operator()(double d);
   void operator()(int i);
-  void operator()(const TS::LonLat& lonlat);
+  void operator()(const LonLat& lonlat);
   void operator()(const boost::local_time::local_date_time& ldt);
 
   // Set LonLat - value formatting
-  TableVisitor& operator<<(TS::LonLatFormat newformat);
+  TableVisitor& operator<<(LonLatFormat newformat);
 };
-
-// write content of Value
-TableVisitor& operator<<(TableVisitor& tf, const TS::Value& val);
 
 }  // namespace Spine
 }  // namespace SmartMet
