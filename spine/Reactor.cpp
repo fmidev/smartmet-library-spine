@@ -146,7 +146,7 @@ Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::
     itsInitTasks->stop_on_error(true);
 
     itsInitTasks->on_task_error(
-        [this](const std::string& name)
+        [](const std::string& name)
         {
           if (!isShuttingDown())
           {
