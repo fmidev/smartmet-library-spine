@@ -1,16 +1,12 @@
 # Use smartmet-plugin-test from build directory when possible
-ifeq ($(wildcard ../../app/smartmet-plugin-test),)
 SMARTMET_PLUGIN_TEST := ../../app/smartmet-plugin-test
-else
-SMARTMET_PLUGIN_TEST := smartmet-plugin-test
-endif
 
 all:	all-test-engine	all-test-plugin
 
 clean:	clean-test-engine clean-test-plugin
 	rm -rf failures
 
-test:	all
+test:	all $(SMARTMET_PLUGIN_TEST)
 	$(SMARTMET_PLUGIN_TEST) -c reactor.conf -H /test
 
 all-test-engine:
@@ -24,3 +20,6 @@ clean-test-engine:
 
 clean-test-plugin:
 	$(MAKE) -C test_plugin clean
+
+$(SMARTMET_PLUGIN_TEST):
+	$(MAKE) -C $(shell dirname $(SMARTMET_PLUGIN_TEST))
