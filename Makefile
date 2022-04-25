@@ -79,6 +79,7 @@ smartmet_plugin_test: obj/SmartmetPluginTest.o $(LIBFILE)
 clean:
 	rm -f $(LIBFILE) $(OBJS) $(patsubst obj/%.o,obj/%.d,$(OBJS)) *~ $(SUBNAME)/*~
 	$(MAKE) -C app $@
+	$(MAKE) -C test $@
 
 format:
 	clang-format -i -style=file $(SUBNAME)/*.h $(SUBNAME)/*.cpp test/*.cpp
