@@ -30,11 +30,13 @@ LIBS += ../libsmartmet-spine.so \
 	-lboost_system \
 	-lbz2 -lz -lpthread -ldl
 
-all: $(PROG)
+all: all-reactor-tests $(PROG)
+
 clean:
 	rm -f $(PROG) *~
+	$(MAKE) -C reactor_tests $@
 
-test: $(PROG)
+test: all
 	@rm -rf /tmp/$$UID/bscachetest #Cache test uses this
 	@rm -rf /tmp/$$UID/bscachetest2 #Cache test uses this
 	@rm -rf /tmp/$$UID/bscachetest3 #Cache test uses this
@@ -44,7 +46,11 @@ test: $(PROG)
 	for prog in $(PROG); do \
 	./$$prog || ok=false; \
 	done; \
+	$(MAKE) -C reactor_tests $@ || ok=false; \
 	$$ok
+
+all-reactor-tests:
+	$(MAKE) -C reactor_tests
 
 $(PROG) : % : %.cpp Makefile ../libsmartmet-spine.so
 	$(CXX) $(CFLAGS) -o $@ $@.cpp $(INCLUDES) $(LIBS)
