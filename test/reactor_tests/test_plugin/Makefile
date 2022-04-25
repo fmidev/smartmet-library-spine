@@ -1,5 +1,7 @@
 TOP := $(shell cd ../../.. && pwd)
 
+REQUIRES = jsoncpp configpp
+
 include $(shell smartbuildcfg --prefix)/share/smartmet/devel/makefile.inc
 
 INCLUDES += \
