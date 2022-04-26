@@ -6,8 +6,9 @@ all:	all-test-engine	all-test-plugin
 clean:	clean-test-engine clean-test-plugin
 	rm -rf failures
 
+# Run tests (ensure that freshly built libsmartmet-spine.so is being used)
 test:	all $(SMARTMET_PLUGIN_TEST)
-	$(SMARTMET_PLUGIN_TEST) -c reactor.conf -H /test
+	LD_PRELOAD=../../libsmartmet-spine.so $(SMARTMET_PLUGIN_TEST) -c reactor.conf -H /test
 
 all-test-engine:
 	$(MAKE) -C test_engine all
