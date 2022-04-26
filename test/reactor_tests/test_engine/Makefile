@@ -39,4 +39,6 @@ $(LIBFILE) : $(OBJS)
 	mkdir -p .obj
 	$(CXX) $(CFLAGS) $(INCLUDES) -c -MD -MF $(patsubst .obj/%.o, .obj/%.d, $@) -MT $@ -o $@ $<
 
-
+ifneq ($(wildcard .obj/*.d),)
+-include $(wildcard .obj/*.d)
+endif
