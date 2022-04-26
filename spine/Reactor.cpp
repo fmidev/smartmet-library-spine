@@ -296,9 +296,15 @@ int Reactor::getRequiredAPIVersion() const
 
 bool Reactor::addContentHandler(SmartMetPlugin* thePlugin,
                                 const std::string& theDir,
-                                ContentHandler theCallBackFunction)
+                                ContentHandler theCallBackFunction,
+                                bool handlesUriPrefix)
 {
-  return addContentHandlerImpl(false, thePlugin, theDir, theCallBackFunction);
+  return addContentHandlerImpl(
+      false,
+      thePlugin,
+      theDir,
+      theCallBackFunction,
+      handlesUriPrefix);
 }
 
 // ----------------------------------------------------------------------
@@ -311,9 +317,15 @@ bool Reactor::addContentHandler(SmartMetPlugin* thePlugin,
 
 bool Reactor::addPrivateContentHandler(SmartMetPlugin* thePlugin,
                                        const std::string& theDir,
-                                       ContentHandler theCallBackFunction)
+                                       ContentHandler theCallBackFunction,
+                                       bool handlesUriPrefix)
 {
-  return addContentHandlerImpl(true, thePlugin, theDir, theCallBackFunction);
+  return addContentHandlerImpl(
+      true,
+      thePlugin,
+      theDir,
+      theCallBackFunction,
+      handlesUriPrefix);
 }
 
 // ----------------------------------------------------------------------
@@ -326,7 +338,8 @@ bool Reactor::addPrivateContentHandler(SmartMetPlugin* thePlugin,
 bool Reactor::addContentHandlerImpl(bool isPrivate,
                                     SmartMetPlugin* thePlugin,
                                     const std::string& theUri,
-                                    ContentHandler theHandler)
+                                    ContentHandler theHandler,
+                                    bool handlesUriPrefix)
 {
   try
   {
@@ -357,7 +370,15 @@ bool Reactor::addContentHandlerImpl(bool isPrivate,
               << thePlugin->getPluginName() << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
 
     // Set the handler and filter
-    return itsHandlers.insert(Handlers::value_type(theUri, theView)).second;
+    bool inserted = itsHandlers.insert(Handlers::value_type(theUri, theView)).second;
+    if (inserted && handlesUriPrefix)
+    {
+      if (!uriPrefixes.insert(theUri).second)
+      {
+        throw Fmi::Exception(BCP, "Failed to insert URI remap handler for " + theUri);
+      }
+    }
+    return inserted;
   }
   catch (...)
   {
@@ -416,6 +437,7 @@ std::size_t Reactor::removeContentHandlers(SmartMetPlugin* thePlugin)
       const std::string uri = curr->second->getResource();
       const std::string name = curr->second->getPluginName();
       itsHandlers.erase(curr);
+      uriPrefixes.erase(uri);
       count++;
       WriteLock lock2(itsLoggingMutex);
       std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Removed URI " << uri
@@ -437,10 +459,30 @@ boost::optional<HandlerView&> Reactor::getHandlerView(const HTTP::Request& theRe
   {
     ReadLock lock(itsContentMutex);
 
+    bool remapped = false;
+    std::string resource = theRequest.getResource();
+
+    for (const auto& item : uriPrefixes)
+    {
+      std::size_t len = item.length();
+      if (resource.substr(0, len) == item)
+      {
+        remapped = true;
+        resource = item;
+        break;
+      }
+    }
+
     // Try to find a content handler
-    auto it = itsHandlers.find(theRequest.getResource());
+    auto it = itsHandlers.find(resource);
     if (it == itsHandlers.end())
     {
+      if (remapped)
+      {
+        // Should never happen
+        throw Fmi::Exception(BCP, "[INTERNAL ERROR] URI remapping defined, but"
+          " handler not found for " + resource);
+      }
       // No specific match found, decide what we should do
       if (itsCatchNoMatch)
       {

@@ -46,7 +46,20 @@ void SmartMet::Plugin::Test::Plugin::init()
                 requestHandler(theReactor, theRequest, theResponse);
             }))
     {
-        throw Fmi::Exception(BCP, "Failed to register timeseries content handler");
+        throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
+    }
+
+    if (!itsReactor->addContentHandler(this,
+            "/test_prefix/",
+            [this](Reactor& theReactor,
+                const HTTP::Request& theRequest,
+                HTTP::Response& theResponse)
+            {
+                requestHandler(theReactor, theRequest, theResponse);
+            },
+            true))
+    {
+        throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
     }
 }
 
