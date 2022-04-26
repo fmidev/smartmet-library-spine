@@ -1,6 +1,6 @@
 #pragma once
 
-#include "spine/SmartMetEngine.h"
+#include <SmartMetEngine.h>
 
 namespace SmartMet
 {

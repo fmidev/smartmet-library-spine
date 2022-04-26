@@ -5,7 +5,7 @@ REQUIRES = jsoncpp configpp
 include $(shell smartbuildcfg --prefix)/share/smartmet/devel/makefile.inc
 
 INCLUDES += \
-	-I ../../..
+	-I ../../../spine
 
 LIBS += \
 	$(TOP)/libsmartmet-spine.so

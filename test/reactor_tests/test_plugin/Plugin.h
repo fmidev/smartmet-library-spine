@@ -1,7 +1,7 @@
 #pragma once
 
-#include <spine/Reactor.h>
-#include <spine/SmartMetPlugin.h>
+#include <Reactor.h>
+#include <SmartMetPlugin.h>
 #include "../test_engine/Engine.h"
 
 namespace SmartMet
