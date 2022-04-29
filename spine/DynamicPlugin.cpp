@@ -7,7 +7,7 @@
 #include "DynamicPlugin.h"
 #include "Convenience.h"
 #include "Reactor.h"
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/timer/timer.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/Exception.h>
@@ -21,6 +21,8 @@ extern "C"
 {
 #include <dlfcn.h>
 }
+
+using namespace boost::placeholders;
 
 namespace SmartMet
 {

@@ -16,7 +16,7 @@
 #include "Options.h"
 #include "Reactor.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <dtl/dtl.hpp>
@@ -202,7 +202,7 @@ std::list<fs::path> recursive_directory_contents(const fs::path& top, unsigned m
     std::copy(top.begin(), top.end(), std::back_inserter(top_parts));
     std::for_each(fs::recursive_directory_iterator(top),
                   fs::recursive_directory_iterator(),
-                  bind(&add_to_path_list, ::_1, &result, &top_parts, max_files));
+                  bind(&add_to_path_list, boost::placeholders::_1, &result, &top_parts, max_files));
     result.sort();
     return result;
   }

@@ -1,7 +1,7 @@
 #include "HandlerView.h"
 #include "Convenience.h"
 #include "Reactor.h"
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem.hpp>
 #include <macgyver/Exception.h>
@@ -14,6 +14,8 @@ bool isNotOld(const boost::posix_time::ptime& target, const SmartMet::Spine::Log
   return compare.getRequestEndTime() > target;
 }
 }  // namespace
+
+using namespace boost::placeholders;
 
 namespace SmartMet
 {
