@@ -116,9 +116,9 @@ void MultiLanguageStringArray::parse_content(libconfig::Setting& setting)
 
     std::vector<std::string> value;
     const int num_strings = item.getLength();
-    for (int i = 0; i < num_strings; i++)
+    for (int j = 0; j < num_strings; j++)
     {
-      const std::string v = item[i];
+      const std::string v = item[j];
       value.push_back(v);
     }
 
