@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.4.26
+Version: 22.4.29
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -124,6 +124,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Apr 29 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.4.29-1.fmi
+- ConfigBase: fix incorrect ues of class member instead of parameter
+
 * Tue Apr 26 2022 Andris Pavenis <andris.pavenis@fmi.fi> 22.4.26-1.fmi
 - Support handling query URLS beggining with specified string
 
