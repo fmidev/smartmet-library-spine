@@ -63,7 +63,7 @@ class ConfigBase
   {
     try
     {
-      if (setting.exists(name))
+      if (setting.exists(theName))
       {
         *result = get_mandatory_config_param<Type>(setting, theName);
         return true;
