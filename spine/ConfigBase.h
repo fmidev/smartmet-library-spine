@@ -41,15 +41,15 @@ class ConfigBase
    *   @brief Constructor for ConfigBase object
    *
    *   @param config The actual config object yto use.
-   *   @param name The name of the configuration for error messages (only
+   *   @param config_name The name of the configuration for error messages (only
    *          used if non empty string specified)
    */
-  ConfigBase(boost::shared_ptr<libconfig::Config> config, const std::string& name = "");
+  ConfigBase(boost::shared_ptr<libconfig::Config> config, const std::string& config_name = "");
 
   virtual ~ConfigBase();
 
   inline const std::string& get_file_name() const { return file_name; }
-  inline const std::string& get_name() const { return name; }
+  inline const std::string& get_name() const { return config_name; }
   inline libconfig::Config& get_config() { return *itsConfig; }
   inline libconfig::Setting& get_root() { return itsConfig->getRoot(); }
   template <typename Type>
@@ -63,7 +63,7 @@ class ConfigBase
   {
     try
     {
-      if (setting.exists(name))
+      if (setting.exists(theName))
       {
         *result = get_mandatory_config_param<Type>(setting, theName);
         return true;
@@ -417,7 +417,7 @@ class ConfigBase
                                         int max_depth) const;
 
   const std::string file_name;
-  const std::string name;
+  const std::string config_name;
   boost::shared_ptr<libconfig::Config> itsConfig;
 };
 

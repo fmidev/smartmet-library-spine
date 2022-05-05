@@ -13,15 +13,15 @@ namespace SmartMet
 {
 namespace Spine
 {
-ConfigBase::ConfigBase(const std::string& file_name, const std::string& name)
-    : file_name(file_name), name(name), itsConfig(new libconfig::Config)
+ConfigBase::ConfigBase(const std::string& file_name, const std::string& config_name)
+    : file_name(file_name), config_name(config_name), itsConfig(new libconfig::Config)
 {
   try
   {
     if (file_name.empty())
     {
       throw Fmi::Exception(BCP, "Configuration not provided!")
-          .addParameter("Name", name)
+          .addParameter("Name", config_name)
           .addParameter("Filename", file_name);
     }
 
@@ -45,8 +45,8 @@ ConfigBase::ConfigBase(const std::string& file_name, const std::string& name)
   }
 }
 
-ConfigBase::ConfigBase(boost::shared_ptr<libconfig::Config> config, const std::string& name)
-    : file_name("<none>"), name(name), itsConfig(config)
+ConfigBase::ConfigBase(boost::shared_ptr<libconfig::Config> config, const std::string& config_name)
+    : file_name("<none>"), config_name(config_name), itsConfig(config)
 {
   try
   {
@@ -54,7 +54,7 @@ ConfigBase::ConfigBase(boost::shared_ptr<libconfig::Config> config, const std::s
     {
       throw Fmi::Exception(BCP, "Configuration not provided!")
           .addDetail("Empty boost::shared_ptr<>")
-          .addParameter("Name", name);
+          .addParameter("Name", config_name);
     }
   }
   catch (...)
@@ -74,7 +74,7 @@ void ConfigBase::handle_libconfig_exceptions(const std::string& location) const
   catch (const libconfig::SettingException& err)
   {
     throw Fmi::Exception(BCP, "Configuration file setting error!")
-        .addParameter("Name", name)
+        .addParameter("Name", config_name)
         .addParameter("Exception type", Fmi::current_exception_type())
         .addParameter("Configuration file", file_name)
         .addParameter("Path", err.getPath())
@@ -84,7 +84,7 @@ void ConfigBase::handle_libconfig_exceptions(const std::string& location) const
   catch (libconfig::ParseException& err)
   {
     throw Fmi::Exception(BCP, "Configuration file parsing failed!")
-        .addParameter("Name", name)
+        .addParameter("Name", config_name)
         .addParameter("Exception type", Fmi::current_exception_type())
         .addParameter("Configuration file", file_name)
         .addParameter("Error line", std::to_string(err.getLine()))
@@ -93,7 +93,7 @@ void ConfigBase::handle_libconfig_exceptions(const std::string& location) const
   catch (const libconfig::ConfigException& err)
   {
     throw Fmi::Exception(BCP, "Configuration exception!")
-        .addParameter("Name", name)
+        .addParameter("Name", config_name)
         .addParameter("Exception type", Fmi::current_exception_type())
         .addParameter("Configuration file", file_name)
         .addParameter("Location", location)
@@ -431,7 +431,7 @@ libconfig::Setting* ConfigBase::find_setting_impl(libconfig::Setting& search_sta
           {
             throw Fmi::Exception(BCP, "Configuration parameter redirection depth exceeded")
                 .addParameter("Configuration file", file_name)
-                .addParameter("Path", format_path(curr, name));
+                .addParameter("Path", format_path(curr, config_name));
           }
         }
       }

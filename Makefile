@@ -66,8 +66,10 @@ profile: all
 $(LIBFILE): $(OBJS)
 	$(CXX) $(CFLAGS) -shared -rdynamic -o $(LIBFILE) $(OBJS) $(LIBS)
 	@echo Checking $(LIBFILE) for unresolved references
-	@if ldd -r $(LIBFILE) 2>&1 | c++filt | grep ^undefined\ symbol; \
-		then rm -v $(LIBFILE); \
+	@if ldd -r $(LIBFILE) 2>&1 | c++filt | grep ^undefined\ symbol |\
+			grep -Pv ':\ __(?:(?:a|t|ub)san_|sanitizer_)'; \
+	then \
+		rm -v $(LIBFILE); \
 		exit 1; \
 	fi
 
@@ -77,6 +79,7 @@ smartmet_plugin_test: obj/SmartmetPluginTest.o $(LIBFILE)
 clean:
 	rm -f $(LIBFILE) $(OBJS) $(patsubst obj/%.o,obj/%.d,$(OBJS)) *~ $(SUBNAME)/*~
 	$(MAKE) -C app $@
+	$(MAKE) -C test $@
 
 format:
 	clang-format -i -style=file $(SUBNAME)/*.h $(SUBNAME)/*.cpp test/*.cpp

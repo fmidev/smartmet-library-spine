@@ -55,6 +55,8 @@ int main(int argc, char* argv[])
 
   std::setlocale(LC_ALL, "en_US.UTF-8");  // for iconv to work
 
+  (void)printRequest;
+
   try
   {
     namespace po = boost::program_options;

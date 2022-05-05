@@ -107,9 +107,9 @@ bool lookupHostSettings(const libconfig::Config& theConfig,
             if (theConfig.exists(path))
             {
               const auto& value = theConfig.lookup(path);
-              for (int i = 0; i < value.getLength(); ++i)
+              for (int k = 0; k < value.getLength(); ++k)
               {
-                theValue.emplace_back(value[i]);
+                theValue.emplace_back(value[k]);
               }
               return true;
             }
@@ -172,9 +172,9 @@ bool lookupHostStringSettings(const libconfig::Config& theConfig,
             if (theConfig.exists(path))
             {
               const auto& value = theConfig.lookup(path);
-              for (int i = 0; i < value.getLength(); ++i)
+              for (int k = 0; k < value.getLength(); ++k)
               {
-                theValue.emplace_back(value[i].c_str());
+                theValue.emplace_back(value[k].c_str());
               }
               return true;
             }

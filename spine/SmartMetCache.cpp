@@ -1,8 +1,10 @@
 #include "SmartMetCache.h"
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/make_shared.hpp>
 #include <macgyver/Exception.h>
 #include <vector>
+
+using namespace boost::placeholders;
 
 namespace SmartMet
 {
@@ -29,6 +31,7 @@ SmartMetCache::SmartMetCache(std::size_t memoryCacheSize,
 
 SmartMetCache::~SmartMetCache()
 {
+  boost::unique_lock<boost::mutex> theLock(itsMutex);
   itsShutdownRequested = true;
 
   if (itsFileCache)  // constructed only once, safe to test in threads
@@ -41,6 +44,7 @@ SmartMetCache::~SmartMetCache()
     //        boost::this_thread::interruption_requested()
     boost::this_thread::disable_interruption do_not_disturb;
     itsCondition.notify_one();
+    theLock.unlock();
     boost::this_thread::sleep(boost::posix_time::milliseconds(200));
     itsFileThread->interrupt();
     itsFileThread->join();
@@ -183,6 +187,7 @@ void SmartMetCache::queueFileWrites(const std::vector<std::pair<KeyType, ValueTy
 
 void SmartMetCache::shutdown()
 {
+  boost::unique_lock<boost::mutex> theLock(itsMutex);
   itsShutdownRequested = true;
   if (itsFileThread)
     itsCondition.notify_one();

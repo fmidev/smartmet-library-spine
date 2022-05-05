@@ -35,6 +35,7 @@
 #include <libconfig.h++>
 #include <list>
 #include <map>
+#include <set>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -108,12 +109,16 @@ class Reactor
   int getRequiredAPIVersion() const;
   URIMap getURIMap() const;
   boost::optional<HandlerView&> getHandlerView(const HTTP::Request& theRequest);
+
   bool addContentHandler(SmartMetPlugin* thePlugin,
                          const std::string& theDir,
-                         ContentHandler theCallBackFunction);
+                         ContentHandler theCallBackFunction,
+                         bool handlesUriPrefix = false);
+
   bool addPrivateContentHandler(SmartMetPlugin* thePlugin,
                                 const std::string& theDir,
-                                ContentHandler theCallBackFunction);
+                                ContentHandler theCallBackFunction,
+                                bool handlesUriPrefix = false);
   bool setNoMatchHandler(ContentHandler theHandler);
   std::size_t removeContentHandlers(SmartMetPlugin* thePlugin);
 
@@ -168,7 +173,8 @@ class Reactor
   bool addContentHandlerImpl(bool isPrivate,
                              SmartMetPlugin* thePlugin,
                              const std::string& theUri,
-                             ContentHandler theHandler);
+                             ContentHandler theHandler,
+                             bool handlesUriPrefix);
 
   SmartMetEngine* getEnginePtr(const std::string& theClassName, void* user_data);
 
@@ -181,7 +187,16 @@ class Reactor
   mutable MutexType itsContentMutex;
   using HandlerPtr = boost::shared_ptr<HandlerView>;
   using Handlers = std::map<std::string, HandlerPtr>;
+
   Handlers itsHandlers;
+
+  /**
+   *   @brief URI prefixes that must be linked with handlers
+   *   - index is begin part of URI (for example /edr/, which could handle esim.
+   *     /edr/collection/something/area?... .
+   */
+  std::set<std::string> uriPrefixes;
+
   bool itsCatchNoMatch = false;
   HandlerPtr itsCatchNoMatchHandler;
 

@@ -1,0 +1,1 @@
+GET /test_prefix/foo/bar?a=42&foo=bar HTTP/1.0
