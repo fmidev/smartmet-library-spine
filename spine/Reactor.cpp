@@ -207,6 +207,7 @@ void Reactor::init()
     }
     catch (...)
     {
+      gIsShuttingDown = true;  // to avoid unnecessary error messages from dying threads
       std::cout << "Initialization failed" << std::endl;
       exit(1);  // NOLINT not thread safe
     }
@@ -300,12 +301,7 @@ bool Reactor::addContentHandler(SmartMetPlugin* thePlugin,
                                 ContentHandler theCallBackFunction,
                                 bool handlesUriPrefix)
 {
-  return addContentHandlerImpl(
-      false,
-      thePlugin,
-      theDir,
-      theCallBackFunction,
-      handlesUriPrefix);
+  return addContentHandlerImpl(false, thePlugin, theDir, theCallBackFunction, handlesUriPrefix);
 }
 
 // ----------------------------------------------------------------------
@@ -321,12 +317,7 @@ bool Reactor::addPrivateContentHandler(SmartMetPlugin* thePlugin,
                                        ContentHandler theCallBackFunction,
                                        bool handlesUriPrefix)
 {
-  return addContentHandlerImpl(
-      true,
-      thePlugin,
-      theDir,
-      theCallBackFunction,
-      handlesUriPrefix);
+  return addContentHandlerImpl(true, thePlugin, theDir, theCallBackFunction, handlesUriPrefix);
 }
 
 // ----------------------------------------------------------------------
@@ -481,8 +472,10 @@ boost::optional<HandlerView&> Reactor::getHandlerView(const HTTP::Request& theRe
       if (remapped)
       {
         // Should never happen
-        throw Fmi::Exception(BCP, "[INTERNAL ERROR] URI remapping defined, but"
-          " handler not found for " + resource);
+        throw Fmi::Exception(BCP,
+                             "[INTERNAL ERROR] URI remapping defined, but"
+                             " handler not found for " +
+                                 resource);
       }
       // No specific match found, decide what we should do
       if (itsCatchNoMatch)
