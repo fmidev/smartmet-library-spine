@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.5.10
+Version: 22.5.16
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -124,6 +124,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon May 16 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.5.16-1.fmi
+- Add HTTPS support
+
 * Tue May 10 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.5.10-1.fmi
 - Avoid unnecessary error messages from dying threads by flagging shutdown before exit
 
