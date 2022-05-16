@@ -40,6 +40,11 @@ struct ThrottleOptions
 struct Options
 {
   int port = 8080;
+  bool encryptionEnabled = false;
+  std::string encryptionCertificateFile;
+  std::string encryptionPrivateKeyFile;
+  std::string encryptionPasswordFile;
+  std::string encryptionPassword;
   unsigned int timeout = 60;
   std::string directory{"/usr/share/smartmet"};
   std::string configfile{"/etc/smartmet/smartmet.conf"};
