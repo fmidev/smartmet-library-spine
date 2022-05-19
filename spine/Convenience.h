@@ -106,7 +106,7 @@ bool str_iequal(const std::string& a,
                 const std::string& b,
                 const std::locale& locale = std::locale());
 
-struct CaseInsensitiveLess : public std::binary_function<std::string, std::string, bool>
+struct CaseInsensitiveLess
 {
   std::locale locale;
 

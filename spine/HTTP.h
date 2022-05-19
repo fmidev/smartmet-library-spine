@@ -43,7 +43,7 @@ namespace HTTP
  */
 // ----------------------------------------------------------------------
 
-struct CaseInsensitiveComp : std::binary_function<std::string, std::string, bool>
+struct CaseInsensitiveComp
 {
   char asciilower(char ch) const
   {
