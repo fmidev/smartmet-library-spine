@@ -65,102 +65,18 @@ int main(int argc, char* argv[])
 
     po::options_description desc("Allowed options");
 
-    desc.add_options()(nm_help ",h", "Show this help message")(
-        nm_handler ",H",
-        po::value<std::string>(),
-        "Handler path (for example '/wfs'")(nm_config ",c",
-                                            po::value<std::string>(),
-                                            "Reactor config file")(nm_input ",i",
-                                                                   po::value<std::string>(),
-                                                                   "Tests input directory (default "
-                                                                   "'input')")(nm_expected ",e",
-                                                                               po::value<
-                                                                                   std::string>(),
-                                                                               "Expected output "
-                                                                               "directory (default "
-                                                                               "'output'"
-                                                                               ")")(nm_failures
-                                                                                    ",f",
-                                                                                    po::value<
-                                                                                        std::
-                                                                                            string>(),
-                                                                                    "Directory "
-                                                                                    "where to "
-                                                                                    "write actual "
-                                                                                    "output in"
-                                                                                    " case of "
-                                                                                    "failures "
-                                                                                    "(default "
-                                                                                    "value "
-                                                                                    "'failures'"
-                                                                                    ")")(nm_threads
-                                                                                         ",n",
-                                                                                         po::value<
-                                                                                             int>(),
-                                                                                         "Number "
-                                                                                         "of "
-                                                                                         "threads "
-                                                                                         "(default "
-                                                                                         "10"
-                                                                                         ")")(nm_ignore
-                                                                                              ",I",
-                                                                                              po::value<std::vector<
-                                                                                                  std::
-                                                                                                      string> >(),
-                                                                                              "Opti"
-                                                                                              "onal"
-                                                                                              " par"
-                                                                                              "amet"
-                                                                                              "er "
-                                                                                              "to "
-                                                                                              "spec"
-                                                                                              "ify "
-                                                                                              "file"
-                                                                                              "s "
-                                                                                              "cont"
-                                                                                              "aini"
-                                                                                              "ng "
-                                                                                              "list"
-                                                                                              "s"
-                                                                                              " of "
-                                                                                              "test"
-                                                                                              "s "
-                                                                                              "to "
-                                                                                              "be "
-                                                                                              "skip"
-                                                                                              "ped."
-                                                                                              " Fil"
-                                                                                              "e "
-                                                                                              ".tes"
-                                                                                              "tign"
-                                                                                              "ore "
-                                                                                              "from"
-                                                                                              " inp"
-                                                                                              "ut "
-                                                                                              "dire"
-                                                                                              "ctor"
-                                                                                              "y "
-                                                                                              "is "
-                                                                                              "used"
-                                                                                              " of "
-                                                                                              "none"
-                                                                                              " spe"
-                                                                                              "cifi"
-                                                                                              "ed."
-                                                                                              " May"
-                                                                                              " be "
-                                                                                              "prov"
-                                                                                              "ided"
-                                                                                              " 0 "
-                                                                                              "or "
-                                                                                              "more"
-                                                                                              " tim"
-                                                                                              "e"
-                                                                                              "s")(nm_timeout,
-                                                                                                   po::value<
-                                                                                                       unsigned>(),
-                                                                                                   "Timeout of entire test run in seconds (missing or value "
-                                                                                                   " 0 means no timeout");
+    // clang-format off
+    desc.add_options()
+        (nm_help ",h", "Show this help message")
+        (nm_handler ",H", po::value<std::string>(), "Handler path (for example '/wfs'")
+        (nm_config ",c", po::value<std::string>(), "Reactor config file")
+        (nm_input ",i", po::value<std::string>(), "Tests input directory (default 'input')")
+        (nm_expected ",e", po::value<std::string>(), "Expected output directory (default 'output')")
+        (nm_failures ",f", po::value<std::string>(), "Directory where to write actual output in case of failures (default value 'failures')")
+        (nm_threads ",n", po::value<int>(), "Number of threads (default 10)")
+        (nm_ignore ",I", po::value<std::vector<std::string> >(), "Optional parameter to specify files containing lists of tests to be skipped. File .testignore from input directory is used of none specified. May be provided 0 or more times")
+        (nm_timeout, po::value<unsigned>(), "Timeout of entire test run in seconds (missing or value  0 means no timeout");
+    // clang-format on
 
     po::variables_map opt;
     po::store(po::parse_command_line(argc, argv, desc), opt);
