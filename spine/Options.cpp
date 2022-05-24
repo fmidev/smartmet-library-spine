@@ -222,6 +222,21 @@ void Options::parseConfig()
       // Read options
 
       lookupHostSetting(itsConfig, port, "port");
+      lookupHostSetting(itsConfig, encryptionEnabled, "encryption.enabled");
+      lookupHostSetting(itsConfig, encryptionCertificateFile, "encryption.certificatefile");
+
+      if (!encryptionCertificateFile.empty() &&  encryptionCertificateFile[0] != '/')
+        encryptionCertificateFile = p.string() + "/" + encryptionCertificateFile;
+
+      lookupHostSetting(itsConfig, encryptionPrivateKeyFile, "encryption.privatekeyfile");
+      if (!encryptionPrivateKeyFile.empty() &&  encryptionPrivateKeyFile[0] != '/')
+        encryptionPrivateKeyFile = p.string() + "/" + encryptionPrivateKeyFile;
+
+      lookupHostSetting(itsConfig, encryptionPasswordFile, "encryption.passwordfile");
+      if (!encryptionPasswordFile.empty() &&  encryptionPasswordFile[0] != '/')
+        encryptionPasswordFile = p.string() + "/" + encryptionPasswordFile;
+
+      lookupHostSetting(itsConfig, encryptionPassword, "encryption.password");
       lookupHostSetting(itsConfig, username, "user");
       lookupHostSetting(itsConfig, directory, "libdir");
       lookupHostSetting(itsConfig, timeout, "timeout");

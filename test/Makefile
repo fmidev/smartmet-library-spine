@@ -54,3 +54,5 @@ all-reactor-tests:
 
 $(PROG) : % : %.cpp Makefile ../libsmartmet-spine.so
 	$(CXX) $(CFLAGS) -o $@ $@.cpp $(INCLUDES) $(LIBS)
+
+JsonTest: CFLAGS += -Wno-deprecated-declarations
