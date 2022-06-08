@@ -12,6 +12,7 @@ DEFINES = -DUNIX -D_REENTRANT
 
 LIBS +=	-L$(libdir) \
 	-lsmartmet-macgyver \
+	-lsmartmet-newbase \
 	-lboost_filesystem \
 	-lboost_thread \
 	-lboost_program_options \
