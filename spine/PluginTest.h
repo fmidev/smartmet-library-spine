@@ -22,6 +22,7 @@
 #include <dtl/dtl.hpp>
 #include <macgyver/StringConversion.h>
 #include <macgyver/WorkQueue.h>
+#include <newbase/NFmiGlobals.h>
 #include <algorithm>
 #include <atomic>
 #include <fstream>
@@ -570,14 +571,15 @@ bool PluginTest::process_query(const fs::path& fn,
             path outputfile = path(mOutputDir) / fn;
             path failure_fn = path(mFailDir) / fn;
 
-#ifdef WGS84
-            path wgs84outputfile = path(mOutputDir) / (fn.native() + ".wgs84");
-            if (exists(wgs84outputfile))
+            if (!Fmi::LegacyMode())
             {
-              outputfile = wgs84outputfile;
-              failure_fn = path(mFailDir) / (fn.native() + ".wgs84");
+              path wgs84outputfile = path(mOutputDir) / (fn.native() + ".wgs84");
+              if (exists(wgs84outputfile))
+              {
+                outputfile = wgs84outputfile;
+                failure_fn = path(mFailDir) / (fn.native() + ".wgs84");
+              }
             }
-#endif
 
             if (exists(outputfile) and is_regular_file(outputfile))
             {
@@ -587,7 +589,6 @@ bool PluginTest::process_query(const fs::path& fn,
                 out << "OK";
               else
               {
-                // printMessage(&response);
                 ok = false;
                 out << "FAIL";
                 boost::filesystem::create_directories(failure_fn.parent_path());
