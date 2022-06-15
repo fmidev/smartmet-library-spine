@@ -19,12 +19,22 @@ Requires: mariadb-libs
 #TestRequires: mariadb-devel
 %endif
 
-BuildRequires: boost169-chrono
-BuildRequires: boost169-devel
-BuildRequires: boost169-timer
+%if 0%{?rhel} && 0%{rhel} < 9
+%define smartmet_boost boost169
+%define smartmet_fmt_min 7.1.3
+%define smartmet_fmt_max 7.2.0
+%else
+%define smartmet_boost boost
+%define smartmet_fmt_min 8.1.1
+%define smartmet_fmt_max 8.2.0
+%endif
+
+BuildRequires: %{smartmet_boost}-chrono
+BuildRequires: %{smartmet_boost}-devel
+BuildRequires: %{smartmet_boost}-timer
 BuildRequires: ctpp2-devel
 BuildRequires: dtl
-BuildRequires: fmt-devel >= 7.1.3
+BuildRequires: fmt-devel >= %{smartmet_fmt_min}, fmt-devel < %{smartmet_fmt_max}
 BuildRequires: gcc-c++
 BuildRequires: gdal34-devel
 BuildRequires: glibc-devel
@@ -40,17 +50,17 @@ BuildRequires: smartmet-library-gis-devel >= 22.5.4
 BuildRequires: smartmet-library-macgyver-devel >= 22.3.28
 BuildRequires: smartmet-library-newbase-devel >= 22.5.24
 BuildRequires: smartmet-utils-devel >= 22.2.8
-Requires: boost169-chrono
-Requires: boost169-date-time
-Requires: boost169-filesystem
-Requires: boost169-iostreams
-Requires: boost169-program-options
-Requires: boost169-regex
-Requires: boost169-system
-Requires: boost169-thread
-Requires: boost169-timer
+Requires: %{smartmet_boost}-chrono
+Requires: %{smartmet_boost}-date-time
+Requires: %{smartmet_boost}-filesystem
+Requires: %{smartmet_boost}-iostreams
+Requires: %{smartmet_boost}-program-options
+Requires: %{smartmet_boost}-regex
+Requires: %{smartmet_boost}-system
+Requires: %{smartmet_boost}-thread
+Requires: %{smartmet_boost}-timer
 Requires: ctpp2
-Requires: fmt >= 7.1.3
+Requires: fmt >= %{smartmet_fmt_min}, fmt < %{smartmet_fmt_max}
 Requires: gdal34-libs
 Requires: hdf5
 Requires: jsoncpp >= 1.8.4
@@ -78,7 +88,7 @@ FMI BrainStorm Spinal Cord Library
 %package -n %{SPECNAME}-devel
 Summary: SmartMet Spine development files
 Group: SmartMet/Development
-Requires: boost169-devel
+Requires: %{smartmet_boost}-devel
 Requires: dtl
 Requires: smartmet-library-macgyver-devel >= 22.3.28
 Requires: smartmet-library-gis-devel >= 22.5.4
