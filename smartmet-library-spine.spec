@@ -21,13 +21,12 @@ Requires: mariadb-libs
 
 %if 0%{?rhel} && 0%{rhel} < 9
 %define smartmet_boost boost169
-%define smartmet_fmt_min 7.1.3
-%define smartmet_fmt_max 7.2.0
 %else
 %define smartmet_boost boost
+%endif
+
 %define smartmet_fmt_min 8.1.1
 %define smartmet_fmt_max 8.2.0
-%endif
 
 BuildRequires: %{smartmet_boost}-chrono
 BuildRequires: %{smartmet_boost}-devel
@@ -46,9 +45,9 @@ BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 22.5.4
-BuildRequires: smartmet-library-macgyver-devel >= 22.3.28
-BuildRequires: smartmet-library-newbase-devel >= 22.5.24
+BuildRequires: smartmet-library-gis-devel >= 22.6.16
+BuildRequires: smartmet-library-macgyver-devel >= 22.6.16
+BuildRequires: smartmet-library-newbase-devel >= 22.6.16
 BuildRequires: smartmet-utils-devel >= 22.2.8
 Requires: %{smartmet_boost}-chrono
 Requires: %{smartmet_boost}-date-time
@@ -67,9 +66,9 @@ Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
-Requires: smartmet-library-gis >= 22.5.4
-Requires: smartmet-library-macgyver >= 22.3.28
-Requires: smartmet-library-newbase >= 22.5.24
+Requires: smartmet-library-gis >= 22.6.16
+Requires: smartmet-library-macgyver >= 22.6.16
+Requires: smartmet-library-newbase >= 22.6.16
 Requires: smartmet-timezones >= 22.3.24
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -78,7 +77,7 @@ Requires: smartmet-timezones >= 22.3.24
 #TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
-#TestRequires: smartmet-library-macgyver-devel >= 22.3.28
+#TestRequires: smartmet-library-macgyver-devel >= 22.6.16
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -90,9 +89,9 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 22.3.28
-Requires: smartmet-library-gis-devel >= 22.5.4
-Requires: smartmet-library-newbase-devel >= 22.5.24
+Requires: smartmet-library-macgyver-devel >= 22.6.16
+Requires: smartmet-library-gis-devel >= 22.6.16
+Requires: smartmet-library-newbase-devel >= 22.6.16
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
