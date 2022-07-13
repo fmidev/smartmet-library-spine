@@ -151,9 +151,12 @@ Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::
         {
           if (!isShuttingDown())
           {
-            Fmi::Exception::Trace(BCP, "Operation failed").printError();
-            std::cout << __FILE__ << ":" << __LINE__ << ": init task " << name << " failed"
-                      << std::endl;
+              auto exception = Fmi::Exception::Trace(BCP, "Operation failed");
+
+              if (!exception.stackTraceDisabled())
+                  std::cerr << exception.getStackTrace();
+              else if (!exception.loggingDisabled())
+                  std::cerr << SmartMet::Spine::log_time_str() + " Error: " + exception.what() << std::endl;
           }
         });
   }
@@ -1272,7 +1275,6 @@ void Reactor::initializePlugin(DynamicPlugin* thePlugin, const std::string& theN
     auto ex = Fmi::Exception::Trace(BCP, "Plugin initialization failed!");
     ex.addParameter("Plugin", theName);
     ex.force_stack_trace = true;
-    std::cerr << ex.getStackTrace() << std::flush;
     throw ex;
   }
 }
