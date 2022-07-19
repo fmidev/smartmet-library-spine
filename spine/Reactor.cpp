@@ -147,7 +147,7 @@ Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::
     itsInitTasks->stop_on_error(true);
 
     itsInitTasks->on_task_error(
-        [](const std::string& name)
+        [this](const std::string& name)
         {
           if (!isShuttingDown())
           {
@@ -157,6 +157,9 @@ Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::
                   std::cerr << exception.getStackTrace();
               else if (!exception.loggingDisabled())
                   std::cerr << SmartMet::Spine::log_time_str() + " Error: " + exception.what() << std::endl;
+
+              shutdown();
+              throw Fmi::Exception(BCP, "SmartMet::Spine::Reactor: one or more init tasks failed", nullptr);
           }
         });
   }
@@ -211,8 +214,9 @@ void Reactor::init()
     catch (...)
     {
       gIsShuttingDown = true;  // to avoid unnecessary error messages from dying threads
-      std::cout << "Initialization failed" << std::endl;
-      exit(1);  // NOLINT not thread safe
+      std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: initialization failed\n"
+		<< ANSI_FG_DEFAULT;
+      throw Fmi::Exception(BCP, "At least one of initialization tasks failed");
     }
     // Set ContentEngine default logging. Do this after plugins are loaded so handlers are
     // recognized
