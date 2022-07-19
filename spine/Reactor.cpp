@@ -1512,6 +1512,9 @@ void Reactor::shutdown()
       delete engine;
     }
     itsSingletons.clear();
+
+    std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: shutdown complete\n"
+	      << ANSI_FG_DEFAULT;
   }
   catch (...)
   {
