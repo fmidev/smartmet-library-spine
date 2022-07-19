@@ -1469,6 +1469,7 @@ void Reactor::shutdown()
     }
 
     shutdownTasks.wait();
+    itsPlugins.clear();
     std::cout << ANSI_FG_RED << "* Plugin shutdown completed" << ANSI_FG_DEFAULT << std::endl;
 
     // STEP 4: Requesting all engines to shutdown.
@@ -1510,6 +1511,7 @@ void Reactor::shutdown()
       boost::this_thread::disable_interruption do_not_disturb;
       delete engine;
     }
+    itsSingletons.clear();
   }
   catch (...)
   {
