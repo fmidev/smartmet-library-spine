@@ -1210,35 +1210,40 @@ bool Reactor::loadEngine(const std::string& theFilename, bool /* verbose */)
 
 void Reactor::initializeEngine(SmartMetEngine* theEngine, const std::string& theName)
 {
-  try
-  {
-    boost::timer::cpu_timer timer;
-    theEngine->construct(theName, this);
-    timer.stop();
+  itsInitTasks->add("Load engine [" + theName + "]",
+      [this, theEngine, theName] ()
+      {
+        try
+        {
+            boost::timer::cpu_timer timer;
+            theEngine->construct(theName, this);
+            timer.stop();
 
-    auto now_initialized = itsInitializedEngineCount.fetch_add(1) + 1;
+            auto now_initialized = itsInitializedEngineCount.fetch_add(1) + 1;
 
-    std::string report =
-        (std::string(ANSI_FG_GREEN) + "Engine [" + theName +
-         "] initialized in %t sec CPU, %w sec real (" + std::to_string(now_initialized) + "/" +
-         std::to_string(itsEngineCount) + ")" + ANSI_FG_DEFAULT);
+            std::string report =
+                (std::string(ANSI_FG_GREEN) + "Engine [" + theName +
+                    "] initialized in %t sec CPU, %w sec real ("
+                    + std::to_string(now_initialized) + "/" +
+                    std::to_string(itsEngineCount) + ")" + ANSI_FG_DEFAULT);
 
-    std::cout << Spine::log_time_str() << " " << timer.format(2, report) << std::endl;
+            std::cout << Spine::log_time_str() << " " << timer.format(2, report) << std::endl;
 
-    if (now_initialized == itsEngineCount)
-      std::cout << log_time_str()
-                << std::string(ANSI_FG_GREEN) + std::string(" *** All ") +
-                       std::to_string(itsEngineCount) + " engines initialized" + ANSI_FG_DEFAULT
-                << std::endl;
-  }
-  catch (...)
-  {
-    auto ex = Fmi::Exception::Trace(BCP, "Engine initialization failed!");
-    ex.addParameter("Engine", theName);
-    ex.force_stack_trace = true;
-    std::cerr << ex.getStackTrace() << std::flush;
-    throw ex;
-  }
+            if (now_initialized == itsEngineCount)
+                std::cout << log_time_str()
+                          << std::string(ANSI_FG_GREEN) + std::string(" *** All ") +
+                    std::to_string(itsEngineCount) + " engines initialized" + ANSI_FG_DEFAULT
+                          << std::endl;
+        }
+        catch (...)
+        {
+            auto ex = Fmi::Exception::Trace(BCP, "Engine initialization failed!");
+            ex.addParameter("Engine", theName);
+            ex.force_stack_trace = true;
+            std::cerr << ex.getStackTrace() << std::flush;
+            throw ex;
+        }
+      });
 }
 
 // ----------------------------------------------------------------------
