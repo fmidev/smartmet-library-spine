@@ -124,12 +124,12 @@ class Reactor
 
   // Plugins
 
-  bool loadPlugin(const std::string& theFilename, bool verbose);
+  bool loadPlugin(const std::string& sectionName, const std::string& theFilename, bool verbose);
   void listPlugins() const;
 
   // Engines
 
-  bool loadEngine(const std::string& theFilename, bool verbose);
+  bool loadEngine(const std::string& sectionName, const std::string& theFilename, bool verbose);
   void listEngines() const;
   EngineInstance newInstance(const std::string& theClassName, void* user_data);
   SmartMetEngine* getSingleton(const std::string& theClassName, void* user_data);
@@ -168,7 +168,16 @@ class Reactor
  private:
   void initializeEngine(SmartMetEngine* theEngine, const std::string& theName);
   void initializePlugin(DynamicPlugin* thePlugin, const std::string& theName);
-  std::vector<std::string> findLibraries(const std::string& theName) const;
+
+  /**
+   *   @brief Collect information about libraries to load
+   *
+   *   - first element of each pair contains config section name
+   *   - second element of pair contains library name (may be different when setting libname is
+   *         provided
+   */
+  std::vector<std::pair<std::string, std::string> >
+  findLibraries(const std::string& theName) const;
 
   bool addContentHandlerImpl(bool isPrivate,
                              SmartMetPlugin* thePlugin,

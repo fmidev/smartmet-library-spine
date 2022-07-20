@@ -188,8 +188,8 @@ void Reactor::init()
       auto libs = findLibraries("engine");
       itsEngineCount = libs.size();
 
-      for (const auto& libfile : libs)
-        loadEngine(libfile, itsOptions.verbose);
+      for (const auto& lib_item : libs)
+          loadEngine(lib_item.first, lib_item.second, itsOptions.verbose);
     }
 
     // Load plugins
@@ -204,8 +204,8 @@ void Reactor::init()
     itsPluginCount = libs.size();
 
     // Then load them in parallel, keeping track of how many have been loaded
-    for (const auto& libfile : libs)
-      loadPlugin(libfile, itsOptions.verbose);
+    for (const auto& lib_item : libs)
+      loadPlugin(lib_item.first, lib_item.second, itsOptions.verbose);
 
     try
     {
@@ -239,7 +239,8 @@ void Reactor::init()
  */
 // ----------------------------------------------------------------------
 
-std::vector<std::string> Reactor::findLibraries(const std::string& theName) const
+std::vector<std::pair<std::string, std::string> >
+Reactor::findLibraries(const std::string& theName) const
 {
   const auto& name = theName;
   const auto names = theName + "s";
@@ -254,7 +255,7 @@ std::vector<std::string> Reactor::findLibraries(const std::string& theName) cons
 
   // Collect all enabled modules
 
-  std::vector<std::string> libs;
+  std::vector<std::pair<std::string, std::string> > libs;
 
   for (int i = 0; i < modules.getLength(); i++)
   {
@@ -274,7 +275,7 @@ std::vector<std::string> Reactor::findLibraries(const std::string& theName) cons
     lookupHostSetting(itsOptions.itsConfig, disabled, names + "." + module_name + ".disabled");
 
     if (!disabled)
-      libs.push_back(libfile);
+      libs.emplace_back(module_name, libfile);
     else if (itsOptions.verbose)
     {
       std::cout << Spine::log_time_str() << ANSI_FG_YELLOW << "\t  + [Ignoring " << name << " '"
@@ -960,14 +961,14 @@ void Reactor::listPlugins() const
  */
 // ----------------------------------------------------------------------
 
-bool Reactor::loadPlugin(const std::string& theFilename, bool /* verbose */)
+bool Reactor::loadPlugin(const std::string& sectionName, const std::string& theFilename, bool /* verbose */)
 {
   try
   {
-    std::string pluginname = Names::plugin_name(theFilename);
+    std::string pluginname = Names::plugin_name(sectionName);
 
     std::string configfile;
-    lookupConfigSetting(itsOptions.itsConfig, configfile, "plugins." + pluginname);
+    lookupConfigSetting(itsOptions.itsConfig, configfile, "plugins." + sectionName);
 
     if (!configfile.empty())
     {
@@ -982,7 +983,7 @@ bool Reactor::loadPlugin(const std::string& theFilename, bool /* verbose */)
     // Find the ip filters
     std::vector<std::string> filterTokens;
     lookupHostStringSettings(
-        itsOptions.itsConfig, filterTokens, "plugins." + pluginname + ".ip_filters");
+        itsOptions.itsConfig, filterTokens, "plugins." + sectionName + ".ip_filters");
 
     if (not filterTokens.empty())
     {
@@ -1055,7 +1056,14 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
 
     // config names are all lower case
     std::string name = Fmi::ascii_tolower_copy(theClassName);
-    std::string configfile = itsEngineConfigs.find(name)->second;
+    auto it2 = itsEngineConfigs.find(name);
+    if (it2 == itsEngineConfigs.end()) {
+        throw Fmi::Exception(BCP, "[INTERNAL error] : itsEngineConfigs does not contain"
+            " entry for engine")
+            . addParameter("theClassName", theClassName)
+            . addParameter("name", name);
+    }
+    std::string configfile = it2->second;
 
     // Construct the new engine instance
     void* engineInstance = it->second(configfile.c_str(), user_data);
@@ -1127,7 +1135,7 @@ SmartMetEngine* Reactor::getSingleton(const std::string& theClassName, void* /* 
  */
 // ----------------------------------------------------------------------
 
-bool Reactor::loadEngine(const std::string& theFilename, bool /* verbose */)
+bool Reactor::loadEngine(const std::string& sectionName, const std::string& theFilename, bool /* verbose */)
 {
   try
   {
@@ -1137,7 +1145,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool /* verbose */)
     std::string enginename = Names::engine_name(theFilename);
 
     std::string configfile;
-    lookupConfigSetting(itsOptions.itsConfig, configfile, "engines." + enginename);
+    lookupConfigSetting(itsOptions.itsConfig, configfile, "engines." + sectionName);
 
     if (configfile != "")
     {
@@ -1148,7 +1156,7 @@ bool Reactor::loadEngine(const std::string& theFilename, bool /* verbose */)
                                  std::strerror(errno));  // NOLINT not thread safe
     }
 
-    itsEngineConfigs.insert(ConfigList::value_type(enginename, configfile));
+    itsEngineConfigs.insert(ConfigList::value_type(sectionName, configfile));
 
     void* itsHandle = dlopen(theFilename.c_str(), RTLD_NOW | RTLD_GLOBAL);
     if (itsHandle == nullptr)
