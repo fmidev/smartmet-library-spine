@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.6.16
+Version: 22.7.20
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -133,6 +133,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Jul 20 2022 Andris Pavenis <andris.pavenis@fmi.fi> 22.7.20-1.fmi
+- Reactor: improve init task failure handling and shutdown procedure
+
 * Thu Jun 16 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.6.16-1.fmi
 - Add support of HEL9, upgrade to libpqxx-7.7.0 (rhel8+) and fmt-8.1.1
 
