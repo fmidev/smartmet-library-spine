@@ -1481,7 +1481,6 @@ void Reactor::shutdown()
     }
 
     shutdownTasks.wait();
-    itsPlugins.clear();
     std::cout << ANSI_FG_RED << "* Plugin shutdown completed" << ANSI_FG_DEFAULT << std::endl;
 
     // STEP 4: Requesting all engines to shutdown.
@@ -1509,6 +1508,10 @@ void Reactor::shutdown()
 
     shutdownTasks.wait();
 
+    // All init task should also be ended before we begin to destroy objects
+    itsInitTasks->stop();
+    itsInitTasks->wait();
+
     // STEP 5: Deleting engines. We should not delete engines before they are all shutted down
     //         because they might use other engines (for example, obsengine => geoengine).
 
@@ -1523,10 +1526,11 @@ void Reactor::shutdown()
       boost::this_thread::disable_interruption do_not_disturb;
       delete engine;
     }
+    itsPlugins.clear();
     itsSingletons.clear();
 
-    std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: shutdown complete\n"
-	      << ANSI_FG_DEFAULT;
+    std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: shutdown complete" << ANSI_FG_DEFAULT
+              << std::endl;
   }
   catch (...)
   {
