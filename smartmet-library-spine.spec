@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.7.20
-Release: 2%{?dist}.fmi
+Version: 22.7.22
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -133,6 +133,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Jul 22 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.7.22-1.fmi
+- Reactor::shutdown(): ensure that all init tasks have ended before destroying engine and plugin objects
+
 * Wed Jul 20 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.7.20-2.fmi
 - Reactor: engine ja plugin loading update
 
