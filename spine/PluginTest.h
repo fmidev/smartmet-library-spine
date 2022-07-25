@@ -479,6 +479,8 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
       std::cout << std::endl;
     }
 
+    reactor.shutdown();
+
     return num_failed > 0 ? 1 : 0;
   }
   catch (...)
