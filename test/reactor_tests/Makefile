@@ -10,7 +10,7 @@ clean:	clean-test-engine clean-test-plugin
 test:	all $(SMARTMET_PLUGIN_TEST)
 	pwd
 	ls -l ../..
-	LD_LIBRARY_PATH=../../ $(SMARTMET_PLUGIN_TEST) -c reactor.conf -H /test
+	LD_LIBRARY_PATH=../../ $(TEST_RUNNER) $(SMARTMET_PLUGIN_TEST) -c reactor.conf -H /test
 
 all-test-engine:
 	$(MAKE) -C test_engine all
