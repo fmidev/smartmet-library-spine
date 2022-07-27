@@ -47,6 +47,8 @@ void SmartMetPlugin::initPlugin()
   }
   catch (...)
   {
+    using SmartMet::Spine::Reactor;
+    Reactor::reportFailure("Plugin initialization failed!");
     Fmi::Exception exception(BCP, "Plugin initialization failed!", nullptr);
 
     // Will terminate the program

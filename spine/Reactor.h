@@ -49,8 +49,11 @@ class DynamicPlugin;
 using URIMap = std::map<std::string, std::string>;
 
 // SmartMet base class
-class Reactor
+class Reactor final
 {
+ public:
+  static std::atomic<Reactor *> instance;
+
  public:
   // These hooks are called when certain events occur with the server
 
@@ -122,6 +125,11 @@ class Reactor
   bool setNoMatchHandler(ContentHandler theHandler);
   std::size_t removeContentHandlers(SmartMetPlugin* thePlugin);
 
+  /**
+   *   @brief Static method for reporting failure which requires Reactor shutdown
+   */
+  static void reportFailure(const std::string& message);
+
   // Plugins
 
   bool loadPlugin(const std::string& sectionName, const std::string& theFilename, bool verbose);
@@ -158,14 +166,52 @@ class Reactor
   void callClientConnectionFinishedHooks(const std::string& theClientIP,
                                          const boost::system::error_code& theError);
 
-  static bool isShuttingDown();
-  void shutdown();
-
   bool isInitializing() const;
 
   Fmi::Cache::CacheStatistics getCacheStats() const;
 
- private:
+  //---------------------  Reactor shutdown support  ----------------------------
+  /**
+   *   @brief Reactor shutdown support
+   */
+  //@{
+
+public:
+  static bool isShuttingDown();
+
+  /**
+   *  @brief Request reactor shutdown and wait for shutdown to complete
+   */
+  void shutdown();
+
+  /**
+   *  @brief Request reactor shutdown
+   *
+   *  @retval @c true shutdown initiated
+   *  @retval @c false call ignored because of shutdown already requested earlier
+   */
+  static bool requestShutdown();
+
+  void waitForShutdownComplete();
+
+  static bool isShutdownFinished();
+
+private:
+  /**
+   *  @brief Actual reactor shutdown implementation
+   */
+  void shutdown_impl();
+
+  void waitForShutdownStart();
+
+  void notifyShutdownComplete();
+
+  std::thread shutdownWatchThread;
+
+  //@}
+  //------------------------------------------------------------------------------
+
+private:
   void initializeEngine(SmartMetEngine* theEngine, const std::string& theName);
   void initializePlugin(DynamicPlugin* thePlugin, const std::string& theName);
 

@@ -33,12 +33,15 @@
 #include <macgyver/StringConversion.h>
 
 #include <algorithm>
+#include <condition_variable>
+#include <mutex>
 #include <dlfcn.h>
 #include <functional>
 #include <iostream>
 #include <mysql.h>
 #include <stdexcept>
 #include <string>
+#include <sys/ptrace.h>
 
 extern "C"
 {
@@ -51,6 +54,12 @@ namespace fs = boost::filesystem;
 namespace
 {
 std::atomic_bool gIsShuttingDown{false};
+std::atomic_bool gShutdownComplete{false};
+
+std::mutex shutdownRequestedMutex;
+std::mutex shutdownFinishedMutex;
+std::condition_variable shutdownRequestedCond;
+std::condition_variable shutdownFinishedCond;
 
 void absolutize_path(std::string& file_name)
 {
@@ -90,6 +99,9 @@ namespace SmartMet
 {
 namespace Spine
 {
+
+std::atomic<Reactor*> Reactor::instance = nullptr;
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Destructor
@@ -98,15 +110,18 @@ namespace Spine
 
 Reactor::~Reactor()
 {
+  try {
+      shutdown();
+      if (shutdownWatchThread.joinable()) {
+          shutdownWatchThread.join();
+      }
+  } catch (...) {
+      std::cout << Fmi::Exception::Trace(BCP, "Exception catched in SmartMet::Spine::Raector destructor");
+
+  }
+
   // Debug output
   std::cout << "SmartMet Server stopping..." << std::endl;
-
-  // Manual cleanup
-  itsInitTasks->stop();
-  itsInitTasks.reset();
-  itsHandlers.clear();
-  itsPlugins.clear();
-  itsEngines.clear();
 }
 
 // ----------------------------------------------------------------------
@@ -117,6 +132,11 @@ Reactor::~Reactor()
 
 Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::AsyncTaskGroup)
 {
+  if (instance.exchange(this)) {
+      std::cerr << "ERROR: Only one instance of SmartMet::Spine::Reactor is allowed";
+      abort();
+  }
+
   try
   {
     // Startup message
@@ -161,6 +181,18 @@ Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::
               shutdown();
               throw Fmi::Exception(BCP, "SmartMet::Spine::Reactor: one or more init tasks failed", nullptr);
           }
+        });
+
+    shutdownWatchThread = std::thread(
+        [this]() -> void
+        {
+            try {
+                waitForShutdownStart();
+                shutdown_impl();
+                notifyShutdownComplete();
+            } catch (...) {
+                std::cout << Fmi::Exception::Trace(BCP, "Exception in Reactor shutdown thread") << std::endl;
+            }
         });
   }
   catch (...)
@@ -213,7 +245,6 @@ void Reactor::init()
     }
     catch (...)
     {
-      gIsShuttingDown = true;  // to avoid unnecessary error messages from dying threads
       std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: initialization failed\n"
 		<< ANSI_FG_DEFAULT;
       throw Fmi::Exception(BCP, "At least one of initialization tasks failed");
@@ -227,8 +258,7 @@ void Reactor::init()
   }
   catch (...)
   {
-    // Inform engines and plugings polling the status that we're going down
-    gIsShuttingDown = true;
+    reportFailure("SmartMet::Spine::Reactor initialization failed");
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
@@ -1028,6 +1058,7 @@ bool Reactor::loadPlugin(const std::string& sectionName, const std::string& theF
   }
   catch (...)
   {
+    reportFailure("Failed to load or init plugin");
     throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
   }
 }
@@ -1210,6 +1241,7 @@ bool Reactor::loadEngine(const std::string& sectionName, const std::string& theF
   }
   catch (...)
   {
+    reportFailure("Failed to load or init engine");
     throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
   }
 }
@@ -1251,8 +1283,11 @@ void Reactor::initializeEngine(SmartMetEngine* theEngine, const std::string& the
         {
             auto ex = Fmi::Exception::Trace(BCP, "Engine initialization failed!");
             ex.addParameter("Engine", theName);
-            ex.force_stack_trace = true;
-            std::cerr << ex.getStackTrace() << std::flush;
+            if (!isShuttingDown())
+            {
+                ex.force_stack_trace = true;
+                std::cerr << ex.getStackTrace() << std::flush;
+            }
             throw ex;
         }
       });
@@ -1449,12 +1484,16 @@ bool Reactor::isInitializing() const
 
 void Reactor::shutdown()
 {
+    requestShutdown();
+    waitForShutdownComplete();
+}
+
+void Reactor::shutdown_impl()
+{
   try
   {
     // We are no more interested about init task errors when shutdown has been requested
     itsInitTasks->stop_on_error(false);
-
-    gIsShuttingDown = true;
 
     Fmi::AsyncTaskGroup shutdownTasks;
 
@@ -1567,6 +1606,67 @@ Fmi::Cache::CacheStatistics Reactor::getCacheStats() const
   }
 
   return ret;
+}
+
+void Reactor::reportFailure(const std::string& message)
+{
+    if (requestShutdown())
+    {
+        std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: failure reported and shutdown initiated: "
+                  << message << ANSI_FG_DEFAULT
+                  << std::endl;
+    } else {
+        std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: failure reported and shutdown already initiated earlier: "
+                  << message << ANSI_FG_DEFAULT
+                  << std::endl;
+    }
+}
+
+bool Reactor::requestShutdown()
+{
+    std::unique_lock<std::mutex> lock(shutdownRequestedMutex);
+    // Ignore call if shutdown was already requested
+    bool alreadyRequested = gIsShuttingDown.exchange(true);
+    if (!alreadyRequested) {
+        shutdownRequestedCond.notify_one();
+    }
+    return true;
+}
+
+void Reactor::waitForShutdownStart()
+{
+    std::unique_lock<std::mutex> lock(shutdownRequestedMutex);
+    shutdownRequestedCond.wait(lock, []() -> bool { return gIsShuttingDown; });
+}
+
+void Reactor::waitForShutdownComplete()
+{
+    const auto complete = [] () -> bool { return gShutdownComplete; };
+
+    std::unique_lock<std::mutex> lock(shutdownFinishedMutex);
+    if (ptrace(PTRACE_TRACEME, 0, 1, 0) < 0) {
+        // Process is running under PTRACE. Do not use timeout
+        shutdownFinishedCond.wait(lock, complete);
+    } else {
+        if (!shutdownFinishedCond.wait_for(lock, std::chrono::seconds(60), complete)) {
+            // Shutdown last for too long time
+            std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown timed out" << ANSI_BOLD_OFF
+                      << ANSI_FG_DEFAULT << std::endl;
+            abort();
+        }
+    }
+}
+
+bool Reactor::isShutdownFinished()
+{
+    return gShutdownComplete;
+}
+
+void Reactor::notifyShutdownComplete()
+{
+    std::unique_lock<std::mutex> lock(shutdownFinishedMutex);
+    gShutdownComplete = true;
+    shutdownFinishedCond.notify_all();
 }
 
 }  // namespace Spine
