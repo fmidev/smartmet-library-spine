@@ -114,7 +114,9 @@ std::vector<std::pair<SmartMetCache::KeyType, SmartMetCache::ValueType>> SmartMe
   {
     std::vector<std::pair<KeyType, ValueType>> results;
 
-    for (const auto& item : itsMemoryCache.getContent())
+    auto content = itsMemoryCache.getContent();
+
+    for (const auto& item : content)
       results.emplace_back(std::make_pair(item.itsKey, item.itsValue));
 
     if (itsFileCache)
