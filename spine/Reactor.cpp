@@ -100,7 +100,7 @@ namespace SmartMet
 namespace Spine
 {
 
-std::atomic<Reactor*> Reactor::instance = nullptr;
+std::atomic<Reactor*> Reactor::instance{nullptr};
 
 // ----------------------------------------------------------------------
 /*!
