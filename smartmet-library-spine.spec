@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.7.27
+Version: 22.7.28
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -133,6 +133,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Thu Jul 28 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.7.28-1.fmi
+- Reactor: improve shudown handling
+
 * Wed Jul 27 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.7.27-1.fmi
 - Repackaged since macgyver CacheStats ABI changed
 
