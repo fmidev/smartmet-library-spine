@@ -210,6 +210,8 @@ private:
 
   Fmi::AsyncTaskGroup shutdownTasks;
 
+  unsigned int shutdownTimeoutSec;
+
   //@}
   //------------------------------------------------------------------------------
 

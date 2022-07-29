@@ -149,6 +149,9 @@ Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::
                 << std::endl;
     }
 
+    shutdownTimeoutSec = 60;
+    options.itsConfig.lookupValue("shutdownTimeout", shutdownTimeoutSec);
+
     if (itsOptions.verbose)
       itsOptions.report();
 
@@ -1653,7 +1656,10 @@ void Reactor::waitForShutdownComplete()
             waitForShutdownStart();
 
             // Now one can initiate shutdown timeout countdown
-            if (not shutdownFinishedCond.wait_for(lock, std::chrono::seconds(60), complete)) {
+            if (not shutdownFinishedCond.wait_for(lock,
+                    std::chrono::seconds(shutdownTimeoutSec),
+                    complete))
+            {
                 // Check once more for debuggugging (one may attach debugger while shutdown is ongoing)
                 if (ptrace(PTRACE_TRACEME, 0, 1, 0) < 0) {
                     continue;
