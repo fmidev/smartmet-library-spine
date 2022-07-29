@@ -1662,10 +1662,12 @@ void Reactor::waitForShutdownComplete()
             waitForShutdownStart();
 
             // Now one can initiate shutdown timeout countdown
-            if (not shutdownFinishedCond.wait_for(lock,
+            if (shutdownFinishedCond.wait_for(lock,
                     std::chrono::seconds(shutdownTimeoutSec),
                     complete))
             {
+                done = true;
+            } else {
                 // Check once more for debuggugging (one may attach debugger while shutdown is ongoing)
                 if (not timeoutAlways and Fmi::tracerPid()) {
                     continue;
