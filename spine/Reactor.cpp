@@ -178,8 +178,9 @@ Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::
               else if (!exception.loggingDisabled())
                   std::cerr << SmartMet::Spine::log_time_str() + " Error: " + exception.what() << std::endl;
 
-              shutdown();
-              throw Fmi::Exception(BCP, "SmartMet::Spine::Reactor: one or more init tasks failed", nullptr);
+              if (not isShuttingDown()) {
+                  throw exception;
+              }
           }
         });
 

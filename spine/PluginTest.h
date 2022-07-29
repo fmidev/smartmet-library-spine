@@ -412,6 +412,9 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
     options.parseConfig();
     SmartMet::Spine::Reactor reactor(options);
     reactor.init();
+    if (reactor.isShuttingDown()) {
+        throw Fmi::Exception(BCP, "Reactor shutdown detected while init phase");
+    }
     prelude(reactor);
 
     const auto inputfiles = recursive_directory_contents(mInputDir);
