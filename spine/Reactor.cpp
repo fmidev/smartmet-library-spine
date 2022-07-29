@@ -29,6 +29,7 @@
 #include <boost/process/child.hpp>
 #include <boost/timer/timer.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
+#include <macgyver/DebugTools.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 
@@ -41,7 +42,6 @@
 #include <mysql.h>
 #include <stdexcept>
 #include <string>
-#include <sys/ptrace.h>
 
 extern "C"
 {
@@ -130,7 +130,9 @@ Reactor::~Reactor()
  */
 // ----------------------------------------------------------------------
 
-Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::AsyncTaskGroup)
+Reactor::Reactor(Options& options)
+    : itsOptions(options)
+    , itsInitTasks(new Fmi::AsyncTaskGroup)
 {
   if (instance.exchange(this)) {
       std::cerr << "ERROR: Only one instance of SmartMet::Spine::Reactor is allowed";
@@ -1645,10 +1647,14 @@ void Reactor::waitForShutdownComplete()
 {
     const auto complete = [] () -> bool { return gShutdownComplete; };
 
+    bool timeoutAlways = false;
     std::unique_lock<std::mutex> lock(shutdownFinishedMutex);
     for (bool done = false; not done; ) {
-        if (ptrace(PTRACE_TRACEME, 0, 1, 0) < 0) {
-            // Process is running under PTRACE. Do not use timeout
+        int tracerPid = Fmi::tracerPid();
+        if (not timeoutAlways and tracerPid) {
+            // Debugger attached
+            std::cout << "Debugging detected (tracerPid=" << tracerPid
+                      << "). Disabled shutdown timeout." << std::endl;
             shutdownFinishedCond.wait(lock, complete);
             done = true;
         } else {
@@ -1661,13 +1667,37 @@ void Reactor::waitForShutdownComplete()
                     complete))
             {
                 // Check once more for debuggugging (one may attach debugger while shutdown is ongoing)
-                if (ptrace(PTRACE_TRACEME, 0, 1, 0) < 0) {
+                if (not timeoutAlways and Fmi::tracerPid()) {
                     continue;
                 } else {
                     // Shutdown last for too long time
-                    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nReactor shutdown timed expired" << ANSI_BOLD_OFF
-                              << ANSI_FG_DEFAULT << std::endl;
-                    // FIXME: report active tasks whose shutdown is not yet ready (requires new method for Fmi::AsyncTaskGroup)
+                    std::cout << ANSI_FG_RED << ANSI_BOLD_ON
+                              << "\nReactor shutdown timed expired"
+                              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
+                              << std::endl;
+                    std::vector<std::string> names;
+                    if (itsInitTasks) {
+                        names = itsInitTasks->active_task_names();
+                    }
+                    if (names.size()) {
+                        std::cout << ANSI_FG_RED << ANSI_BOLD_ON
+                                  << "Active Reactor initialization tasks:"
+                                  << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
+                                  << std::endl;
+                        for (const std::string& name : names) {
+                            std::cout << "         " << name << std::endl;
+                        }
+                    }
+                    names = shutdownTasks.active_task_names();
+                    if (names.size()) {
+                        std::cout << ANSI_FG_RED << ANSI_BOLD_ON
+                                  << "Active Reactor shutdown tasks:"
+                                  << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
+                                  << std::endl;
+                        for (const std::string& name : names) {
+                            std::cout << "         " << name << std::endl;
+                        }
+                    }
                     abort();
                 }
             }
