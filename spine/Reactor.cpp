@@ -1643,15 +1643,28 @@ void Reactor::waitForShutdownComplete()
     const auto complete = [] () -> bool { return gShutdownComplete; };
 
     std::unique_lock<std::mutex> lock(shutdownFinishedMutex);
-    if (ptrace(PTRACE_TRACEME, 0, 1, 0) < 0) {
-        // Process is running under PTRACE. Do not use timeout
-        shutdownFinishedCond.wait(lock, complete);
-    } else {
-        if (!shutdownFinishedCond.wait_for(lock, std::chrono::seconds(60), complete)) {
-            // Shutdown last for too long time
-            std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown timed out" << ANSI_BOLD_OFF
-                      << ANSI_FG_DEFAULT << std::endl;
-            abort();
+    for (bool done = false; not done; ) {
+        if (ptrace(PTRACE_TRACEME, 0, 1, 0) < 0) {
+            // Process is running under PTRACE. Do not use timeout
+            shutdownFinishedCond.wait(lock, complete);
+            done = true;
+        } else {
+            // Ensure that timeout countdown is only started when shutdown is in progress
+            waitForShutdownStart();
+
+            // Now one can initiate shutdown timeout countdown
+            if (not shutdownFinishedCond.wait_for(lock, std::chrono::seconds(60), complete)) {
+                // Check once more for debuggugging (one may attach debugger while shutdown is ongoing)
+                if (ptrace(PTRACE_TRACEME, 0, 1, 0) < 0) {
+                    continue;
+                } else {
+                    // Shutdown last for too long time
+                    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nReactor shutdown timed expired" << ANSI_BOLD_OFF
+                              << ANSI_FG_DEFAULT << std::endl;
+                    // FIXME: report active tasks whose shutdown is not yet ready (requires new method for Fmi::AsyncTaskGroup)
+                    abort();
+                }
+            }
         }
     }
 }
