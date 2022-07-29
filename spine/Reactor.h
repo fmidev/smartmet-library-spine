@@ -208,6 +208,8 @@ private:
 
   std::thread shutdownWatchThread;
 
+  Fmi::AsyncTaskGroup shutdownTasks;
+
   //@}
   //------------------------------------------------------------------------------
 
