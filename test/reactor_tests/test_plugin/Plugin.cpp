@@ -65,6 +65,9 @@ void SmartMet::Plugin::Test::Plugin::init()
 
 void SmartMet::Plugin::Test::Plugin::shutdown()
 {
+    // Uncomment for checking reactor shutdown timeeot handling
+    // Do NOT commit to GitHub uncommented
+    //sleep(60);
 }
 
 void SmartMet::Plugin::Test::Plugin::requestHandler(

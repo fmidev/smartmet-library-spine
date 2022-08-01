@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.6.8
+Version: 22.7.29
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -19,12 +19,21 @@ Requires: mariadb-libs
 #TestRequires: mariadb-devel
 %endif
 
-BuildRequires: boost169-chrono
-BuildRequires: boost169-devel
-BuildRequires: boost169-timer
+%if 0%{?rhel} && 0%{rhel} < 9
+%define smartmet_boost boost169
+%else
+%define smartmet_boost boost
+%endif
+
+%define smartmet_fmt_min 8.1.1
+%define smartmet_fmt_max 8.2.0
+
+BuildRequires: %{smartmet_boost}-chrono
+BuildRequires: %{smartmet_boost}-devel
+BuildRequires: %{smartmet_boost}-timer
 BuildRequires: ctpp2-devel
 BuildRequires: dtl
-BuildRequires: fmt-devel >= 7.1.3
+BuildRequires: fmt-devel >= %{smartmet_fmt_min}, fmt-devel < %{smartmet_fmt_max}
 BuildRequires: gcc-c++
 BuildRequires: gdal34-devel
 BuildRequires: glibc-devel
@@ -36,30 +45,30 @@ BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 22.5.4
-BuildRequires: smartmet-library-macgyver-devel >= 22.3.28
-BuildRequires: smartmet-library-newbase-devel >= 22.5.24
+BuildRequires: smartmet-library-gis-devel >= 22.6.16
+BuildRequires: smartmet-library-macgyver-devel >= 22.7.29
+BuildRequires: smartmet-library-newbase-devel >= 22.6.16
 BuildRequires: smartmet-utils-devel >= 22.2.8
-Requires: boost169-chrono
-Requires: boost169-date-time
-Requires: boost169-filesystem
-Requires: boost169-iostreams
-Requires: boost169-program-options
-Requires: boost169-regex
-Requires: boost169-system
-Requires: boost169-thread
-Requires: boost169-timer
+Requires: %{smartmet_boost}-chrono
+Requires: %{smartmet_boost}-date-time
+Requires: %{smartmet_boost}-filesystem
+Requires: %{smartmet_boost}-iostreams
+Requires: %{smartmet_boost}-program-options
+Requires: %{smartmet_boost}-regex
+Requires: %{smartmet_boost}-system
+Requires: %{smartmet_boost}-thread
+Requires: %{smartmet_boost}-timer
 Requires: ctpp2
-Requires: fmt >= 7.1.3
+Requires: fmt >= %{smartmet_fmt_min}, fmt < %{smartmet_fmt_max}
 Requires: gdal34-libs
 Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
-Requires: smartmet-library-gis >= 22.5.4
-Requires: smartmet-library-macgyver >= 22.3.28
-Requires: smartmet-library-newbase >= 22.5.24
+Requires: smartmet-library-gis >= 22.6.16
+Requires: smartmet-library-macgyver >= 22.7.29
+Requires: smartmet-library-newbase >= 22.6.16
 Requires: smartmet-timezones >= 22.3.24
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -68,7 +77,7 @@ Requires: smartmet-timezones >= 22.3.24
 #TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
-#TestRequires: smartmet-library-macgyver-devel >= 22.3.28
+#TestRequires: smartmet-library-macgyver-devel >= 22.7.29
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -78,11 +87,11 @@ FMI BrainStorm Spinal Cord Library
 %package -n %{SPECNAME}-devel
 Summary: SmartMet Spine development files
 Group: SmartMet/Development
-Requires: boost169-devel
+Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 22.3.28
-Requires: smartmet-library-gis-devel >= 22.5.4
-Requires: smartmet-library-newbase-devel >= 22.5.24
+Requires: smartmet-library-macgyver >= 22.7.29
+Requires: smartmet-library-gis-devel >= 22.6.16
+Requires: smartmet-library-newbase-devel >= 22.6.16
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
@@ -124,6 +133,27 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Jul 29 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.7.29-1.fmi
+- Improve reactor shutdown support
+
+* Thu Jul 28 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.7.28-1.fmi
+- Reactor: improve shudown handling
+
+* Wed Jul 27 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.7.27-1.fmi
+- Repackaged since macgyver CacheStats ABI changed
+
+* Fri Jul 22 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.7.22-1.fmi
+- Reactor::shutdown(): ensure that all init tasks have ended before destroying engine and plugin objects
+
+* Wed Jul 20 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.7.20-2.fmi
+- Reactor: engine ja plugin loading update
+
+* Wed Jul 20 2022 Andris Pavenis <andris.pavenis@fmi.fi> 22.7.20-1.fmi
+- Reactor: improve init task failure handling and shutdown procedure
+
+* Thu Jun 16 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.6.16-1.fmi
+- Add support of HEL9, upgrade to libpqxx-7.7.0 (rhel8+) and fmt-8.1.1
+
 * Wed Jun  8 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.6.8-1.fmi
 - Added support for WGS84 mode to smartmet-plugin-test
 

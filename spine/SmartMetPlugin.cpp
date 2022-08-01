@@ -47,12 +47,9 @@ void SmartMetPlugin::initPlugin()
   }
   catch (...)
   {
+    using SmartMet::Spine::Reactor;
+    Reactor::reportFailure("Plugin initialization failed!");
     Fmi::Exception exception(BCP, "Plugin initialization failed!", nullptr);
-
-    if (!exception.stackTraceDisabled())
-      std::cerr << exception.getStackTrace();
-    else if (!exception.loggingDisabled())
-      std::cerr << SmartMet::Spine::log_time_str() + " Error: " + exception.what() << std::endl;
 
     // Will terminate the program
     throw exception;

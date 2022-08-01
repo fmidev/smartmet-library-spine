@@ -27,6 +27,7 @@ void SmartMetEngine::construct(const std::string& /* engineName */, Reactor* rea
   }
   catch (...)
   {
+    Reactor::reportFailure("Engine initialization failed!");
     throw Fmi::Exception::Trace(BCP, "Engine construction failed!");
   }
 }
