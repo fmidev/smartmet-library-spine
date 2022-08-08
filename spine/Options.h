@@ -57,6 +57,7 @@ struct Options
   bool logrequests = false;
   bool compress = false;
   unsigned int compresslimit = 1000;
+  unsigned int coredump_filter = 0x33;  // Linux default is 0x33
   bool defaultlogging = true;
   bool lazylinking = true;
   bool stacktrace = false;

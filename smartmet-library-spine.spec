@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.8.5
+Version: 22.8.8
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -133,6 +133,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Aug  8 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.8.8-1.fmi
+- Added configuration setting and command line option for coredump_filter
+
 * Fri Aug  5 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.8.5-1.fmi
 - Reactor shutdown fixes. Always show messages about first encountered init task failure
 
