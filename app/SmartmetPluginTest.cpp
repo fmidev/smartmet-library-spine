@@ -1,4 +1,5 @@
 #include "PluginTest.h"
+#include <macgyver/DebugTools.h>
 #include <boost/program_options.hpp>
 #include <iostream>
 #include <sstream>
@@ -103,7 +104,12 @@ int main(int argc, char* argv[])
     options.defaultlogging = false;
     options.accesslogdir = "/tmp";
 
-    signal(SIGALRM, alarm_handler);
+    if (Fmi::tracerPid())
+    {
+        signal(SIGALRM, SIG_IGN);
+    } else {
+        signal(SIGALRM, alarm_handler);
+    }
 
     try
     {

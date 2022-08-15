@@ -232,6 +232,7 @@ void DynamicPlugin::shutdownPlugin()
     if (itsPlugin != nullptr)
     {
       itsPlugin->shutdownPlugin();
+      itsReactorClass.removeContentHandlers(itsPlugin);
     }
   }
   catch (...)

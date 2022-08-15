@@ -12,6 +12,7 @@
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
+#include <fstream>
 #include <iostream>
 
 namespace SmartMet
@@ -104,6 +105,8 @@ bool Options::parseOptions(int argc, char* argv[])
     const char* msgalertlimit = "active requests limit for running the alert script";
     const char* msgalertscript = "command to run the active requests limit is broken";
 
+    const char* msgcoredump = "coredump mask";
+
     // clang-format off
     desc.add_options()("help,h", msghelp)("version,V", msgversion)(
         "slowthreads,N", po::value(&slowpool.minsize)->default_value(slowpool.minsize), msgslowthreads)(
@@ -121,6 +124,7 @@ bool Options::parseOptions(int argc, char* argv[])
         "verbose,v", po::bool_switch(&verbose)->default_value(verbose), msgverbose)(
         "quiet", po::bool_switch(&quiet)->default_value(quiet), msgquiet)(
         "stacktrace", po::bool_switch(&quiet)->default_value(stacktrace), msgstacktrace)(
+        "coredump_filter",po::value(&coredump_filter)->default_value(coredump_filter), msgcoredump)(
         "logrequests", po::bool_switch(&logrequests)->default_value(logrequests), msglogrequest)(
         "configfile,c", po::value(&configfile)->default_value(configfile), msgconf)(
         "libdir,L", po::value(&directory)->default_value(directory), msglib)(
@@ -182,6 +186,10 @@ bool Options::parseOptions(int argc, char* argv[])
           .addParameter("Limit", Fmi::to_string(throttle.limit))
           .addParameter("Increase rate", Fmi::to_string(throttle.increase_rate));
 
+    std::ofstream out("/proc/self/coredump_filter");
+    out << coredump_filter;
+    out.close();
+
     return true;
   }
   catch (...)
@@ -225,15 +233,15 @@ void Options::parseConfig()
       lookupHostSetting(itsConfig, encryptionEnabled, "encryption.enabled");
       lookupHostSetting(itsConfig, encryptionCertificateFile, "encryption.certificatefile");
 
-      if (!encryptionCertificateFile.empty() &&  encryptionCertificateFile[0] != '/')
+      if (!encryptionCertificateFile.empty() && encryptionCertificateFile[0] != '/')
         encryptionCertificateFile = p.string() + "/" + encryptionCertificateFile;
 
       lookupHostSetting(itsConfig, encryptionPrivateKeyFile, "encryption.privatekeyfile");
-      if (!encryptionPrivateKeyFile.empty() &&  encryptionPrivateKeyFile[0] != '/')
+      if (!encryptionPrivateKeyFile.empty() && encryptionPrivateKeyFile[0] != '/')
         encryptionPrivateKeyFile = p.string() + "/" + encryptionPrivateKeyFile;
 
       lookupHostSetting(itsConfig, encryptionPasswordFile, "encryption.passwordfile");
-      if (!encryptionPasswordFile.empty() &&  encryptionPasswordFile[0] != '/')
+      if (!encryptionPasswordFile.empty() && encryptionPasswordFile[0] != '/')
         encryptionPasswordFile = p.string() + "/" + encryptionPasswordFile;
 
       lookupHostSetting(itsConfig, encryptionPassword, "encryption.password");
@@ -274,6 +282,8 @@ void Options::parseConfig()
       lookupHostSetting(itsConfig, fastpool.maxrequeuesize, "fastpool.maxrequeuesize");
 
       lookupHostSetting(itsConfig, new_handler, "new_handler");
+
+      lookupHostSetting(itsConfig, coredump_filter, "coredump_filter");
     }
     catch (libconfig::ParseException& e)
     {

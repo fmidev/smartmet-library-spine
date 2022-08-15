@@ -174,7 +174,7 @@ Reactor::Reactor(Options& options)
     itsInitTasks->on_task_error(
         [this](const std::string& name)
         {
-          if (!isShuttingDown())
+          if (!initFailed.exchange(true))
           {
               auto exception = Fmi::Exception::Trace(BCP, "Operation failed");
 
@@ -183,9 +183,7 @@ Reactor::Reactor(Options& options)
               else if (!exception.loggingDisabled())
                   std::cerr << SmartMet::Spine::log_time_str() + " Error: " + exception.what() << std::endl;
 
-              if (not isShuttingDown()) {
-                  throw exception;
-              }
+              requestShutdown();
           }
         });
 

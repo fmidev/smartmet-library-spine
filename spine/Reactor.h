@@ -324,6 +324,8 @@ private:
 
   std::atomic_bool itsInitializing{true};
 
+  std::atomic_bool initFailed{false};
+
   /* [[noreturn]] */ void cleanLog();
 };
 
