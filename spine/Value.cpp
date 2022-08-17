@@ -1014,7 +1014,7 @@ void BoundingBox::parse_string(const std::string& src)
     auto pos2 = src.find(',', pos1 + 1);
     auto pos3 = src.find(',', pos2 + 1);
 
-    xMin = Fmi::stod(Fmi::trim_copy(src.substr(0, pos1 - 1)));
+    xMin = Fmi::stod(Fmi::trim_copy(src.substr(0, pos1)));
     yMin = Fmi::stod(Fmi::trim_copy(src.substr(pos1 + 1, pos2 - pos1 - 1)));
     xMax = Fmi::stod(Fmi::trim_copy(src.substr(pos2 + 1, pos3 - pos2 - 1)));
     if (n == 3)
