@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.8.8
+Version: 22.8.17
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -133,6 +133,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Aug 17 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.8.17-1.fmi
+- Fixed BoundingBox::parse_string to handle optional AUTO2 spatial references which contain commas
+
 * Mon Aug  8 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.8.8-1.fmi
 - Added configuration setting and command line option for coredump_filter
 

@@ -283,6 +283,9 @@ BOOST_AUTO_TEST_CASE(test_bounding_box_value)
   BOOST_REQUIRE_NO_THROW(value.dump_to_string());
   BOOST_REQUIRE_NO_THROW(value.to_string());
   BOOST_CHECK(b2 == b);
+
+  BOOST_REQUIRE_NO_THROW(b.parse_string("20,60,40,80,AUTO2:42001,1,25,60"));
+  BOOST_CHECK_EQUAL(b.crs, "AUTO2:42001,1,25,60");
 }
 
 BOOST_AUTO_TEST_CASE(test_config_input)
