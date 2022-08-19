@@ -7,9 +7,9 @@
 #pragma once
 
 #include <boost/shared_ptr.hpp>
-
 #include <libconfig.h++>
 #include <string>
+#include <thread>
 
 namespace SmartMet
 {
@@ -21,7 +21,7 @@ struct PoolOptions
 {
   // TODO: Fix naming scheme, now we set libconfig slowpool.maxthreads to be minsize
   //	std::size_t maxsize;
-  unsigned int minsize = 10;
+  unsigned int minsize = std::thread::hardware_concurrency();
   unsigned int maxrequeuesize = 100;
 };
 

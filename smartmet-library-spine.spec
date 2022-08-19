@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.8.17
+Version: 22.8.19
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -133,6 +133,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Aug 19 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.8.19-1.fmi
+- Max thread count can now be a percentage instead of a fixed number
+
 * Wed Aug 17 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.8.17-1.fmi
 - Fixed BoundingBox::parse_string to handle optional AUTO2 spatial references which contain commas
 
@@ -193,7 +196,7 @@ make %{_smp_mflags}
 * Fri Jan 21 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.1.21-1.fmi
 - Repackage due to upgrade of packages from PGDG repo: gdal-3.4, geos-3.10, proj-8.2
 
-* Thu Jan 5 2022 Anssi Reponen <anssi.reponen@fmi.fi> - 22.1.5-1.fmi
+* Wed Jan 5 2022 Anssi Reponen <anssi.reponen@fmi.fi> - 22.1.5-1.fmi
 - Added plugin name as getLoggedRequests() function parameter (BRAINSTORM-2034)
 
 * Tue Dec  7 2021 Andris Pavēnis <andris.pavenis@fmi.fi> 21.12.7-1.fmi
