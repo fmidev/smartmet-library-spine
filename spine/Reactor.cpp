@@ -1617,10 +1617,6 @@ void Reactor::reportFailure(const std::string& message)
         std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: failure reported and shutdown initiated: "
                   << message << ANSI_FG_DEFAULT
                   << std::endl;
-    } else {
-        std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: failure reported and shutdown already initiated earlier: "
-                  << message << ANSI_FG_DEFAULT
-                  << std::endl;
     }
 }
 
