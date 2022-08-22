@@ -1249,8 +1249,12 @@ bool Reactor::loadEngine(const std::string& sectionName, const std::string& theF
   }
   catch (...)
   {
-    reportFailure("Failed to load or init engine");
-    throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
+    std::ostringstream msg;
+    const auto err = Fmi::Exception::Trace(BCP, "Operation failed!")
+        .addParameter("Filename", theFilename);
+    msg << "Failed to load or init engine:\n" << err;
+    reportFailure(msg.str());
+    return false;
   }
 }
 
