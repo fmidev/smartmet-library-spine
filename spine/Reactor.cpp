@@ -1062,8 +1062,12 @@ bool Reactor::loadPlugin(const std::string& sectionName, const std::string& theF
   }
   catch (...)
   {
-    reportFailure("Failed to load or init plugin");
-    throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
+    std::ostringstream msg;
+    const auto err = Fmi::Exception::Trace(BCP, "Operation failed!")
+        .addParameter("Filename", theFilename);
+    msg << "Failed to load or init plugin:\n" << err;
+    reportFailure(msg.str());
+    return false;
   }
 }
 
