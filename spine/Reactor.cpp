@@ -1632,7 +1632,7 @@ bool Reactor::requestShutdown()
     if (!alreadyRequested) {
         shutdownRequestedCond.notify_one();
     }
-    return true;
+    return not alreadyRequested;
 }
 
 void Reactor::waitForShutdownStart()
