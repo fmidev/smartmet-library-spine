@@ -1062,11 +1062,7 @@ bool Reactor::loadPlugin(const std::string& sectionName, const std::string& theF
   }
   catch (...)
   {
-    std::ostringstream msg;
-    const auto err = Fmi::Exception::Trace(BCP, "Operation failed!")
-        .addParameter("Filename", theFilename);
-    msg << "Failed to load or init plugin:\n" << err;
-    reportFailure(msg.str());
+    reportFailure("Failed to load or init plugin");
     return false;
   }
 }
@@ -1250,10 +1246,7 @@ bool Reactor::loadEngine(const std::string& sectionName, const std::string& theF
   catch (...)
   {
     std::ostringstream msg;
-    const auto err = Fmi::Exception::Trace(BCP, "Operation failed!")
-        .addParameter("Filename", theFilename);
-    msg << "Failed to load or init engine:\n" << err;
-    reportFailure(msg.str());
+    reportFailure("Failed to load or init engine");
     return false;
   }
 }
@@ -1621,9 +1614,15 @@ void Reactor::reportFailure(const std::string& message)
 {
     if (requestShutdown())
     {
-        std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: failure reported and shutdown initiated: "
-                  << message << ANSI_FG_DEFAULT
-                  << std::endl;
+        std::cerr << ANSI_FG_RED
+                  << "* SmartMet::Spine::Reactor: failure reported and shutdown initiated: "
+                  << ANSI_FG_DEFAULT;
+
+        const std::exception_ptr curr_exc = std::current_exception();
+        if (curr_exc) {
+            Fmi::Exception::ForceStackTrace force_stack_trace;
+            std::cerr << Fmi::Exception::Trace(BCP, "Operation failed") << std::endl;
+        }
     }
 }
 
