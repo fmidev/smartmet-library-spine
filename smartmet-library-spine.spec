@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.8.8
+Version: 22.8.23
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -46,7 +46,7 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 22.6.16
-BuildRequires: smartmet-library-macgyver-devel >= 22.7.29
+BuildRequires: smartmet-library-macgyver-devel >= 22.8.23
 BuildRequires: smartmet-library-newbase-devel >= 22.6.16
 BuildRequires: smartmet-utils-devel >= 22.2.8
 Requires: %{smartmet_boost}-chrono
@@ -67,7 +67,7 @@ Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
 Requires: smartmet-library-gis >= 22.6.16
-Requires: smartmet-library-macgyver >= 22.7.29
+Requires: smartmet-library-macgyver >= 22.8.23
 Requires: smartmet-library-newbase >= 22.6.16
 Requires: smartmet-timezones >= 22.3.24
 #TestRequires: bzip2-devel
@@ -77,7 +77,7 @@ Requires: smartmet-timezones >= 22.3.24
 #TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
-#TestRequires: smartmet-library-macgyver-devel >= 22.7.29
+#TestRequires: smartmet-library-macgyver-devel >= 22.8.23
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -89,7 +89,7 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver >= 22.7.29
+Requires: smartmet-library-macgyver-devel >= 22.8.23
 Requires: smartmet-library-gis-devel >= 22.6.16
 Requires: smartmet-library-newbase-devel >= 22.6.16
 Requires: libconfig17-devel
@@ -133,6 +133,15 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Aug 23 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.8.23-1.fmi
+- Update due to Fmi::Exception changes
+
+* Fri Aug 19 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.8.19-1.fmi
+- Max thread count can now be a percentage instead of a fixed number
+
+* Wed Aug 17 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.8.17-1.fmi
+- Fixed BoundingBox::parse_string to handle optional AUTO2 spatial references which contain commas
+
 * Mon Aug  8 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.8.8-1.fmi
 - Added configuration setting and command line option for coredump_filter
 
@@ -190,7 +199,7 @@ make %{_smp_mflags}
 * Fri Jan 21 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.1.21-1.fmi
 - Repackage due to upgrade of packages from PGDG repo: gdal-3.4, geos-3.10, proj-8.2
 
-* Thu Jan 5 2022 Anssi Reponen <anssi.reponen@fmi.fi> - 22.1.5-1.fmi
+* Wed Jan 5 2022 Anssi Reponen <anssi.reponen@fmi.fi> - 22.1.5-1.fmi
 - Added plugin name as getLoggedRequests() function parameter (BRAINSTORM-2034)
 
 * Tue Dec  7 2021 Andris Pavēnis <andris.pavenis@fmi.fi> 21.12.7-1.fmi

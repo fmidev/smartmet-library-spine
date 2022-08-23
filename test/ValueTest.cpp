@@ -260,15 +260,15 @@ BOOST_AUTO_TEST_CASE(test_bounding_box_value)
 
   BoundingBox b, b2;
 
-  BOOST_REQUIRE_NO_THROW(b.parse_string("24.0,61.0,25.0,62.0"));
-  BOOST_CHECK_CLOSE(b.xMin, 24.0, 1e-10);
-  BOOST_CHECK_CLOSE(b.yMin, 61.0, 1e-10);
-  BOOST_CHECK_CLOSE(b.xMax, 25.0, 1e-10);
-  BOOST_CHECK_CLOSE(b.yMax, 62.0, 1e-10);
+  BOOST_REQUIRE_NO_THROW(b.parse_string("24.1,61.2,25.3,62.4"));
+  BOOST_CHECK_CLOSE(b.xMin, 24.1, 1e-10);
+  BOOST_CHECK_CLOSE(b.yMin, 61.2, 1e-10);
+  BOOST_CHECK_CLOSE(b.xMax, 25.3, 1e-10);
+  BOOST_CHECK_CLOSE(b.yMax, 62.4, 1e-10);
   BOOST_CHECK_EQUAL(b.crs, "");
 
-  BOOST_REQUIRE_NO_THROW(b.parse_string("25.0,66.1,25.5,66.6,EPSG:4258"));
-  BOOST_CHECK_CLOSE(b.xMin, 25.0, 1e-10);
+  BOOST_REQUIRE_NO_THROW(b.parse_string("25.1,66.1,25.5,66.6,EPSG:4258"));
+  BOOST_CHECK_CLOSE(b.xMin, 25.1, 1e-10);
   BOOST_CHECK_CLOSE(b.yMin, 66.1, 1e-10);
   BOOST_CHECK_CLOSE(b.xMax, 25.5, 1e-10);
   BOOST_CHECK_CLOSE(b.yMax, 66.6, 1e-10);
@@ -283,6 +283,9 @@ BOOST_AUTO_TEST_CASE(test_bounding_box_value)
   BOOST_REQUIRE_NO_THROW(value.dump_to_string());
   BOOST_REQUIRE_NO_THROW(value.to_string());
   BOOST_CHECK(b2 == b);
+
+  BOOST_REQUIRE_NO_THROW(b.parse_string("20,60,40,80,AUTO2:42001,1,25,60"));
+  BOOST_CHECK_EQUAL(b.crs, "AUTO2:42001,1,25,60");
 }
 
 BOOST_AUTO_TEST_CASE(test_config_input)

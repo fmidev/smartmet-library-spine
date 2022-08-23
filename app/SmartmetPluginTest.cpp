@@ -52,7 +52,7 @@ void alarm_handler(int)
 
 int main(int argc, char* argv[])
 {
-  Fmi::Exception::force_stack_trace = true;
+  Fmi::Exception::ForceStackTrace force_stack_trace;
 
   std::setlocale(LC_ALL, "en_US.UTF-8");  // for iconv to work
 

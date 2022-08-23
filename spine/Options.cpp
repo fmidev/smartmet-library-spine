@@ -8,6 +8,7 @@
 #include "ConfigTools.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <boost/optional.hpp>
 #include <boost/program_options.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/Exception.h>
@@ -17,6 +18,59 @@
 
 namespace SmartMet
 {
+namespace
+{
+// Parse string "N" or "N%"
+unsigned int parse_threads(const std::string& str)
+{
+  try
+  {
+    if (!boost::algorithm::ends_with(str, "%"))
+      return Fmi::stoi(str);
+    auto percent = Fmi::stoi(str.substr(0, str.size() - 1));
+
+    if (percent == 0)
+      return 0;  // fully disabled
+
+    auto max_threads = std::thread::hardware_concurrency();
+    auto num = max_threads * percent / 100;  // percentage of capacity
+    return std::max(1U, num);                // at least one thread
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to parse thread setting").addParameter("Threads", str);
+  }
+}
+
+// Parse config setting for number of threads
+boost::optional<unsigned int> parse_threads(const libconfig::Config& config,
+                                            const std::string& name)
+{
+  try
+  {
+    if (!config.exists(name))
+      return {};
+
+    const auto& value = config.lookup(name);
+
+    if (value.getType() == libconfig::Setting::TypeString)
+    {
+      std::string str = value;
+      return parse_threads(str);
+    }
+
+    int num = value;
+    return num;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to parse configuration variable")
+        .addParameter("Parameter", name);
+  }
+}
+
+}  // namespace
+
 namespace Spine
 {
 // ----------------------------------------------------------------------
@@ -85,10 +139,10 @@ bool Options::parseOptions(int argc, char* argv[])
 
     const char* msgaccesslogdir = "access log directory";
 
-    const char* msgslowthreads = "set the number of threads for slow queries";
+    const char* msgslowthreads = "set the number of threads for slow queries (default=100%)";
     const char* msgslowrequeue = "set the maximum requeue size for slow queries";
 
-    const char* msgfastthreads = "set the number of threads for fast queries";
+    const char* msgfastthreads = "set the number of threads for fast queries (default=100%)";
     const char* msgfastrequeue = "set the maximum requeue size for fast queries";
 
     const char* msgminactiverequests =
@@ -107,11 +161,14 @@ bool Options::parseOptions(int argc, char* argv[])
 
     const char* msgcoredump = "coredump mask";
 
+    std::string slowthreads_str;  // --> slowpool.minsize
+    std::string fastthreads_str;  // --> fastpool.minsize
+
     // clang-format off
     desc.add_options()("help,h", msghelp)("version,V", msgversion)(
-        "slowthreads,N", po::value(&slowpool.minsize)->default_value(slowpool.minsize), msgslowthreads)(
+        "slowthreads,N", po::value(&slowthreads_str), msgslowthreads)(
         "maxslowrequeuesize,Q", po::value(&slowpool.maxrequeuesize)->default_value(slowpool.maxrequeuesize), msgslowrequeue)(
-        "fastthreads,n", po::value(&fastpool.minsize)->default_value(fastpool.minsize), msgfastthreads)(
+        "fastthreads,n", po::value(&fastthreads_str), msgfastthreads)(
         "maxfastrequeuesize,q", po::value(&fastpool.maxrequeuesize)->default_value(fastpool.maxrequeuesize), msgfastrequeue)(
         "minactiverequests", po::value(&throttle.start_limit)->default_value(throttle.start_limit), msgminactiverequests)(
         "maxactiverequests", po::value(&throttle.limit)->default_value(throttle.limit), msgmaxactiverequests)(
@@ -168,6 +225,12 @@ bool Options::parseOptions(int argc, char* argv[])
 
     if (throttle.start_limit > throttle.limit)
       throttle.start_limit = throttle.limit;
+
+    if (!slowthreads_str.empty())
+      slowpool.minsize = parse_threads(slowthreads_str);
+
+    if (!fastthreads_str.empty())
+      fastpool.minsize = parse_threads(fastthreads_str);
 
     if (slowpool.minsize > 10000 || fastpool.minsize > 10000)
       throw Fmi::Exception(BCP, "The maximum number of threads is 10000!");
@@ -275,10 +338,15 @@ void Options::parseConfig()
 
       lookupHostSetting(itsConfig, throttle.alert_script, "activerequests.alert_script");
 
-      lookupHostSetting(itsConfig, slowpool.minsize, "slowpool.maxthreads");
-      lookupHostSetting(itsConfig, slowpool.maxrequeuesize, "slowpool.maxrequeuesize");
+      auto slowpool_minsize = parse_threads(itsConfig, "slowpool.maxthreads");
+      if (slowpool_minsize)
+        slowpool.minsize = *slowpool_minsize;
 
-      lookupHostSetting(itsConfig, fastpool.minsize, "fastpool.maxthreads");
+      auto fastpool_minsize = parse_threads(itsConfig, "fastpool.maxthreads");
+      if (fastpool_minsize)
+        fastpool.minsize = *fastpool_minsize;
+
+      lookupHostSetting(itsConfig, slowpool.maxrequeuesize, "slowpool.maxrequeuesize");
       lookupHostSetting(itsConfig, fastpool.maxrequeuesize, "fastpool.maxrequeuesize");
 
       lookupHostSetting(itsConfig, new_handler, "new_handler");

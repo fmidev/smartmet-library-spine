@@ -1063,7 +1063,7 @@ bool Reactor::loadPlugin(const std::string& sectionName, const std::string& theF
   catch (...)
   {
     reportFailure("Failed to load or init plugin");
-    throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
+    return false;
   }
 }
 
@@ -1245,8 +1245,9 @@ bool Reactor::loadEngine(const std::string& sectionName, const std::string& theF
   }
   catch (...)
   {
+    std::ostringstream msg;
     reportFailure("Failed to load or init engine");
-    throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("Filename", theFilename);
+    return false;
   }
 }
 
@@ -1289,7 +1290,7 @@ void Reactor::initializeEngine(SmartMetEngine* theEngine, const std::string& the
             ex.addParameter("Engine", theName);
             if (!isShuttingDown())
             {
-                ex.force_stack_trace = true;
+                Fmi::Exception::ForceStackTrace force_stack_trace;
                 std::cerr << ex.getStackTrace() << std::flush;
             }
             throw ex;
@@ -1330,7 +1331,6 @@ void Reactor::initializePlugin(DynamicPlugin* thePlugin, const std::string& theN
   {
     auto ex = Fmi::Exception::Trace(BCP, "Plugin initialization failed!");
     ex.addParameter("Plugin", theName);
-    ex.force_stack_trace = true;
     throw ex;
   }
 }
@@ -1614,13 +1614,15 @@ void Reactor::reportFailure(const std::string& message)
 {
     if (requestShutdown())
     {
-        std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: failure reported and shutdown initiated: "
-                  << message << ANSI_FG_DEFAULT
-                  << std::endl;
-    } else {
-        std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: failure reported and shutdown already initiated earlier: "
-                  << message << ANSI_FG_DEFAULT
-                  << std::endl;
+        std::cerr << ANSI_FG_RED
+                  << "* SmartMet::Spine::Reactor: failure reported and shutdown initiated: "
+                  << ANSI_FG_DEFAULT;
+
+        const std::exception_ptr curr_exc = std::current_exception();
+        if (curr_exc) {
+            Fmi::Exception::ForceStackTrace force_stack_trace;
+            std::cerr << Fmi::Exception::Trace(BCP, "Operation failed") << std::endl;
+        }
     }
 }
 
@@ -1632,7 +1634,7 @@ bool Reactor::requestShutdown()
     if (!alreadyRequested) {
         shutdownRequestedCond.notify_one();
     }
-    return true;
+    return not alreadyRequested;
 }
 
 void Reactor::waitForShutdownStart()

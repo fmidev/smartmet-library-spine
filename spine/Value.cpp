@@ -8,6 +8,7 @@
 #include <macgyver/StringConversion.h>
 #include <macgyver/TimeParser.h>
 #include <macgyver/TypeName.h>
+#include <algorithm>
 #include <stdexcept>
 
 using Fmi::demangle_cpp_type_name;
@@ -1003,20 +1004,30 @@ void BoundingBox::parse_string(const std::string& src)
   {
     namespace ba = boost::algorithm;
 
-    std::vector<std::string> parts;
-    ba::split(parts, src, ba::is_any_of(","));
-    if ((parts.size() < 4) or (parts.size() > 5))
-    {
-      std::ostringstream msg;
-      msg << "Invalid bounding box format in '" << src << "' (xMin,yMin,xMax,yMax[,crs]) expected)";
-      throw Fmi::Exception(BCP, msg.str()).disableStackTrace();
-    }
+    // Split into max 5 parts, the optional 5th one is the CRS
+    auto n = std::count(src.begin(), src.end(), ',');
+    if (n < 3)
+      throw Fmi::Exception(BCP, "Invalid bounding box format, expecting xmin,ymin,xmax,ymax[,crs]")
+          .addParameter("bbox", src);
 
-    crs = parts.size() == 4 ? std::string("") : Fmi::trim_copy(parts[4]);
-    xMin = Fmi::stod(Fmi::trim_copy(parts[0]));
-    yMin = Fmi::stod(Fmi::trim_copy(parts[1]));
-    xMax = Fmi::stod(Fmi::trim_copy(parts[2]));
-    yMax = Fmi::stod(Fmi::trim_copy(parts[3]));
+    auto pos1 = src.find(',');
+    auto pos2 = src.find(',', pos1 + 1);
+    auto pos3 = src.find(',', pos2 + 1);
+
+    xMin = Fmi::stod(Fmi::trim_copy(src.substr(0, pos1)));
+    yMin = Fmi::stod(Fmi::trim_copy(src.substr(pos1 + 1, pos2 - pos1 - 1)));
+    xMax = Fmi::stod(Fmi::trim_copy(src.substr(pos2 + 1, pos3 - pos2 - 1)));
+    if (n == 3)
+    {
+      yMax = Fmi::stod(Fmi::trim_copy(src.substr(pos3 + 1, std::string::npos)));
+      crs = "";
+    }
+    else
+    {
+      auto pos4 = src.find(',', pos3 + 1);
+      yMax = Fmi::stod(Fmi::trim_copy(src.substr(pos3 + 1, pos4 - pos3 - 1)));
+      crs = Fmi::trim_copy(src.substr(pos4 + 1, std::string::npos));
+    }
   }
   catch (...)
   {
