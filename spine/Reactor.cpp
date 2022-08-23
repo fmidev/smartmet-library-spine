@@ -1297,7 +1297,7 @@ void Reactor::initializeEngine(SmartMetEngine* theEngine, const std::string& the
             ex.addParameter("Engine", theName);
             if (!isShuttingDown())
             {
-                ex.force_stack_trace = true;
+                Fmi::Exception::ForceStackTrace force_stack_trace;
                 std::cerr << ex.getStackTrace() << std::flush;
             }
             throw ex;
@@ -1338,7 +1338,6 @@ void Reactor::initializePlugin(DynamicPlugin* thePlugin, const std::string& theN
   {
     auto ex = Fmi::Exception::Trace(BCP, "Plugin initialization failed!");
     ex.addParameter("Plugin", theName);
-    ex.force_stack_trace = true;
     throw ex;
   }
 }
