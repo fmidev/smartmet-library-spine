@@ -111,6 +111,7 @@ class Reactor final
 
   int getRequiredAPIVersion() const;
   URIMap getURIMap() const;
+  bool isURIPrefix(const std::string& uri) const;
   boost::optional<HandlerView&> getHandlerView(const HTTP::Request& theRequest);
 
   bool addContentHandler(SmartMetPlugin* thePlugin,
