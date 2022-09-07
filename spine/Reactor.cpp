@@ -867,6 +867,17 @@ URIMap Reactor::getURIMap() const
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Check whether provided value should be considered as URI prefix
+ */
+// ----------------------------------------------------------------------
+
+bool Reactor::isURIPrefix(const std::string& uri) const
+{
+  return uriPrefixes.count(uri) > 0;
+}
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Clean the log of old entries
  */
 // ----------------------------------------------------------------------
