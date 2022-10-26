@@ -134,7 +134,8 @@ void AccessLogger::log(const LoggedRequest& theRequest)
                    << theRequest.getVersion() << "\" " << theRequest.getStatus() << " ["
                    << Fmi::to_iso_extended_string(theRequest.getRequestStartTime()) << "] "
                    << theRequest.getAccessDuration().total_milliseconds() << ' '
-                   << theRequest.getContentLength() << ' ' << theRequest.getETag() << "\n";
+                   << theRequest.getContentLength() << ' ' << theRequest.getETag() << ' '
+                   << theRequest.getApiKey() << '\n';
   }
   catch (...)
   {
