@@ -1,5 +1,6 @@
 #include "HandlerView.h"
 #include "Convenience.h"
+#include "FmiApiKey.h"
 #include "Reactor.h"
 #include <boost/bind/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
@@ -107,6 +108,7 @@ bool HandlerView::handle(Reactor& theReactor,
         // Insert new request to the logging list
 
         auto etag = theResponse.getHeader("ETag");
+        auto apikey = FmiApiKey::getFmiApiKey(theRequest);
 
         itsRequestLog.emplace_back(LoggedRequest(theRequest.getURI(),
                                                  boost::posix_time::microsec_clock::local_time(),
@@ -116,7 +118,8 @@ bool HandlerView::handle(Reactor& theReactor,
                                                  theRequest.getMethodString(),
                                                  theResponse.getVersion(),
                                                  theResponse.getContentLength(),
-                                                 (etag ? *etag : "-")));
+                                                 (etag ? *etag : "-"),
+                                                 (apikey ? *apikey : "-")));
       }
 
       if (error)

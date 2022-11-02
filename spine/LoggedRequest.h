@@ -25,7 +25,8 @@ class LoggedRequest
                 const std::string& theMethod,
                 const std::string& theVersion,
                 std::size_t theContentLength,
-                const std::string& theETag);
+                const std::string& theETag,
+                const std::string& theApiKey);
 
   boost::posix_time::ptime getRequestEndTime() const;
   boost::posix_time::ptime getRequestStartTime() const;
@@ -39,6 +40,7 @@ class LoggedRequest
   std::string getVersion() const;
   std::size_t getContentLength() const;
   std::string getETag() const;
+  std::string getApiKey() const;
 
  private:
   std::string itsRequestString;
@@ -50,6 +52,7 @@ class LoggedRequest
   std::string itsVersion;
   std::size_t itsContentLength;
   std::string itsETag;
+  std::string itsApiKey;
 };
 
 using LogListType = std::list<LoggedRequest>;
