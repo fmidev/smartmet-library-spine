@@ -368,10 +368,6 @@ Status stringToStatusCode(const std::string& theCode)
     return Status::forbidden;
   if (theCode == "404")
     return Status::not_found;
-  if (theCode == "404")
-    return Status::not_found;
-  if (theCode == "404")
-    return Status::not_found;
   if (theCode == "408")
     return Status::request_timeout;
   if (theCode == "411")
