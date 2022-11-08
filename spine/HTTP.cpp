@@ -380,6 +380,8 @@ Status stringToStatusCode(const std::string& theCode)
     return Status::request_entity_too_large;
   if (theCode == "500")
     return Status::internal_server_error;
+  if (theCode == "501")
+    return Status::not_implemented;
   if (theCode == "502")
     return Status::bad_gateway;
   if (theCode == "503")
