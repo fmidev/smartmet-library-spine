@@ -737,6 +737,14 @@ class Response : public Message
   // ----------------------------------------------------------------------
   boost::asio::const_buffer contentToBuffer() override;
 
+  // ----------------------------------------------------------------------
+  /*!
+   * \brief Default response to OPTIONS method
+   */
+  // ----------------------------------------------------------------------
+  static Response stockOptionsResponse(const std::vector<std::string>& methods =
+      { "OPTIONS", "GET" } );
+
   ~Response() override;
 
  protected:

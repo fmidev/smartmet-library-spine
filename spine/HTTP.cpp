@@ -1194,6 +1194,26 @@ ContentStreamer::StreamerStatus Response::getStreamingStatus() const
   return itsContent.getStreamingStatus();
 }
 
+Response Response::stockOptionsResponse(const std::vector<std::string>& methods)
+{
+  try
+  {
+    Response response;
+    const std::string now = Fmi::to_http_string(
+        boost::posix_time::second_clock::universal_time());
+    response.setStatus("204 No Content");
+    response.setHeader("Allow", boost::algorithm::join(methods, ", "));
+    response.setHeader("Cache-Control", "max-age=604800");
+    response.setHeader("Date", now);
+    response.setHeader("Server", "SmartMet Server");
+    return response;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
 Response::~Response() = default;
 
 std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::string& message)
