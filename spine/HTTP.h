@@ -114,7 +114,8 @@ enum Status
 enum class RequestMethod
 {
   GET,
-  POST
+  POST,
+  OPTIONS
 };
 
 // ----------------------------------------------------------------------
