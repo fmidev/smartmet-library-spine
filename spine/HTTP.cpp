@@ -1214,7 +1214,7 @@ Response Response::stockOptionsResponse(const std::vector<std::string>& methods)
     Response response;
     const std::string now = Fmi::to_http_string(
         boost::posix_time::second_clock::universal_time());
-    response.setStatus("204 No Content");
+    response.setStatus(Status::no_content);
     response.setHeader("Allow", boost::algorithm::join(methods, ", "));
     response.setHeader("Cache-Control", "max-age=604800");
     response.setHeader("Date", now);
