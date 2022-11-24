@@ -82,8 +82,16 @@ bool HandlerView::handle(Reactor& theReactor,
     {
       // Frontends do not log finished requests
       auto key = theReactor.insertActiveRequest(theRequest);
-      itsHandler(theReactor, theRequest, theResponse);
-      theReactor.removeActiveRequest(key, theResponse.getStatus());
+      try
+      {
+        itsHandler(theReactor, theRequest, theResponse);
+        theReactor.removeActiveRequest(key, theResponse.getStatus());
+      }
+      catch (...)
+      {
+        theReactor.removeActiveRequest(key, theResponse.getStatus());
+        throw;
+      }
     }
     else
     {
