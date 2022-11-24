@@ -368,10 +368,6 @@ Status stringToStatusCode(const std::string& theCode)
     return Status::forbidden;
   if (theCode == "404")
     return Status::not_found;
-  if (theCode == "404")
-    return Status::not_found;
-  if (theCode == "404")
-    return Status::not_found;
   if (theCode == "408")
     return Status::request_timeout;
   if (theCode == "411")
@@ -380,6 +376,8 @@ Status stringToStatusCode(const std::string& theCode)
     return Status::request_entity_too_large;
   if (theCode == "500")
     return Status::internal_server_error;
+  if (theCode == "501")
+    return Status::not_implemented;
   if (theCode == "502")
     return Status::bad_gateway;
   if (theCode == "503")

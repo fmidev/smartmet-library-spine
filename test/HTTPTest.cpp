@@ -2,8 +2,6 @@
 #include <iostream>
 #include <string>
 
-#include <boost/foreach.hpp>
-
 #include <regression/tframe.h>
 
 namespace HTTPTest
