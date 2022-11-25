@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.11.24
+Version: 22.11.25
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -133,6 +133,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Nov 25 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.11.25-1.fmi
+- Added Reactor::isEncrypted()
+
 * Thu Nov 24 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.11.24-1.fmi
 - Fixed active request counting for frontends
 

@@ -52,7 +52,7 @@ using URIMap = std::map<std::string, std::string>;
 class Reactor final
 {
  public:
-  static std::atomic<Reactor *> instance;
+  static std::atomic<Reactor*> instance;
 
  public:
   // These hooks are called when certain events occur with the server
@@ -108,6 +108,8 @@ class Reactor final
   void init();
 
   // Content handling
+
+  bool isEncrypted() const { return itsOptions.encryptionEnabled; }
 
   int getRequiredAPIVersion() const;
   URIMap getURIMap() const;
@@ -177,7 +179,7 @@ class Reactor final
    */
   //@{
 
-public:
+ public:
   static bool isShuttingDown();
 
   /**
@@ -197,7 +199,7 @@ public:
 
   static bool isShutdownFinished();
 
-private:
+ private:
   /**
    *  @brief Actual reactor shutdown implementation
    */
@@ -216,7 +218,7 @@ private:
   //@}
   //------------------------------------------------------------------------------
 
-private:
+ private:
   void initializeEngine(SmartMetEngine* theEngine, const std::string& theName);
   void initializePlugin(DynamicPlugin* thePlugin, const std::string& theName);
 
@@ -227,8 +229,7 @@ private:
    *   - second element of pair contains library name (may be different when setting libname is
    *         provided
    */
-  std::vector<std::pair<std::string, std::string> >
-  findLibraries(const std::string& theName) const;
+  std::vector<std::pair<std::string, std::string> > findLibraries(const std::string& theName) const;
 
   bool addContentHandlerImpl(bool isPrivate,
                              SmartMetPlugin* thePlugin,
