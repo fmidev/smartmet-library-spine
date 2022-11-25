@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 22.11.25
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -133,8 +133,11 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
-* Fri Nov 25 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.11.25-1.fmi
+* Fri Nov 25 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.11.25-2.fmi
 - Added Reactor::isEncrypted()
+
+* Fri Nov 25 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.11.25-1.fmi
+- HTTP: Add initial OPTIONS request support
 
 * Thu Nov 24 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.11.24-1.fmi
 - Fixed active request counting for frontends
