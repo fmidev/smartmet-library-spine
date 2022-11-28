@@ -935,6 +935,54 @@ void caseinsensitivecomp()
   TEST_PASSED();
 }
 
+void root_options_request()
+{
+  std::string request = "OPTIONS * HTTP/1.1\r\n\r\n";
+
+  auto req = SmartMet::Spine::HTTP::parseRequest(request);
+
+  if (req.first == SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+  {
+    if (req.second->toString() == request)
+    {
+      TEST_PASSED();
+    }
+    else
+    {
+      TEST_FAILED("Incorrect results on request: \n\"" + request + "\"\n\"" +
+                  req.second->toString() + "\"");
+    }
+  }
+  else
+  {
+    TEST_FAILED("Parse failed on request: " + request);
+  }
+}
+
+void resource_options_request()
+{
+  std::string request = "OPTIONS /wfs HTTP/1.1\r\n\r\n";
+
+  auto req = SmartMet::Spine::HTTP::parseRequest(request);
+
+  if (req.first == SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+  {
+    if (req.second->toString() == request)
+    {
+      TEST_PASSED();
+    }
+    else
+    {
+      TEST_FAILED("Incorrect results on request: \n\"" + request + "\"\n\"" +
+                  req.second->toString() + "\"");
+    }
+  }
+  else
+  {
+    TEST_FAILED("Parse failed on request: " + request);
+  }
+}
+
 class tests : public tframe::tests
 {
   virtual const char* error_message_prefix() const { return "\n\t"; }
@@ -966,6 +1014,8 @@ class tests : public tframe::tests
     TEST(caseinsensitiveurlencoded);
     TEST(postandget);
     TEST(flagparam);
+    TEST(root_options_request);
+    TEST(resource_options_request);
   }
 };
 }  // namespace HTTPTest

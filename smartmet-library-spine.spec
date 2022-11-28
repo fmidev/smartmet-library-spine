@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.10.26
-Release: 1%{?dist}.fmi
+Version: 22.11.25
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -47,7 +47,7 @@ BuildRequires: mariadb-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 22.9.28
 BuildRequires: smartmet-library-macgyver-devel >= 22.10.20
-BuildRequires: smartmet-library-newbase-devel >= 22.8.29
+BuildRequires: smartmet-library-newbase-devel >= 22.11.14
 BuildRequires: smartmet-utils-devel >= 22.10.7
 Requires: %{smartmet_boost}-chrono
 Requires: %{smartmet_boost}-date-time
@@ -68,7 +68,7 @@ Requires: libicu
 Requires: double-conversion
 Requires: smartmet-library-gis >= 22.9.28
 Requires: smartmet-library-macgyver >= 22.10.20
-Requires: smartmet-library-newbase >= 22.8.29
+Requires: smartmet-library-newbase >= 22.11.14
 Requires: smartmet-timezones >= 22.10.12
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -91,7 +91,7 @@ Requires: %{smartmet_boost}-devel
 Requires: dtl
 Requires: smartmet-library-macgyver-devel >= 22.10.20
 Requires: smartmet-library-gis-devel >= 22.9.28
-Requires: smartmet-library-newbase-devel >= 22.8.29
+Requires: smartmet-library-newbase-devel >= 22.11.14
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
@@ -133,6 +133,15 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Nov 25 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.11.25-2.fmi
+- Added Reactor::isEncrypted()
+
+* Fri Nov 25 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.11.25-1.fmi
+- HTTP: Add initial OPTIONS request support
+
+* Thu Nov 24 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.11.24-1.fmi
+- Fixed active request counting for frontends
+
 * Wed Oct 26 2022 Mika Heiskanen <mika.heiskanen@fmi.fi> - 22.10.26-1.fmi
 - Added apikey logging
 

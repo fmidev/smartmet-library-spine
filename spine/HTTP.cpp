@@ -557,6 +557,12 @@ std::string Request::toString() const
 
           break;
         }
+
+        case RequestMethod::OPTIONS:
+        {
+          // In case OPTIONS-message, parameters and body are ignored
+          break;
+        }
       }
     }
     else
@@ -567,13 +573,17 @@ std::string Request::toString() const
         case RequestMethod::GET:
         {
           if (!itsContent.empty())
-            // Body is not meaningfull in GET-Requests
+            // Body is not meaningfull in GET-Requests. Reject it also for OPTIONS request
             throw Fmi::Exception(
                 BCP, "HTTP::Request: Attempting to serialize GET Request with body content");
         }
         // fall through
         case RequestMethod::POST:
           body = itsContent;
+          break;
+
+        case RequestMethod::OPTIONS:
+          break;
       }
     }
 
@@ -650,6 +660,9 @@ std::string Request::getMethodString() const
         break;
       case RequestMethod::POST:
         ret = "POST";
+        break;
+      case RequestMethod::OPTIONS:
+        ret = "OPTIONS";
         break;
     }
 
@@ -1194,6 +1207,26 @@ ContentStreamer::StreamerStatus Response::getStreamingStatus() const
   return itsContent.getStreamingStatus();
 }
 
+Response Response::stockOptionsResponse(const std::vector<std::string>& methods)
+{
+  try
+  {
+    Response response;
+    const std::string now = Fmi::to_http_string(
+        boost::posix_time::second_clock::universal_time());
+    response.setStatus(Status::no_content);
+    response.setHeader("Allow", boost::algorithm::join(methods, ", "));
+    response.setHeader("Cache-Control", "max-age=604800");
+    response.setHeader("Date", now);
+    response.setHeader("Server", "SmartMet Server");
+    return response;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
 Response::~Response() = default;
 
 std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::string& message)
@@ -1238,6 +1271,8 @@ std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::stri
         enumMethod = RequestMethod::GET;
       else if (target.type == "POST")
         enumMethod = RequestMethod::POST;
+      else if (target.type == "OPTIONS")
+          enumMethod = RequestMethod::OPTIONS;
       else
       {
         // Unknown request type
