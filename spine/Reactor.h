@@ -116,6 +116,8 @@ class Reactor final
   bool isURIPrefix(const std::string& uri) const;
   boost::optional<HandlerView&> getHandlerView(const HTTP::Request& theRequest);
 
+  bool shouldPassOptionsRequest(const std::string& resource) const;
+
   bool addContentHandler(SmartMetPlugin* thePlugin,
                          const std::string& theDir,
                          ContentHandler theCallBackFunction,
@@ -127,6 +129,18 @@ class Reactor final
                                 bool handlesUriPrefix = false);
   bool setNoMatchHandler(ContentHandler theHandler);
   std::size_t removeContentHandlers(SmartMetPlugin* thePlugin);
+
+  /**
+   *   @brief Specify conditions when HTTP OPTIONS request is passed to plugin instead of
+   *          providing stock response (GET and OPTIONS supported only)
+   *
+   *   @param thePlugin - plugin address
+   *   @param cond condition to specify whether to pass options request to plugin (
+   *               parameter to this callback is HTTP resource)
+   */
+  void passOptionsRequestIf(
+      SmartMetPlugin* thePlugin,
+      std::function<bool(const std::string&)> cond);
 
   /**
    *   @brief Static method for reporting failure which requires Reactor shutdown
@@ -260,6 +274,8 @@ class Reactor final
 
   bool itsCatchNoMatch = false;
   HandlerPtr itsCatchNoMatchHandler;
+
+  std::multimap<SmartMetPlugin*, std::function<bool(const std::string&)> > options_request_pass_conditions;
 
   // Filters are determined at construction, an will be stored here until inserted into the handler
   // views

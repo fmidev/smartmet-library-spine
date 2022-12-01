@@ -362,6 +362,34 @@ bool Reactor::addPrivateContentHandler(SmartMetPlugin* thePlugin,
   return addContentHandlerImpl(true, thePlugin, theDir, theCallBackFunction, handlesUriPrefix);
 }
 
+void Reactor::passOptionsRequestIf(
+    SmartMetPlugin* thePlugin,
+    std::function<bool(const std::string&)> cond)
+{
+  try
+  {
+    WriteLock lock(itsContentMutex);
+    WriteLock lock2(itsLoggingMutex);
+
+    options_request_pass_conditions.insert(std::make_pair(thePlugin, cond));
+  }
+  catch (...)
+  {
+      throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+bool Reactor::shouldPassOptionsRequest(const std::string& resource) const
+{
+  ReadLock lock(itsContentMutex);
+  for (const auto& item : options_request_pass_conditions) {
+    if (item.second(resource)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Implementation of registeration of new private URI/CallBackFunction association.
@@ -478,6 +506,9 @@ std::size_t Reactor::removeContentHandlers(SmartMetPlugin* thePlugin)
                 << " handled by plugin " << name << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
     }
   }
+
+  options_request_pass_conditions.erase(thePlugin);
+
   return count;
 }
 
