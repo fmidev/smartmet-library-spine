@@ -1216,7 +1216,7 @@ Response Response::stockOptionsResponse(const std::vector<std::string>& methods)
         boost::posix_time::second_clock::universal_time());
     response.setStatus(Status::no_content);
     response.setHeader("Allow", boost::algorithm::join(methods, ", "));
-    response.setHeader("Cache-Control", "max-age=604800");
+    response.setHeader("Cache-Control", "max-age=86400");
     response.setHeader("Date", now);
     response.setHeader("Server", "SmartMet Server");
     return response;
