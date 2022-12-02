@@ -517,7 +517,8 @@ bool PluginTest::process_query(const fs::path& fn,
   // emacs keeps messing up the newlines, easier to make sure
   // the ending is correct this way, but do NOT touch POST queries
 
-  if (boost::algorithm::ends_with(inputfile.string(), ".get"))
+  if (boost::algorithm::ends_with(inputfile.string(), ".get")
+          or boost::algorithm::ends_with(inputfile.string(), ".options"))
   {
     Fmi::trim(input);
     input += "\r\n\r\n";
@@ -556,7 +557,17 @@ bool PluginTest::process_query(const fs::path& fn,
         {
           view->handle(reactor, *query.second, response);
 
-          std::string result = get_full_response(response);
+          std::string result;
+
+          switch (query.second->getMethod()) {
+          default:
+              result = get_full_response(response);
+              break;
+
+          case HTTP::RequestMethod::OPTIONS:
+              result = response.toString();
+              break;
+          }
 
           // Run script/executable to process the result (e.g. convert binary to ascii) for
           // validation
