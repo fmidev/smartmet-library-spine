@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.12.1
+Version: 22.12.2
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -133,6 +133,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Dec  2 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.12.2-1.fmi
+- SmartMetPlugin: added method for checking permitted request types and for OPTIONS support
+
 * Thu Dec  1 2022 Andris Pavenis <andris.pavenis@fmi.fi> 22.12.1-1.fmi
 - Reactor: support of conditional pass of HTTP OPTIONS request to plugins
 
