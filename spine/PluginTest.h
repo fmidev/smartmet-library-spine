@@ -565,6 +565,7 @@ bool PluginTest::process_query(const fs::path& fn,
               break;
 
           case HTTP::RequestMethod::OPTIONS:
+              response.removeHeader("Date");
               result = response.toString();
               break;
           }

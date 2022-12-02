@@ -1,6 +1,5 @@
 HTTP/1.0 204 No Content
 Allow: GET, OPTIONS
 Cache-Control: max-age=86400
-Date: Fri, 02 Dec 2022 08:40:35 GMT
 Server: SmartMet Server
 
