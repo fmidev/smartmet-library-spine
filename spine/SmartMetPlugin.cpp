@@ -1,5 +1,6 @@
 #include "SmartMetPlugin.h"
 #include "Convenience.h"
+#include "HTTP.h"
 #include "Reactor.h"
 #include <boost/thread.hpp>
 #include <boost/timer/timer.hpp>
@@ -123,5 +124,43 @@ void SmartMetPlugin::callRequestHandler(SmartMet::Spine::Reactor &theReactor,
   {
     throw Fmi::Exception::Trace(BCP, "Plugin request handler failed!")
         .addParameter("request start time (UTC)", Fmi::to_iso_string(now));
+  }
+}
+
+bool SmartMetPlugin::checkRequest(const SmartMet::Spine::HTTP::Request &theRequest,
+                                  SmartMet::Spine::HTTP::Response &theResponse,
+                                  bool supportsPost)
+{
+  try
+  {
+    using namespace SmartMet::Spine;
+    switch (theRequest.getMethod())
+    {
+    case HTTP::RequestMethod::GET:
+      return false;
+
+    case HTTP::RequestMethod::POST:
+      if (supportsPost) {
+        return false;
+      } else {
+        theResponse.setStatus(HTTP::not_found);
+        return true;
+      }
+
+    case HTTP::RequestMethod::OPTIONS:
+      if (supportsPost) {
+        theResponse = HTTP::Response::stockOptionsResponse({"GET", "POST", "OPTIONS"});
+      } else {
+        theResponse = HTTP::Response::stockOptionsResponse({"GET", "OPTIONS"});
+      }
+      return true;
+
+    default:
+      throw Fmi::Exception(BCP, "Not supported request method " + theRequest.getMethodString());
+    }
+  }
+  catch (...)
+  {
+      throw Fmi::Exception::Trace(BCP, "Plugin request check!");
   }
 }

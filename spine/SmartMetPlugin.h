@@ -65,6 +65,17 @@ class SmartMetPlugin
                               const SmartMet::Spine::HTTP::Request &theRequest,
                               SmartMet::Spine::HTTP::Response &theResponse) = 0;
 
+  /**
+   *   @brief Check whether request is of supported type and whether response can be generated
+   *          immediately (wrong response type or OPTIONS request received)
+   *
+   *   @retval false no respone generated - may proceed with further handling
+   *   @retval true response is already generated
+   */
+  static bool checkRequest(const SmartMet::Spine::HTTP::Request &theRequest,
+                    SmartMet::Spine::HTTP::Response &theResponse,
+                    bool supportsPost = false);
+
   bool itsInitActive{false};
   std::atomic_ullong requestCounter{0};
   std::atomic_ullong responseCounter{0};

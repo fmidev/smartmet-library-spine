@@ -76,6 +76,10 @@ void SmartMet::Plugin::Test::Plugin::requestHandler(
     HTTP::Response& theResponse)
 {
     (void) theReactor;
+    bool supportsPost = theRequest.getResource() == "/test";
+    if (checkRequest(theRequest, theResponse, supportsPost)) {
+        return;
+    }
     theResponse.setContent(dump_params(theRequest));
 }
 
