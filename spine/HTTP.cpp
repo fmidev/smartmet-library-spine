@@ -92,6 +92,7 @@ const std::string bad_gateway = "Bad Gateway";
 const std::string service_unavailable = "Service Unavailable";
 const std::string length_required = "Length Required";
 const std::string request_entity_too_large = "Request Entity Too Large";
+const std::string request_header_fields_too_large = "Request header fields too large";
 const std::string request_timeout = "Request Timeout";
 const std::string high_load = "High Load in Backend Server";
 const std::string shutdown = "Shutdown in progress";
@@ -138,6 +139,8 @@ std::string statusCodeToString(Status theStatus)
         return length_required;
       case Status::request_entity_too_large:
         return request_entity_too_large;
+      case Status::request_header_fields_too_large:
+        return request_header_fields_too_large;
       case Status::request_timeout:
         return request_timeout;
       case Status::not_a_status:
@@ -261,6 +264,12 @@ const std::string request_entity_too_large =
     "<body><h1>413 Request Entity Too Large</h1></body>"
     "</html>";
 
+const std::string request_header_fields_too_large =
+    "<html>"
+    "<head><title>Request Header Fields Too Large</title></head>"
+    "<body><h1>431 Request Header Fields Too Large</h1></body>"
+    "</html>";
+
 const std::string request_timeout =
     "<html>"
     "<head><title>Request Timeout</title></head>"
@@ -374,6 +383,8 @@ Status stringToStatusCode(const std::string& theCode)
     return Status::length_required;
   if (theCode == "413")
     return Status::request_entity_too_large;
+  if (theCode == "431")
+    return Status::request_header_fields_too_large;
   if (theCode == "500")
     return Status::internal_server_error;
   if (theCode == "501")
