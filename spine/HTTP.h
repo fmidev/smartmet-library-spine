@@ -96,6 +96,7 @@ enum Status
   request_timeout = 408,
   length_required = 411,
   request_entity_too_large = 413,
+  request_header_fields_too_large = 431,
   internal_server_error = 500,
   not_implemented = 501,
   bad_gateway = 502,
