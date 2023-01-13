@@ -1548,7 +1548,7 @@ void Reactor::shutdown_impl()
       std::cout << tmp1.str() << std::flush;
       auto* engine = singleton.second;
       shutdownTasks.add("Engine [" + singleton.first + "] shutdown",
-                        [&engine, singleton]()
+                        [engine, singleton]()
                         {
                           engine->shutdownEngine();
                           std::ostringstream tmp2;
