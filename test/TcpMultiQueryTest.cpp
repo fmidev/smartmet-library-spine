@@ -36,89 +36,14 @@ namespace AsyncEchoServer
 
     using boost::asio::ip::tcp;
 
-    class session
-    {
-    public:
-        session(boost::asio::io_context& io_context, int sleep_ms)
-            : socket_(io_context)
-            , timer(io_context)
-            , sleep_ms(sleep_ms)
-        {
-        }
-
-        tcp::socket& socket()
-        {
-            return socket_;
-        }
-
-        void start()
-        {
-            if (sleep_ms > 0) {
-                timer.expires_from_now(boost::posix_time::milliseconds(sleep_ms));
-                timer.async_wait(
-                    [this](boost::system::error_code e)
-                    {
-                        if (e != boost::asio::error::operation_aborted) {
-                            real_start();
-                        }
-                    });
-            } else {
-                real_start();
-            }
-        }
-
-        void real_start()
-        {
-            socket_.async_read_some(boost::asio::buffer(data_, max_length),
-                boost::bind(&session::handle_read, this,
-                    boost::asio::placeholders::error,
-                    boost::asio::placeholders::bytes_transferred));
-        }
-
-    private:
-        void handle_read(const boost::system::error_code& error,
-            size_t bytes_transferred)
-        {
-            if (!error)
-            {
-                boost::asio::async_write(socket_,
-                    boost::asio::buffer(data_, bytes_transferred),
-                    boost::bind(&session::handle_write, this,
-                        boost::asio::placeholders::error));
-            }
-            else
-            {
-                delete this;
-            }
-        }
-
-        void handle_write(const boost::system::error_code& error)
-        {
-            if (!error)
-            {
-                socket_.async_read_some(boost::asio::buffer(data_, max_length),
-                    boost::bind(&session::handle_read, this,
-                        boost::asio::placeholders::error,
-                        boost::asio::placeholders::bytes_transferred));
-            }
-            else
-            {
-                delete this;
-            }
-        }
-
-        tcp::socket socket_;
-        boost::asio::deadline_timer timer;
-        enum { max_length = 1024 };
-        char data_[max_length];
-        int sleep_ms;
-    };
-
     class server
     {
+        class session;
+
         boost::asio::io_context& io_context_;
         tcp::acceptor acceptor_;
         int sleep_ms_before_read;
+        std::set<session *> sessions;
     public:
         server(boost::asio::io_context& io_context,
             int sleep_ms_before_read)
@@ -130,12 +55,107 @@ namespace AsyncEchoServer
             start_accept();
         }
 
+        virtual ~server()
+        {
+            if (not sessions.empty()) {
+                // Clean leaked sessions to avoid analyzing address sanitizer or valgrind error messages
+                // Sessions leaks if io_context is stoped before sessions are finished.
+                for (const auto* s : sessions) {
+                    delete s;
+                }
+            }
+        }
+
         int port() const { return acceptor_.local_endpoint().port(); }
+
+    private:
+        class session
+        {
+        public:
+            session(server& owner, boost::asio::io_context& io_context, int sleep_ms)
+                : socket_(io_context)
+                , timer(io_context)
+                , sleep_ms(sleep_ms)
+                , owner(owner)
+            {
+            }
+
+            tcp::socket& socket()
+            {
+                return socket_;
+            }
+
+            void start()
+            {
+                if (sleep_ms > 0) {
+                    timer.expires_from_now(boost::posix_time::milliseconds(sleep_ms));
+                    timer.async_wait(
+                        [this](boost::system::error_code e)
+                        {
+                            if (e != boost::asio::error::operation_aborted) {
+                                real_start();
+                            }
+                        });
+                } else {
+                    real_start();
+                }
+            }
+
+            void real_start()
+            {
+                socket_.async_read_some(boost::asio::buffer(data_, max_length),
+                    boost::bind(&session::handle_read, this,
+                        boost::asio::placeholders::error,
+                        boost::asio::placeholders::bytes_transferred));
+            }
+
+        private:
+            void handle_read(const boost::system::error_code& error,
+                size_t bytes_transferred)
+            {
+                if (!error)
+                {
+                    boost::asio::async_write(socket_,
+                        boost::asio::buffer(data_, bytes_transferred),
+                        boost::bind(&session::handle_write, this,
+                            boost::asio::placeholders::error));
+                }
+                else
+                {
+                    owner.unregister(this);
+                    delete this;
+                }
+            }
+
+            void handle_write(const boost::system::error_code& error)
+            {
+                if (!error)
+                {
+                    socket_.async_read_some(boost::asio::buffer(data_, max_length),
+                        boost::bind(&session::handle_read, this,
+                            boost::asio::placeholders::error,
+                            boost::asio::placeholders::bytes_transferred));
+                }
+                else
+                {
+                    owner.unregister(this);
+                    delete this;
+                }
+            }
+
+            tcp::socket socket_;
+            boost::asio::deadline_timer timer;
+            enum { max_length = 1024 };
+            char data_[max_length];
+            int sleep_ms;
+            server& owner;
+        };
 
     private:
         void start_accept()
         {
-            session* new_session = new session(io_context_, sleep_ms_before_read);
+            session* new_session = new session(*this, io_context_, sleep_ms_before_read);
+            sessions.insert(new_session);
             acceptor_.async_accept(new_session->socket(),
                 boost::bind(&server::handle_accept, this, new_session,
                     boost::asio::placeholders::error));
@@ -150,12 +170,17 @@ namespace AsyncEchoServer
             }
             else
             {
+                unregister(new_session);
                 delete new_session;
             }
 
             start_accept();
         }
 
+        void unregister(session* session)
+        {
+            sessions.erase(session);
+        }
     };
 
 };
