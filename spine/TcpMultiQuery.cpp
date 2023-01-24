@@ -6,6 +6,7 @@
 #include <boost/date_time/posix_time/ptime.hpp>
 
 using SmartMet::Spine::TcpMultiQuery;
+namespace sys = boost::system;
 
 struct TcpMultiQuery::Query
 {
@@ -20,7 +21,8 @@ public:
     boost::asio::ip::tcp::socket socket;
     std::string result;
     std::string error_desc;
-    boost::system::error_code error;
+    boost::system::error_code error_code;
+    bool finished;
     char current_input[buffer_size];
 
     Query(
@@ -67,7 +69,6 @@ TcpMultiQuery::TcpMultiQuery(int timeout_sec)
         (boost::system::error_code error_code)
         {
             if (error_code != boost::asio::error::operation_aborted) {
-                std::cout << "Timed out\n" << std::flush;
                 io_service.stop();
             }
         });
@@ -106,6 +107,14 @@ TcpMultiQuery::execute()
 {
     if (not query_map.empty()) {
         io_service.run();
+
+        for (auto& query : query_map) {
+            if (not query.second->finished) {
+                sys::error_code err(sys::errc::timed_out, sys::generic_category());
+                query.second->error_desc = "";
+                query.second->error_code = err;
+            }
+        }
     }
 }
 
@@ -129,7 +138,7 @@ TcpMultiQuery::operator[] (const std::string& id) const
         return Response(
             iter->second->result,
             iter->second->error_desc,
-            iter->second->error);
+            iter->second->error_code);
     }
 }
 
@@ -152,6 +161,7 @@ TcpMultiQuery::Query::Query(
     , request_body(request_body)
     , resolver(client.io_service)
     , socket(client.io_service)
+    , finished(false)
 {
 }
 
@@ -213,6 +223,7 @@ TcpMultiQuery::Query::on_data_received(
     if (error == boost::asio::error::eof) {
         boost::system::error_code ignored;
         socket.close(ignored);
+        finished = true;
         client.report_request_complete();
         // Input done
     } else if (error) {
@@ -243,6 +254,6 @@ TcpMultiQuery::Query::report_error(
     boost::system::error_code error)
 {
     this->error_desc = desc;
-    this->error = error;
+    this->error_code = error;
     client.report_request_complete();
 }

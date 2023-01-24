@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 22.12.2
+Version: 23.1.16
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -133,6 +133,12 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Jan 16 2023 Andris Pavēnis <andris.pavenis@fmi.fi> 23.1.16-1.fmi
+- TcpMultiQuery: fix timeout handling
+
+* Thu Jan 12 2023 Andris Pavēnis <andris.pavenis@fmi.fi> 23.1.12-1.fmi
+- Add class TcpMultiQuery for executing several simple TCP queries in paralell
+
 * Fri Dec  2 2022 Andris Pavēnis <andris.pavenis@fmi.fi> 22.12.2-1.fmi
 - SmartMetPlugin: added method for checking permitted request types and for OPTIONS support
 

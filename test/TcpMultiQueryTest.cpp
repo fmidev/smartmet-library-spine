@@ -9,6 +9,7 @@
 #include <regression/tframe.h>
 #include <memory>
 #include <boost/asio.hpp>
+#include <boost/chrono.hpp>
 #include <boost/bind/bind.hpp>
 #include <boost/thread.hpp>
 
@@ -35,82 +36,126 @@ namespace AsyncEchoServer
 
     using boost::asio::ip::tcp;
 
-    class session
+    class server
     {
+        class session;
+
+        boost::asio::io_context& io_context_;
+        tcp::acceptor acceptor_;
+        int sleep_ms_before_read;
+        std::set<session *> sessions;
     public:
-        session(boost::asio::io_context& io_context)
-            : socket_(io_context)
+        server(boost::asio::io_context& io_context,
+            int sleep_ms_before_read)
+
+            : io_context_(io_context)
+            , acceptor_(io_context, tcp::endpoint(tcp::v4(), 0))
+            , sleep_ms_before_read(sleep_ms_before_read)
         {
+            start_accept();
         }
 
-        tcp::socket& socket()
+        virtual ~server()
         {
-            return socket_;
+            if (not sessions.empty()) {
+                // Clean leaked sessions to avoid analyzing address sanitizer or valgrind error messages
+                // Sessions leaks if io_context is stoped before sessions are finished.
+                for (const auto* s : sessions) {
+                    delete s;
+                }
+            }
         }
 
-        void start()
-        {
-            socket_.async_read_some(boost::asio::buffer(data_, max_length),
-                boost::bind(&session::handle_read, this,
-                    boost::asio::placeholders::error,
-                    boost::asio::placeholders::bytes_transferred));
-        }
+        int port() const { return acceptor_.local_endpoint().port(); }
 
     private:
-        void handle_read(const boost::system::error_code& error,
-            size_t bytes_transferred)
+        class session
         {
-            if (!error)
+        public:
+            session(server& owner, boost::asio::io_context& io_context, int sleep_ms)
+                : socket_(io_context)
+                , timer(io_context)
+                , sleep_ms(sleep_ms)
+                , owner(owner)
             {
-                boost::asio::async_write(socket_,
-                    boost::asio::buffer(data_, bytes_transferred),
-                    boost::bind(&session::handle_write, this,
-                        boost::asio::placeholders::error));
             }
-            else
-            {
-                delete this;
-            }
-        }
 
-        void handle_write(const boost::system::error_code& error)
-        {
-            if (!error)
+            tcp::socket& socket()
+            {
+                return socket_;
+            }
+
+            void start()
+            {
+                if (sleep_ms > 0) {
+                    timer.expires_from_now(boost::posix_time::milliseconds(sleep_ms));
+                    timer.async_wait(
+                        [this](boost::system::error_code e)
+                        {
+                            if (e != boost::asio::error::operation_aborted) {
+                                real_start();
+                            }
+                        });
+                } else {
+                    real_start();
+                }
+            }
+
+            void real_start()
             {
                 socket_.async_read_some(boost::asio::buffer(data_, max_length),
                     boost::bind(&session::handle_read, this,
                         boost::asio::placeholders::error,
                         boost::asio::placeholders::bytes_transferred));
             }
-            else
+
+        private:
+            void handle_read(const boost::system::error_code& error,
+                size_t bytes_transferred)
             {
-                delete this;
+                if (!error)
+                {
+                    boost::asio::async_write(socket_,
+                        boost::asio::buffer(data_, bytes_transferred),
+                        boost::bind(&session::handle_write, this,
+                            boost::asio::placeholders::error));
+                }
+                else
+                {
+                    owner.unregister(this);
+                    delete this;
+                }
             }
-        }
 
-        tcp::socket socket_;
-        enum { max_length = 1024 };
-        char data_[max_length];
-    };
+            void handle_write(const boost::system::error_code& error)
+            {
+                if (!error)
+                {
+                    socket_.async_read_some(boost::asio::buffer(data_, max_length),
+                        boost::bind(&session::handle_read, this,
+                            boost::asio::placeholders::error,
+                            boost::asio::placeholders::bytes_transferred));
+                }
+                else
+                {
+                    owner.unregister(this);
+                    delete this;
+                }
+            }
 
-    class server
-    {
-        boost::asio::io_context& io_context_;
-        tcp::acceptor acceptor_;
-    public:
-        server(boost::asio::io_context& io_context)
-            : io_context_(io_context),
-              acceptor_(io_context, tcp::endpoint(tcp::v4(), 0))
-        {
-            start_accept();
-        }
-
-        int port() const { return acceptor_.local_endpoint().port(); }
+            tcp::socket socket_;
+            boost::asio::deadline_timer timer;
+            enum { max_length = 1024 };
+            char data_[max_length];
+            int sleep_ms;
+            server& owner;
+        };
 
     private:
         void start_accept()
         {
-            session* new_session = new session(io_context_);
+            session* new_session = new session(*this, io_context_, sleep_ms_before_read);
+            sessions.insert(new_session);
             acceptor_.async_accept(new_session->socket(),
                 boost::bind(&server::handle_accept, this, new_session,
                     boost::asio::placeholders::error));
@@ -125,19 +170,25 @@ namespace AsyncEchoServer
             }
             else
             {
+                unregister(new_session);
                 delete new_session;
             }
 
             start_accept();
         }
 
+        void unregister(session* session)
+        {
+            sessions.erase(session);
+        }
     };
 
 };
 
 namespace TcpMultiQueryTest
 {
-    int server_port = 0;
+    int server_port_1 = 0;
+    int server_port_2 = 0;
 
     void empty()
     {
@@ -152,7 +203,7 @@ namespace TcpMultiQueryTest
     int single_request()
     {
         SmartMet::Spine::TcpMultiQuery test(1);
-        test.add_query("foo", "127.0.0.1", std::to_string(server_port), "foo");
+        test.add_query("foo", "127.0.0.1", std::to_string(server_port_1), "foo");
         test.execute();
         const auto ids = test.get_ids();
         if (ids.size() != 1) {
@@ -191,7 +242,7 @@ namespace TcpMultiQueryTest
         }
 
         for (const auto& item : test_data) {
-            test.add_query(item.first, "127.0.0.1", std::to_string(server_port), item.second);
+            test.add_query(item.first, "127.0.0.1", std::to_string(server_port_1), item.second);
         }
 
         test.execute();
@@ -219,6 +270,60 @@ namespace TcpMultiQueryTest
         TEST_PASSED();
     }
 
+    int slow_server_read()
+    {
+        SmartMet::Spine::TcpMultiQuery test(1);
+        test.add_query("foo", "127.0.0.1", std::to_string(server_port_2), "foo");
+        test.execute();
+        const auto ids = test.get_ids();
+        if (ids.size() != 1) {
+            TEST_FAILED("Excactly 1 ID expected");
+        }
+        if (*ids.begin() != "foo") {
+            TEST_FAILED("ID not as excpected");
+        }
+
+        const auto result = test["foo"];
+        if (result.error_code != boost::system::errc::timed_out) {
+            TEST_FAILED("Query was expected to be timed_out");
+        }
+
+        TEST_PASSED();
+    }
+
+    int two_requests_one_times_out()
+    {
+        SmartMet::Spine::TcpMultiQuery test(1);
+        test.add_query("foo", "127.0.0.1", std::to_string(server_port_1), "foo");
+        test.add_query("bar", "127.0.0.1", std::to_string(server_port_2), "bar");
+        test.execute();
+        const auto ids = test.get_ids();
+        if (ids.size() != 2) {
+            TEST_FAILED("Excactly 2 ID expected");
+        }
+
+        const auto result = test["foo"];
+        if (result.error_code) {
+            TEST_FAILED("Query was expected to succeed");
+        }
+
+        if (result.error_desc != "") {
+            TEST_FAILED("Error description expected to be empty - no error");
+        }
+
+        if (result.body != "foo") {
+            TEST_FAILED("Response body is expected to be 'foo', but got '"
+                + result.body + "'");
+        }
+
+        const auto result2 = test["bar"];
+        if (result2.error_code != boost::system::errc::timed_out) {
+            TEST_FAILED("Query was expected to be timed_out");
+        }
+
+        TEST_PASSED();
+    }
+
     // ----------------------------------------------------------------------
     /*!
      * The actual test suite
@@ -233,6 +338,8 @@ namespace TcpMultiQueryTest
             TEST(empty);
             TEST(single_request);
             TEST(several_requests);
+            TEST(slow_server_read);
+            TEST(two_requests_one_times_out);
         }
     };
 };
@@ -243,11 +350,12 @@ int main(void)
               << "TcpMultiQuery tester" << std::endl
               << "======================" << std::endl;
     a::io_context context;
-    AsyncEchoServer::server echo_server(context);
+    AsyncEchoServer::server echo_server(context, 0);
+    AsyncEchoServer::server echo_server_slow_read(context, 2000);
     std::thread server_thread([&context]() { context.run(); });
 
-    TcpMultiQueryTest::server_port = echo_server.port();
-    std::cout << "Server port: " << TcpMultiQueryTest::server_port << std::endl;
+    TcpMultiQueryTest::server_port_1 = echo_server.port();
+    TcpMultiQueryTest::server_port_2 = echo_server_slow_read.port();
 
     int ret_code = 0;
     std::exception_ptr e;

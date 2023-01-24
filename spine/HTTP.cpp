@@ -897,7 +897,11 @@ Response::Response(const HeaderMap& headerMap,
 }
 
 Response::Response()
-    : Message(), itsStatus(Status::not_a_status), isGatewayResponse(false), itsBackendPort(0)
+    : Message()
+    , itsStatus(Status::not_a_status)
+    , itsHasStreamContent(false)
+    , isGatewayResponse(false)
+    , itsBackendPort(0)
 
 {
   // Construct default
