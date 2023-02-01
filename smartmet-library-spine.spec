@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.1.16
+Version: 23.2.1
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -133,6 +133,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Feb 1 2023 Anssi Reponen <anssi.reponen@fmi.fi> - 23.2.1-1.fmi
+- Added language support for station names (BRAINSTORM-2514)
+
 * Mon Jan 16 2023 Andris Pavēnis <andris.pavenis@fmi.fi> 23.1.16-1.fmi
 - TcpMultiQuery: fix timeout handling
 

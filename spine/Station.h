@@ -25,10 +25,9 @@ class Station
   double access_policy_id = 0;
   double station_status_id = 0;
   std::string language_code;
-  std::string station_formal_name;
-  std::string station_system_name;
-  std::string station_global_name;
-  std::string station_global_code;
+  std::string station_formal_name_fi;
+  std::string station_formal_name_sv;
+  std::string station_formal_name_en;
   boost::posix_time::ptime station_start;
   boost::posix_time::ptime station_end;
   double target_category = 0;
@@ -61,6 +60,7 @@ class Station
   // This will return the requested tag.
   // Because it is request dependent, it will not be serialized
   std::string tag;
+  const std::string& station_formal_name(const std::string& language) const;
 
   template <typename Archive>
   void serialize(Archive& ar, const unsigned /* version */)
@@ -77,10 +77,9 @@ class Station
     ar& BOOST_SERIALIZATION_NVP(access_policy_id);
     ar& BOOST_SERIALIZATION_NVP(station_status_id);
     ar& BOOST_SERIALIZATION_NVP(language_code);
-    ar& BOOST_SERIALIZATION_NVP(station_formal_name);
-    ar& BOOST_SERIALIZATION_NVP(station_system_name);
-    ar& BOOST_SERIALIZATION_NVP(station_global_name);
-    ar& BOOST_SERIALIZATION_NVP(station_global_code);
+    ar& BOOST_SERIALIZATION_NVP(station_formal_name_fi);
+    ar& BOOST_SERIALIZATION_NVP(station_formal_name_sv);
+    ar& BOOST_SERIALIZATION_NVP(station_formal_name_en);
     ar& BOOST_SERIALIZATION_NVP(station_start);
     ar& BOOST_SERIALIZATION_NVP(station_end);
     ar& BOOST_SERIALIZATION_NVP(target_category);
