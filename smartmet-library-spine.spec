@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.2.1
+Version: 23.2.8
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -133,6 +133,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Feb  8 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.2.8-1.fmi
+- Added HostInfo::getHostName for resolving IPs to host names
+
 * Wed Feb 1 2023 Anssi Reponen <anssi.reponen@fmi.fi> - 23.2.1-1.fmi
 - Added language support for station names (BRAINSTORM-2514)
 
