@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.2.1
+Version: 23.2.8
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -45,10 +45,10 @@ BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 22.9.28
-BuildRequires: smartmet-library-macgyver-devel >= 22.10.20
+BuildRequires: smartmet-library-gis-devel >= 23.1.5
+BuildRequires: smartmet-library-macgyver-devel >= 22.12.16
 BuildRequires: smartmet-library-newbase-devel >= 22.11.14
-BuildRequires: smartmet-utils-devel >= 22.10.7
+BuildRequires: smartmet-utils-devel >= 23.1.19
 Requires: %{smartmet_boost}-chrono
 Requires: %{smartmet_boost}-date-time
 Requires: %{smartmet_boost}-filesystem
@@ -66,10 +66,10 @@ Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
-Requires: smartmet-library-gis >= 22.9.28
-Requires: smartmet-library-macgyver >= 22.10.20
+Requires: smartmet-library-gis >= 23.1.5
+Requires: smartmet-library-macgyver >= 22.12.16
 Requires: smartmet-library-newbase >= 22.11.14
-Requires: smartmet-timezones >= 22.10.12
+Requires: smartmet-timezones >= 23.1.26
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
 #TestRequires: gdal34-devel
@@ -77,7 +77,7 @@ Requires: smartmet-timezones >= 22.10.12
 #TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
-#TestRequires: smartmet-library-macgyver-devel >= 22.10.20
+#TestRequires: smartmet-library-macgyver-devel >= 22.12.16
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -89,8 +89,8 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 22.10.20
-Requires: smartmet-library-gis-devel >= 22.9.28
+Requires: smartmet-library-macgyver-devel >= 22.12.16
+Requires: smartmet-library-gis-devel >= 23.1.5
 Requires: smartmet-library-newbase-devel >= 22.11.14
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
@@ -133,6 +133,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Feb  8 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.2.8-1.fmi
+- Added HostInfo::getHostName for resolving IPs to host names
+
 * Wed Feb 1 2023 Anssi Reponen <anssi.reponen@fmi.fi> - 23.2.1-1.fmi
 - Added language support for station names (BRAINSTORM-2514)
 
