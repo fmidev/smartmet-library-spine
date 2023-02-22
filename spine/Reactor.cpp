@@ -35,10 +35,10 @@
 
 #include <algorithm>
 #include <condition_variable>
-#include <mutex>
 #include <dlfcn.h>
 #include <functional>
 #include <iostream>
+#include <mutex>
 #include <mysql.h>
 #include <stdexcept>
 #include <string>
@@ -99,7 +99,6 @@ namespace SmartMet
 {
 namespace Spine
 {
-
 std::atomic<Reactor*> Reactor::instance{nullptr};
 
 // ----------------------------------------------------------------------
@@ -110,14 +109,18 @@ std::atomic<Reactor*> Reactor::instance{nullptr};
 
 Reactor::~Reactor()
 {
-  try {
-      shutdown();
-      if (shutdownWatchThread.joinable()) {
-          shutdownWatchThread.join();
-      }
-  } catch (...) {
-      std::cout << Fmi::Exception::Trace(BCP, "Exception catched in SmartMet::Spine::Raector destructor");
-
+  try
+  {
+    shutdown();
+    if (shutdownWatchThread.joinable())
+    {
+      shutdownWatchThread.join();
+    }
+  }
+  catch (...)
+  {
+    std::cout << Fmi::Exception::Trace(BCP,
+                                       "Exception catched in SmartMet::Spine::Raector destructor");
   }
 
   // Debug output
@@ -130,13 +133,12 @@ Reactor::~Reactor()
  */
 // ----------------------------------------------------------------------
 
-Reactor::Reactor(Options& options)
-    : itsOptions(options)
-    , itsInitTasks(new Fmi::AsyncTaskGroup)
+Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::AsyncTaskGroup)
 {
-  if (instance.exchange(this)) {
-      std::cerr << "ERROR: Only one instance of SmartMet::Spine::Reactor is allowed";
-      abort();
+  if (instance.exchange(this))
+  {
+    std::cerr << "ERROR: Only one instance of SmartMet::Spine::Reactor is allowed";
+    abort();
   }
 
   try
@@ -176,27 +178,32 @@ Reactor::Reactor(Options& options)
         {
           if (!initFailed.exchange(true))
           {
-              auto exception = Fmi::Exception::Trace(BCP, "Operation failed");
+            auto exception = Fmi::Exception::Trace(BCP, "Operation failed");
 
-              if (!exception.stackTraceDisabled())
-                  std::cerr << exception.getStackTrace();
-              else if (!exception.loggingDisabled())
-                  std::cerr << SmartMet::Spine::log_time_str() + " Error: " + exception.what() << std::endl;
+            if (!exception.stackTraceDisabled())
+              std::cerr << exception.getStackTrace();
+            else if (!exception.loggingDisabled())
+              std::cerr << SmartMet::Spine::log_time_str() + " Error: " + exception.what()
+                        << std::endl;
 
-              requestShutdown();
+            requestShutdown();
           }
         });
 
     shutdownWatchThread = std::thread(
         [this]() -> void
         {
-            try {
-                waitForShutdownStart();
-                shutdown_impl();
-                notifyShutdownComplete();
-            } catch (...) {
-                std::cout << Fmi::Exception::Trace(BCP, "Exception in Reactor shutdown thread") << std::endl;
-            }
+          try
+          {
+            waitForShutdownStart();
+            shutdown_impl();
+            notifyShutdownComplete();
+          }
+          catch (...)
+          {
+            std::cout << Fmi::Exception::Trace(BCP, "Exception in Reactor shutdown thread")
+                      << std::endl;
+          }
         });
   }
   catch (...)
@@ -225,7 +232,7 @@ void Reactor::init()
       itsEngineCount = libs.size();
 
       for (const auto& lib_item : libs)
-          loadEngine(lib_item.first, lib_item.second, itsOptions.verbose);
+        loadEngine(lib_item.first, lib_item.second, itsOptions.verbose);
     }
 
     // Load plugins
@@ -250,7 +257,7 @@ void Reactor::init()
     catch (...)
     {
       std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: initialization failed\n"
-		<< ANSI_FG_DEFAULT;
+                << ANSI_FG_DEFAULT;
       throw Fmi::Exception(BCP, "At least one of initialization tasks failed");
     }
     // Set ContentEngine default logging. Do this after plugins are loaded so handlers are
@@ -273,8 +280,8 @@ void Reactor::init()
  */
 // ----------------------------------------------------------------------
 
-std::vector<std::pair<std::string, std::string> >
-Reactor::findLibraries(const std::string& theName) const
+std::vector<std::pair<std::string, std::string> > Reactor::findLibraries(
+    const std::string& theName) const
 {
   const auto& name = theName;
   const auto names = theName + "s";
@@ -821,6 +828,17 @@ void Reactor::resetBackendRequest(const std::string& theHost, int thePort)
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Remove request counter to a backend
+ */
+// ----------------------------------------------------------------------
+
+void Reactor::removeBackendRequests(const std::string& theHost, int thePort)
+{
+  itsActiveBackends.remove(theHost, thePort);
+}
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Get the counts for active backend requests
  */
 // ----------------------------------------------------------------------
@@ -1006,7 +1024,9 @@ void Reactor::listPlugins() const
  */
 // ----------------------------------------------------------------------
 
-bool Reactor::loadPlugin(const std::string& sectionName, const std::string& theFilename, bool /* verbose */)
+bool Reactor::loadPlugin(const std::string& sectionName,
+                         const std::string& theFilename,
+                         bool /* verbose */)
 {
   try
   {
@@ -1103,11 +1123,13 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
     // config names are all lower case
     std::string name = Fmi::ascii_tolower_copy(theClassName);
     auto it2 = itsEngineConfigs.find(name);
-    if (it2 == itsEngineConfigs.end()) {
-        throw Fmi::Exception(BCP, "[INTERNAL error] : itsEngineConfigs does not contain"
-            " entry for engine")
-            . addParameter("theClassName", theClassName)
-            . addParameter("name", name);
+    if (it2 == itsEngineConfigs.end())
+    {
+      throw Fmi::Exception(BCP,
+                           "[INTERNAL error] : itsEngineConfigs does not contain"
+                           " entry for engine")
+          .addParameter("theClassName", theClassName)
+          .addParameter("name", name);
     }
     std::string configfile = it2->second;
 
@@ -1181,7 +1203,9 @@ SmartMetEngine* Reactor::getSingleton(const std::string& theClassName, void* /* 
  */
 // ----------------------------------------------------------------------
 
-bool Reactor::loadEngine(const std::string& sectionName, const std::string& theFilename, bool /* verbose */)
+bool Reactor::loadEngine(const std::string& sectionName,
+                         const std::string& theFilename,
+                         bool /* verbose */)
 {
   try
   {
@@ -1270,41 +1294,42 @@ bool Reactor::loadEngine(const std::string& sectionName, const std::string& theF
 
 void Reactor::initializeEngine(SmartMetEngine* theEngine, const std::string& theName)
 {
-  itsInitTasks->add("Load engine [" + theName + "]",
-      [this, theEngine, theName] ()
+  itsInitTasks->add(
+      "Load engine [" + theName + "]",
+      [this, theEngine, theName]()
       {
         try
         {
-            boost::timer::cpu_timer timer;
-            theEngine->construct(theName, this);
-            timer.stop();
+          boost::timer::cpu_timer timer;
+          theEngine->construct(theName, this);
+          timer.stop();
 
-            auto now_initialized = itsInitializedEngineCount.fetch_add(1) + 1;
+          auto now_initialized = itsInitializedEngineCount.fetch_add(1) + 1;
 
-            std::string report =
-                (std::string(ANSI_FG_GREEN) + "Engine [" + theName +
-                    "] initialized in %t sec CPU, %w sec real ("
-                    + std::to_string(now_initialized) + "/" +
-                    std::to_string(itsEngineCount) + ")" + ANSI_FG_DEFAULT);
+          std::string report =
+              (std::string(ANSI_FG_GREEN) + "Engine [" + theName +
+               "] initialized in %t sec CPU, %w sec real (" + std::to_string(now_initialized) +
+               "/" + std::to_string(itsEngineCount) + ")" + ANSI_FG_DEFAULT);
 
-            std::cout << Spine::log_time_str() << " " << timer.format(2, report) << std::endl;
+          std::cout << Spine::log_time_str() << " " << timer.format(2, report) << std::endl;
 
-            if (now_initialized == itsEngineCount)
-                std::cout << log_time_str()
-                          << std::string(ANSI_FG_GREEN) + std::string(" *** All ") +
-                    std::to_string(itsEngineCount) + " engines initialized" + ANSI_FG_DEFAULT
-                          << std::endl;
+          if (now_initialized == itsEngineCount)
+            std::cout << log_time_str()
+                      << std::string(ANSI_FG_GREEN) + std::string(" *** All ") +
+                             std::to_string(itsEngineCount) + " engines initialized" +
+                             ANSI_FG_DEFAULT
+                      << std::endl;
         }
         catch (...)
         {
-            auto ex = Fmi::Exception::Trace(BCP, "Engine initialization failed!");
-            ex.addParameter("Engine", theName);
-            if (!isShuttingDown())
-            {
-                Fmi::Exception::ForceStackTrace force_stack_trace;
-                std::cerr << ex.getStackTrace() << std::flush;
-            }
-            throw ex;
+          auto ex = Fmi::Exception::Trace(BCP, "Engine initialization failed!");
+          ex.addParameter("Engine", theName);
+          if (!isShuttingDown())
+          {
+            Fmi::Exception::ForceStackTrace force_stack_trace;
+            std::cerr << ex.getStackTrace() << std::flush;
+          }
+          throw ex;
         }
       });
 }
@@ -1499,8 +1524,8 @@ bool Reactor::isInitializing() const
 
 void Reactor::shutdown()
 {
-    requestShutdown();
-    waitForShutdownComplete();
+  requestShutdown();
+  waitForShutdownComplete();
 }
 
 void Reactor::shutdown_impl()
@@ -1623,111 +1648,121 @@ Fmi::Cache::CacheStatistics Reactor::getCacheStats() const
 
 void Reactor::reportFailure(const std::string& message)
 {
-    if (requestShutdown())
-    {
-        std::cerr << ANSI_FG_RED
-                  << "* SmartMet::Spine::Reactor: failure reported and shutdown initiated: "
-                  << ANSI_FG_DEFAULT;
+  if (requestShutdown())
+  {
+    std::cerr << ANSI_FG_RED
+              << "* SmartMet::Spine::Reactor: failure reported and shutdown initiated: "
+              << ANSI_FG_DEFAULT;
 
-        const std::exception_ptr curr_exc = std::current_exception();
-        if (curr_exc) {
-            Fmi::Exception::ForceStackTrace force_stack_trace;
-            std::cerr << Fmi::Exception::Trace(BCP, "Operation failed") << std::endl;
-        }
+    const std::exception_ptr curr_exc = std::current_exception();
+    if (curr_exc)
+    {
+      Fmi::Exception::ForceStackTrace force_stack_trace;
+      std::cerr << Fmi::Exception::Trace(BCP, "Operation failed") << std::endl;
     }
+  }
 }
 
 bool Reactor::requestShutdown()
 {
-    std::unique_lock<std::mutex> lock(shutdownRequestedMutex);
-    // Ignore call if shutdown was already requested
-    bool alreadyRequested = gIsShuttingDown.exchange(true);
-    if (!alreadyRequested) {
-        shutdownRequestedCond.notify_one();
-    }
-    return not alreadyRequested;
+  std::unique_lock<std::mutex> lock(shutdownRequestedMutex);
+  // Ignore call if shutdown was already requested
+  bool alreadyRequested = gIsShuttingDown.exchange(true);
+  if (!alreadyRequested)
+  {
+    shutdownRequestedCond.notify_one();
+  }
+  return not alreadyRequested;
 }
 
 void Reactor::waitForShutdownStart()
 {
-    std::unique_lock<std::mutex> lock(shutdownRequestedMutex);
-    shutdownRequestedCond.wait(lock, []() -> bool { return gIsShuttingDown; });
+  std::unique_lock<std::mutex> lock(shutdownRequestedMutex);
+  shutdownRequestedCond.wait(lock, []() -> bool { return gIsShuttingDown; });
 }
 
 void Reactor::waitForShutdownComplete()
 {
-    const auto complete = [] () -> bool { return gShutdownComplete; };
+  const auto complete = []() -> bool { return gShutdownComplete; };
 
-    bool timeoutAlways = false;
-    std::unique_lock<std::mutex> lock(shutdownFinishedMutex);
-    for (bool done = false; not done; ) {
-        int tracerPid = Fmi::tracerPid();
-        if (not timeoutAlways and tracerPid) {
-            // Debugger attached
-            std::cout << "Debugging detected (tracerPid=" << tracerPid
-                      << "). Disabled shutdown timeout." << std::endl;
-            shutdownFinishedCond.wait(lock, complete);
-            done = true;
-        } else {
-            // Ensure that timeout countdown is only started when shutdown is in progress
-            waitForShutdownStart();
-
-            // Now one can initiate shutdown timeout countdown
-            if (shutdownFinishedCond.wait_for(lock,
-                    std::chrono::seconds(shutdownTimeoutSec),
-                    complete))
-            {
-                done = true;
-            } else {
-                // Check once more for debuggugging (one may attach debugger while shutdown is ongoing)
-                if (not timeoutAlways and Fmi::tracerPid()) {
-                    continue;
-                } else {
-                    // Shutdown last for too long time
-                    std::cout << ANSI_FG_RED << ANSI_BOLD_ON
-                              << "\nReactor shutdown timed expired"
-                              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
-                              << std::endl;
-                    std::vector<std::string> names;
-                    if (itsInitTasks) {
-                        names = itsInitTasks->active_task_names();
-                    }
-                    if (names.size()) {
-                        std::cout << ANSI_FG_RED << ANSI_BOLD_ON
-                                  << "Active Reactor initialization tasks:"
-                                  << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
-                                  << std::endl;
-                        for (const std::string& name : names) {
-                            std::cout << "         " << name << std::endl;
-                        }
-                    }
-                    names = shutdownTasks.active_task_names();
-                    if (names.size()) {
-                        std::cout << ANSI_FG_RED << ANSI_BOLD_ON
-                                  << "Active Reactor shutdown tasks:"
-                                  << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
-                                  << std::endl;
-                        for (const std::string& name : names) {
-                            std::cout << "         " << name << std::endl;
-                        }
-                    }
-                    abort();
-                }
-            }
-        }
+  bool timeoutAlways = false;
+  std::unique_lock<std::mutex> lock(shutdownFinishedMutex);
+  for (bool done = false; not done;)
+  {
+    int tracerPid = Fmi::tracerPid();
+    if (not timeoutAlways and tracerPid)
+    {
+      // Debugger attached
+      std::cout << "Debugging detected (tracerPid=" << tracerPid << "). Disabled shutdown timeout."
+                << std::endl;
+      shutdownFinishedCond.wait(lock, complete);
+      done = true;
     }
+    else
+    {
+      // Ensure that timeout countdown is only started when shutdown is in progress
+      waitForShutdownStart();
+
+      // Now one can initiate shutdown timeout countdown
+      if (shutdownFinishedCond.wait_for(lock, std::chrono::seconds(shutdownTimeoutSec), complete))
+      {
+        done = true;
+      }
+      else
+      {
+        // Check once more for debuggugging (one may attach debugger while shutdown is ongoing)
+        if (not timeoutAlways and Fmi::tracerPid())
+        {
+          continue;
+        }
+        else
+        {
+          // Shutdown last for too long time
+          std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nReactor shutdown timed expired"
+                    << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+          std::vector<std::string> names;
+          if (itsInitTasks)
+          {
+            names = itsInitTasks->active_task_names();
+          }
+          if (names.size())
+          {
+            std::cout << ANSI_FG_RED << ANSI_BOLD_ON
+                      << "Active Reactor initialization tasks:" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
+                      << std::endl;
+            for (const std::string& name : names)
+            {
+              std::cout << "         " << name << std::endl;
+            }
+          }
+          names = shutdownTasks.active_task_names();
+          if (names.size())
+          {
+            std::cout << ANSI_FG_RED << ANSI_BOLD_ON
+                      << "Active Reactor shutdown tasks:" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
+                      << std::endl;
+            for (const std::string& name : names)
+            {
+              std::cout << "         " << name << std::endl;
+            }
+          }
+          abort();
+        }
+      }
+    }
+  }
 }
 
 bool Reactor::isShutdownFinished()
 {
-    return gShutdownComplete;
+  return gShutdownComplete;
 }
 
 void Reactor::notifyShutdownComplete()
 {
-    std::unique_lock<std::mutex> lock(shutdownFinishedMutex);
-    gShutdownComplete = true;
-    shutdownFinishedCond.notify_all();
+  std::unique_lock<std::mutex> lock(shutdownFinishedMutex);
+  gShutdownComplete = true;
+  shutdownFinishedCond.notify_all();
 }
 
 }  // namespace Spine

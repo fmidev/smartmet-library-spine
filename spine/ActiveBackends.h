@@ -23,6 +23,7 @@ class ActiveBackends : private boost::noncopyable
   void start(const std::string& theHost, int thePort);
   void stop(const std::string& theHost, int thePort);
   void reset(const std::string& theHost, int thePort);
+  void remove(const std::string& theHost, int thePort);
 
   Status status() const;
 

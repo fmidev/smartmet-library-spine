@@ -94,6 +94,7 @@ class Reactor final
   void startBackendRequest(const std::string& theHost, int thePort);
   void stopBackendRequest(const std::string& theHost, int thePort);
   void resetBackendRequest(const std::string& theHost, int thePort);
+  void removeBackendRequests(const std::string& theHost, int thePort);
   ActiveBackends::Status getBackendRequestStatus() const;
 
   // Only construct with options
