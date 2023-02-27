@@ -49,6 +49,7 @@ BuildRequires: smartmet-library-gis-devel >= 23.1.5
 BuildRequires: smartmet-library-macgyver-devel >= 23.2.27
 BuildRequires: smartmet-library-newbase-devel >= 23.2.9
 BuildRequires: smartmet-utils-devel >= 23.1.19
+BuildRequires: libpqxx-devel >= 1:7.7.0, libpqxx-devel < 1:7.8.0
 Requires: %{smartmet_boost}-chrono
 Requires: %{smartmet_boost}-date-time
 Requires: %{smartmet_boost}-filesystem
@@ -78,7 +79,6 @@ Requires: smartmet-timezones >= 23.1.26
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: smartmet-library-macgyver-devel >= 23.2.8
-#TestRequires: libpqxx-devel >= 1:7.7.0, libpqxx-devel < 1:7.8.0
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
