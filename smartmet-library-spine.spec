@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.2.22
+Version: 23.2.27
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -135,6 +135,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Feb 27 2023 Andris Pavēnis <andris.pavenis@fmi.fi> 23.2.27-1.fmi
+- Reactor: prevent new PostgreSQL connections (and reconnecting) when shutting down
+
 * Wed Feb 22 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.2.22-1.fmi
 - Fix load balancing: fixed frontend to drop the active backend counter if the backend has stopped responding
 
