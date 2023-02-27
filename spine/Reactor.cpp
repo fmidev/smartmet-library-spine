@@ -31,6 +31,7 @@
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/DebugTools.h>
 #include <macgyver/Exception.h>
+#include <macgyver/PostgreSQLConnection.h>
 #include <macgyver/StringConversion.h>
 
 #include <algorithm>
@@ -1670,6 +1671,7 @@ bool Reactor::requestShutdown()
   bool alreadyRequested = gIsShuttingDown.exchange(true);
   if (!alreadyRequested)
   {
+    Fmi::Database::PostgreSQLConnection::shutdownAll();
     shutdownRequestedCond.notify_one();
   }
   return not alreadyRequested;
