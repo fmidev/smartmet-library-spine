@@ -78,7 +78,8 @@ Requires: smartmet-timezones >= 23.1.26
 #TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
-#TestRequires: smartmet-library-macgyver-devel >= 23.2.8
+#TestRequires: smartmet-library-macgyver-devel >= 23.2.27
+#TestRequires: libpqxx-devel >= 1:7.7.0, libpqxx-devel < 1:7.8.0
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
