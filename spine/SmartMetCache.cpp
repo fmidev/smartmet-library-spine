@@ -31,23 +31,31 @@ SmartMetCache::SmartMetCache(std::size_t memoryCacheSize,
 
 SmartMetCache::~SmartMetCache()
 {
-  boost::unique_lock<boost::mutex> theLock(itsMutex);
-  itsShutdownRequested = true;
-
-  if (itsFileCache)  // constructed only once, safe to test in threads
+  try
   {
-    // boost::thread::interrupt for current thread when here would cause std::terminate.
-    // Therefore avoid interruptions
-    //
-    // FIXME: could be possibly optimized by running SmartMetCache::operateFileCache under
-    //        Fmi::AsyncTask and check for interrutions using
-    //        boost::this_thread::interruption_requested()
-    boost::this_thread::disable_interruption do_not_disturb;
-    itsCondition.notify_one();
-    theLock.unlock();
-    boost::this_thread::sleep(boost::posix_time::milliseconds(200));
-    itsFileThread->interrupt();
-    itsFileThread->join();
+    boost::unique_lock<boost::mutex> theLock(itsMutex);
+    itsShutdownRequested = true;
+
+    if (itsFileCache)  // constructed only once, safe to test in threads
+    {
+      // boost::thread::interrupt for current thread when here would cause std::terminate.
+      // Therefore avoid interruptions
+      //
+      // FIXME: could be possibly optimized by running SmartMetCache::operateFileCache under
+      //        Fmi::AsyncTask and check for interrutions using
+      //        boost::this_thread::interruption_requested()
+      boost::this_thread::disable_interruption do_not_disturb;
+      itsCondition.notify_one();
+      theLock.unlock();
+      boost::this_thread::sleep(boost::posix_time::milliseconds(200));
+      itsFileThread->interrupt();
+      itsFileThread->join();
+    }
+  }
+  catch (...)
+  {
+    std::cout << Fmi::Exception::Trace(BCP, "Operation failed!") << std::endl;
+    // FIXME: should we abort here?
   }
 }
 
