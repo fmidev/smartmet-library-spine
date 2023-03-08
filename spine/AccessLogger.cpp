@@ -10,16 +10,20 @@ std::string makeAccessLogFileName(const std::string& resource, const std::string
 {
   try
   {
+    // Remove leading and trailing "/" characters
+    auto id = resource;
+    while (!id.empty() && id.front() == '/')
+      id = id.substr(1);
+    while (!id.empty() && id.back() == '/')
+      id = id.substr(0, id.size() - 1);
+
     // Build access log full path
-
-    // Resource must be at least 1 character long
-    std::string resourceId = resource.substr(1);
-
     boost::filesystem::path filepath(accessLogDir);
-    if (resourceId.size() > 0)
+
+    if (!id.empty())
     {
-      boost::algorithm::replace_all(resourceId, "/", "-");  // this in case there are subhandlers
-      filepath /= resourceId + "-access-log";
+      boost::algorithm::replace_all(id, "/", "-");  // this in case there are subhandlers
+      filepath /= id + "-access-log";
     }
     else
       filepath /= "default-handler-access-log";

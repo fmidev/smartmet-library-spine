@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.2.22
+Version: 23.3.7
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -46,9 +46,26 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 23.1.5
-BuildRequires: smartmet-library-macgyver-devel >= 23.2.8
+BuildRequires: smartmet-library-macgyver-devel >= 23.3.3
 BuildRequires: smartmet-library-newbase-devel >= 23.2.9
 BuildRequires: smartmet-utils-devel >= 23.1.19
+
+%if 0%{?rhel} && 0%{rhel} == 7
+Requires: libpqxx < 1:7.0
+BuildRequires: libpqxx-devel < 1:7.0
+#TestRequires: libpqxx-devel < 1:7.0
+%else
+%if 0%{?rhel} && 0%{rhel} >= 8
+Requires: libpqxx >= 1:7.7.0, libpqxx < 1:7.8.0
+BuildRequires: libpqxx-devel >= 1:7.7.0, libpqxx-devel < 1:7.8.0
+#TestRequires: libpqxx-devel >= 1:7.7.0, libpqxx-devel < 1:7.8.0
+%else
+Requires: libpqxx
+BuildRequires: libpqxx-devel
+#TestRequires: libpqxx-devel
+%endif
+%endif
+
 Requires: %{smartmet_boost}-chrono
 Requires: %{smartmet_boost}-date-time
 Requires: %{smartmet_boost}-filesystem
@@ -67,7 +84,7 @@ Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
 Requires: smartmet-library-gis >= 23.1.5
-Requires: smartmet-library-macgyver >= 23.2.8
+Requires: smartmet-library-macgyver >= 23.3.3
 Requires: smartmet-library-newbase >= 23.2.9
 Requires: smartmet-timezones >= 23.1.26
 #TestRequires: bzip2-devel
@@ -77,7 +94,7 @@ Requires: smartmet-timezones >= 23.1.26
 #TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
-#TestRequires: smartmet-library-macgyver-devel >= 23.2.8
+#TestRequires: smartmet-library-macgyver-devel >= 23.3.3
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -89,7 +106,7 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 23.2.8
+Requires: smartmet-library-macgyver-devel >= 23.3.3
 Requires: smartmet-library-gis-devel >= 23.1.5
 Requires: smartmet-library-newbase-devel >= 23.2.9
 Requires: libconfig17-devel
@@ -133,6 +150,15 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Mar  7 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.3.7-1.fmi
+- Improved access log filenames
+
+* Mon Feb 27 2023 Andris Pavēnis <andris.pavenis@fmi.fi> 23.2.27-2.fmi
+- Reactor: prevent new PostgreSQL connections (and reconnecting) when shutting down (iteration 2)
+
+* Mon Feb 27 2023 Andris Pavēnis <andris.pavenis@fmi.fi> 23.2.27-1.fmi
+- Reactor: prevent new PostgreSQL connections (and reconnecting) when shutting down
+
 * Wed Feb 22 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.2.22-1.fmi
 - Fix load balancing: fixed frontend to drop the active backend counter if the backend has stopped responding
 

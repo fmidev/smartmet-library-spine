@@ -1,5 +1,6 @@
 #include "PluginTest.h"
 #include <macgyver/DebugTools.h>
+#include <macgyver/PostgreSQLConnection.h>
 #include <boost/program_options.hpp>
 #include <iostream>
 #include <sstream>
@@ -55,6 +56,8 @@ int main(int argc, char* argv[])
   Fmi::Exception::ForceStackTrace force_stack_trace;
 
   std::setlocale(LC_ALL, "en_US.UTF-8");  // for iconv to work
+
+  Fmi::Database::PostgreSQLConnection::disableReconnect();
 
   (void)printRequest;
 

@@ -1,5 +1,5 @@
 
-REQUIRES = configpp
+REQUIRES = configpp libpqxx
 
 include $(shell smartbuildcfg --prefix)/share/smartmet/devel/makefile.inc
 
@@ -19,7 +19,7 @@ LIBS +=	-L$(libdir) \
 	-lboost_system \
 	-lboost_locale \
 	-lctpp2 \
-	$(CONFIGPP_LIBS) \
+	$(REQUIRED_LIBS) \
 	-ldl \
 	-lrt \
 	-lpthread
