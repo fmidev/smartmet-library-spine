@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.3.7
+Version: 23.3.8
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -150,6 +150,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Mar 8 2023  Anssi Reponen <anssi.reponen@fmi.fi> - 23.3.8-1.fmi
+- Added kFmiCloudCeilingHFT into data derived parameters (BRAINSTORM-2556)
+
 * Tue Mar  7 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.3.7-1.fmi
 - Improved access log filenames
 
