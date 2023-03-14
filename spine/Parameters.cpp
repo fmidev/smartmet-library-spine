@@ -155,6 +155,7 @@ bool IsDataDerived(FmiParameterName param)
     case kFmiCloudiness8th:
     case kFmiDataSource:
     case kFmiFeelsLike:
+    case kFmiCloudCeilingHFT:
     case kFmiLatLon:
     case kFmiLatitude:
     case kFmiLonLat:
