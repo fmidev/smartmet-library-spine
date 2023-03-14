@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 23.3.14
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -150,6 +150,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Mar 14 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.3.14-2.fmi
+- Improved logging during a shutdown
+
 * Tue Mar 14 2023 Anssi Reponen <mika.heiskanen@fmi.fi> - 23.3.14-1.fmi
 - Added kFmiCloudCeilingHFT into data derived parameters (BRAINSTORM-2556)
 

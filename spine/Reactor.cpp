@@ -1598,8 +1598,8 @@ void Reactor::shutdown_impl()
 
     for (auto& singleton : itsSingletons)
     {
-      std::cout << ANSI_FG_RED << "* Deleting engine [" << singleton.first << "]\n"
-                << ANSI_FG_DEFAULT;
+      std::cout << ANSI_FG_RED << "* Deleting engine [" << singleton.first << "]" << ANSI_FG_DEFAULT
+                << std::endl;
       auto* engine = singleton.second;
       boost::this_thread::disable_interruption do_not_disturb;
       delete engine;
