@@ -21,12 +21,14 @@
 
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/bind/bind.hpp>
+#include <boost/core/demangle.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/locale.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/process/child.hpp>
+#include <boost/regex.hpp>
 #include <boost/timer/timer.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/DebugTools.h>
@@ -1233,9 +1235,23 @@ bool Reactor::loadEngine(const std::string& sectionName,
     if (itsHandle == nullptr)
     {
       // Error occurred while opening the dynamic library
-      throw Fmi::Exception(BCP,
+      const char* err_msg_c = dlerror();
+      const std::string err_msg = err_msg_c ? err_msg_c : "";
+      static const boost::regex r_sym("undefined\\ symbol:\\ (_Z[^\\s]*)");
+      Fmi::Exception error(BCP,
                            "Unable to load dynamic engine class library: " +
-                               std::string(dlerror()));  // NOLINT not thread safe
+                               err_msg);  // NOLINT not thread safe
+      boost::match_results<std::string::const_iterator> what;
+      if (boost::regex_search(err_msg, what, r_sym, boost::match_default))
+      {
+        const std::string mangled_sym_name(what[1].first, what[1].second);
+        const std::string demangled_sym_name = boost::core::demangle(mangled_sym_name.c_str());
+        if (demangled_sym_name != mangled_sym_name)
+        {
+          error.addParameter("Demagled symbol name", demangled_sym_name);
+        }
+      }
+      throw error;
     }
 
     // Load the symbols (pointers to functions in dynamic library)
