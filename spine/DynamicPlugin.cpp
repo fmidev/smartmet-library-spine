@@ -8,6 +8,8 @@
 #include "Convenience.h"
 #include "Reactor.h"
 #include <boost/bind/bind.hpp>
+#include <boost/core/demangle.hpp>
+#include <boost/regex.hpp>
 #include <boost/timer/timer.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/Exception.h>
@@ -147,9 +149,23 @@ void DynamicPlugin::pluginOpen()
     if (itsHandle == nullptr)
     {
       // Error occurred while opening the dynamic library
-      throw Fmi::Exception(BCP,
+      const char* err_msg_c = dlerror();
+      const std::string err_msg = err_msg_c ? err_msg_c : "";
+      static const boost::regex r_sym("undefined\\ symbol:\\ (_Z[^\\s]*)");
+      Fmi::Exception error(BCP,
                            "Unable to load dynamic library plugin: " +
-                               std::string(dlerror()));  // NOLINT dlerror is not thread safe
+                           err_msg);  // NOLINT dlerror is not thread safe
+      boost::match_results<std::string::const_iterator> what;
+      if (boost::regex_search(err_msg, what, r_sym, boost::match_default))
+      {
+        const std::string mangled_sym_name(what[1].first, what[1].second);
+        const std::string demangled_sym_name = boost::core::demangle(mangled_sym_name.c_str());
+        if (demangled_sym_name != mangled_sym_name)
+        {
+          error.addParameter("Demagled symbol name", demangled_sym_name);
+        }
+      }
+      throw error;
     }
 
     // Load the symbols (pointers to functions in dynamic library)
