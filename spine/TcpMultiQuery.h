@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <set>
 #include <boost/asio.hpp>
 
