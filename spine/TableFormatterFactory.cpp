@@ -6,6 +6,7 @@
 
 #include "TableFormatterFactory.h"
 #include "AsciiFormatter.h"
+#include "CsvFormatter.h"
 #include "DebugFormatter.h"
 #include "HtmlFormatter.h"
 #include "JsonFormatter.h"
@@ -34,6 +35,8 @@ TableFormatter* create(const std::string& theName)
   {
     if (theName == "ascii")
       return new AsciiFormatter();
+    if (theName == "csv")
+      return new CsvFormatter();
     if (theName == "xml")
       return new XmlFormatter();
     if (theName == "wxml")
