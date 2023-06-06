@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.4.27
+Version: 23.6.6
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -45,10 +45,10 @@ BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 23.1.5
-BuildRequires: smartmet-library-macgyver-devel >= 23.3.3
+BuildRequires: smartmet-library-gis-devel >= 23.3.14
+BuildRequires: smartmet-library-macgyver-devel >= 23.6.6
 BuildRequires: smartmet-library-newbase-devel >= 23.2.9
-BuildRequires: smartmet-utils-devel >= 23.1.19
+BuildRequires: smartmet-utils-devel >= 23.4.28
 
 %if 0%{?rhel} && 0%{rhel} == 7
 Requires: libpqxx < 1:7.0
@@ -83,10 +83,10 @@ Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
-Requires: smartmet-library-gis >= 23.1.5
-Requires: smartmet-library-macgyver >= 23.3.3
+Requires: smartmet-library-gis >= 23.3.14
+Requires: smartmet-library-macgyver >= 23.6.6
 Requires: smartmet-library-newbase >= 23.2.9
-Requires: smartmet-timezones >= 23.1.26
+Requires: smartmet-timezones >= 23.4.18
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
 #TestRequires: gdal34-devel
@@ -94,7 +94,7 @@ Requires: smartmet-timezones >= 23.1.26
 #TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
-#TestRequires: smartmet-library-macgyver-devel >= 23.3.3
+#TestRequires: smartmet-library-macgyver-devel >= 23.6.6
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -106,8 +106,8 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 23.3.3
-Requires: smartmet-library-gis-devel >= 23.1.5
+Requires: smartmet-library-macgyver-devel >= 23.6.6
+Requires: smartmet-library-gis-devel >= 23.3.14
 Requires: smartmet-library-newbase-devel >= 23.2.9
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
@@ -150,6 +150,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Jun  6 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.6.6-1.fmi
+- Added CsvFormatter with missingtext option
+
 * Thu Apr 27 2023 Andris Pavēnis <andris.pavenis@fmi.fi> 23.4.27-1.fmi
 - Repackage due to macgyver ABI changes (AsyncTask, AsyncTaskGroup)
 
