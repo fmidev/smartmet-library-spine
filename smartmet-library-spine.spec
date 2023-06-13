@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.6.6
+Version: 23.6.13
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -150,6 +150,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Jun 13 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.6.13-1.fmi
+- Added ConfigTools::expandvariables to assign internal and getenv variables and changed ConfigBase to use it
+
 * Tue Jun  6 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.6.6-1.fmi
 - Added CsvFormatter with missingtext option
 
