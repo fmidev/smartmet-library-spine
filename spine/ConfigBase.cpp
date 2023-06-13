@@ -1,4 +1,5 @@
 #include "ConfigBase.h"
+#include "ConfigTools.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/lambda/lambda.hpp>
@@ -33,6 +34,7 @@ ConfigBase::ConfigBase(const std::string& file_name, const std::string& config_n
       itsConfig->setIncludeDir(p.c_str());
 
       itsConfig->readFile(file_name.c_str());
+      expandVariables(*itsConfig);
     }
     catch (const libconfig::ConfigException&)
     {

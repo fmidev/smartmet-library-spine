@@ -289,6 +289,7 @@ void Options::parseConfig()
       itsConfig.setIncludeDir(p.c_str());
 
       itsConfig.readFile(configfile.c_str());
+      expandVariables(itsConfig);
 
       // Read options
 
