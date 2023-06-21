@@ -42,6 +42,12 @@ void expand(Json::Value& theJson,
             const std::string& thePrefix = "",
             bool theCaseIsInsensitive = true);
 
+// expand with already parsed JSON
+void expand(Json::Value& theJson,
+            const std::map<std::string, Json::Value>& theParams,
+            const std::string& thePrefix = "",
+            bool theCaseIsInsensitive = true);
+
 // ----------------------------------------------------------------------
 
 // extract a set of strings
