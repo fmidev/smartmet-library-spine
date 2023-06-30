@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE(expansion)
 
   BOOST_TEST_MESSAGE("+ [ConfigTools] Testing variable expansion");
 
-  auto cfg = create_config();
+  auto cfg = SHOW_EXCEPTIONS(create_config());
 
   std::string value;
 
