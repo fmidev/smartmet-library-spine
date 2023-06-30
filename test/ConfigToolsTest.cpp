@@ -1,6 +1,6 @@
 #include "ConfigTools.h"
 #include <boost/test/included/unit_test.hpp>
-// #include <cstdlib>
+#include <cstdlib>
 // #include <cstring>
 #include <macgyver/DebugTools.h>
 
@@ -14,6 +14,14 @@ test_suite* init_unit_test_suite(int argc, char* argv[])
   BOOST_TEST_MESSAGE("");
   BOOST_TEST_MESSAGE(name);
   BOOST_TEST_MESSAGE(std::string(std::strlen(name), '='));
+
+  // Environment variable USER is not defined in Circle-CI environment.
+  // Define it here in this case to avoid test failure
+  if (!getenv("USER")) {
+      const char* tmp = "USER=unknown";
+      putenv(tmp);
+  }
+
   return NULL;
 }
 
@@ -57,7 +65,6 @@ BOOST_AUTO_TEST_CASE(expansion)
   BOOST_REQUIRE_NO_THROW(value = SHOW_EXCEPTIONS(cfg->lookup("BASEDIR").c_str()));
   BOOST_CHECK_EQUAL("/etc/base", value);
 
-  //Does not work in CircleCI:
   BOOST_REQUIRE_NO_THROW(value = SHOW_EXCEPTIONS(cfg->lookup("USER").c_str()));
   BOOST_CHECK_NE("", value);
 }
