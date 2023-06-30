@@ -2,12 +2,13 @@
 #include <boost/test/included/unit_test.hpp>
 // #include <cstdlib>
 // #include <cstring>
+#include <macgyver/DebugTools.h>
 
 using namespace boost::unit_test;
 
 test_suite* init_unit_test_suite(int argc, char* argv[])
 {
-  const char* name = "ConfigBase tester";
+  const char* name = "ConfigTools tester";
   unit_test_log.set_threshold_level(log_messages);
   framework::master_test_suite().p_name.value = name;
   BOOST_TEST_MESSAGE("");
@@ -50,13 +51,13 @@ BOOST_AUTO_TEST_CASE(expansion)
 
   std::string value;
 
-  BOOST_REQUIRE_NO_THROW(value = cfg->lookup("ROOT").c_str());
+  BOOST_REQUIRE_NO_THROW(value = SHOW_EXCEPTIONS(cfg->lookup("ROOT").c_str()));
   BOOST_CHECK_EQUAL("/etc", value);
 
-  BOOST_REQUIRE_NO_THROW(value = cfg->lookup("BASEDIR").c_str());
+  BOOST_REQUIRE_NO_THROW(value = SHOW_EXCEPTIONS(cfg->lookup("BASEDIR").c_str()));
   BOOST_CHECK_EQUAL("/etc/base", value);
 
-  // Does not work in CircleCI:
-  // BOOST_REQUIRE_NO_THROW(value = cfg->lookup("USER").c_str());
-  // BOOST_CHECK_NE("", value);
+  //Does not work in CircleCI:
+  BOOST_REQUIRE_NO_THROW(value = SHOW_EXCEPTIONS(cfg->lookup("USER").c_str()));
+  BOOST_CHECK_NE("", value);
 }
