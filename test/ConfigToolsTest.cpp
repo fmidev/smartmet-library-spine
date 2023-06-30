@@ -19,7 +19,7 @@ test_suite* init_unit_test_suite(int argc, char* argv[])
   // Define it here in this case to avoid test failure
   if (!getenv("USER")) {
       const char* tmp = "USER=unknown";
-      putenv(tmp);
+      putenv(const_cast<char*>(tmp));
   }
 
   return NULL;
