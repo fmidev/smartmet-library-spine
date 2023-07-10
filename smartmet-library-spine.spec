@@ -45,10 +45,10 @@ BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 23.3.14
+BuildRequires: smartmet-library-gis-devel >= 23.7.10
 BuildRequires: smartmet-library-macgyver-devel >= 23.6.6
-BuildRequires: smartmet-library-newbase-devel >= 23.2.9
-BuildRequires: smartmet-utils-devel >= 23.4.28
+BuildRequires: smartmet-library-newbase-devel >= 23.7.10
+BuildRequires: smartmet-utils-devel >= 23.7.7
 
 %if 0%{?rhel} && 0%{rhel} == 7
 Requires: libpqxx < 1:7.0
@@ -83,9 +83,9 @@ Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
-Requires: smartmet-library-gis >= 23.3.14
+Requires: smartmet-library-gis >= 23.7.10
 Requires: smartmet-library-macgyver >= 23.6.6
-Requires: smartmet-library-newbase >= 23.2.9
+Requires: smartmet-library-newbase >= 23.7.10
 Requires: smartmet-timezones >= 23.4.18
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
