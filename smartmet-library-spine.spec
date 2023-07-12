@@ -107,8 +107,8 @@ Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
 Requires: smartmet-library-macgyver-devel >= 23.6.6
-Requires: smartmet-library-gis-devel >= 23.3.14
-Requires: smartmet-library-newbase-devel >= 23.2.9
+Requires: smartmet-library-gis-devel >= 23.7.10
+Requires: smartmet-library-newbase-devel >= 23.7.10
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
