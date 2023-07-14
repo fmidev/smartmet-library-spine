@@ -26,7 +26,7 @@ LIBS +=	-L$(libdir) \
 
 # What to install
 
-PROGS = smartmet-plugin-test
+PROGS = smartmet-plugin-test cfgvalidate
 
 # Compilation directories
 
@@ -46,6 +46,9 @@ profile: all
 
 smartmet-plugin-test: obj/SmartmetPluginTest.o ../libsmartmet-spine.so
 	$(CXX) $(CFLAGS) -o $@ obj/SmartmetPluginTest.o -L .. -lsmartmet-spine $(LIBS)
+
+cfgvalidate: obj/cfgvalidate.o ../libsmartmet-spine.so
+	$(CXX) $(CFLAGS) -o $@ obj/cfgvalidate.o -L .. -lsmartmet-spine $(LIBS)
 
 clean:
 	rm -f obj/*.o obj/*.d $(PROGS)

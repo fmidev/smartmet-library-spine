@@ -145,6 +145,7 @@ make %{_smp_mflags}
 %files -n %{SPECNAME}-devel
 %defattr(0644,root,root,0755)
 %{_includedir}/smartmet/%{DIRNAME}
+%{_bindir}/cfgvalidate
 
 %files -n %{SPECNAME}-plugin-test
 %{_bindir}/smartmet-plugin-test
