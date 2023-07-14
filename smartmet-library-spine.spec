@@ -153,7 +153,7 @@ make %{_smp_mflags}
 %changelog
 * Fri Jul 14 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.7.14-1.fmi
 - Moved coredump_filter handling to the main program
-- Added cfgvalidate
+- Import cfgvalidate from smartmet-fmitools
 
 * Wed Jul 12 2023 Andris Pavēnis <andris.pavenis@fmi.fi> 23.7.12-1.fmi
 - Use postgresql 15, gdal 3.5, geos 3.11 and proj-9.0
