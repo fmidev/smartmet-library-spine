@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
 #include <libconfig.h++>
 #include <string>
@@ -57,7 +58,7 @@ struct Options
   bool logrequests = false;
   bool compress = false;
   unsigned int compresslimit = 1000;
-  unsigned int coredump_filter = 0x33;  // Linux default is 0x33
+  boost::optional<unsigned int> coredump_filter;  // Linux default is 0x33
   bool defaultlogging = true;
   bool lazylinking = true;
   bool stacktrace = false;

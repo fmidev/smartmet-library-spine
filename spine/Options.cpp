@@ -181,7 +181,7 @@ bool Options::parseOptions(int argc, char* argv[])
         "verbose,v", po::bool_switch(&verbose)->default_value(verbose), msgverbose)(
         "quiet", po::bool_switch(&quiet)->default_value(quiet), msgquiet)(
         "stacktrace", po::bool_switch(&quiet)->default_value(stacktrace), msgstacktrace)(
-        "coredump_filter",po::value(&coredump_filter)->default_value(coredump_filter), msgcoredump)(
+        "coredump_filter",po::value(&coredump_filter), msgcoredump)(
         "logrequests", po::bool_switch(&logrequests)->default_value(logrequests), msglogrequest)(
         "configfile,c", po::value(&configfile)->default_value(configfile), msgconf)(
         "libdir,L", po::value(&directory)->default_value(directory), msglib)(
@@ -249,10 +249,6 @@ bool Options::parseOptions(int argc, char* argv[])
           .addParameter("Limit", Fmi::to_string(throttle.limit))
           .addParameter("Increase rate", Fmi::to_string(throttle.increase_rate));
 
-    std::ofstream out("/proc/self/coredump_filter");
-    out << coredump_filter;
-    out.close();
-
     return true;
   }
   catch (...)
@@ -289,6 +285,7 @@ void Options::parseConfig()
       itsConfig.setIncludeDir(p.c_str());
 
       itsConfig.readFile(configfile.c_str());
+      expandVariables(itsConfig);
 
       // Read options
 
@@ -351,7 +348,10 @@ void Options::parseConfig()
 
       lookupHostSetting(itsConfig, new_handler, "new_handler");
 
-      lookupHostSetting(itsConfig, coredump_filter, "coredump_filter");
+      int value = -1;
+      lookupHostSetting(itsConfig, value, "coredump_filter");
+      if (value >= 0)
+        coredump_filter = value;
     }
     catch (libconfig::ParseException& e)
     {
@@ -411,8 +411,13 @@ void Options::report() const
               << "Stack trace on crash\t\t= " << (stacktrace ? "ON" : "OFF")
               << "\n"
                  "Out of memory handler\t\t= "
-              << new_handler << "\n"
-              << ANSI_ITALIC_OFF << std::endl;
+              << new_handler << "\n";
+    if (coredump_filter)
+      std::cout << "Coredump filter\t\t\t= " << *coredump_filter << "\n";
+    else
+      std::cout << "Coredump filter\t\t\t= -\n";
+
+    std::cout << ANSI_ITALIC_OFF << std::endl;
   }
   catch (...)
   {

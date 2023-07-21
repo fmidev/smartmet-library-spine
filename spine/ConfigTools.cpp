@@ -1,5 +1,7 @@
 #include "ConfigTools.h"
 #include <boost/filesystem.hpp>
+#include <macgyver/Exception.h>
+#include <cstdlib>
 
 namespace SmartMet
 {
@@ -114,6 +116,87 @@ bool lookupConfigSetting(const libconfig::Config& theConfig,
       .addParameter("configpath", configpath)
       .addParameter("hostname", boost::asio::ip::host_name())
       .addDetail("Tested filenames: " + failed_filenames);
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Expand internal and environment variables in string settings
+ */
+// ----------------------------------------------------------------------
+
+void expandVariables(libconfig::Config& theConfig, libconfig::Setting& theSetting)
+{
+  switch (theSetting.getType())
+  {
+    case libconfig::Setting::TypeString:
+    {
+      // Copypast from grid-files ConfigurationFile::parseValue
+      std::string val = theSetting;
+
+      std::size_t p1 = 0;
+      while (p1 != std::string::npos)
+      {
+        p1 = val.find("$(");
+        if (p1 != std::string::npos)
+        {
+          std::size_t p2 = val.find(")", p1 + 1);
+          if (p2 != std::string::npos)
+          {
+            std::string var = val.substr(p1 + 2, p2 - p1 - 2);
+            std::string varValue;
+
+            // Searching a value for the variable but do not allow USER=$(USER)
+            if (var != theSetting.getName() && theConfig.exists(var))
+            {
+              const auto& setting = theConfig.lookup(var);
+              if (setting.getType() != libconfig::Setting::TypeString)
+                throw Fmi::Exception(BCP, "Value for setting " + varValue + " must be a string");
+              varValue = setting.c_str();
+            }
+            else
+            {
+              // Variable not defined in the configuration file. Maybe it is an environment variable
+              char* env = secure_getenv(var.c_str());
+              if (env == nullptr)
+              {
+                throw Fmi::Exception(BCP, "Unknown variable name!")
+                    .addParameter("VariableName", var);
+              }
+
+              varValue = env;
+            }
+
+            std::string newVal = val.substr(0, p1) + varValue + val.substr(p2 + 1);
+            val = newVal;
+          }
+          else
+          {
+            throw Fmi::Exception(BCP,
+                                 "Expecting the character ')' at the end of the variable name!")
+                .addParameter("Value", val);
+          }
+        }
+      }
+      theSetting = val;  // Replace original value with expanded value
+
+      break;
+    }
+    case libconfig::Setting::TypeGroup:
+    case libconfig::Setting::TypeArray:
+    case libconfig::Setting::TypeList:
+    {
+      for (auto i = 0; i < theSetting.getLength(); i++)
+        expandVariables(theConfig, theSetting[i]);
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+void expandVariables(libconfig::Config& theConfig)
+{
+  expandVariables(theConfig, theConfig.getRoot());
 }
 
 }  // namespace Spine

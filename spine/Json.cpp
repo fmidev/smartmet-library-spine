@@ -3,14 +3,16 @@
 #include "JsonCache.h"
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <boost/filesystem/operations.hpp>
 #include <boost/regex.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
-#include <boost/filesystem/operations.hpp>
 
 namespace SmartMet
 {
 namespace Spine
+{
+namespace
 {
 // jsoncpp number parser sucks, it accepts things like YYYY-MM-DD and A,B,C,D
 // See diagram in http://www.regexplained.co.uk/
@@ -109,6 +111,35 @@ QidMap collect_qids(Json::Value& theJson, bool theCaseIsInsensitive)
   return qids;
 }
 
+std::map<std::string, Json::Value> parse_substitutions(const HTTP::ParamMap& theParams)
+{
+  Json::Reader reader;
+
+  std::map<std::string, Json::Value> substitutes;
+
+  for (const auto& name_value : theParams)
+  {
+    const auto& name = name_value.first;
+    const auto& str = name_value.second;
+
+    Json::Value value;
+    if (!boost::regex_match(str, number_regex))
+      value = str;
+    else
+    {
+      // Try parsing as JSON, store as string on failure
+      if (!reader.parse(str, value, false))
+        value = str;
+    }
+
+    substitutes.insert({name, value});
+  }
+
+  return substitutes;
+}
+
+}  // namespace
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Expand include statements in the JSON.
@@ -139,33 +170,33 @@ void JSON::preprocess(Json::Value& theJson,
       std::string tmp = theJson.asString();
       if (boost::algorithm::starts_with(tmp, "json:"))
       {
-		std::string filename = tmp.substr(5, std::string::npos);
+        std::string filename = tmp.substr(5, std::string::npos);
         std::string json_file;
-		// Check from thePath
+        // Check from thePath
         if (filename[0] != '/')
-		  {
-			// 1) Check from path
-			json_file = thePath + "/" + filename;
-			// If file not found, check from theRootPath
-			if(!boost::filesystem::exists(json_file))
-			  filename.insert(filename.begin(), '/');
-		  }
-		// Check from theRootPath
-		if(filename[0] == '/')
-		  {
-			// 1) Check from root-path
-			json_file = theRootPath + filename;
-			if(!boost::filesystem::exists(json_file))
-			  {
-				// 2) Check from root-path/resources/layers
-				json_file = theRootPath + "/resources/layers" + filename;
-				if(!boost::filesystem::exists(json_file))
-				  {
-					// 3) Check from root-path/resources
-					json_file = theRootPath + "/resources" + filename;
-				  }
-			  }
-		  }
+        {
+          // 1) Check from path
+          json_file = thePath + "/" + filename;
+          // If file not found, check from theRootPath
+          if (!boost::filesystem::exists(json_file))
+            filename.insert(filename.begin(), '/');
+        }
+        // Check from theRootPath
+        if (filename[0] == '/')
+        {
+          // 1) Check from root-path
+          json_file = theRootPath + filename;
+          if (!boost::filesystem::exists(json_file))
+          {
+            // 2) Check from root-path/resources/layers
+            json_file = theRootPath + "/resources/layers" + filename;
+            if (!boost::filesystem::exists(json_file))
+            {
+              // 3) Check from root-path/resources
+              json_file = theRootPath + "/resources" + filename;
+            }
+          }
+        }
 
         // Replace old contents
         theJson = theJsonCache.get(json_file);
@@ -340,7 +371,7 @@ void JSON::extract_set(const std::string& theName,
 
 // ----------------------------------------------------------------------
 /*!
- * \brief Expand Json from query string
+ * \brief Expand Json from map of qid -> value
  *
  * A map with "qid" set changes the current active prefix for query string
  * options. The top level qid is an empty string unless set in the json.
@@ -349,18 +380,15 @@ void JSON::extract_set(const std::string& theName,
  */
 // ----------------------------------------------------------------------
 
-void replaceFromQueryString(Json::Value& theJson,
-                            const HTTP::ParamMap& theParams,
-                            const std::string& /* thePrefix */,
-                            const QidMap& theQids,
-                            bool theCaseIsInsensitive,
-                            bool replaceReferences)
+void replaceFromJsonMap(Json::Value& theJson,
+                        const std::map<std::string, Json::Value>& theParams,
+                        const std::string& /* thePrefix */,
+                        const QidMap& theQids,
+                        bool theCaseIsInsensitive,
+                        bool replaceReferences)
 {
   try
   {
-    // Needed for parsing JSON values in query strings
-    Json::Reader reader;
-
     // Override old values and add new ones from query string
 
     for (const auto& name_value : theParams)
@@ -370,11 +398,15 @@ void replaceFromQueryString(Json::Value& theJson,
       if (theCaseIsInsensitive)
         Fmi::ascii_tolower(name);
 
-      // Is the value a reference
-      bool value_is_reference = (boost::algorithm::starts_with(name_value.second, "ref:") ||
-                                 boost::algorithm::starts_with(name_value.second, "json:"));
+      const auto& value = name_value.second;
 
-      // Extract the value
+      // Is the value a reference of type ref:name or json:name
+      bool value_is_reference = false;
+      if (value.isString())
+      {
+        value_is_reference = (boost::algorithm::starts_with(value.asString(), "ref:") ||
+                              boost::algorithm::starts_with(value.asString(), "json:"));
+      }
 
       bool process_value =
           (replaceReferences && value_is_reference) || (!replaceReferences && !value_is_reference);
@@ -383,17 +415,6 @@ void replaceFromQueryString(Json::Value& theJson,
       // non-references only)
       if (!process_value)
         continue;
-
-      // Extract the JSON value from the query string
-      Json::Value value;
-      if (!boost::regex_match(name_value.second, number_regex))
-        value = name_value.second;
-      else
-      {
-        // Try parsing as JSON, store as string on failure
-        if (!reader.parse(name_value.second, value, false))
-          value = name_value.second;
-      }
 
       // Assign the value to the proper location in the JSON
 
@@ -409,8 +430,7 @@ void replaceFromQueryString(Json::Value& theJson,
       {
         if (qid == name)
           throw Fmi::Exception(BCP, "Parameter name cannot match qid exactly")
-              .addParameter("parameter", name)
-              .addParameter("value", name_value.second);
+              .addParameter("parameter", name);
 
         json = qid_json->second;
 
@@ -464,8 +484,30 @@ void JSON::expand(Json::Value& theJson,
 {
   const bool replace_references = false;
   auto qids = collect_qids(theJson, theCaseIsInsensitive);
-  replaceFromQueryString(
-      theJson, theParams, thePrefix, qids, theCaseIsInsensitive, replace_references);
+  auto substitutions = parse_substitutions(theParams);
+  replaceFromJsonMap(
+      theJson, substitutions, thePrefix, qids, theCaseIsInsensitive, replace_references);
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Expand Json with Json values
+ *
+ * A map with "qid" set changes the current active prefix for query string
+ * options. The top level qid is an empty string unless set in the json.
+ *
+ * Note: references are no longer substituted
+ */
+// ----------------------------------------------------------------------
+
+void JSON::expand(Json::Value& theJson,
+                  const std::map<std::string, Json::Value>& theParams,
+                  const std::string& thePrefix,
+                  bool theCaseIsInsensitive)
+{
+  const bool replace_refs = false;
+  auto qids = collect_qids(theJson, theCaseIsInsensitive);
+  replaceFromJsonMap(theJson, theParams, thePrefix, qids, theCaseIsInsensitive, replace_refs);
 }
 
 // ----------------------------------------------------------------------
@@ -480,10 +522,10 @@ void JSON::replaceReferences(Json::Value& theJson,
                              const std::string& thePrefix,
                              bool theCaseIsInsensitive)
 {
-  const bool replace_references = true;
+  const bool replace_refs = true;
   auto qids = collect_qids(theJson, theCaseIsInsensitive);
-  replaceFromQueryString(
-      theJson, theParams, thePrefix, qids, theCaseIsInsensitive, replace_references);
+  auto substitutions = parse_substitutions(theParams);
+  replaceFromJsonMap(theJson, substitutions, thePrefix, qids, theCaseIsInsensitive, replace_refs);
 }
 
 }  // namespace Spine

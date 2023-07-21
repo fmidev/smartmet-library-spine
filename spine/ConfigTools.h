@@ -9,6 +9,16 @@ namespace SmartMet
 {
 namespace Spine
 {
+bool lookupConfigSetting(const libconfig::Config& theConfig,
+                         std::string& theValue,
+                         const std::string& theVariable);
+
+bool lookupPathSetting(const libconfig::Config& theConfig,
+                       std::string& theValue,
+                       const std::string& theVariable);
+
+void expandVariables(libconfig::Config& theConfig);
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Return a setting, which may have a host specific value
@@ -202,26 +212,6 @@ bool lookupHostStringSettings(const libconfig::Config& theConfig,
         .addParameter("variable", theVariable);
   }
 }
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Lookup a config setting (.configfile or .configpath)
- */
-// ----------------------------------------------------------------------
-
-bool lookupConfigSetting(const libconfig::Config& theConfig,
-                         std::string& theValue,
-                         const std::string& theVariable);
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Lookup a path setting
- */
-// ----------------------------------------------------------------------
-
-bool lookupPathSetting(const libconfig::Config& theConfig,
-                       std::string& theValue,
-                       const std::string& theVariable);
 
 }  // namespace Spine
 }  // namespace SmartMet
