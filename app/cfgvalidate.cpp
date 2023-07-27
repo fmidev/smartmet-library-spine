@@ -32,22 +32,12 @@ void csvhandler(const Fmi::CsvReader::row_type& row) {}
 
 struct Options
 {
-  Options();
-
-  bool verbose;
-  std::string configtype;  // libconfig, newbase, csv
+  bool verbose = false;
+  std::string configtype = "libconfig";  // libconfig, newbase, csv
   std::string configfile;
 };
 
 Options options;
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Default options
- */
-// ----------------------------------------------------------------------
-
-Options::Options() : verbose(false), configtype("libconfig"), configfile() {}
 
 // ----------------------------------------------------------------------
 /*!

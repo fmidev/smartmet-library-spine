@@ -70,8 +70,6 @@ int main(int argc, char* argv[])
   {
     namespace po = boost::program_options;
 
-    std::vector<std::string> ignore_lists;
-
     po::options_description desc("Allowed options");
 
     // clang-format off
@@ -149,22 +147,19 @@ int main(int argc, char* argv[])
       }
       if (opt.count(nm_ignore))
       {
-        ignore_lists = opt[nm_ignore].as<std::vector<std::string> >();
+        auto ignore_lists = opt[nm_ignore].as<std::vector<std::string> >();
+        for (const auto& fn : ignore_lists)
+          tester.addIgnoreList(fn);
       }
       if (opt.count(nm_handler))
       {
         const std::string handler_path = opt[nm_handler].as<std::string>();
-        prelude_funct = [handler_path](SmartMet::Spine::Reactor& reactor)
+        prelude_funct = [handler_path](const SmartMet::Spine::Reactor& reactor)
         { prelude(reactor, handler_path); };
       }
       else
       {
         throw Fmi::Exception::Trace(BCP, "Mandatory command line option --handler (-H) missing");
-      }
-
-      for (const auto& fn : ignore_lists)
-      {
-        tester.addIgnoreList(fn);
       }
 
       return tester.run(options, prelude_funct);
