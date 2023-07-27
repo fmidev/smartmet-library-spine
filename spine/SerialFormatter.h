@@ -29,13 +29,13 @@ class SerialFormatter : public TableFormatter
   std::string format_plain(const Table& theTable,
                            const TableFormatter::Names& theNames,
                            const HTTP::Request& theReq,
-                           Table::Indexes& theCols,
-                           Table::Indexes& theRows) const;
+                           const Table::Indexes& theCols,
+                           const Table::Indexes& theRows) const;
   std::string format_attributes(const Table& theTable,
                                 const TableFormatter::Names& theNames,
                                 const HTTP::Request& theReq,
                                 Table::Indexes& theCols,
-                                Table::Indexes& theRows,
+                                const Table::Indexes& theRows,
                                 std::list<std::string>& theAttributes) const;
 
   void appendNumber(std::string& theOutput, std::size_t theNumber) const;

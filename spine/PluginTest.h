@@ -52,11 +52,9 @@ using PreludeFunction = boost::function<void(SmartMet::Spine::Reactor& reactor)>
 // IMPLEMENTATION DETAILS
 // ----------------------------------------------------------------------
 
-namespace
-{
 // These are for debugging
 
-void printRequest(SmartMet::Spine::HTTP::Request& request)
+void printRequest(const SmartMet::Spine::HTTP::Request& request)
 {
   try
   {
@@ -66,16 +64,12 @@ void printRequest(SmartMet::Spine::HTTP::Request& request)
     auto params = request.getParameterMap();
 
     for (const auto& value : params)
-    {
       std::cout << value.first << "=" << value.second << std::endl;
-    }
 
     auto headers = request.getHeaders();
 
     for (const auto& value : headers)
-    {
       std::cout << value.first << ":" << value.second << std::endl;
-    }
 
     std::cout << request.getContent() << std::endl;
   }
@@ -340,8 +334,6 @@ bool get_processed_response(const boost::filesystem::path& scriptfile, std::stri
   }
 }
 
-}  // namespace
-
 namespace SmartMet
 {
 namespace Spine
@@ -412,8 +404,9 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
     options.parseConfig();
     SmartMet::Spine::Reactor reactor(options);
     reactor.init();
-    if (reactor.isShuttingDown()) {
-        throw Fmi::Exception(BCP, "Reactor shutdown detected while init phase");
+    if (reactor.isShuttingDown())
+    {
+      throw Fmi::Exception(BCP, "Reactor shutdown detected while init phase");
     }
     prelude(reactor);
 
@@ -517,8 +510,8 @@ bool PluginTest::process_query(const fs::path& fn,
   // emacs keeps messing up the newlines, easier to make sure
   // the ending is correct this way, but do NOT touch POST queries
 
-  if (boost::algorithm::ends_with(inputfile.string(), ".get")
-          or boost::algorithm::ends_with(inputfile.string(), ".options"))
+  if (boost::algorithm::ends_with(inputfile.string(), ".get") or
+      boost::algorithm::ends_with(inputfile.string(), ".options"))
   {
     Fmi::trim(input);
     input += "\r\n\r\n";
@@ -559,12 +552,13 @@ bool PluginTest::process_query(const fs::path& fn,
 
           std::string result;
 
-          switch (query.second->getMethod()) {
-          default:
+          switch (query.second->getMethod())
+          {
+            default:
               result = get_full_response(response);
               break;
 
-          case HTTP::RequestMethod::OPTIONS:
+            case HTTP::RequestMethod::OPTIONS:
               response.removeHeader("Date");
               result = response.toString();
               break;

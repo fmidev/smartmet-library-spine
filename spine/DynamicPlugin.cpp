@@ -149,12 +149,12 @@ void DynamicPlugin::pluginOpen()
     if (itsHandle == nullptr)
     {
       // Error occurred while opening the dynamic library
-      const char* err_msg_c = dlerror();
+      const char* err_msg_c = dlerror();  // NOLINT
       const std::string err_msg = err_msg_c ? err_msg_c : "";
       static const boost::regex r_sym("undefined\\ symbol:\\ (_Z[^\\s]*)");
       Fmi::Exception error(BCP,
                            "Unable to load dynamic library plugin: " +
-                           err_msg);  // NOLINT dlerror is not thread safe
+                               err_msg);  // NOLINT dlerror is not thread safe
       boost::match_results<std::string::const_iterator> what;
       if (boost::regex_search(err_msg, what, r_sym, boost::match_default))
       {

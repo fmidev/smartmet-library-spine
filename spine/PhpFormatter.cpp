@@ -79,8 +79,8 @@ std::list<std::string> parse_attributes(const std::string& theStr)
 std::string format_plain(const Table& theTable,
                          const TableFormatter::Names& theNames,
                          const HTTP::Request& theReq,
-                         Table::Indexes& theCols,
-                         Table::Indexes& theRows)
+                         const Table::Indexes& theCols,
+                         const Table::Indexes& theRows)
 {
   try
   {
@@ -209,8 +209,7 @@ std::string format_attributes(const Table& theTable,
       // Remove the attribute column temporarily
 
       theCols.erase(nam);
-      std::remove(
-          theAttributes.begin(), theAttributes.end(), attribute);  // NOLINT not using return value
+      theAttributes.remove(attribute);
 
       // Process unique attribute values one at a time
 

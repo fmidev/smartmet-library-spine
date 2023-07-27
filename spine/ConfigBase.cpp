@@ -5,6 +5,7 @@
 #include <boost/lambda/lambda.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 #include <boost/spirit/include/qi.hpp>
+#include <fmt/format.h>
 #include <macgyver/Exception.h>
 #include <cassert>
 #include <iostream>
@@ -212,12 +213,10 @@ void ConfigBase::dump_setting(std::ostream& stream,
     else if (type == libconfig::Setting::TypeFloat)
     {
       double value = setting;
-      char buffer[80];
-      snprintf(buffer, sizeof(buffer), "%.16g", value);
       stream << prefix;
       if (name)
         stream << name << " = ";
-      stream << buffer;
+      stream << fmt::format("{}", value);
     }
     else if (type == libconfig::Setting::TypeString)
     {

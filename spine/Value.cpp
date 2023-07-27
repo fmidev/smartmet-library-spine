@@ -4,6 +4,7 @@
 #include <boost/current_function.hpp>
 #include <boost/lambda/lambda.hpp>
 #include <boost/spirit/include/qi.hpp>
+#include <fmt/format.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TimeParser.h>
@@ -560,8 +561,6 @@ std::string Value::to_string() const
   {
     namespace pt = boost::posix_time;
 
-    char buffer[128];
-
     switch (data.which())
     {
       case TI_EMPTY:
@@ -571,18 +570,13 @@ std::string Value::to_string() const
         return boost::get<bool>(data) ? "true" : "false";
 
       case TI_INT:
-        // static_cast avoids warning on RHEL6 with gcc-4.4.X (no warning on Ubuntu with gcc4-6.X)
-        return std::to_string(static_cast<long long>(boost::get<int64_t>(data)));
+        return fmt::format("{}", boost::get<int64_t>(data));
 
       case TI_UINT:
-        // static_cast avoids warning on RHEL6 with gcc-4.4.X (no warning on Ubuntu with gcc4-6.X)
-        return std::to_string(static_cast<unsigned long long>(boost::get<uint64_t>(data)));
+        return fmt::format("{}", boost::get<uint64_t>(data));
 
       case TI_DOUBLE:
-        // std::to_string seems to round too much
-        snprintf(buffer, sizeof(buffer), "%.15g", boost::get<double>(data));
-        buffer[sizeof(buffer) - 1] = 0;
-        return buffer;
+        return fmt::format("{}", boost::get<double>(data));
 
       case TI_STRING:
         return boost::get<std::string>(data);

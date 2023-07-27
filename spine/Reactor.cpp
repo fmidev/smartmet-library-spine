@@ -679,15 +679,9 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
 
   if (n >= itsOptions.throttle.alert_limit && !itsOptions.throttle.alert_script.empty())
   {
-    if (itsActiveRequestsLimit < itsOptions.throttle.limit)
+    if (itsActiveRequestsLimit < itsOptions.throttle.limit || itsRunningAlertScript)
     {
-      // Do nothing when ramping up
-    }
-    else if (itsRunningAlertScript)
-    {
-      // This turns out to be a bit too verbose
-      // if (itsOptions.verbose)
-      // std::cerr << Spine::log_time_str() << " Alert script already running" << std::endl;
+      // Do nothing when ramping up or already running the script
     }
     else
     {
@@ -1235,12 +1229,12 @@ bool Reactor::loadEngine(const std::string& sectionName,
     if (itsHandle == nullptr)
     {
       // Error occurred while opening the dynamic library
-      const char* err_msg_c = dlerror();
+      const char* err_msg_c = dlerror();  // NOLINT
       const std::string err_msg = err_msg_c ? err_msg_c : "";
       static const boost::regex r_sym("undefined\\ symbol:\\ (_Z[^\\s]*)");
-      Fmi::Exception error(BCP,
-                           "Unable to load dynamic engine class library: " +
-                               err_msg);  // NOLINT not thread safe
+      Fmi::Exception error(
+          BCP,
+          "Unable to load dynamic engine class library: " + err_msg);  // NOLINT not thread safe
       boost::match_results<std::string::const_iterator> what;
       if (boost::regex_search(err_msg, what, r_sym, boost::match_default))
       {

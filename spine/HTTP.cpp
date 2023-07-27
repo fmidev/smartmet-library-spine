@@ -1637,12 +1637,13 @@ static std::string base64decode(const std::string& input)
   }
   if (pad != 0)
   {
-    int n = B64index[static_cast<int>(p[L])] << 18 | B64index[static_cast<int>(p[L + 1])] << 12;
+    int n = B64index[static_cast<unsigned char>(p[L])] << 18 |
+            B64index[static_cast<unsigned char>(p[L + 1])] << 12;
     str[str.size() - 1] = static_cast<unsigned char>(n >> 16);
 
     if (len > L + 2 && p[L + 2] != '=')
     {
-      n |= B64index[static_cast<int>(p[L + 2])] << 6;
+      n |= B64index[static_cast<unsigned char>(p[L + 2])] << 6;
       str.push_back(static_cast<unsigned char>(n >> 8 & 0xFF));
     }
   }
