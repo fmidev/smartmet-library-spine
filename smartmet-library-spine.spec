@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.7.14
+Version: 23.7.27
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -151,6 +151,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Thu Jul 27 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.7.27-1.fmi
+- Fixed getURI to urlencode the parameters properly
+- Silenced compiler warnings
+
 * Fri Jul 14 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.7.14-1.fmi
 - Moved coredump_filter handling to the main program
 - Import cfgvalidate from smartmet-fmitools
