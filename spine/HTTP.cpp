@@ -697,27 +697,16 @@ std::string Request::getURI() const
 
     if (!itsParameters.empty())
     {
-      auto nextToLast = itsParameters.end();
-      std::advance(nextToLast, -1);
-
       ret += '?';
 
-      std::string paramValue;
-      for (auto it = itsParameters.begin(); it != nextToLast; ++it)
+      for (const auto& key_value : itsParameters)
       {
-        paramValue = it->second;
-        paramValue = urlencode(paramValue);
-        ret += it->first;
+        ret += urlencode(key_value.first);
         ret += '=';
-        ret += paramValue;
+        ret += urlencode(key_value.second);
         ret += '&';
       }
-
-      paramValue = nextToLast->second;
-      paramValue = urlencode(paramValue);
-      ret += nextToLast->first;
-      ret += '=';
-      ret += paramValue;
+      ret.pop_back();  // remove extra '&' from the end
     }
 
     return ret;
@@ -897,11 +886,11 @@ Response::Response(const HeaderMap& headerMap,
 }
 
 Response::Response()
-    : Message()
-    , itsStatus(Status::not_a_status)
-    , itsHasStreamContent(false)
-    , isGatewayResponse(false)
-    , itsBackendPort(0)
+    : Message(),
+      itsStatus(Status::not_a_status),
+      itsHasStreamContent(false),
+      isGatewayResponse(false),
+      itsBackendPort(0)
 
 {
   // Construct default
@@ -1227,8 +1216,7 @@ Response Response::stockOptionsResponse(const std::vector<std::string>& methods)
   try
   {
     Response response;
-    const std::string now = Fmi::to_http_string(
-        boost::posix_time::second_clock::universal_time());
+    const std::string now = Fmi::to_http_string(boost::posix_time::second_clock::universal_time());
     response.setStatus(Status::no_content);
     response.setHeader("Allow", boost::algorithm::join(methods, ", "));
     response.setHeader("Cache-Control", "max-age=86400");
@@ -1287,7 +1275,7 @@ std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::stri
       else if (target.type == "POST")
         enumMethod = RequestMethod::POST;
       else if (target.type == "OPTIONS")
-          enumMethod = RequestMethod::OPTIONS;
+        enumMethod = RequestMethod::OPTIONS;
       else
       {
         // Unknown request type
