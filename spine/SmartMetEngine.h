@@ -12,9 +12,9 @@
 
 #include <boost/noncopyable.hpp>
 #include <boost/thread.hpp>
+#include <macgyver/CacheStats.h>
 #include <atomic>
 #include <string>
-#include <macgyver/CacheStats.h>
 
 namespace SmartMet
 {
@@ -40,7 +40,10 @@ class SmartMetEngine : private boost::noncopyable
   virtual void shutdownEngine();
 
   // Virtual method to return cache statistics
-  virtual Fmi::Cache::CacheStatistics getCacheStats() const { return Fmi::Cache::CacheStatistics(); }
+  virtual Fmi::Cache::CacheStatistics getCacheStats() const
+  {
+    return Fmi::Cache::CacheStatistics();
+  }
 
   bool ready() const { return isReady; }
 

@@ -10,9 +10,9 @@
 
 #pragma once
 #include "HTTP.h"
+#include <macgyver/CacheStats.h>
 #include <atomic>
 #include <string>
-#include <macgyver/CacheStats.h>
 
 // The type definitions of the class factories
 // *** Do not touch these unless you know exactly what you are doing ***
@@ -43,7 +43,10 @@ class SmartMetPlugin
   virtual bool queryIsFast(const SmartMet::Spine::HTTP::Request &theRequest) const;
 
   // Method to return cache statistics
-  virtual Fmi::Cache::CacheStatistics getCacheStats() const { return Fmi::Cache::CacheStatistics(); }
+  virtual Fmi::Cache::CacheStatistics getCacheStats() const
+  {
+    return Fmi::Cache::CacheStatistics();
+  }
 
   // Plugin initialization
   void initPlugin();
@@ -73,8 +76,8 @@ class SmartMetPlugin
    *   @retval true response is already generated
    */
   static bool checkRequest(const SmartMet::Spine::HTTP::Request &theRequest,
-                    SmartMet::Spine::HTTP::Response &theResponse,
-                    bool supportsPost = false);
+                           SmartMet::Spine::HTTP::Response &theResponse,
+                           bool supportsPost = false);
 
   bool itsInitActive{false};
   std::atomic_ullong requestCounter{0};

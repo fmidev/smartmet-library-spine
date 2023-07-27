@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Table.h"
 #include "LonLat.h"
 #include "None.h"
+#include "Table.h"
 #include <boost/date_time/local_time/local_time.hpp>
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>

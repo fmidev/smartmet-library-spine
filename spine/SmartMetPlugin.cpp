@@ -136,31 +136,37 @@ bool SmartMetPlugin::checkRequest(const SmartMet::Spine::HTTP::Request &theReque
     using namespace SmartMet::Spine;
     switch (theRequest.getMethod())
     {
-    case HTTP::RequestMethod::GET:
-      return false;
-
-    case HTTP::RequestMethod::POST:
-      if (supportsPost) {
+      case HTTP::RequestMethod::GET:
         return false;
-      } else {
-        theResponse.setStatus(HTTP::not_found);
+
+      case HTTP::RequestMethod::POST:
+        if (supportsPost)
+        {
+          return false;
+        }
+        else
+        {
+          theResponse.setStatus(HTTP::not_found);
+          return true;
+        }
+
+      case HTTP::RequestMethod::OPTIONS:
+        if (supportsPost)
+        {
+          theResponse = HTTP::Response::stockOptionsResponse({"GET", "POST", "OPTIONS"});
+        }
+        else
+        {
+          theResponse = HTTP::Response::stockOptionsResponse({"GET", "OPTIONS"});
+        }
         return true;
-      }
 
-    case HTTP::RequestMethod::OPTIONS:
-      if (supportsPost) {
-        theResponse = HTTP::Response::stockOptionsResponse({"GET", "POST", "OPTIONS"});
-      } else {
-        theResponse = HTTP::Response::stockOptionsResponse({"GET", "OPTIONS"});
-      }
-      return true;
-
-    default:
-      throw Fmi::Exception(BCP, "Not supported request method " + theRequest.getMethodString());
+      default:
+        throw Fmi::Exception(BCP, "Not supported request method " + theRequest.getMethodString());
     }
   }
   catch (...)
   {
-      throw Fmi::Exception::Trace(BCP, "Plugin request check!");
+    throw Fmi::Exception::Trace(BCP, "Plugin request check!");
   }
 }
