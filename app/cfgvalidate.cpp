@@ -64,10 +64,19 @@ bool parse_options(int argc, char* argv[], Options& options)
 
   po::options_description desc("Allowed options");
   desc.add_options()("help,h", "print out help message")(
-      "verbose,v", po::bool_switch(&options.verbose), "set verbose mode on")(
-      "version,V", "display version number")(
-      "type,t", po::value(&options.configtype), "configuration type (libconfig|newbase|csv)")(
-      "file,f", po::value(&options.configfile), "configuration file to be validated");
+      "verbose,v",
+      po::bool_switch(&options.verbose),
+      "set verbose mode on")("version,V",
+                             "display version number")("type,t",
+                                                       po::value(&options.configtype),
+                                                       "configuration type "
+                                                       "(libconfig|newbase|csv)")("file,f",
+                                                                                  po::value(
+                                                                                      &options
+                                                                                           .configfile),
+                                                                                  "configuration "
+                                                                                  "file to be "
+                                                                                  "validated");
 
   po::positional_options_description p;
   p.add("file", 1);
@@ -110,7 +119,8 @@ bool parse_options(int argc, char* argv[], Options& options)
 
 int run(int argc, char* argv[])
 {
-  if (!parse_options(argc, argv, options)) return 0;
+  if (!parse_options(argc, argv, options))
+    return 0;
 
   if (options.verbose)
   {
@@ -128,7 +138,7 @@ int run(int argc, char* argv[])
     catch (libconfig::ParseException& e)
     {
       throw std::runtime_error(std::string("Configuration error ' ") + e.getError() + "' on line " +
-                               boost::lexical_cast<std::string>(e.getLine()));
+                               std::to_string(e.getLine()));
     }
     catch (libconfig::FileIOException& e)
     {
