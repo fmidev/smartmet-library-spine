@@ -6,8 +6,6 @@
 
 #pragma once
 
-#include <boost/utility.hpp>
-
 #include <list>
 #include <set>
 #include <string>
@@ -17,9 +15,15 @@ namespace SmartMet
 {
 namespace Spine
 {
-class Table : private boost::noncopyable
+class Table
 {
  public:
+  Table() = default;
+  Table(const Table& other) = delete;
+  Table(Table&& other) = delete;
+  Table& operator=(const Table& other) = delete;
+  Table& operator=(Table&& other) = delete;
+
   void set(std::size_t theColumn, std::size_t theRow, const std::string& theValue);
   const std::string& get(std::size_t theColumn, std::size_t theRow) const;
   std::string get(std::size_t theColumn, std::size_t theRow, const std::string& missing_text) const;

@@ -7,7 +7,6 @@
 #include "SmartMetPlugin.h"
 #include "Thread.h"
 #include <boost/function.hpp>
-#include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <string>
 
@@ -22,7 +21,7 @@ class AccessLogger;
 
 using ContentHandler = boost::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)>;
 
-class HandlerView : private boost::noncopyable
+class HandlerView
 {
  public:
   // Regular plugin
@@ -39,6 +38,11 @@ class HandlerView : private boost::noncopyable
 
   // Destructor
   ~HandlerView();
+
+  HandlerView(const HandlerView& other) = delete;
+  HandlerView(HandlerView&& other) = delete;
+  HandlerView& operator=(const HandlerView& other) = delete;
+  HandlerView& operator=(HandlerView&& other) = delete;
 
   // Handle a request
   bool handle(Reactor& theReactor, const HTTP::Request& theRequest, HTTP::Response& theResponse);

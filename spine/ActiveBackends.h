@@ -1,6 +1,5 @@
 #pragma once
 
-#include <boost/noncopyable.hpp>
 #include <map>
 #include <string>
 
@@ -14,9 +13,15 @@ namespace Spine
  */
 // ----------------------------------------------------------------------
 
-class ActiveBackends : private boost::noncopyable
+class ActiveBackends
 {
  public:
+  ActiveBackends() = default;
+  ActiveBackends(const ActiveBackends& other) = delete;
+  ActiveBackends(ActiveBackends&& other) = delete;
+  ActiveBackends& operator=(const ActiveBackends& other) = delete;
+  ActiveBackends& operator=(ActiveBackends&& other) = delete;
+
   using PortCounter = std::map<int, int>;
   using Status = std::map<std::string, PortCounter>;
 

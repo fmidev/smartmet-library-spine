@@ -10,7 +10,6 @@
 
 #pragma once
 
-#include <boost/noncopyable.hpp>
 #include <boost/thread.hpp>
 #include <macgyver/CacheStats.h>
 #include <atomic>
@@ -26,13 +25,18 @@ class Reactor;
 // The type definitions of the class factories
 // *** Do not touch these unless you know exactly what you are doing ***
 
-class SmartMetEngine : private boost::noncopyable
+class SmartMetEngine
 {
   friend class SmartMet::Spine::Reactor;
 
  public:
   /// Constructor
   SmartMetEngine() = default;
+
+  SmartMetEngine(const SmartMetEngine& other) = delete;
+  SmartMetEngine(SmartMetEngine&& other) = delete;
+  SmartMetEngine& operator=(const SmartMetEngine& other) = delete;
+  SmartMetEngine& operator=(SmartMetEngine&& other) = delete;
 
   /// Virtual destructor declaration (otherwise runtime relocation will fail)
   virtual ~SmartMetEngine();

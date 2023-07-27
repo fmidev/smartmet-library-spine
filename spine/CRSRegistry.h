@@ -6,7 +6,6 @@
 #include <boost/any.hpp>
 #include <boost/array.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/noncopyable.hpp>
 #include <boost/optional.hpp>
 #include <boost/regex.hpp>
 #include <boost/shared_ptr.hpp>
@@ -25,7 +24,7 @@ namespace SmartMet
 {
 namespace Spine
 {
-class CRSRegistry : protected virtual boost::noncopyable
+class CRSRegistry
 {
   struct MapEntry
   {
@@ -39,11 +38,16 @@ class CRSRegistry : protected virtual boost::noncopyable
   };
 
  public:
-  class Transformation : protected virtual boost::noncopyable
+  class Transformation
   {
    public:
     Transformation();
     virtual ~Transformation();
+    Transformation(const Transformation& other) = delete;
+    Transformation(Transformation&& other) = delete;
+    Transformation& operator=(const Transformation& other) = delete;
+    Transformation& operator=(Transformation&& other) = delete;
+
     virtual std::string get_src_name() const = 0;
     virtual std::string get_dest_name() const = 0;
     virtual NFmiPoint transform(const NFmiPoint& src) = 0;
@@ -57,6 +61,11 @@ class CRSRegistry : protected virtual boost::noncopyable
   CRSRegistry();
 
   virtual ~CRSRegistry();
+
+  CRSRegistry(const CRSRegistry& other) = delete;
+  CRSRegistry(CRSRegistry&& other) = delete;
+  CRSRegistry& operator=(const CRSRegistry& other) = delete;
+  CRSRegistry& operator=(CRSRegistry&& other) = delete;
 
   void parse_single_crs_def(Spine::ConfigBase& theConfig, libconfig::Setting& theEntry);
 

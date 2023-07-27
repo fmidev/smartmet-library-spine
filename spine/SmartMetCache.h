@@ -1,8 +1,6 @@
 #pragma once
 #include <boost/filesystem.hpp>
-#include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
-
 #include <deque>
 #include <string>
 
@@ -28,7 +26,7 @@ struct BufferSizeFunction
       * for plugin and engine use
       * ----------------------------------------
       */
-class SmartMetCache : boost::noncopyable
+class SmartMetCache
 {
   using KeyType = std::size_t;
 
@@ -48,6 +46,11 @@ class SmartMetCache : boost::noncopyable
                 const fs::path& cacheDirectory);
 
   ~SmartMetCache();
+
+  SmartMetCache(const SmartMetCache& other) = delete;
+  SmartMetCache(SmartMetCache&& other) = delete;
+  SmartMetCache& operator=(const SmartMetCache& other) = delete;
+  SmartMetCache& operator=(SmartMetCache&& other) = delete;
 
   /*
    * ----------------------------------------
