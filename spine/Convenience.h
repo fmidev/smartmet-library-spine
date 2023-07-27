@@ -111,7 +111,7 @@ struct CaseInsensitiveLess
   std::locale locale;
 
  public:
-  CaseInsensitiveLess(const std::locale& locale = std::locale()) : locale(locale) {}
+  explicit CaseInsensitiveLess(const std::locale& locale = std::locale()) : locale(locale) {}
   bool operator()(const std::string& a, const std::string& b) const
   {
     return str_iless(a, b, locale);

@@ -57,7 +57,7 @@ void SmartMetPlugin::initPlugin()
   }
 }
 
-bool SmartMetPlugin::isInitActive()
+bool SmartMetPlugin::isInitActive() const
 {
   return itsInitActive;
 }

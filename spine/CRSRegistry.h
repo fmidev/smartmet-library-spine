@@ -35,7 +35,7 @@ class CRSRegistry : protected virtual boost::noncopyable
     std::map<std::string, boost::any> attrib_map;
     bool swap_coord;
 
-    MapEntry(const std::string& theName, boost::optional<std::string> text);
+    MapEntry(std::string theName, const boost::optional<std::string>& text);
   };
 
  public:
@@ -64,17 +64,17 @@ class CRSRegistry : protected virtual boost::noncopyable
 
   void register_epsg(const std::string& name,
                      int epsg_code,
-                     boost::optional<std::string> regex = boost::optional<std::string>(),
+                     const boost::optional<std::string>& regex = boost::optional<std::string>(),
                      bool swap_coord = false);
 
   void register_proj4(const std::string& name,
                       const std::string& proj4_def,
-                      boost::optional<std::string> regex = boost::optional<std::string>(),
+                      const boost::optional<std::string>& regex = boost::optional<std::string>(),
                       bool swap_coord = false);
 
   void register_wkt(const std::string& name,
                     const std::string& wkt_def,
-                    boost::optional<std::string> regex = boost::optional<std::string>(),
+                    const boost::optional<std::string>& regex = boost::optional<std::string>(),
                     bool swap_coord = false);
 
   boost::shared_ptr<Transformation> create_transformation(const std::string& from,

@@ -39,17 +39,14 @@ class TcpMultiQuery
      */
     const boost::system::error_code error_code;
 
-    Response(const std::string& body,
-             const std::string& error_desc,
-             boost::system::error_code error_code)
+    Response(std::string body, std::string error_desc, boost::system::error_code error_code)
 
-        : body(body), error_desc(error_desc), error_code(error_code)
+        : body(std::move(body)), error_desc(std::move(error_desc)), error_code(error_code)
     {
     }
   };
 
- public:
-  TcpMultiQuery(int timeout_sec);
+  explicit TcpMultiQuery(int timeout_sec);
   virtual ~TcpMultiQuery();
 
   void add_query(const std::string& id,
@@ -66,7 +63,6 @@ class TcpMultiQuery
  private:
   void report_request_complete();
 
- private:
   struct Query;
 
   boost::asio::io_service io_service;
@@ -77,7 +73,7 @@ class TcpMultiQuery
   /**
    *   @brief NUmber of finished requests (both failure and success)
    */
-  std::size_t num_completed_requests;
+  std::size_t num_completed_requests = 0;
 };
 }  // namespace Spine
 }  // namespace SmartMet

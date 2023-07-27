@@ -1,5 +1,4 @@
 #pragma once
-
 #include "LoggedRequest.h"
 #include <fstream>
 #include <list>
@@ -13,7 +12,7 @@ namespace Spine
 class AccessLogger
 {
  public:
-  AccessLogger(const std::string& resource, const std::string& accessLogDir);
+  AccessLogger(std::string resource, std::string accessLogDir);
 
   ~AccessLogger();
 
@@ -30,7 +29,7 @@ class AccessLogger
 
   std::unique_ptr<std::ofstream> itsFileHandle;
 
-  bool itsIsRunning;
+  bool itsIsRunning = false;
 };
 
 }  // namespace Spine

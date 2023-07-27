@@ -43,14 +43,11 @@ class SmartMetPlugin
   virtual bool queryIsFast(const SmartMet::Spine::HTTP::Request &theRequest) const;
 
   // Method to return cache statistics
-  virtual Fmi::Cache::CacheStatistics getCacheStats() const
-  {
-    return Fmi::Cache::CacheStatistics();
-  }
+  virtual Fmi::Cache::CacheStatistics getCacheStats() const { return {}; }
 
   // Plugin initialization
   void initPlugin();
-  bool isInitActive();
+  bool isInitActive() const;
 
   // Plugin shutdown
   void shutdownPlugin();

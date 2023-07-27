@@ -13,7 +13,7 @@ namespace Spine
 class MultiLanguageStringArray
 {
  public:
-  MultiLanguageStringArray(const std::string& default_language, libconfig::Setting& setting);
+  MultiLanguageStringArray(std::string default_language, libconfig::Setting& setting);
 
   static std::shared_ptr<MultiLanguageStringArray> create(const std::string& default_language,
                                                           libconfig::Setting& setting);

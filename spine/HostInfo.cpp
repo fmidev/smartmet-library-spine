@@ -22,7 +22,7 @@ std::string getHostName(const std::string& theIP)
   inet_pton(AF_INET, theIP.c_str(), &sa.sin_addr);
 
   int res =
-      getnameinfo((struct sockaddr*)&sa, sizeof(sa), node, sizeof(node), NULL, 0, NI_NAMEREQD);
+      getnameinfo((struct sockaddr*)&sa, sizeof(sa), node, sizeof(node), nullptr, 0, NI_NAMEREQD);
 
   if (res)
     return {};

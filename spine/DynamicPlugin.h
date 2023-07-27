@@ -23,7 +23,7 @@ class DynamicPlugin
 {
  public:
   // Constructor
-  DynamicPlugin(const std::string& theFilename, const std::string& theConfig, Reactor& theReactor);
+  DynamicPlugin(std::string theFilename, std::string theConfig, Reactor& theReactor);
 
   // Destructor
   ~DynamicPlugin();
@@ -43,7 +43,7 @@ class DynamicPlugin
 
   void shutdownPlugin();
 
-  bool isInitialized() { return initialized; }
+  bool isInitialized() const { return initialized; }
 
  protected:
   // Filename of the dynamic library
@@ -56,7 +56,7 @@ class DynamicPlugin
   Reactor& itsReactorClass;
 
   // Pointer to instance
-  SmartMetPlugin* itsPlugin;
+  SmartMetPlugin* itsPlugin = nullptr;
 
  private:
   // Pointer to dynamic library
@@ -75,7 +75,7 @@ class DynamicPlugin
   void pluginClose();
 
   // Set to true when initialization is ready
-  bool initialized;
+  bool initialized = false;
 };
 
 }  // namespace Spine

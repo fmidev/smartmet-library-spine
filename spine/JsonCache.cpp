@@ -17,8 +17,8 @@ namespace Spine
  */
 // ----------------------------------------------------------------------
 
-JsonCache::Data::Data(const std::time_t& theTime, const Json::Value& theJson)
-    : modification_time(theTime), json(theJson)
+JsonCache::Data::Data(std::time_t theTime, Json::Value theJson)
+    : modification_time(theTime), json(std::move(theJson))
 {
 }
 

@@ -54,7 +54,6 @@ class Reactor final
  public:
   static std::atomic<Reactor*> instance;
 
- public:
   // These hooks are called when certain events occur with the server
 
   // This hook is called when a connection finishes
@@ -98,7 +97,7 @@ class Reactor final
   ActiveBackends::Status getBackendRequestStatus() const;
 
   // Only construct with options
-  Reactor(Options& options);
+  explicit Reactor(Options& options);
 
   // Destructor
   ~Reactor();
@@ -119,14 +118,14 @@ class Reactor final
 
   bool addContentHandler(SmartMetPlugin* thePlugin,
                          const std::string& theDir,
-                         ContentHandler theCallBackFunction,
+                         const ContentHandler& theCallBackFunction,
                          bool handlesUriPrefix = false);
 
   bool addPrivateContentHandler(SmartMetPlugin* thePlugin,
                                 const std::string& theDir,
-                                ContentHandler theCallBackFunction,
+                                const ContentHandler& theCallBackFunction,
                                 bool handlesUriPrefix = false);
-  bool setNoMatchHandler(ContentHandler theHandler);
+  bool setNoMatchHandler(const ContentHandler& theHandler);
   std::size_t removeContentHandlers(SmartMetPlugin* thePlugin);
 
   /**
@@ -152,13 +151,13 @@ class Reactor final
   // Server communication
 
   bool addClientConnectionStartedHook(const std::string& hookName,
-                                      ClientConnectionStartedHook theHook);
+                                      const ClientConnectionStartedHook& theHook);
 
   bool addBackendConnectionFinishedHook(const std::string& hookName,
-                                        BackendConnectionFinishedHook theHook);
+                                        const BackendConnectionFinishedHook& theHook);
 
   bool addClientConnectionFinishedHook(const std::string& hookName,
-                                       ClientConnectionFinishedHook theHook);
+                                       const ClientConnectionFinishedHook& theHook);
 
   void callClientConnectionStartedHooks(const std::string& theClientIP);
 
@@ -180,7 +179,6 @@ class Reactor final
    */
   //@{
 
- public:
   static bool isShuttingDown();
 
   /**
@@ -219,7 +217,6 @@ class Reactor final
   //@}
   //------------------------------------------------------------------------------
 
- private:
   void initializeEngine(SmartMetEngine* theEngine, const std::string& theName);
   void initializePlugin(DynamicPlugin* thePlugin, const std::string& theName);
 
@@ -235,7 +232,7 @@ class Reactor final
   bool addContentHandlerImpl(bool isPrivate,
                              SmartMetPlugin* thePlugin,
                              const std::string& theUri,
-                             ContentHandler theHandler,
+                             const ContentHandler& theHandler,
                              bool handlesUriPrefix);
 
   SmartMetEngine* getEnginePtr(const std::string& theClassName, void* user_data);
@@ -316,7 +313,6 @@ class Reactor final
 
   ActiveBackends itsActiveBackends;
 
- private:
   std::size_t itsEngineCount = 0;
   std::size_t itsPluginCount = 0;
 

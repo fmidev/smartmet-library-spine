@@ -24,7 +24,7 @@ void parseTokens(SmartMet::Spine::HTTP::ParamMap& outputMap,
 {
   try
   {
-    std::list<boost::iterator_range<std::string::const_iterator> > getTokens;
+    std::list<boost::iterator_range<std::string::const_iterator>> getTokens;
     auto get_range = boost::make_iterator_range(inputString.begin(), inputString.end());
     boost::algorithm::split(getTokens, get_range, boost::is_any_of(delimiter));
     if (convert_linebreaks)
@@ -402,16 +402,12 @@ Status stringToStatusCode(const std::string& theCode)
   throw Fmi::Exception(BCP, "Attempting to set Unsupported status code: " + theCode);
 }
 
-Message::Message(const HeaderMap& headerMap, const std::string& version, bool isChunked)
-    : itsHeaders(headerMap), itsVersion(version), itsIsChunked(isChunked)
+Message::Message(HeaderMap headerMap, std::string version, bool isChunked)
+    : itsHeaders(std::move(headerMap)), itsVersion(std::move(version)), itsIsChunked(isChunked)
 {
 }
 
-Message::Message() : itsIsChunked(false)
-{
-  // Default version for default constructor
-  itsVersion = "1.0";
-}
+Message::Message() : itsVersion("1.0") {}
 
 boost::optional<std::string> Message::getHeader(const std::string& headerName) const
 {
@@ -419,9 +415,9 @@ boost::optional<std::string> Message::getHeader(const std::string& headerName) c
   {
     auto iterator = itsHeaders.find(headerName);
     if (iterator == itsHeaders.end())
-      return boost::optional<std::string>();
+      return {};
 
-    return boost::optional<std::string>(iterator->second);
+    return iterator->second;
   }
   catch (...)
   {
@@ -480,23 +476,21 @@ std::string Message::getVersion() const
 
 Message::~Message() = default;
 
-Request::Request(const HeaderMap& headerMap,
-                 const std::string& body,
-                 const std::string& version,
-                 const ParamMap& theParameters,
-                 const std::string& resource,
-                 const RequestMethod& method,
+Request::Request(HeaderMap headerMap,
+                 std::string body,
+                 std::string version,
+                 ParamMap theParameters,
+                 std::string resource,
+                 RequestMethod method,
                  bool hasParsedPostData)
     : Message(headerMap, version, false),  // Now only unchunked requests
-      itsContent(body),
-      itsParameters(theParameters),
-      itsMethod(method),
-      itsResource(resource),
+      itsContent(std::move(body)),
+      itsParameters(std::move(theParameters)),
+      itsMethod(std::move(method)),
+      itsResource(std::move(resource)),
       itsHasParsedPostData(hasParsedPostData)
 {
 }
-
-Request::Request() : Message(), itsHasParsedPostData(false) {}
 
 std::string Request::getContent() const
 {
@@ -792,9 +786,9 @@ boost::optional<std::string> Request::getParameter(const std::string& paramName)
                            "More than one parameter value for parameter \"" + paramName + "\"");
 
     if (numParams == 0)
-      return boost::optional<std::string>();
+      return {};
 
-    return boost::optional<std::string>(params.first->second);
+    return params.first->second;
   }
   catch (...)
   {
@@ -869,56 +863,30 @@ std::size_t Request::getParameterCount() const
 
 Request::~Request() = default;
 
-Response::Response(const HeaderMap& headerMap,
-                   const std::string& body,
-                   const std::string& version,
-                   const Status status,
-                   const std::string& reason,
+Response::Response(HeaderMap headerMap,
+                   std::string body,
+                   std::string version,
+                   Status status,
+                   std::string reason,
                    bool hasStream,
                    bool isChunked)
-    : Message(headerMap, version, isChunked),
-      itsContent(body),
+    : Message(std::move(headerMap), std::move(version), isChunked),
+      itsContent(std::move(body)),
       itsStatus(status),
-      itsReasonPhrase(reason),
+      itsReasonPhrase(std::move(reason)),
       itsHasStreamContent(hasStream),
       isGatewayResponse(false)
 {
 }
 
-Response::Response()
-    : Message(),
-      itsStatus(Status::not_a_status),
-      itsHasStreamContent(false),
-      isGatewayResponse(false),
-      itsBackendPort(0)
-
-{
-  // Construct default
-  // Status must be explicitly given later
-}
-
 std::string Response::getContent()
 {
-  try
-  {
-    return itsContent.getString();
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
+  return itsContent.getString();
 }
 
 std::size_t Response::getContentLength() const
 {
-  try
-  {
-    return itsContent.size();
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
+  return itsContent.size();
 }
 
 void Response::appendContent(const std::string& bodyPart)
@@ -945,7 +913,7 @@ void Response::setContent(const std::string& theContent)
   }
 }
 
-void Response::setContent(boost::shared_ptr<std::string> theContent)
+void Response::setContent(const boost::shared_ptr<std::string>& theContent)
 {
   try
   {
@@ -957,7 +925,7 @@ void Response::setContent(boost::shared_ptr<std::string> theContent)
   }
 }
 
-void Response::setContent(boost::shared_ptr<std::vector<char> > theContent)
+void Response::setContent(const boost::shared_ptr<std::vector<char>>& theContent)
 {
   try
   {
@@ -969,7 +937,7 @@ void Response::setContent(boost::shared_ptr<std::vector<char> > theContent)
   }
 }
 
-void Response::setContent(boost::shared_array<char> theContent, std::size_t contentSize)
+void Response::setContent(const boost::shared_array<char>& theContent, std::size_t contentSize)
 {
   try
   {
@@ -981,7 +949,7 @@ void Response::setContent(boost::shared_array<char> theContent, std::size_t cont
   }
 }
 
-void Response::setContent(boost::shared_ptr<ContentStreamer> theContent)
+void Response::setContent(const boost::shared_ptr<ContentStreamer>& theContent)
 {
   try
   {
@@ -996,7 +964,8 @@ void Response::setContent(boost::shared_ptr<ContentStreamer> theContent)
   }
 }
 
-void Response::setContent(boost::shared_ptr<ContentStreamer> theContent, std::size_t contentSize)
+void Response::setContent(const boost::shared_ptr<ContentStreamer>& theContent,
+                          std::size_t contentSize)
 {
   try
   {
@@ -1232,7 +1201,7 @@ Response Response::stockOptionsResponse(const std::vector<std::string>& methods)
 
 Response::~Response() = default;
 
-std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::string& message)
+std::pair<ParsingStatus, std::unique_ptr<Request>> parseRequest(const std::string& message)
 {
   try
   {
@@ -1435,26 +1404,26 @@ MessageContent::MessageContent(const std::string& theContent)
 {
 }
 
-MessageContent::MessageContent(boost::shared_ptr<std::string> theContent)
+MessageContent::MessageContent(const boost::shared_ptr<std::string>& theContent)
     : stringPtrContent(theContent),
       contentSize(theContent->size()),
       itsType(content_type::stringPtrType)
 {
 }
 
-MessageContent::MessageContent(boost::shared_ptr<std::vector<char> > theContent)
+MessageContent::MessageContent(const boost::shared_ptr<std::vector<char>>& theContent)
     : vectorContent(theContent), contentSize(theContent->size()), itsType(content_type::vectorType)
 {
 }
 
 MessageContent::MessageContent(boost::shared_array<char> theContent, std::size_t theSize)
-    : arrayContent(theContent), contentSize(theSize), itsType(content_type::arrayType)
+    : arrayContent(std::move(theContent)), contentSize(theSize), itsType(content_type::arrayType)
 
 {
 }
 
 MessageContent::MessageContent(boost::shared_ptr<ContentStreamer> theContent)
-    : streamContent(theContent),
+    : streamContent(std::move(theContent)),
       contentSize(std::numeric_limits<std::size_t>::max()),
       itsType(content_type::streamType)
 {
@@ -1481,7 +1450,7 @@ boost::asio::const_buffer MessageContent::getBuffer()
         return boost::asio::buffer(stringContent);
 
       case content_type::vectorType:
-        return {&(*vectorContent)[0], vectorContent->size()};
+        return {vectorContent->data(), vectorContent->size()};
 
       case content_type::stringPtrType:
         return {stringPtrContent->data(), stringPtrContent->size()};
@@ -1516,10 +1485,10 @@ std::string MessageContent::getString()
         return stringContent;           // Return the currently available chunk
 
       case content_type::vectorType:
-        return std::string(vectorContent->begin(), vectorContent->end());
+        return {vectorContent->begin(), vectorContent->end()};
 
       case content_type::arrayType:
-        return std::string(arrayContent.get(), arrayContent.get() + contentSize);
+        return {arrayContent.get(), arrayContent.get() + contentSize};
 
       case content_type::stringPtrType:
         return *stringPtrContent;
@@ -1752,7 +1721,7 @@ std::string char2hex(int dec)
     const char* hd = "0123456789ABCDEF";
     char dig[2] = {hd[(dec & 0xF0) >> 4], hd[dec & 0x0F]};
 
-    return std::string(dig, dig + 2);
+    return {dig, dig + 2};
   }
   catch (...)
   {

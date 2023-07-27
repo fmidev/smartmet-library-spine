@@ -62,7 +62,7 @@ boost::posix_time::ptime parse_xml_time(const std::string& value);
  *   FIXME: Tämä ei varmaan ole paras paikka. Value luokka kuitenkin käyttää sen:
  *          Se olisi varmaan paremmin siirtää sen mualle
  */
-bool string2bool(const std::string src);
+bool string2bool(const std::string& src);
 
 /**
  *   @brief Minimal implementation of 2D point for use in Value
@@ -74,7 +74,7 @@ struct Point
   std::string crs;
 
   inline Point() = default;
-  inline Point(const std::string& src) { parse_string(src); }
+  explicit inline Point(const std::string& src) { parse_string(src); }
   inline Point(double x, double y, const std::string& crs = "EPSG:4326") : x(x), y(y), crs(crs) {}
   void parse_string(const std::string& src);
 
@@ -95,10 +95,10 @@ struct BoundingBox
   std::string crs;
 
   inline BoundingBox() = default;
-  inline BoundingBox(const std::string& src) { parse_string(src); }
+  explicit inline BoundingBox(const std::string& src) { parse_string(src); }
   inline BoundingBox(
-      double xMin, double yMin, double xMax, double yMax, const std::string& crs = "EPSG:4326")
-      : xMin(xMin), yMin(yMin), xMax(xMax), yMax(yMax), crs(crs)
+      double xMin, double yMin, double xMax, double yMax, std::string crs = "EPSG:4326")
+      : xMin(xMin), yMin(yMin), xMax(xMax), yMax(yMax), crs(std::move(crs))
   {
   }
 
@@ -182,12 +182,8 @@ class Value
   inline explicit Value(const char* x) { set_string(x); }
   inline explicit Value(const std::string& x) { set_string(x); }
   inline explicit Value(const boost::posix_time::ptime& x) { set_ptime(x); }
-  inline explicit Value(const Point& x)
-  {
-    PointWrapper tmp = x;
-    data = tmp;
-  }
-  inline explicit Value(const BoundingBox& x) { data = x; }
+  Value(const Point& x) : data(x) {}
+  inline explicit Value(const BoundingBox& x) : data(x) {}
   ~Value() = default;
   Value(const Value& other) = default;
 

@@ -35,8 +35,8 @@ class FileCache
     std::string content;
 
     FileContents() = default;
-    FileContents(const std::time_t& theTime, const std::string& theContent)
-        : modification_time(theTime), content(theContent)
+    FileContents(const std::time_t& theTime, std::string theContent)
+        : modification_time(theTime), content(std::move(theContent))
     {
     }
   };

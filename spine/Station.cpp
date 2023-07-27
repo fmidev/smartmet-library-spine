@@ -29,9 +29,9 @@ const std::string& Station::station_formal_name(const std::string& language) con
 {
   if (language == "fi")
     return station_formal_name_fi;
-  else if (language == "sv" && !station_formal_name_sv.empty())
+  if (language == "sv" && !station_formal_name_sv.empty())
     return station_formal_name_sv;
-  else if (language == "en" && !station_formal_name_en.empty())
+  if (language == "en" && !station_formal_name_en.empty())
     return station_formal_name_en;
 
   // If sv/en are empty return fi-version, which should never be empty

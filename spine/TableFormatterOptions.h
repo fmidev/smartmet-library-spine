@@ -17,7 +17,7 @@ class TableFormatterOptions
 {
  public:
   TableFormatterOptions();
-  TableFormatterOptions(const libconfig::Config& theConfig);
+  explicit TableFormatterOptions(const libconfig::Config& theConfig);
 
   void setFormatType(const std::string& type) { itsFormatType = type; }
   const std::string& defaultWxmlTimeString() const { return itsDefaultWxmlTimeString; }

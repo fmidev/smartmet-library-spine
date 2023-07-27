@@ -9,26 +9,26 @@ namespace Spine
  * \brief Constructor
  */
 // ----------------------------------------------------------------------
-LoggedRequest::LoggedRequest(const std::string& theRequestString,
+LoggedRequest::LoggedRequest(std::string theRequestString,
                              const boost::posix_time::ptime& requestEndTime,
-                             const boost::posix_time::time_duration& accessDuration,
-                             const std::string& theStatus,
-                             const std::string& theIP,
-                             const std::string& theMethod,
-                             const std::string& theVersion,
+                             boost::posix_time::time_duration accessDuration,
+                             std::string theStatus,
+                             std::string theIP,
+                             std::string theMethod,
+                             std::string theVersion,
                              std::size_t theContentLength,
-                             const std::string& theETag,
-                             const std::string& theApiKey)
-    : itsRequestString(theRequestString),
+                             std::string theETag,
+                             std::string theApiKey)
+    : itsRequestString(std::move(theRequestString)),
       itsRequestEndTime(requestEndTime),
-      itsAccessDuration(accessDuration),
-      itsStatus(theStatus),
-      itsIP(theIP),
-      itsMethod(theMethod),
-      itsVersion(theVersion),
+      itsAccessDuration(std::move(accessDuration)),
+      itsStatus(std::move(theStatus)),
+      itsIP(std::move(theIP)),
+      itsMethod(std::move(theMethod)),
+      itsVersion(std::move(theVersion)),
       itsContentLength(theContentLength),
-      itsETag(theETag),
-      itsApiKey(theApiKey)
+      itsETag(std::move(theETag)),
+      itsApiKey(std::move(theApiKey))
 {
 }
 

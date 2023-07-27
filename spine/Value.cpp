@@ -376,10 +376,8 @@ BoundingBox Value::get_bbox() const
       return boost::get<BoundingBox>(data);
 
     if (ind == TI_STRING)
-    {
-      const std::string& src = boost::get<std::string>(data);
-      return BoundingBox(src);
-    }
+      return BoundingBox(boost::get<std::string>(data));
+
     bad_value_type(METHOD_NAME, typeid(BoundingBox));
   }
   catch (...)
@@ -798,7 +796,7 @@ boost::posix_time::ptime parse_xml_time(const std::string& value)
 }
 
 // TODO(mheiskan) Fix the API to use a const reference
-bool string2bool(const std::string src)
+bool string2bool(const std::string& src)
 {
   try
   {
@@ -996,8 +994,6 @@ void BoundingBox::parse_string(const std::string& src)
 {
   try
   {
-    namespace ba = boost::algorithm;
-
     // Split into max 5 parts, the optional 5th one is the CRS
     auto n = std::count(src.begin(), src.end(), ',');
     if (n < 3)

@@ -17,16 +17,16 @@ namespace Spine
 class LoggedRequest
 {
  public:
-  LoggedRequest(const std::string& theRequestString,
+  LoggedRequest(std::string theRequestString,
                 const boost::posix_time::ptime& requestEndTime,
-                const boost::posix_time::time_duration& accessDuration,
-                const std::string& theStatus,
-                const std::string& theIP,
-                const std::string& theMethod,
-                const std::string& theVersion,
+                boost::posix_time::time_duration accessDuration,
+                std::string theStatus,
+                std::string theIP,
+                std::string theMethod,
+                std::string theVersion,
                 std::size_t theContentLength,
-                const std::string& theETag,
-                const std::string& theApiKey);
+                std::string theETag,
+                std::string theApiKey);
 
   boost::posix_time::ptime getRequestEndTime() const;
   boost::posix_time::ptime getRequestStartTime() const;

@@ -37,10 +37,10 @@ In this case it is assumed that strings are provided for the default language.
 
 */
 
-MultiLanguageStringArray::MultiLanguageStringArray(const std::string& default_language,
+MultiLanguageStringArray::MultiLanguageStringArray(std::string default_language,
                                                    libconfig::Setting& setting)
 
-    : default_language(default_language)
+    : default_language(std::move(default_language))
 {
   try
   {

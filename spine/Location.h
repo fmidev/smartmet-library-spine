@@ -63,31 +63,30 @@ class Location
   Location() = delete;
 
   Location(GeoId theGeoID,
-           const std::string& theName,
-           const std::string& theISO2,
+           std::string theName,
+           std::string theISO2,
            int theMunicipality,
-           const std::string& theArea,
-           const std::string& theFeature,
-           const std::string& theCountry,
+           std::string theArea,
+           std::string theFeature,
+           std::string theCountry,
            double theLongitude,
            double theLatitude,
-           const std::string& theTimeZone,
+           std::string theTimeZone,
            int thePopulation = -1,
            float theElevation = std::numeric_limits<float>::quiet_NaN(),
            float theDem = std::numeric_limits<float>::quiet_NaN(),
            Fmi::LandCover::Type theCoverType = Fmi::LandCover::NoData,
            int thePriority = -1)
       : geoid(theGeoID),
-        name(theName),
-        iso2(theISO2),
+        name(std::move(theName)),
+        iso2(std::move(theISO2)),
         municipality(theMunicipality),
-        area(theName == theArea ? "" : theArea)  // prevent name==area
-        ,
-        feature(theFeature),
-        country(theCountry),
+        area(name == theArea ? "" : std::move(theArea)),  // prevent name==area
+        feature(std::move(theFeature)),
+        country(std::move(theCountry)),
         longitude(theLongitude),
         latitude(theLatitude),
-        timezone(theTimeZone),
+        timezone(std::move(theTimeZone)),
         population(thePopulation),
         elevation(theElevation),
         dem(theDem),
@@ -99,12 +98,12 @@ class Location
 
   Location(double theLongitude,
            double theLatitude,
-           const std::string theName = "",
-           const std::string theTimezone = "")
-      : name(theName),
+           std::string theName = "",
+           std::string theTimezone = "")
+      : name(std::move(theName)),
         longitude(theLongitude),
         latitude(theLatitude),
-        timezone(theTimezone),
+        timezone(std::move(theTimezone)),
         type(Place)
   {
   }
@@ -122,7 +121,7 @@ class Location
   {
   }
 
-  Location(const std::string& theArea, const double& theRadius)
+  Location(const std::string& theArea, double theRadius)
       : name(theArea), area(theArea), radius(theRadius), timezone("localtime"), type(Place)
   {
   }
@@ -142,7 +141,7 @@ struct TaggedLocation
 {
   std::string tag;
   LocationPtr loc;
-  TaggedLocation(const std::string& t, LocationPtr& p) : tag(t), loc(p) {}
+  TaggedLocation(std::string t, const LocationPtr& p) : tag(std::move(t)), loc(p) {}
 
   TaggedLocation() = delete;
 };

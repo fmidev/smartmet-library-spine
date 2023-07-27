@@ -181,7 +181,8 @@ Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::
         {
           if (!initFailed.exchange(true))
           {
-            auto exception = Fmi::Exception::Trace(BCP, "Operation failed");
+            auto exception =
+                Fmi::Exception::Trace(BCP, "Operation failed").addParameter("Name", name);
 
             if (!exception.stackTraceDisabled())
               std::cerr << exception.getStackTrace();
@@ -350,7 +351,7 @@ int Reactor::getRequiredAPIVersion() const
 
 bool Reactor::addContentHandler(SmartMetPlugin* thePlugin,
                                 const std::string& theDir,
-                                ContentHandler theCallBackFunction,
+                                const ContentHandler& theCallBackFunction,
                                 bool handlesUriPrefix)
 {
   return addContentHandlerImpl(false, thePlugin, theDir, theCallBackFunction, handlesUriPrefix);
@@ -366,7 +367,7 @@ bool Reactor::addContentHandler(SmartMetPlugin* thePlugin,
 
 bool Reactor::addPrivateContentHandler(SmartMetPlugin* thePlugin,
                                        const std::string& theDir,
-                                       ContentHandler theCallBackFunction,
+                                       const ContentHandler& theCallBackFunction,
                                        bool handlesUriPrefix)
 {
   return addContentHandlerImpl(true, thePlugin, theDir, theCallBackFunction, handlesUriPrefix);
@@ -382,7 +383,7 @@ bool Reactor::addPrivateContentHandler(SmartMetPlugin* thePlugin,
 bool Reactor::addContentHandlerImpl(bool isPrivate,
                                     SmartMetPlugin* thePlugin,
                                     const std::string& theUri,
-                                    ContentHandler theHandler,
+                                    const ContentHandler& theHandler,
                                     bool handlesUriPrefix)
 {
   try
@@ -436,7 +437,7 @@ bool Reactor::addContentHandlerImpl(bool isPrivate,
  */
 // ----------------------------------------------------------------------
 
-bool Reactor::setNoMatchHandler(ContentHandler theHandler)
+bool Reactor::setNoMatchHandler(const ContentHandler& theHandler)
 {
   try
   {
@@ -533,14 +534,14 @@ boost::optional<HandlerView&> Reactor::getHandlerView(const HTTP::Request& theRe
       if (itsCatchNoMatch)
       {
         // Return with true, as this was catched by external handler
-        return boost::optional<HandlerView&>(*itsCatchNoMatchHandler);
+        return *itsCatchNoMatchHandler;
       }
 
       // No match found -- return with failure
-      return boost::optional<HandlerView&>();
+      return {};
     }
 
-    return boost::optional<HandlerView&>(*(it->second));
+    return *it->second;
   }
   catch (...)
   {
@@ -1214,7 +1215,7 @@ bool Reactor::loadEngine(const std::string& sectionName,
     std::string configfile;
     lookupConfigSetting(itsOptions.itsConfig, configfile, "engines." + sectionName);
 
-    if (configfile != "")
+    if (!configfile.empty())
     {
       absolutize_path(configfile);
       if (is_file_readable(configfile) != 0)
@@ -1291,7 +1292,6 @@ bool Reactor::loadEngine(const std::string& sectionName,
   }
   catch (...)
   {
-    std::ostringstream msg;
     reportFailure("Failed to load or init engine");
     return false;
   }
@@ -1409,7 +1409,7 @@ void Reactor::listEngines() const
 }
 
 bool Reactor::addClientConnectionStartedHook(const std::string& hookName,
-                                             ClientConnectionStartedHook theHook)
+                                             const ClientConnectionStartedHook& theHook)
 {
   try
   {
@@ -1423,7 +1423,7 @@ bool Reactor::addClientConnectionStartedHook(const std::string& hookName,
 }
 
 bool Reactor::addBackendConnectionFinishedHook(const std::string& hookName,
-                                               BackendConnectionFinishedHook theHook)
+                                               const BackendConnectionFinishedHook& theHook)
 {
   try
   {
@@ -1437,7 +1437,7 @@ bool Reactor::addBackendConnectionFinishedHook(const std::string& hookName,
 }
 
 bool Reactor::addClientConnectionFinishedHook(const std::string& hookName,
-                                              ClientConnectionFinishedHook theHook)
+                                              const ClientConnectionFinishedHook& theHook)
 {
   try
   {
@@ -1576,7 +1576,7 @@ void Reactor::shutdown_impl()
     std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown engines" << ANSI_BOLD_OFF
               << ANSI_FG_DEFAULT << std::endl;
 
-    for (auto& singleton : itsSingletons)
+    for (const auto& singleton : itsSingletons)
     {
       std::ostringstream tmp1;
       tmp1 << ANSI_FG_RED << "* Engine [" << singleton.first << "] shutting down" << ANSI_FG_DEFAULT
@@ -1606,7 +1606,7 @@ void Reactor::shutdown_impl()
     std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nDeleting engines" << ANSI_BOLD_OFF
               << ANSI_FG_DEFAULT << std::endl;
 
-    for (auto& singleton : itsSingletons)
+    for (const auto& singleton : itsSingletons)
     {
       std::cout << ANSI_FG_RED << "* Deleting engine [" << singleton.first << "]" << ANSI_FG_DEFAULT
                 << std::endl;
@@ -1632,7 +1632,7 @@ Fmi::Cache::CacheStatistics Reactor::getCacheStats() const
 
   // Engines
 
-  for (auto engine_item : itsSingletons)
+  for (const auto& engine_item : itsSingletons)
   {
     auto* engine = engine_item.second;
     if (engine && engine->ready())
@@ -1644,7 +1644,7 @@ Fmi::Cache::CacheStatistics Reactor::getCacheStats() const
   }
 
   // Plugins
-  for (auto plugin_item : itsPlugins)
+  for (const auto& plugin_item : itsPlugins)
   {
     auto* smartmet_plugin = plugin_item->getPlugin();
     if (smartmet_plugin && !smartmet_plugin->isInitActive())
@@ -1662,7 +1662,7 @@ void Reactor::reportFailure(const std::string& message)
   if (requestShutdown())
   {
     std::cerr << ANSI_FG_RED
-              << "* SmartMet::Spine::Reactor: failure reported and shutdown initiated: "
+              << "* SmartMet::Spine::Reactor: failure reported and shutdown initiated: " << message
               << ANSI_FG_DEFAULT;
 
     const std::exception_ptr curr_exc = std::current_exception();
@@ -1702,7 +1702,7 @@ void Reactor::waitForShutdownComplete()
   for (bool done = false; not done;)
   {
     int tracerPid = Fmi::tracerPid();
-    if (not timeoutAlways and tracerPid)
+    if (!timeoutAlways && tracerPid)
     {
       // Debugger attached
       std::cout << "Debugging detected (tracerPid=" << tracerPid << "). Disabled shutdown timeout."
@@ -1723,43 +1723,36 @@ void Reactor::waitForShutdownComplete()
       else
       {
         // Check once more for debuggugging (one may attach debugger while shutdown is ongoing)
-        if (not timeoutAlways and Fmi::tracerPid())
-        {
+        if (!timeoutAlways && Fmi::tracerPid())
           continue;
-        }
-        else
+
+        // Shutdown last for too long time
+        std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nReactor shutdown timed expired"
+                  << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+        std::vector<std::string> names;
+        if (itsInitTasks)
+          names = itsInitTasks->active_task_names();
+
+        if (!names.empty())
         {
-          // Shutdown last for too long time
-          std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nReactor shutdown timed expired"
-                    << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
-          std::vector<std::string> names;
-          if (itsInitTasks)
-          {
-            names = itsInitTasks->active_task_names();
-          }
-          if (names.size())
-          {
-            std::cout << ANSI_FG_RED << ANSI_BOLD_ON
-                      << "Active Reactor initialization tasks:" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
-                      << std::endl;
-            for (const std::string& name : names)
-            {
-              std::cout << "         " << name << std::endl;
-            }
-          }
-          names = shutdownTasks.active_task_names();
-          if (names.size())
-          {
-            std::cout << ANSI_FG_RED << ANSI_BOLD_ON
-                      << "Active Reactor shutdown tasks:" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
-                      << std::endl;
-            for (const std::string& name : names)
-            {
-              std::cout << "         " << name << std::endl;
-            }
-          }
-          abort();
+          std::cout << ANSI_FG_RED << ANSI_BOLD_ON
+                    << "Active Reactor initialization tasks:" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
+                    << std::endl;
+          for (const std::string& name : names)
+            std::cout << "         " << name << std::endl;
         }
+        names = shutdownTasks.active_task_names();
+        if (!names.empty())
+        {
+          std::cout << ANSI_FG_RED << ANSI_BOLD_ON
+                    << "Active Reactor shutdown tasks:" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
+                    << std::endl;
+          for (const std::string& name : names)
+          {
+            std::cout << "         " << name << std::endl;
+          }
+        }
+        abort();
       }
     }
   }

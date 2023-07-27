@@ -26,18 +26,15 @@ struct TcpMultiQuery::Query
   std::string result;
   std::string error_desc;
   boost::system::error_code error_code;
-  bool finished;
+  bool finished = false;
   char current_input[buffer_size];
 
-  Query(TcpMultiQuery& client,
-        const std::string& host,
-        const std::string& service,
-        const std::string& request_body);
+  Query(TcpMultiQuery& client, std::string host, std::string service, std::string request_body);
 
   virtual ~Query();
 
   void on_endpoint_resolved(boost::system::error_code,
-                            boost::asio::ip::tcp::resolver::results_type result);
+                            const boost::asio::ip::tcp::resolver::results_type& result);
 
   void on_connected(boost::system::error_code);
 
@@ -47,11 +44,10 @@ struct TcpMultiQuery::Query
 
   void on_data_received(boost::system::error_code error, std::size_t bytes_transfered);
 
-  void report_error(const std::string& desc, boost::system::error_code error);
+  void report_error(std::string desc, boost::system::error_code error);
 };
 
-TcpMultiQuery::TcpMultiQuery(int timeout_sec)
-    : io_service(), timeout(io_service), query_map(), num_completed_requests(0)
+TcpMultiQuery::TcpMultiQuery(int timeout_sec) : timeout(io_service)
 {
   timeout.expires_from_now(boost::posix_time::seconds(timeout_sec));
 
@@ -113,9 +109,8 @@ std::set<std::string> TcpMultiQuery::get_ids() const
 {
   std::set<std::string> result;
   for (const auto& item : query_map)
-  {
     result.insert(item.first);
-  }
+
   return result;
 }
 
@@ -123,32 +118,26 @@ TcpMultiQuery::Response TcpMultiQuery::operator[](const std::string& id) const
 {
   const auto iter = query_map.find(id);
   if (iter == query_map.end())
-  {
     throw Fmi::Exception(BCP, id + " is not found");
-  }
-  else
-  {
-    return Response(iter->second->result, iter->second->error_desc, iter->second->error_code);
-  }
+
+  return {iter->second->result, iter->second->error_desc, iter->second->error_code};
 }
 
 void TcpMultiQuery::report_request_complete()
 {
   if (++num_completed_requests >= query_map.size())
-  {
     timeout.cancel();
-  }
 }
 
 TcpMultiQuery::Query::Query(TcpMultiQuery& client,
-                            const std::string& host,
-                            const std::string& service,
-                            const std::string& request_body)
+                            std::string host,
+                            std::string service,
+                            std::string request_body)
 
     : client(client),
-      host(host),
-      service(service),
-      request_body(request_body),
+      host(std::move(host)),
+      service(std::move(service)),
+      request_body(std::move(request_body)),
       resolver(client.io_service),
       socket(client.io_service),
       finished(false)
@@ -157,13 +146,11 @@ TcpMultiQuery::Query::Query(TcpMultiQuery& client,
 
 TcpMultiQuery::Query::~Query() {}
 
-void TcpMultiQuery::Query::on_endpoint_resolved(boost::system::error_code error,
-                                                boost::asio::ip::tcp::resolver::results_type result)
+void TcpMultiQuery::Query::on_endpoint_resolved(
+    boost::system::error_code error, const boost::asio::ip::tcp::resolver::results_type& result)
 {
   if (error)
-  {
     report_error("Failed to resolve", error);
-  }
   else
   {
     using namespace std::placeholders;
@@ -191,9 +178,7 @@ void TcpMultiQuery::Query::on_request_sent(boost::system::error_code error,
 {
   (void)bytes_transfered;  // We requested to send all bytes, so no need to check
   if (error)
-  {
     report_error("Failed to send request to socket", error);
-  }
   else
   {
     boost::system::error_code ignored;
@@ -235,9 +220,9 @@ void TcpMultiQuery::Query::request_input()
                                      boost::asio::placeholders::bytes_transferred));
 }
 
-void TcpMultiQuery::Query::report_error(const std::string& desc, boost::system::error_code error)
+void TcpMultiQuery::Query::report_error(std::string desc, boost::system::error_code error)
 {
-  this->error_desc = desc;
-  this->error_code = error;
+  error_desc = std::move(desc);
+  error_code = error;
   client.report_request_complete();
 }

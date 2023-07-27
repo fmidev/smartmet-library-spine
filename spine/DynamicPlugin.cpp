@@ -36,14 +36,10 @@ namespace Spine
  */
 // ----------------------------------------------------------------------
 
-DynamicPlugin::DynamicPlugin(const std::string& theFilename,
-                             const std::string& theConfig,
-                             Reactor& theReactor)
-    : itsFilename(theFilename),
-      itsConfigFile(theConfig),
-      itsReactorClass(theReactor),
-      itsPlugin(nullptr),
-      initialized(false)
+DynamicPlugin::DynamicPlugin(std::string theFilename, std::string theConfig, Reactor& theReactor)
+    : itsFilename(std::move(theFilename)),
+      itsConfigFile(std::move(theConfig)),
+      itsReactorClass(theReactor)
 {
   try
   {

@@ -20,8 +20,6 @@ namespace Spine
 class Table : private boost::noncopyable
 {
  public:
-  Table();
-
   void set(std::size_t theColumn, std::size_t theRow, const std::string& theValue);
   const std::string& get(std::size_t theColumn, std::size_t theRow) const;
   std::string get(std::size_t theColumn, std::size_t theRow, const std::string& missing_text) const;
@@ -50,8 +48,8 @@ class Table : private boost::noncopyable
     std::size_t j = 0;
     std::string value;
 
-    element(std::size_t theI, std::size_t theJ, const std::string& theValue)
-        : i(theI), j(theJ), value(theValue)
+    element(std::size_t theI, std::size_t theJ, std::string theValue)
+        : i(theI), j(theJ), value(std::move(theValue))
     {
     }
   };

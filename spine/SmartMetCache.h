@@ -16,7 +16,10 @@ namespace fs = boost::filesystem;
 
 struct BufferSizeFunction
 {
-  static std::size_t getSize(boost::shared_ptr<std::string> theValue) { return theValue->size(); }
+  static std::size_t getSize(const boost::shared_ptr<std::string>& theValue)
+  {
+    return theValue->size();
+  }
 };
 
 /*
@@ -58,7 +61,7 @@ class SmartMetCache : boost::noncopyable
    * Insert new entry into the cache
    * ----------------------------------------
    */
-  void insert(KeyType hash, ValueType data);
+  void insert(KeyType hash, const ValueType& data);
 
   /*
    *----------------------------------------

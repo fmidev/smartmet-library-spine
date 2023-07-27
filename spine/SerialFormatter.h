@@ -23,7 +23,7 @@ class SerialFormatter : public TableFormatter
                      const HTTP::Request& theReq,
                      const TableFormatterOptions& theConfig) const override;
 
-  const std::string mimetype() const override { return "text/plain"; }
+  std::string mimetype() const override { return "text/plain"; }
 
  private:
   std::string format_plain(const Table& theTable,

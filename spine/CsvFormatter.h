@@ -21,7 +21,7 @@ class CsvFormatter : public TableFormatter
                      const HTTP::Request& theReq,
                      const TableFormatterOptions& theConfig) const override;
 
-  const std::string mimetype() const override { return "text/csv"; }
+  std::string mimetype() const override { return "text/csv"; }
 };
 
 }  // namespace Spine

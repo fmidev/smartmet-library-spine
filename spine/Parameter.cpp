@@ -32,12 +32,12 @@ Parameter::Parameter(const std::string& theName, Type theType, FmiParameterName 
 }
 
 Parameter::Parameter(const std::string& theName,
-                     const std::string& theAlias,
+                     std::string theAlias,
                      Type theType,
                      FmiParameterName theNumber)
     : itsName(theName),
       itsOriginalName(theName),
-      itsAlias(theAlias),
+      itsAlias(std::move(theAlias)),
       itsType(theType),
       itsNumber(theNumber)
 {

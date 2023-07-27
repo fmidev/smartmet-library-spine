@@ -26,7 +26,7 @@ class Authentication
    *          - true (the default) - return authentication failure
    *          - false - accept any authentication
    */
-  Authentication(bool denyByDefault = true);
+  explicit Authentication(bool denyByDefault = true);
 
   virtual ~Authentication();
 

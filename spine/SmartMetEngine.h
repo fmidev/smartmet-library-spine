@@ -40,10 +40,7 @@ class SmartMetEngine : private boost::noncopyable
   virtual void shutdownEngine();
 
   // Virtual method to return cache statistics
-  virtual Fmi::Cache::CacheStatistics getCacheStats() const
-  {
-    return Fmi::Cache::CacheStatistics();
-  }
+  virtual Fmi::Cache::CacheStatistics getCacheStats() const { return {}; }
 
   bool ready() const { return isReady; }
 

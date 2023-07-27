@@ -168,7 +168,7 @@ std::string SerialFormatter::format_attributes(const Table& theTable,
     else
       miss = *missing;
 
-    if (theAttributes.size() == 0)
+    if (theAttributes.empty())
     {
       if (theRows.size() > 1)
       {
@@ -300,7 +300,7 @@ std::string SerialFormatter::format(const Table& theTable,
     Table::Indexes cols = theTable.columns();
     Table::Indexes rows = theTable.rows();
 
-    if (atts.size() == 0)
+    if (atts.empty())
       return format_plain(theTable, theNames, theReq, cols, rows);
 
     return format_attributes(theTable, theNames, theReq, cols, rows, atts);
