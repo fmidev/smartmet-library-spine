@@ -76,8 +76,8 @@ namespace SmartMet
 {
 namespace Spine
 {
-AccessLogger::AccessLogger(const std::string& resource, const std::string& accessLogDir)
-    : itsResource(resource), itsLoggingDir(accessLogDir), itsIsRunning(false)
+AccessLogger::AccessLogger(std::string resource, std::string accessLogDir)
+    : itsResource(std::move(resource)), itsLoggingDir(std::move(accessLogDir))
 {
 }
 

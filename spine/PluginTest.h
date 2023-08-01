@@ -22,7 +22,6 @@
 #include <dtl/dtl.hpp>
 #include <macgyver/StringConversion.h>
 #include <macgyver/WorkQueue.h>
-#include <newbase/NFmiGlobals.h>
 #include <algorithm>
 #include <atomic>
 #include <fstream>
@@ -52,11 +51,9 @@ using PreludeFunction = boost::function<void(SmartMet::Spine::Reactor& reactor)>
 // IMPLEMENTATION DETAILS
 // ----------------------------------------------------------------------
 
-namespace
-{
 // These are for debugging
 
-void printRequest(SmartMet::Spine::HTTP::Request& request)
+void printRequest(const SmartMet::Spine::HTTP::Request& request)
 {
   try
   {
@@ -66,16 +63,12 @@ void printRequest(SmartMet::Spine::HTTP::Request& request)
     auto params = request.getParameterMap();
 
     for (const auto& value : params)
-    {
       std::cout << value.first << "=" << value.second << std::endl;
-    }
 
     auto headers = request.getHeaders();
 
     for (const auto& value : headers)
-    {
       std::cout << value.first << ":" << value.second << std::endl;
-    }
 
     std::cout << request.getContent() << std::endl;
   }
@@ -155,7 +148,7 @@ void add_to_path_list(fs::directory_entry& entry,
   try
   {
     std::vector<fs::path> curr_parts;
-    auto& item = entry.path();
+    const auto& item = entry.path();
     std::copy(item.begin(), item.end(), std::back_inserter(curr_parts));
     if ((top_parts->size() < curr_parts.size()) && fs::is_regular_file(item))
     {
@@ -340,8 +333,6 @@ bool get_processed_response(const boost::filesystem::path& scriptfile, std::stri
   }
 }
 
-}  // namespace
-
 namespace SmartMet
 {
 namespace Spine
@@ -350,7 +341,7 @@ class PluginTest
 {
  public:
   // Run tests with give server options and header printer
-  int run(SmartMet::Spine::Options& options, PreludeFunction prelude) const;
+  int run(SmartMet::Spine::Options& options, const PreludeFunction& prelude) const;
 
   // Deprecated function, switched from using a namespace to a class
   static int test(SmartMet::Spine::Options& options, PreludeFunction prelude, int num_threads = 1);
@@ -368,9 +359,9 @@ class PluginTest
   struct IgnoreInfo
   {
     std::string description;
-    bool found;
+    bool found = false;
 
-    IgnoreInfo(const std::string& description = "") : description(description), found(false) {}
+    explicit IgnoreInfo(std::string description = "") : description(std::move(description)) {}
   };
 
   using IgnoreMap = std::map<std::string, IgnoreInfo>;
@@ -399,7 +390,7 @@ int PluginTest::test(SmartMet::Spine::Options& options, PreludeFunction prelude,
   return tests.run(options, prelude);
 }
 
-int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) const
+int PluginTest::run(SmartMet::Spine::Options& options, const PreludeFunction& prelude) const
 {
   using boost::filesystem::path;
 
@@ -412,9 +403,9 @@ int PluginTest::run(SmartMet::Spine::Options& options, PreludeFunction prelude) 
     options.parseConfig();
     SmartMet::Spine::Reactor reactor(options);
     reactor.init();
-    if (reactor.isShuttingDown()) {
-        throw Fmi::Exception(BCP, "Reactor shutdown detected while init phase");
-    }
+    if (Reactor::isShuttingDown())
+      throw Fmi::Exception(BCP, "Reactor shutdown detected while init phase");
+
     prelude(reactor);
 
     const auto inputfiles = recursive_directory_contents(mInputDir);
@@ -517,8 +508,8 @@ bool PluginTest::process_query(const fs::path& fn,
   // emacs keeps messing up the newlines, easier to make sure
   // the ending is correct this way, but do NOT touch POST queries
 
-  if (boost::algorithm::ends_with(inputfile.string(), ".get")
-          or boost::algorithm::ends_with(inputfile.string(), ".options"))
+  if (boost::algorithm::ends_with(inputfile.string(), ".get") or
+      boost::algorithm::ends_with(inputfile.string(), ".options"))
   {
     Fmi::trim(input);
     input += "\r\n\r\n";
@@ -548,7 +539,7 @@ bool PluginTest::process_query(const fs::path& fn,
           ignores_it->second.found = true;
           ok = true;
           out << "IGNORED IN THIS SETUP";
-          if (ignores_it->second.description != "")
+          if (!ignores_it->second.description.empty())
           {
             out << ": " << ignores_it->second.description;
           }
@@ -559,12 +550,13 @@ bool PluginTest::process_query(const fs::path& fn,
 
           std::string result;
 
-          switch (query.second->getMethod()) {
-          default:
+          switch (query.second->getMethod())
+          {
+            default:
               result = get_full_response(response);
               break;
 
-          case HTTP::RequestMethod::OPTIONS:
+            case HTTP::RequestMethod::OPTIONS:
               response.removeHeader("Date");
               result = response.toString();
               break;
@@ -658,7 +650,6 @@ std::vector<std::string> PluginTest::read_ignore_list(const std::string& dir) co
   }
 
   std::vector<std::string> result;
-  std::vector<std::string> a1;
   for (const auto& fn : files)
   {
     std::vector<std::string> a2 = read_ignore_file(fn);

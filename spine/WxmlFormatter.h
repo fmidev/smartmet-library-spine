@@ -22,7 +22,7 @@ class WxmlFormatter : public TableFormatter
                      const HTTP::Request& theReq,
                      const TableFormatterOptions& theConfig) const override;
 
-  const std::string mimetype() const override { return "application/xml"; }
+  std::string mimetype() const override { return "application/xml"; }
 
  private:
   std::string format_100(const Table& theTable,

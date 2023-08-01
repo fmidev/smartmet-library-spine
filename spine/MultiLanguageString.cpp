@@ -36,7 +36,7 @@ using SmartMet::Spine::MultiLanguageString;
 
 MultiLanguageString::MultiLanguageString(const std::string& default_language,
                                          libconfig::Setting& setting)
-    : default_language(Fmi::ascii_tolower_copy(default_language)), data()
+    : default_language(Fmi::ascii_tolower_copy(default_language))
 {
   try
   {

@@ -22,7 +22,7 @@ class AsciiFormatter : public TableFormatter
                      const HTTP::Request& theReq,
                      const TableFormatterOptions& theConfig) const override;
 
-  const std::string mimetype() const override { return "text/plain"; }
+  std::string mimetype() const override { return "text/plain"; }
 };
 }  // namespace Spine
 }  // namespace SmartMet

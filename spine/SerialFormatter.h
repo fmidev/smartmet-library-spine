@@ -23,19 +23,19 @@ class SerialFormatter : public TableFormatter
                      const HTTP::Request& theReq,
                      const TableFormatterOptions& theConfig) const override;
 
-  const std::string mimetype() const override { return "text/plain"; }
+  std::string mimetype() const override { return "text/plain"; }
 
  private:
   std::string format_plain(const Table& theTable,
                            const TableFormatter::Names& theNames,
                            const HTTP::Request& theReq,
-                           Table::Indexes& theCols,
-                           Table::Indexes& theRows) const;
+                           const Table::Indexes& theCols,
+                           const Table::Indexes& theRows) const;
   std::string format_attributes(const Table& theTable,
                                 const TableFormatter::Names& theNames,
                                 const HTTP::Request& theReq,
                                 Table::Indexes& theCols,
-                                Table::Indexes& theRows,
+                                const Table::Indexes& theRows,
                                 std::list<std::string>& theAttributes) const;
 
   void appendNumber(std::string& theOutput, std::size_t theNumber) const;

@@ -617,7 +617,7 @@ std::string boost_any_to_string(const boost::any& anyvalue,
 
       for (const auto& value : anyvector)
       {
-        if ((matrix_data && retval.size() > 1) || (!matrix_data && retval.size() > 0))
+        if ((matrix_data && retval.size() > 1) || (!matrix_data && !retval.empty()))
           retval.append(" ");
         retval.append(boost_any_to_string(value, vf, precision));
       }

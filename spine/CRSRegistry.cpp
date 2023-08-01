@@ -1,3 +1,4 @@
+
 #include "CRSRegistry.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
@@ -31,7 +32,7 @@ class CRSRegistry::IdentityTransformation : public CRSRegistry::Transformation
   const std::string crs_name;
 
  public:
-  IdentityTransformation(const std::string& theCrsName);
+  explicit IdentityTransformation(std::string theCrsName);
 
   ~IdentityTransformation() override = default;
 
@@ -82,7 +83,7 @@ CRSRegistry::~CRSRegistry() = default;
 
 void CRSRegistry::register_epsg(const std::string& name,
                                 int epsg_code,
-                                boost::optional<std::string> regex,
+                                const boost::optional<std::string>& regex,
                                 bool swap_coord)
 {
   try
@@ -115,7 +116,7 @@ void CRSRegistry::register_epsg(const std::string& name,
 
 void CRSRegistry::register_proj4(const std::string& name,
                                  const std::string& proj4_def,
-                                 boost::optional<std::string> regex,
+                                 const boost::optional<std::string>& regex,
                                  bool swap_coord)
 {
   try
@@ -150,7 +151,7 @@ void CRSRegistry::register_proj4(const std::string& name,
 
 void CRSRegistry::register_wkt(const std::string& name,
                                const std::string& wkt_def,
-                               boost::optional<std::string> regex,
+                               const boost::optional<std::string>& regex,
                                bool swap_coord)
 {
   try
@@ -401,8 +402,8 @@ CRSRegistry::Transformation::Transformation() = default;
 
 CRSRegistry::Transformation::~Transformation() = default;
 
-CRSRegistry::MapEntry::MapEntry(const std::string& theName, boost::optional<std::string> text)
-    : name(theName), cs(new OGRSpatialReference)
+CRSRegistry::MapEntry::MapEntry(std::string theName, const boost::optional<std::string>& text)
+    : name(std::move(theName)), cs(new OGRSpatialReference)
 {
   try
   {
@@ -430,8 +431,8 @@ CRSRegistry::MapEntry::MapEntry(const std::string& theName, boost::optional<std:
   }
 }
 
-CRSRegistry::IdentityTransformation::IdentityTransformation(const std::string& theCrsName)
-    : crs_name(theCrsName)
+CRSRegistry::IdentityTransformation::IdentityTransformation(std::string theCrsName)
+    : crs_name(std::move(theCrsName))
 {
 }
 

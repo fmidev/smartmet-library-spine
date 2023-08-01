@@ -25,11 +25,11 @@ class JsonCache
  private:
   struct Data
   {
-    std::time_t modification_time;
+    std::time_t modification_time = 0;
     Json::Value json;
 
     Data() = default;
-    Data(const std::time_t& theTime, const Json::Value& theJson);
+    Data(std::time_t theTime, Json::Value theJson);
   };
 
   using Cache = std::unordered_map<std::size_t, Data>;

@@ -6,7 +6,6 @@
 #include <boost/any.hpp>
 #include <boost/array.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/noncopyable.hpp>
 #include <boost/optional.hpp>
 #include <boost/regex.hpp>
 #include <boost/shared_ptr.hpp>
@@ -25,7 +24,7 @@ namespace SmartMet
 {
 namespace Spine
 {
-class CRSRegistry : protected virtual boost::noncopyable
+class CRSRegistry
 {
   struct MapEntry
   {
@@ -35,15 +34,20 @@ class CRSRegistry : protected virtual boost::noncopyable
     std::map<std::string, boost::any> attrib_map;
     bool swap_coord;
 
-    MapEntry(const std::string& theName, boost::optional<std::string> text);
+    MapEntry(std::string theName, const boost::optional<std::string>& text);
   };
 
  public:
-  class Transformation : protected virtual boost::noncopyable
+  class Transformation
   {
    public:
     Transformation();
     virtual ~Transformation();
+    Transformation(const Transformation& other) = delete;
+    Transformation(Transformation&& other) = delete;
+    Transformation& operator=(const Transformation& other) = delete;
+    Transformation& operator=(Transformation&& other) = delete;
+
     virtual std::string get_src_name() const = 0;
     virtual std::string get_dest_name() const = 0;
     virtual NFmiPoint transform(const NFmiPoint& src) = 0;
@@ -58,23 +62,28 @@ class CRSRegistry : protected virtual boost::noncopyable
 
   virtual ~CRSRegistry();
 
+  CRSRegistry(const CRSRegistry& other) = delete;
+  CRSRegistry(CRSRegistry&& other) = delete;
+  CRSRegistry& operator=(const CRSRegistry& other) = delete;
+  CRSRegistry& operator=(CRSRegistry&& other) = delete;
+
   void parse_single_crs_def(Spine::ConfigBase& theConfig, libconfig::Setting& theEntry);
 
   void read_crs_dir(const boost::filesystem::path& theDir);
 
   void register_epsg(const std::string& name,
                      int epsg_code,
-                     boost::optional<std::string> regex = boost::optional<std::string>(),
+                     const boost::optional<std::string>& regex = boost::optional<std::string>(),
                      bool swap_coord = false);
 
   void register_proj4(const std::string& name,
                       const std::string& proj4_def,
-                      boost::optional<std::string> regex = boost::optional<std::string>(),
+                      const boost::optional<std::string>& regex = boost::optional<std::string>(),
                       bool swap_coord = false);
 
   void register_wkt(const std::string& name,
                     const std::string& wkt_def,
-                    boost::optional<std::string> regex = boost::optional<std::string>(),
+                    const boost::optional<std::string>& regex = boost::optional<std::string>(),
                     bool swap_coord = false);
 
   boost::shared_ptr<Transformation> create_transformation(const std::string& from,

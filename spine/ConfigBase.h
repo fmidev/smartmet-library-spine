@@ -35,7 +35,7 @@ class ConfigBase
    *   @param name The name of the configuration for error messages (only
    *          used if non empty string specified)
    */
-  ConfigBase(const std::string& file_name, const std::string& name = "");
+  explicit ConfigBase(const std::string& file_name, const std::string& name = "");
 
   /**
    *   @brief Constructor for ConfigBase object
@@ -44,7 +44,8 @@ class ConfigBase
    *   @param config_name The name of the configuration for error messages (only
    *          used if non empty string specified)
    */
-  ConfigBase(boost::shared_ptr<libconfig::Config> config, const std::string& config_name = "");
+  explicit ConfigBase(const boost::shared_ptr<libconfig::Config>& config,
+                      const std::string& config_name = "");
 
   virtual ~ConfigBase();
 
@@ -389,7 +390,7 @@ class ConfigBase
                            std::size_t offset = 0);
 
   libconfig::Setting& assert_is_list(libconfig::Setting& setting, int min_size = 0);
-  libconfig::Setting& assert_is_group(libconfig::Setting& setting);
+  libconfig::Setting& assert_is_group(libconfig::Setting& setting) const;
 
   std::string format_path(libconfig::Setting* origin, const std::string& path) const;
 

@@ -1,13 +1,14 @@
 #include "PluginTest.h"
+#include <boost/program_options.hpp>
 #include <macgyver/DebugTools.h>
 #include <macgyver/PostgreSQLConnection.h>
-#include <boost/program_options.hpp>
 #include <iostream>
 #include <sstream>
+#include <thread>
 
 using namespace std;
 
-void prelude(SmartMet::Spine::Reactor& reactor, const std::string& handler_path)
+void prelude(const SmartMet::Spine::Reactor& reactor, const std::string& handler_path)
 {
   try
   {
@@ -16,7 +17,7 @@ void prelude(SmartMet::Spine::Reactor& reactor, const std::string& handler_path)
     auto handlers = reactor.getURIMap();
     while ((handlers.find(handler_path) == handlers.end()) && (--timeout >= 0))
     {
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       handlers = reactor.getURIMap();
     }
 
@@ -55,7 +56,11 @@ int main(int argc, char* argv[])
 {
   Fmi::Exception::ForceStackTrace force_stack_trace;
 
-  std::setlocale(LC_ALL, "en_US.UTF-8");  // for iconv to work
+  if (std::setlocale(LC_ALL, "en_US.UTF-8") == nullptr)
+  {
+    std::cerr << "Failed to set locale en_US.UTF-8\n";
+    return 1;
+  }
 
   Fmi::Database::PostgreSQLConnection::disableReconnect();
 
@@ -64,8 +69,6 @@ int main(int argc, char* argv[])
   try
   {
     namespace po = boost::program_options;
-
-    std::vector<std::string> ignore_lists;
 
     po::options_description desc("Allowed options");
 
@@ -90,7 +93,7 @@ int main(int argc, char* argv[])
     if (opt.count(nm_help))
     {
       std::cout << desc << std::endl;
-      exit(1);
+      return 1;
     }
 
     SmartMet::Spine::Options options;
@@ -109,9 +112,13 @@ int main(int argc, char* argv[])
 
     if (Fmi::tracerPid())
     {
-        signal(SIGALRM, SIG_IGN);
-    } else {
-        signal(SIGALRM, alarm_handler);
+      if (signal(SIGALRM, SIG_IGN) == SIG_ERR)
+        throw Fmi::Exception(BCP, "Failed to ignore SIGALRM");
+    }
+    else
+    {
+      if (signal(SIGALRM, alarm_handler) == SIG_ERR)
+        throw Fmi::Exception(BCP, "Failed to et SIGALRM handler");
     }
 
     try
@@ -140,22 +147,19 @@ int main(int argc, char* argv[])
       }
       if (opt.count(nm_ignore))
       {
-        ignore_lists = opt[nm_ignore].as<std::vector<std::string> >();
+        auto ignore_lists = opt[nm_ignore].as<std::vector<std::string> >();
+        for (const auto& fn : ignore_lists)
+          tester.addIgnoreList(fn);
       }
       if (opt.count(nm_handler))
       {
         const std::string handler_path = opt[nm_handler].as<std::string>();
-        prelude_funct = [handler_path](SmartMet::Spine::Reactor& reactor)
+        prelude_funct = [handler_path](const SmartMet::Spine::Reactor& reactor)
         { prelude(reactor, handler_path); };
       }
       else
       {
         throw Fmi::Exception::Trace(BCP, "Mandatory command line option --handler (-H) missing");
-      }
-
-      for (const auto& fn : ignore_lists)
-      {
-        tester.addIgnoreList(fn);
       }
 
       return tester.run(options, prelude_funct);

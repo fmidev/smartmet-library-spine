@@ -4,6 +4,7 @@
 #include <boost/current_function.hpp>
 #include <boost/lambda/lambda.hpp>
 #include <boost/spirit/include/qi.hpp>
+#include <fmt/format.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TimeParser.h>
@@ -375,10 +376,8 @@ BoundingBox Value::get_bbox() const
       return boost::get<BoundingBox>(data);
 
     if (ind == TI_STRING)
-    {
-      const std::string& src = boost::get<std::string>(data);
-      return BoundingBox(src);
-    }
+      return BoundingBox(boost::get<std::string>(data));
+
     bad_value_type(METHOD_NAME, typeid(BoundingBox));
   }
   catch (...)
@@ -560,8 +559,6 @@ std::string Value::to_string() const
   {
     namespace pt = boost::posix_time;
 
-    char buffer[128];
-
     switch (data.which())
     {
       case TI_EMPTY:
@@ -571,18 +568,13 @@ std::string Value::to_string() const
         return boost::get<bool>(data) ? "true" : "false";
 
       case TI_INT:
-        // static_cast avoids warning on RHEL6 with gcc-4.4.X (no warning on Ubuntu with gcc4-6.X)
-        return std::to_string(static_cast<long long>(boost::get<int64_t>(data)));
+        return fmt::format("{}", boost::get<int64_t>(data));
 
       case TI_UINT:
-        // static_cast avoids warning on RHEL6 with gcc-4.4.X (no warning on Ubuntu with gcc4-6.X)
-        return std::to_string(static_cast<unsigned long long>(boost::get<uint64_t>(data)));
+        return fmt::format("{}", boost::get<uint64_t>(data));
 
       case TI_DOUBLE:
-        // std::to_string seems to round too much
-        snprintf(buffer, sizeof(buffer), "%.15g", boost::get<double>(data));
-        buffer[sizeof(buffer) - 1] = 0;
-        return buffer;
+        return fmt::format("{}", boost::get<double>(data));
 
       case TI_STRING:
         return boost::get<std::string>(data);
@@ -804,7 +796,7 @@ boost::posix_time::ptime parse_xml_time(const std::string& value)
 }
 
 // TODO(mheiskan) Fix the API to use a const reference
-bool string2bool(const std::string src)
+bool string2bool(const std::string& src)
 {
   try
   {
@@ -1002,8 +994,6 @@ void BoundingBox::parse_string(const std::string& src)
 {
   try
   {
-    namespace ba = boost::algorithm;
-
     // Split into max 5 parts, the optional 5th one is the CRS
     auto n = std::count(src.begin(), src.end(), ',');
     if (n < 3)

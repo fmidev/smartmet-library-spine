@@ -17,14 +17,6 @@ namespace Spine
 {
 // ----------------------------------------------------------------------
 /*!
- * \brief Constructor
- */
-// ----------------------------------------------------------------------
-
-Table::Table() : itsBuildingDone(false), itsStartRow(0), itsMaxResults(0) {}
-
-// ----------------------------------------------------------------------
-/*!
  * \brief Test if the table is empty
  */
 // ----------------------------------------------------------------------
@@ -145,7 +137,7 @@ std::string Table::get(std::size_t theColumn,
     }
 
     const std::string& value = get(theColumn, theRow);
-    return value == "" ? missing_text : value;
+    return (value.empty() ? missing_text : value);
   }
   catch (...)
   {

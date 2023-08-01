@@ -1,8 +1,6 @@
 #pragma once
 #include <boost/filesystem.hpp>
-#include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
-
 #include <deque>
 #include <string>
 
@@ -16,7 +14,10 @@ namespace fs = boost::filesystem;
 
 struct BufferSizeFunction
 {
-  static std::size_t getSize(boost::shared_ptr<std::string> theValue) { return theValue->size(); }
+  static std::size_t getSize(const boost::shared_ptr<std::string>& theValue)
+  {
+    return theValue->size();
+  }
 };
 
 /*
@@ -25,7 +26,7 @@ struct BufferSizeFunction
       * for plugin and engine use
       * ----------------------------------------
       */
-class SmartMetCache : boost::noncopyable
+class SmartMetCache
 {
   using KeyType = std::size_t;
 
@@ -46,6 +47,11 @@ class SmartMetCache : boost::noncopyable
 
   ~SmartMetCache();
 
+  SmartMetCache(const SmartMetCache& other) = delete;
+  SmartMetCache(SmartMetCache&& other) = delete;
+  SmartMetCache& operator=(const SmartMetCache& other) = delete;
+  SmartMetCache& operator=(SmartMetCache&& other) = delete;
+
   /*
    * ----------------------------------------
    * Find key in cache
@@ -58,7 +64,7 @@ class SmartMetCache : boost::noncopyable
    * Insert new entry into the cache
    * ----------------------------------------
    */
-  void insert(KeyType hash, ValueType data);
+  void insert(KeyType hash, const ValueType& data);
 
   /*
    *----------------------------------------

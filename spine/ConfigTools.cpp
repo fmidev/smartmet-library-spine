@@ -104,7 +104,7 @@ bool lookupConfigSetting(const libconfig::Config& theConfig,
     if (lastpos == std::string::npos)
       break;
 
-    hostname = hostname.substr(0, lastpos);
+    hostname.resize(lastpos);
   }
 
   // If configpath is used, there really should be a host specific
@@ -139,7 +139,7 @@ void expandVariables(libconfig::Config& theConfig, libconfig::Setting& theSettin
         p1 = val.find("$(");
         if (p1 != std::string::npos)
         {
-          std::size_t p2 = val.find(")", p1 + 1);
+          std::size_t p2 = val.find(')', p1 + 1);
           if (p2 != std::string::npos)
           {
             std::string var = val.substr(p1 + 2, p2 - p1 - 2);

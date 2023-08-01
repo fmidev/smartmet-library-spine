@@ -43,7 +43,7 @@ bool AnyFilter::match(const std::string& /* sequence */) const
   return true;
 }
 
-SingleFilter::SingleFilter(const std::string& format) : itsMatch(format) {}
+SingleFilter::SingleFilter(std::string format) : itsMatch(std::move(format)) {}
 
 bool SingleFilter::match(const std::string& sequence) const
 {
@@ -161,14 +161,10 @@ IPConfig::IPConfig(const std::string& configFile, const std::string& root) : Con
     std::vector<std::string> matchTokens;
 
     bool success = false;
-    if (root == "")
-    {
+    if (root.empty())
       success = get_config_array(get_root(), "ip_filters", matchTokens);
-    }
     else
-    {
       success = get_config_array(root + ".ip_filters", matchTokens);
-    }
 
     if (!success)
     {
@@ -185,7 +181,7 @@ IPConfig::IPConfig(const std::string& configFile, const std::string& root) : Con
   }
 }
 
-IPConfig::IPConfig(boost::shared_ptr<libconfig::Config> configPtr, const std::string& root)
+IPConfig::IPConfig(const boost::shared_ptr<libconfig::Config>& configPtr, const std::string& root)
     : ConfigBase(configPtr)
 {
   try
@@ -194,13 +190,9 @@ IPConfig::IPConfig(boost::shared_ptr<libconfig::Config> configPtr, const std::st
 
     bool success = false;
     if (root.empty())
-    {
       success = get_config_array(get_root(), "ip_filters", matchTokens);
-    }
     else
-    {
       success = get_config_array(root + ".ip_filters", matchTokens);
-    }
 
     if (!success)
     {
@@ -239,7 +231,7 @@ IPFilter::IPFilter(const std::string& configFile, const std::string& root)
   }
 }
 
-IPFilter::IPFilter(boost::shared_ptr<libconfig::Config> configPtr, const std::string& root)
+IPFilter::IPFilter(const boost::shared_ptr<libconfig::Config>& configPtr, const std::string& root)
     : itsConfig(new IPConfig(configPtr, root))
 {
   try

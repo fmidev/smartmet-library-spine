@@ -72,12 +72,12 @@ SmartMetCache::ValueType SmartMetCache::find(KeyType hash)
     // Next try the file cache
 
     if (!itsFileCache)
-      return boost::shared_ptr<std::string>();
+      return {};
 
     auto fileresult = itsFileCache->find(hash);
 
     if (!fileresult)
-      return boost::shared_ptr<std::string>();
+      return {};
 
     // Promote result to memcache and return
     auto entry = boost::make_shared<std::string>(std::move(*fileresult));
@@ -96,19 +96,17 @@ SmartMetCache::ValueType SmartMetCache::find(KeyType hash)
   }
 }
 
-void SmartMetCache::insert(KeyType hash, ValueType data)
+void SmartMetCache::insert(KeyType hash, const ValueType& data)
 {
   try
   {
     // Insert into in-memory cache
     std::vector<std::pair<KeyType, ValueType>> evictedItems;
 
-    itsMemoryCache.insert(hash, std::move(data), evictedItems);
+    itsMemoryCache.insert(hash, data, evictedItems);
 
     if (!evictedItems.empty() && itsFileCache)
-    {
       queueFileWrites(evictedItems);
-    }
   }
   catch (...)
   {

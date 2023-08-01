@@ -79,8 +79,8 @@ std::list<std::string> parse_attributes(const std::string& theStr)
 std::string format_plain(const Table& theTable,
                          const TableFormatter::Names& theNames,
                          const HTTP::Request& theReq,
-                         Table::Indexes& theCols,
-                         Table::Indexes& theRows)
+                         const Table::Indexes& theCols,
+                         const Table::Indexes& theRows)
 {
   try
   {
@@ -158,7 +158,7 @@ std::string format_attributes(const Table& theTable,
     else
       miss = *missing;
 
-    if (theAttributes.size() == 0)
+    if (theAttributes.empty())
     {
       if (theRows.size() > 1)
         out += "array(";
@@ -209,8 +209,7 @@ std::string format_attributes(const Table& theTable,
       // Remove the attribute column temporarily
 
       theCols.erase(nam);
-      std::remove(
-          theAttributes.begin(), theAttributes.end(), attribute);  // NOLINT not using return value
+      theAttributes.remove(attribute);
 
       // Process unique attribute values one at a time
 
@@ -281,7 +280,7 @@ std::string PhpFormatter::format(const Table& theTable,
     Table::Indexes cols = theTable.columns();
     Table::Indexes rows = theTable.rows();
 
-    if (atts.size() == 0)
+    if (atts.empty())
       return format_plain(theTable, theNames, theReq, cols, rows);
 
     return format_attributes(theTable, theNames, theReq, cols, rows, atts) + ";\n";

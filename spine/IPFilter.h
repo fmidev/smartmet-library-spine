@@ -39,7 +39,7 @@ using SequenceFilterPtr = boost::shared_ptr<SequenceFilter>;
 class AnyFilter : public SequenceFilter
 {
  public:
-  AnyFilter(const std::string& format);
+  explicit AnyFilter(const std::string& format);
 
   bool match(const std::string& sequence) const override;
 };
@@ -48,7 +48,7 @@ class AnyFilter : public SequenceFilter
 class SingleFilter : public SequenceFilter
 {
  public:
-  SingleFilter(const std::string& format);
+  explicit SingleFilter(std::string format);
 
   bool match(const std::string& sequence) const override;
 
@@ -60,7 +60,7 @@ class SingleFilter : public SequenceFilter
 class RangeFilter : public SequenceFilter
 {
  public:
-  RangeFilter(const std::string& format);
+  explicit RangeFilter(const std::string& format);
 
   bool match(const std::string& sequence) const override;
 
@@ -74,7 +74,7 @@ class RangeFilter : public SequenceFilter
 class AddressFilter
 {
  public:
-  AddressFilter(const std::string& formatString);
+  explicit AddressFilter(const std::string& formatString);
 
   bool match(const std::vector<std::string>& ipTokens) const;
 
@@ -90,9 +90,10 @@ class IPConfig : public ConfigBase
 
   IPConfig();
 
-  IPConfig(const std::string& configFile, const std::string& root = "");
+  explicit IPConfig(const std::string& configFile, const std::string& root = "");
 
-  IPConfig(boost::shared_ptr<libconfig::Config> configPtr, const std::string& root = "");
+  explicit IPConfig(const boost::shared_ptr<libconfig::Config>& configPtr,
+                    const std::string& root = "");
 
   const std::vector<std::string>& getTokens() const;
 
@@ -118,11 +119,12 @@ class IPConfig : public ConfigBase
 class IPFilter
 {
  public:
-  IPFilter(const std::string& configFile, const std::string& root = "");
+  explicit IPFilter(const std::string& configFile, const std::string& root = "");
 
-  IPFilter(boost::shared_ptr<libconfig::Config> configPtr, const std::string& root = "");
+  explicit IPFilter(const boost::shared_ptr<libconfig::Config>& configPtr,
+                    const std::string& root = "");
 
-  IPFilter(const std::vector<std::string>& formatTokens);
+  explicit IPFilter(const std::vector<std::string>& formatTokens);
 
   bool match(const std::string& ip) const;
 

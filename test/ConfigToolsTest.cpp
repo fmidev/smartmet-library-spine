@@ -17,9 +17,10 @@ test_suite* init_unit_test_suite(int argc, char* argv[])
 
   // Environment variable USER is not defined in Circle-CI environment.
   // Define it here in this case to avoid test failure
-  if (!getenv("USER")) {
-      const char* tmp = "USER=unknown";
-      putenv(const_cast<char*>(tmp));
+  if (!getenv("USER"))
+  {
+    const char* tmp = "USER=unknown";
+    putenv(const_cast<char*>(tmp));
   }
 
   return NULL;

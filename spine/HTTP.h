@@ -191,13 +191,13 @@ class MessageContent
 
   MessageContent(const std::string& theContent);
 
-  MessageContent(boost::shared_ptr<std::string> theContent);
+  explicit MessageContent(const boost::shared_ptr<std::string>& theContent);
 
-  MessageContent(boost::shared_ptr<std::vector<char> > theContent);
+  explicit MessageContent(const boost::shared_ptr<std::vector<char>>& theContent);
 
   MessageContent(boost::shared_array<char> theContent, std::size_t theSize);
 
-  MessageContent(boost::shared_ptr<ContentStreamer> theContent);
+  explicit MessageContent(boost::shared_ptr<ContentStreamer> theContent);
 
   MessageContent(boost::shared_ptr<ContentStreamer> theContent, std::size_t contentSize);
 
@@ -219,7 +219,7 @@ class MessageContent
 
  private:
   std::string stringContent;
-  boost::shared_ptr<std::vector<char> > vectorContent;
+  boost::shared_ptr<std::vector<char>> vectorContent;
   boost::shared_array<char> arrayContent;
   boost::shared_ptr<ContentStreamer> streamContent;
   boost::shared_ptr<std::string> stringPtrContent;
@@ -303,7 +303,7 @@ class Message
 
  protected:
   // Only called from derived classes
-  Message(const HeaderMap& headerMap, const std::string& version, bool isChunked);
+  Message(HeaderMap headerMap, std::string version, bool isChunked);
 
   // Construct empty message
   Message();
@@ -314,7 +314,7 @@ class Message
 
   std::string itsVersion;
 
-  bool itsIsChunked;
+  bool itsIsChunked = false;
 };
 
 // ----------------------------------------------------------------------
@@ -326,13 +326,7 @@ class Message
 class Request : public Message
 {
  public:
-  // ----------------------------------------------------------------------
-  /*!
-   * \brief Default constructor
-   */
-  // ----------------------------------------------------------------------
-
-  Request();
+  Request() = default;
 
   // ----------------------------------------------------------------------
   /*!
@@ -340,12 +334,12 @@ class Request : public Message
    */
   // ----------------------------------------------------------------------
 
-  Request(const HeaderMap& headerMap,
-          const std::string& body,
-          const std::string& version,
-          const ParamMap& theParameters,
-          const std::string& resource,
-          const RequestMethod& method,
+  Request(HeaderMap headerMap,
+          std::string body,
+          std::string version,
+          ParamMap theParameters,
+          std::string resource,
+          RequestMethod method,
           bool hasParsedPostData);
 
   // ----------------------------------------------------------------------
@@ -536,7 +530,7 @@ class Request : public Message
 
   std::string itsClientIP;
 
-  bool itsHasParsedPostData;
+  bool itsHasParsedPostData = false;
 };
 
 class Response : public Message
@@ -546,23 +540,18 @@ class Response : public Message
   friend class SmartMet::Server::AsyncConnection;
   friend class SmartMet::Server::SyncConnection;
 
-  // ----------------------------------------------------------------------
-  /*!
-   * \brief Default constructor
-   */
-  // ----------------------------------------------------------------------
-  Response();
+  Response() = default;
 
   // ----------------------------------------------------------------------
   /*!
    * \brief Construct from arguments
    */
   // ----------------------------------------------------------------------
-  Response(const HeaderMap& headerMap,
-           const std::string& body,
-           const std::string& version,
-           const Status status,
-           const std::string& reason,
+  Response(HeaderMap headerMap,
+           std::string body,
+           std::string version,
+           Status status,
+           std::string reason,
            bool hasStream,
            bool isChunked);
 
@@ -602,28 +591,28 @@ class Response : public Message
    * \brief Set message content (ptr to string)
    */
   // ----------------------------------------------------------------------
-  void setContent(boost::shared_ptr<std::string> theContent);
+  void setContent(const boost::shared_ptr<std::string>& theContent);
 
   // ----------------------------------------------------------------------
   /*!
    * \brief Set message content (pointer to vector)
    */
   // ----------------------------------------------------------------------
-  void setContent(boost::shared_ptr<std::vector<char> > theContent);
+  void setContent(const boost::shared_ptr<std::vector<char>>& theContent);
 
   // ----------------------------------------------------------------------
   /*!
    * \brief Set message content (shared array)
    */
   // ----------------------------------------------------------------------
-  void setContent(boost::shared_array<char> theContent, std::size_t contentSize);
+  void setContent(const boost::shared_array<char>& theContent, std::size_t contentSize);
 
   // ----------------------------------------------------------------------
   /*!
    * \brief Set message content (stream content with known size)
    */
   // ----------------------------------------------------------------------
-  void setContent(boost::shared_ptr<ContentStreamer> theContent, std::size_t contentSize);
+  void setContent(const boost::shared_ptr<ContentStreamer>& theContent, std::size_t contentSize);
 
   // ----------------------------------------------------------------------
   /*!
@@ -631,7 +620,7 @@ class Response : public Message
    * This implies the use of chunked transfer encoding
    */
   // ----------------------------------------------------------------------
-  void setContent(boost::shared_ptr<ContentStreamer> theContent);
+  void setContent(const boost::shared_ptr<ContentStreamer>& theContent);
 
   // ----------------------------------------------------------------------
   /*!
@@ -744,8 +733,8 @@ class Response : public Message
    * \brief Default response to OPTIONS method
    */
   // ----------------------------------------------------------------------
-  static Response stockOptionsResponse(const std::vector<std::string>& methods =
-      { "OPTIONS", "GET" } );
+  static Response stockOptionsResponse(const std::vector<std::string>& methods = {"OPTIONS",
+                                                                                  "GET"});
 
   ~Response() override;
 
@@ -754,16 +743,16 @@ class Response : public Message
 
   MessageContent itsContent;
 
-  Status itsStatus;
+  Status itsStatus = Status::not_a_status;
 
   std::string itsReasonPhrase;
 
-  bool itsHasStreamContent;
+  bool itsHasStreamContent = false;
 
-  bool isGatewayResponse;
+  bool isGatewayResponse = false;
 
   std::string itsOriginatingBackend;
-  int itsBackendPort;
+  int itsBackendPort = 0;
 };
 
 // ----------------------------------------------------------------------
@@ -788,7 +777,7 @@ std::string urldecode(const std::string& url);
  * indicating parsing status and pointer to the parsed request.
  */
 // ----------------------------------------------------------------------
-std::pair<ParsingStatus, std::unique_ptr<Request> > parseRequest(const std::string& message);
+std::pair<ParsingStatus, std::unique_ptr<Request>> parseRequest(const std::string& message);
 
 // ----------------------------------------------------------------------
 /*!

@@ -7,7 +7,6 @@
 #include "SmartMetPlugin.h"
 #include "Thread.h"
 #include <boost/function.hpp>
-#include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <string>
 
@@ -22,7 +21,7 @@ class AccessLogger;
 
 using ContentHandler = boost::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)>;
 
-class HandlerView : private boost::noncopyable
+class HandlerView
 {
  public:
   // Regular plugin
@@ -31,14 +30,19 @@ class HandlerView : private boost::noncopyable
               SmartMetPlugin* thePlugin,
               const std::string& theResource,
               bool loggingStatus,
-              bool itsPrivate,
+              bool isprivate,
               const std::string& accessLogDir);
 
   // CatchNoMatch handler
-  HandlerView(ContentHandler theHandler);
+  explicit HandlerView(ContentHandler theHandler);
 
   // Destructor
   ~HandlerView();
+
+  HandlerView(const HandlerView& other) = delete;
+  HandlerView(HandlerView&& other) = delete;
+  HandlerView& operator=(const HandlerView& other) = delete;
+  HandlerView& operator=(HandlerView&& other) = delete;
 
   // Handle a request
   bool handle(Reactor& theReactor, const HTTP::Request& theRequest, HTTP::Response& theResponse);
@@ -90,16 +94,16 @@ class HandlerView : private boost::noncopyable
   boost::shared_ptr<IPFilter::IPFilter> itsIpFilter;
 
   // Non-owning pointer to the plugin
-  SmartMetPlugin* itsPlugin;
+  SmartMetPlugin* itsPlugin = nullptr;
 
   // The base uri registered for this handler
   std::string itsResource;
 
   // Flag to see if this is the fallthrough-handler
-  bool itsIsCatchNoMatch;
+  bool itsIsCatchNoMatch = false;
 
   // Flag to specify that handler is private
-  bool itsPrivate;
+  bool itsPrivate = false;
 
   // The request log for this handler
   LogListType itsRequestLog;
@@ -108,7 +112,7 @@ class HandlerView : private boost::noncopyable
   MutexType itsLoggingMutex;
 
   // Flag to see if logging is on
-  bool isLogging;
+  bool isLogging = false;
 
   // How many LogRanges are in use
   std::atomic<int> itsLogReaderCount{0};

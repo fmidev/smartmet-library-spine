@@ -5,6 +5,7 @@
 #include <boost/lambda/lambda.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 #include <boost/spirit/include/qi.hpp>
+#include <fmt/format.h>
 #include <macgyver/Exception.h>
 #include <cassert>
 #include <iostream>
@@ -47,7 +48,8 @@ ConfigBase::ConfigBase(const std::string& file_name, const std::string& config_n
   }
 }
 
-ConfigBase::ConfigBase(boost::shared_ptr<libconfig::Config> config, const std::string& config_name)
+ConfigBase::ConfigBase(const boost::shared_ptr<libconfig::Config>& config,
+                       const std::string& config_name)
     : file_name("<none>"), config_name(config_name), itsConfig(config)
 {
   try
@@ -212,12 +214,10 @@ void ConfigBase::dump_setting(std::ostream& stream,
     else if (type == libconfig::Setting::TypeFloat)
     {
       double value = setting;
-      char buffer[80];
-      snprintf(buffer, sizeof(buffer), "%.16g", value);
       stream << prefix;
       if (name)
         stream << name << " = ";
-      stream << buffer;
+      stream << fmt::format("{}", value);
     }
     else if (type == libconfig::Setting::TypeString)
     {
@@ -303,7 +303,7 @@ libconfig::Setting& ConfigBase::assert_is_list(libconfig::Setting& setting, int 
   }
 }
 
-libconfig::Setting& ConfigBase::assert_is_group(libconfig::Setting& setting)
+libconfig::Setting& ConfigBase::assert_is_group(libconfig::Setting& setting) const
 {
   try
   {
@@ -454,7 +454,7 @@ std::string ConfigBase::format_path(libconfig::Setting* origin, const std::strin
     std::ostringstream result;
     const std::string origin_path = origin ? origin->getPath() : std::string("");
     result << '{' << get_file_name() << "}:";
-    if (origin_path != "")
+    if (!origin_path.empty())
       result << origin_path << '.';
     result << path;
     return result.str();

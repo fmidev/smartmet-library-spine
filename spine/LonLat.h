@@ -4,8 +4,11 @@ namespace SmartMet
 {
 namespace Spine
 {
-
-enum class LonLatFormat { LATLON, LONLAT };
+enum class LonLatFormat
+{
+  LATLON,
+  LONLAT
+};
 
 struct LonLat
 {
@@ -19,5 +22,5 @@ inline bool operator==(const LonLat& lonlat1, const LonLat& lonlat2)
   return (lonlat1.lon == lonlat2.lon && lonlat1.lat == lonlat2.lat);
 }
 
-}
-}
+}  // namespace Spine
+}  // namespace SmartMet

@@ -4,7 +4,6 @@ namespace SmartMet
 {
 namespace Spine
 {
-
 // Type to indicate empty ('nan') result
 struct None
 {

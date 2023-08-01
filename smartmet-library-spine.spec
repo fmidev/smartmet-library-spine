@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.7.14
+Version: 23.7.31
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -46,9 +46,9 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 23.7.10
-BuildRequires: smartmet-library-macgyver-devel >= 23.6.6
-BuildRequires: smartmet-library-newbase-devel >= 23.7.10
-BuildRequires: smartmet-utils-devel >= 23.7.7
+BuildRequires: smartmet-library-macgyver-devel >= 23.7.28
+BuildRequires: smartmet-library-newbase-devel >= 23.7.28
+BuildRequires: smartmet-utils-devel >= 23.7.17
 
 %if 0%{?rhel} && 0%{rhel} == 7
 Requires: libpqxx < 1:7.0
@@ -84,8 +84,8 @@ Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
 Requires: smartmet-library-gis >= 23.7.10
-Requires: smartmet-library-macgyver >= 23.6.6
-Requires: smartmet-library-newbase >= 23.7.10
+Requires: smartmet-library-macgyver >= 23.7.28
+Requires: smartmet-library-newbase >= 23.7.28
 Requires: smartmet-timezones >= 23.4.18
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -94,7 +94,7 @@ Requires: smartmet-timezones >= 23.4.18
 #TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
-#TestRequires: smartmet-library-macgyver-devel >= 23.6.6
+#TestRequires: smartmet-library-macgyver-devel >= 23.7.28
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -106,9 +106,9 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 23.6.6
+Requires: smartmet-library-macgyver-devel >= 23.7.28
 Requires: smartmet-library-gis-devel >= 23.7.10
-Requires: smartmet-library-newbase-devel >= 23.7.10
+Requires: smartmet-library-newbase-devel >= 23.7.28
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
@@ -151,6 +151,16 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Jul 31 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.7.31-1.fmi
+- Added ImageFormatter from TimeSeries-plugin
+
+* Fri Jul 28 2023 Andris Pavēnis <andris.pavenis@fmi.fi> 23.7.28-1.fmi
+- Repackage due to bulk ABI changes in macgyver/newbase/spine
+
+* Thu Jul 27 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.7.27-1.fmi
+- Fixed getURI to urlencode the parameters properly
+- Silenced compiler warnings
+
 * Fri Jul 14 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.7.14-1.fmi
 - Moved coredump_filter handling to the main program
 - Import cfgvalidate from smartmet-fmitools

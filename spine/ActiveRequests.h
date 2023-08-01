@@ -3,7 +3,6 @@
 #include "HTTP.h"
 #include "Thread.h"
 #include <boost/date_time/posix_time/ptime.hpp>
-#include <boost/noncopyable.hpp>
 #include <map>
 #include <string>
 
@@ -22,7 +21,7 @@ namespace Spine
  */
 // ----------------------------------------------------------------------
 
-class ActiveRequests : private boost::noncopyable
+class ActiveRequests
 {
  public:
   // Storage for the request information
@@ -33,6 +32,11 @@ class ActiveRequests : private boost::noncopyable
   };
 
   using Requests = std::map<std::size_t, Info>;
+  ActiveRequests() = default;
+  ActiveRequests(const ActiveRequests& other) = delete;
+  ActiveRequests(ActiveRequests&& other) = delete;
+  ActiveRequests& operator=(ActiveRequests&& other) = delete;
+  ActiveRequests& operator=(const ActiveRequests& other) = delete;
 
   std::size_t insert(const HTTP::Request& theRequest);
   void remove(std::size_t theKey);

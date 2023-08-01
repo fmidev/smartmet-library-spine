@@ -27,14 +27,13 @@ HandlerView::HandlerView(ContentHandler theHandler,
                          SmartMetPlugin* thePlugin,
                          const std::string& theResource,
                          bool loggingStatus,
-                         bool itsPrivate,
+                         bool isprivate,
                          const std::string& accessLogDir)
     : itsHandler(std::move(theHandler)),
       itsIpFilter(std::move(theIpFilter)),
       itsPlugin(thePlugin),
       itsResource(theResource),
-      itsIsCatchNoMatch(false),
-      itsPrivate(itsPrivate),
+      itsPrivate(isprivate),
       isLogging(loggingStatus),
       itsLastFlushedRequest(itsRequestLog.begin()),
       itsAccessLog(new AccessLogger(theResource, accessLogDir))
@@ -53,7 +52,6 @@ HandlerView::HandlerView(ContentHandler theHandler,
 HandlerView::HandlerView(ContentHandler theHandler)
     : itsHandler(std::move(theHandler)),
       itsIsCatchNoMatch(true),
-      isLogging(false),
       itsLastFlushedRequest(itsRequestLog.begin())
 {
 }
@@ -300,7 +298,7 @@ LogRange HandlerView::getLoggedRequests()
 {
   ReadLock lock(itsLoggingMutex);
   lockLogRange();
-  return LogRange(itsRequestLog, this);
+  return {itsRequestLog, this};
 }
 
 void HandlerView::releaseLogRange()

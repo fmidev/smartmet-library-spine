@@ -135,7 +135,7 @@ std::string format_recursively(const Table& theTable,
                                const TableFormatter::Names& theNames,
                                const HTTP::Request& theReq,
                                Table::Indexes& theCols,
-                               Table::Indexes& theRows,
+                               const Table::Indexes& theRows,
                                std::list<std::string>& theAttributes)
 {
   try
@@ -204,8 +204,7 @@ std::string format_recursively(const Table& theTable,
       // Remove the attribute column temporarily
 
       theCols.erase(nam);
-      // NOLINTNEXTLINE(bugprone-unused-return-value)
-      std::remove(theAttributes.begin(), theAttributes.end(), attribute);
+      theAttributes.remove(attribute);
 
       // Process unique attribute values one at a time
 
