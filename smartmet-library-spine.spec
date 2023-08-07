@@ -44,6 +44,7 @@ BuildRequires: double-conversion-devel
 BuildRequires: libicu-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
+BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 23.7.10
 BuildRequires: smartmet-library-macgyver-devel >= 23.7.28
