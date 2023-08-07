@@ -95,6 +95,7 @@ Requires: smartmet-timezones >= 23.4.18
 #TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
+#TestRequires: fontconfig-devel
 #TestRequires: smartmet-library-macgyver-devel >= 23.7.28
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
