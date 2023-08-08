@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.7.31
+Version: 23.8.8
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -147,12 +147,16 @@ make %{_smp_mflags}
 %files -n %{SPECNAME}-devel
 %defattr(0644,root,root,0755)
 %{_includedir}/smartmet/%{DIRNAME}
+%defattr(0775,root,root,0775)
 %{_bindir}/cfgvalidate
 
 %files -n %{SPECNAME}-plugin-test
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Aug  8 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.8.8-1.fmi
+- Fixed cfgvalidate to be executable
+
 * Mon Jul 31 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.7.31-1.fmi
 - Added ImageFormatter from TimeSeries-plugin
 
