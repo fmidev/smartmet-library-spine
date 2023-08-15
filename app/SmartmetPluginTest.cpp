@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <thread>
+#include <fontconfig/fontconfig.h>
 
 using namespace std;
 
@@ -41,6 +42,21 @@ void alarm_handler(int)
   std::cerr << std::endl << "Timeout: test terminated" << std::endl << std::endl;
   abort();
 }
+
+struct FontConfigInit
+{
+    FontConfigInit()
+    {
+        FcInit();
+    }
+
+    ~FontConfigInit()
+    {
+        FcFini();
+    }
+};
+
+FontConfigInit fcInit;
 
 #define nm_help "help"
 #define nm_config "reactor-config"

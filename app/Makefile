@@ -45,7 +45,7 @@ release: all
 profile: all
 
 smartmet-plugin-test: obj/SmartmetPluginTest.o ../libsmartmet-spine.so
-	$(CXX) $(CFLAGS) -o $@ obj/SmartmetPluginTest.o -L .. -lsmartmet-spine $(LIBS)
+	$(CXX) $(CFLAGS) -o $@ obj/SmartmetPluginTest.o -L .. -lsmartmet-spine -lfontconfig $(LIBS)
 
 cfgvalidate: obj/cfgvalidate.o ../libsmartmet-spine.so
 	$(CXX) $(CFLAGS) -o $@ obj/cfgvalidate.o -L .. -lsmartmet-spine $(LIBS)
