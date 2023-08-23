@@ -14,6 +14,7 @@ class MultiLanguageStringArray
 {
  public:
   MultiLanguageStringArray(std::string default_language, libconfig::Setting& setting);
+  MultiLanguageStringArray() {}
 
   static std::shared_ptr<MultiLanguageStringArray> create(const std::string& default_language,
                                                           libconfig::Setting& setting);
@@ -35,7 +36,7 @@ class MultiLanguageStringArray
  private:
   void parse_content(libconfig::Setting& setting);
 
-  const std::string default_language;
+  std::string default_language;
   std::map<std::string, std::vector<std::string> > data;
 };
 }  // namespace Spine
