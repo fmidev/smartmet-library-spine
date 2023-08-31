@@ -13,6 +13,7 @@ class MultiLanguageString
 {
  public:
   MultiLanguageString(const std::string& default_language, libconfig::Setting& setting);
+  MultiLanguageString() {}
 
   static std::shared_ptr<MultiLanguageString> create(const std::string& default_language,
                                                      libconfig::Setting& setting);
@@ -26,7 +27,7 @@ class MultiLanguageString
   inline const std::map<std::string, std::string>& get_content() const { return data; }
 
  private:
-  const std::string default_language;
+  std::string default_language;
   std::map<std::string, std::string> data;
 };
 
