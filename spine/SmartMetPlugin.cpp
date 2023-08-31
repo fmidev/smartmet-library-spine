@@ -159,6 +159,33 @@ bool SmartMetPlugin::checkRequest(const SmartMet::Spine::HTTP::Request &theReque
         {
           theResponse = HTTP::Response::stockOptionsResponse({"GET", "OPTIONS"});
         }
+
+        // Checking for CORS preflight headers
+        // https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
+        if (theRequest.getHeader("Access-Control-Request-Method"))
+        {
+            // Clone header 'Allow' to 'Access-Control-Allow-Methods' for CORS
+            auto h1 = theResponse.getHeader("Allow");
+            assert(bool(h1));  // HTTP::Response::stockOptionsResponse should have set this header
+            theResponse.setHeader("Access-Control-Allow-Methods", *h1);
+
+            auto opt_origin = theRequest.getHeader("Origin");
+            if (opt_origin)
+            {
+                theResponse.setHeader("Access-Control-Allow-Origin", *opt_origin);
+            }
+
+            auto opt_req_headers = theRequest.getHeader("Access-Control-Request-Headers");
+            if (opt_req_headers)
+            {
+                // FIXME: Should be use actaully supported headers here.
+                //        Let us copy requested headers to the response for now
+                theResponse.setHeader("Access-Control-Allow-Headers", *opt_req_headers);
+            }
+
+            theResponse.setHeader("Access-Control-Max-Age", "86400");
+        }
+
         return true;
 
       default:

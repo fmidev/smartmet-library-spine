@@ -1191,7 +1191,7 @@ Response Response::stockOptionsResponse(const std::vector<std::string>& methods)
     response.setHeader("Cache-Control", "max-age=86400");
     response.setHeader("Date", now);
     response.setHeader("Server", "SmartMet Server");
-    return response;
+   return response;
   }
   catch (...)
   {

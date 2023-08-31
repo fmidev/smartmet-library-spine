@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.8.23
+Version: 23.8.31
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -154,8 +154,11 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
-* Wed Aug 23 2023 Anssi Reponen <anssi.reponen@fmi.fi> - 23.8.23-1.fmi
+* Thu Aug 31 2023 Anssi Reponen <anssi.reponen@fmi.fi> - 23.8.31-1.fmi
 - Added/moved translation services into spine
+
+* Mon Aug 28 2023 Andris Pavēnis <andris.pavenis@fmi.fi> 23.8.28-1.fmi
+- Add support of CORS preflight requests to SmartMet plugins
 
 * Tue Aug  8 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.8.8-1.fmi
 - Fixed cfgvalidate to be executable
