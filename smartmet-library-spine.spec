@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.8.31
+Version: 23.10.10
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -154,6 +154,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Oct 10 2023 Andris Pavēnis <andris.pavenis@fmi.fi> 23.10.10-1.fmi
+- Support compressed expected result files in smartmet-plugin-test
+
 * Thu Aug 31 2023 Anssi Reponen <anssi.reponen@fmi.fi> - 23.8.31-1.fmi
 - Added/moved translation services into spine
 
