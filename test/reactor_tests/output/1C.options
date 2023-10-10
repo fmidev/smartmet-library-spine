@@ -1,9 +1,0 @@
-HTTP/1.0 204 No Content
-Access-Control-Allow-Headers: Content-Type
-Access-Control-Allow-Methods: GET, POST, OPTIONS
-Access-Control-Allow-Origin: example.com
-Access-Control-Max-Age: 86400
-Allow: GET, POST, OPTIONS
-Cache-Control: max-age=86400
-Server: SmartMet Server
-

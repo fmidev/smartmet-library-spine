@@ -20,6 +20,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <dtl/dtl.hpp>
+#include <macgyver/FileSystem.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/WorkQueue.h>
 #include <algorithm>
@@ -213,9 +214,11 @@ std::string get_file_contents(const boost::filesystem::path& filename)
   try
   {
     std::string content;
-    std::ifstream in(filename.c_str());
+    std::ifstream raw(filename.c_str());
+    Fmi::IStream in(raw, filename.c_str());
     if (in)
       content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+
     return content;
   }
   catch (...)
@@ -590,9 +593,10 @@ bool PluginTest::process_query(const fs::path& fn,
               }
             }
 
-            if (exists(outputfile) and is_regular_file(outputfile))
+            const auto real_output_file = Fmi::lookup_file(outputfile.string());
+            if (real_output_file)
             {
-              std::string output = get_file_contents(outputfile);
+              std::string output = get_file_contents(*real_output_file);
 
               if (result == output)
                 out << "OK";
