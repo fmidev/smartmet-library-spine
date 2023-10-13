@@ -489,51 +489,41 @@ std::string Value::dump_to_string() const
   try
   {
     namespace pt = boost::posix_time;
+    namespace ba = boost::algorithm;
 
-    std::ostringstream out;
     switch (data.which())
     {
       case TI_EMPTY:
-        out << "(empty)";
-        break;
+        return "(empty)";
 
       case TI_BOOL:
-        out << "(bool " << (boost::get<bool>(data) ? "true" : "false") << ')';
+        return fmt::format("(bool {})", (boost::get<bool>(data) ? "true" : "false"));
         break;
 
       case TI_INT:
-        out << "(int " << boost::get<int64_t>(data) << ')';
-        break;
+        return fmt::format("(int {})", boost::get<int64_t>(data));
 
       case TI_UINT:
-        out << "(uint " << boost::get<uint64_t>(data) << ')';
-        break;
+        return fmt::format("(uint {})", boost::get<uint64_t>(data));
 
       case TI_DOUBLE:
-        out.precision(15);
-        out << "(double " << boost::get<double>(data) << ')';
-        break;
+        return ba::trim_right_copy(fmt::format("(double {:<-14g})", boost::get<double>(data)));
 
       case TI_STRING:
-        out << "(string '" << boost::get<std::string>(data) << "')";
-        break;
+        return fmt::format("(string '{}')", boost::get<std::string>(data));
 
       case TI_PTIME:
-        out << "(time '" << pt::to_simple_string(boost::get<pt::ptime>(data)) << "')";
-        break;
+        return fmt::format("(time '{}')", pt::to_simple_string(boost::get<pt::ptime>(data)));
 
       case TI_POINT:
-        out << "(point " << boost::get<PointWrapper>(data).as_string() << ")";
-        break;
+        return fmt::format("(point {})", boost::get<PointWrapper>(data).as_string());
 
       case TI_BBOX:
-        out << "(bbox " << boost::get<BoundingBox>(data).as_string() << ")";
-        break;
+        return fmt::format("(bbox {})", boost::get<BoundingBox>(data).as_string());
 
       default:
         throw Fmi::Exception(BCP, "INTERNAL ERROR: unrecognized type code");
     }
-    return out.str();
   }
   catch (...)
   {
@@ -558,6 +548,7 @@ std::string Value::to_string() const
   try
   {
     namespace pt = boost::posix_time;
+    namespace ba = boost::algorithm;
 
     switch (data.which())
     {
@@ -574,7 +565,7 @@ std::string Value::to_string() const
         return fmt::format("{}", boost::get<uint64_t>(data));
 
       case TI_DOUBLE:
-        return fmt::format("{}", boost::get<double>(data));
+          return fmt::format("{:<.14g}", boost::get<double>(data));
 
       case TI_STRING:
         return boost::get<std::string>(data);
@@ -966,7 +957,7 @@ std::string Point::as_string() const
 {
   try
   {
-    const std::string result = fmt::format("{} {} {}", x, y, crs);
+    const std::string result = fmt::format("{:<.14g} {:<.14g} {}", x, y, crs);
     return result;
   }
   catch (...)
@@ -1027,7 +1018,7 @@ std::string BoundingBox::as_string() const
 {
   try
   {
-    return fmt::format("{} {} {} {} {}", xMin, yMin, xMax, yMax, crs);
+    return fmt::format("{:<.14g} {:<.14g} {:<.14g} {:<.14g} {}", xMin, yMin, xMax, yMax, crs);
   }
   catch (...)
   {
