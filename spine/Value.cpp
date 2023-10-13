@@ -966,10 +966,8 @@ std::string Point::as_string() const
 {
   try
   {
-    std::ostringstream msg;
-    msg.precision(10);
-    msg << x << " " << y << " " << crs;
-    return msg.str();
+    const std::string result = fmt::format("{} {} {}", x, y, crs);
+    return result;
   }
   catch (...)
   {
@@ -1029,10 +1027,7 @@ std::string BoundingBox::as_string() const
 {
   try
   {
-    std::ostringstream msg;
-    msg.precision(10);
-    msg << xMin << " " << yMin << " " << xMax << " " << yMax << " " << crs;
-    return msg.str();
+    return fmt::format("{} {} {} {} {}", xMin, yMin, xMax, yMax, crs);
   }
   catch (...)
   {

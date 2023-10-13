@@ -229,14 +229,18 @@ BOOST_AUTO_TEST_CASE(test_point_value)
 
   BOOST_TEST_MESSAGE("+ [Value] Testing parsing SmartMet::Spine::Point from string");
 
+  const char* src1 = "24.0,61.0";
+  const char* src2 = "25.0,66.1,EPSG:4258";
+
+  std::string s;
   Point p, p2;
 
-  BOOST_REQUIRE_NO_THROW(p.parse_string("24.0,61.0"));
+  BOOST_REQUIRE_NO_THROW(p.parse_string(src1));
   BOOST_CHECK_CLOSE(p.x, 24.0, 1e-10);
   BOOST_CHECK_CLOSE(p.y, 61.0, 1e-10);
   BOOST_CHECK_EQUAL(p.crs, "");
 
-  BOOST_REQUIRE_NO_THROW(p.parse_string("25.0,66.1,EPSG:4258"));
+  BOOST_REQUIRE_NO_THROW(p.parse_string(src2));
   BOOST_CHECK_CLOSE(p.x, 25.0, 1e-10);
   BOOST_CHECK_CLOSE(p.y, 66.1, 1e-10);
   BOOST_CHECK_EQUAL(p.crs, "EPSG:4258");
@@ -248,7 +252,9 @@ BOOST_AUTO_TEST_CASE(test_point_value)
   Value value(p);
   BOOST_REQUIRE_NO_THROW(p2 = value.get_point());
   BOOST_REQUIRE_NO_THROW(value.dump_to_string());
-  BOOST_REQUIRE_NO_THROW(value.to_string());
+
+  BOOST_REQUIRE_NO_THROW(s = value.to_string());
+  BOOST_CHECK_EQUAL(s, std::string("25 66.1 EPSG:4258"));
   BOOST_CHECK(p == p2);
 }
 
@@ -258,6 +264,7 @@ BOOST_AUTO_TEST_CASE(test_bounding_box_value)
 
   BOOST_TEST_MESSAGE("+ [Value] Testing parsing SmartMet::Spine::BoundingBox from string");
 
+  std::string s;
   BoundingBox b, b2;
 
   BOOST_REQUIRE_NO_THROW(b.parse_string("24.1,61.2,25.3,62.4"));
@@ -280,8 +287,10 @@ BOOST_AUTO_TEST_CASE(test_bounding_box_value)
 
   Value value(b);
   BOOST_REQUIRE_NO_THROW(b2 = value.get_bbox());
-  BOOST_REQUIRE_NO_THROW(value.dump_to_string());
-  BOOST_REQUIRE_NO_THROW(value.to_string());
+  BOOST_REQUIRE_NO_THROW(s = value.dump_to_string());
+  BOOST_CHECK_EQUAL(s, std::string("(bbox 25.1 66.1 25.5 66.6 EPSG:4258)"));
+  BOOST_REQUIRE_NO_THROW(s = value.to_string());
+  BOOST_CHECK_EQUAL(s, std::string("25.1 66.1 25.5 66.6 EPSG:4258"));
   BOOST_CHECK(b2 == b);
 
   BOOST_REQUIRE_NO_THROW(b.parse_string("20,60,40,80,AUTO2:42001,1,25,60"));
