@@ -782,6 +782,9 @@ boost::posix_time::ptime parse_xml_time(const std::string& value)
   }
   catch (...)
   {
+     auto error = Fmi::Exception::Trace(BCP, "Failed to parse XML time");
+     error.addParameter("Argument", value);
+     throw error;
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
@@ -949,7 +952,9 @@ void Point::parse_string(const std::string& src)
   }
   catch (...)
   {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+    auto error = Fmi::Exception::Trace(BCP, "Failed to parse point value");
+    error.addParameter("Argument", src);
+    throw error;
   }
 }
 
@@ -1010,7 +1015,9 @@ void BoundingBox::parse_string(const std::string& src)
   }
   catch (...)
   {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+     auto error = Fmi::Exception::Trace(BCP, "Failed to parse bounding box!");
+     error.addParameter("Argument", src);
+     throw error;
   }
 }
 
