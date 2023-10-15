@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.8.31
+Version: 23.10.10
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -47,7 +47,7 @@ BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 23.8.30
-BuildRequires: smartmet-library-macgyver-devel >= 23.8.21
+BuildRequires: smartmet-library-macgyver-devel >= 23.10.10
 BuildRequires: smartmet-library-newbase-devel >= 23.8.30
 BuildRequires: smartmet-utils-devel >= 23.8.23
 
@@ -85,7 +85,7 @@ Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
 Requires: smartmet-library-gis >= 23.8.30
-Requires: smartmet-library-macgyver >= 23.8.21
+Requires: smartmet-library-macgyver >= 23.10.10
 Requires: smartmet-library-newbase >= 23.8.30
 Requires: smartmet-timezones >= 23.4.18
 #TestRequires: bzip2-devel
@@ -96,7 +96,7 @@ Requires: smartmet-timezones >= 23.4.18
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 23.8.21
+#TestRequires: smartmet-library-macgyver-devel >= 23.10.10
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -154,6 +154,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Oct 10 2023 Andris Pavēnis <andris.pavenis@fmi.fi> 23.10.10-1.fmi
+- Support compressed expected result files in smartmet-plugin-test
+
 * Thu Aug 31 2023 Anssi Reponen <anssi.reponen@fmi.fi> - 23.8.31-1.fmi
 - Added/moved translation services into spine
 
