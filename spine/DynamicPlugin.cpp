@@ -158,7 +158,7 @@ void DynamicPlugin::pluginOpen()
         const std::string demangled_sym_name = boost::core::demangle(mangled_sym_name.c_str());
         if (demangled_sym_name != mangled_sym_name)
         {
-          error.addParameter("Demagled symbol name", demangled_sym_name);
+          error.addParameter("Demangled symbol name", demangled_sym_name);
         }
       }
       throw error;
