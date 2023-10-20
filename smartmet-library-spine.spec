@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.10.10
+Version: 23.10.20
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -108,7 +108,7 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 23.8.21
+Requires: smartmet-library-macgyver-devel >= 23.10.10
 Requires: smartmet-library-gis-devel >= 23.8.30
 Requires: smartmet-library-newbase-devel >= 23.8.30
 Requires: libconfig17-devel
@@ -154,6 +154,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Oct 20 2023 Andris Pavēnis <andris.pavenis@fmi.fi> 23.10.20-1.fmi
+- Value: formating to string update
+- smartmet-plugin-test: support compressed expected result files
+
 * Tue Oct 10 2023 Andris Pavēnis <andris.pavenis@fmi.fi> 23.10.10-1.fmi
 - Support compressed expected result files in smartmet-plugin-test
 
