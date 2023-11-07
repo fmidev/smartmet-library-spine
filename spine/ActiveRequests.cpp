@@ -14,7 +14,7 @@ std::size_t ActiveRequests::insert(const HTTP::Request& theRequest)
 {
   WriteLock lock(itsMutex);
   auto key = ++itsStartedCounter;
-  Info info{theRequest, boost::posix_time::microsec_clock::universal_time()};
+  Info info{theRequest, Fmi::MicrosecClock::universal_time()};
   itsRequests.insert(Requests::value_type{key, info});
   return key;
 }

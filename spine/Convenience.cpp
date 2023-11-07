@@ -6,7 +6,7 @@
 
 #include "Convenience.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/ValueFormatter.h>
@@ -218,8 +218,8 @@ double optional_double(const boost::optional<std::string>& theValue, double theD
   }
 }
 
-boost::posix_time::ptime optional_time(const char* theValue,
-                                       const boost::posix_time::ptime& theDefault)
+Fmi::DateTime optional_time(const char* theValue,
+                                       const Fmi::DateTime& theDefault)
 {
   try
   {
@@ -233,8 +233,8 @@ boost::posix_time::ptime optional_time(const char* theValue,
   }
 }
 
-boost::posix_time::ptime optional_time(const boost::optional<std::string>& theValue,
-                                       const boost::posix_time::ptime& theDefault)
+Fmi::DateTime optional_time(const boost::optional<std::string>& theValue,
+                                       const Fmi::DateTime& theDefault)
 {
   try
   {
@@ -431,7 +431,7 @@ double required_double(const boost::optional<std::string>& theValue, const char*
   }
 }
 
-boost::posix_time::ptime required_time(const char* theValue, const char* theError)
+Fmi::DateTime required_time(const char* theValue, const char* theError)
 {
   try
   {
@@ -445,7 +445,7 @@ boost::posix_time::ptime required_time(const char* theValue, const char* theErro
   }
 }
 
-boost::posix_time::ptime required_time(const boost::optional<std::string>& theValue,
+Fmi::DateTime required_time(const boost::optional<std::string>& theValue,
                                        const char* theError)
 {
   try
@@ -521,7 +521,7 @@ std::string log_time_str()
 {
   try
   {
-    const pt::ptime now = pt::second_clock::local_time();
+    const Fmi::DateTime now = Fmi::SecondClock::local_time();
     return Fmi::to_simple_string(now);
   }
   catch (...)

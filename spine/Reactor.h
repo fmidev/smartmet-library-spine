@@ -302,7 +302,7 @@ class Reactor final
 
   std::atomic<bool> itsLoggingEnabled{false};
   mutable MutexType itsLoggingMutex;
-  boost::posix_time::ptime itsLogLastCleaned;
+  Fmi::DateTime itsLogLastCleaned;
   boost::shared_ptr<boost::thread> itsLogCleanerThread;
 
   mutable std::atomic_bool itsHighLoadFlag{false};       // is the load high

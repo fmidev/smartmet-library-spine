@@ -99,7 +99,7 @@ void SmartMetPlugin::callRequestHandler(SmartMet::Spine::Reactor &theReactor,
   // This variable is created only to make analyzing core dumps easier.
   // We use the variable in the exception only to silence compiler warnings
   // on unused variables.
-  auto now = boost::posix_time::second_clock::universal_time();
+  auto now = Fmi::SecondClock::universal_time();
 
   try
   {

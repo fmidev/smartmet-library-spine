@@ -37,7 +37,7 @@ class LogRange
 using LoggedRequests = std::map<std::string, LogRange>;
 
 // Fields are: Logging enabled flag, the logged requests, last cleanup time
-using AccessLogStruct = std::tuple<bool, LoggedRequests, boost::posix_time::ptime>;
+using AccessLogStruct = std::tuple<bool, LoggedRequests, Fmi::DateTime>;
 
 }  // namespace Spine
 }  // namespace SmartMet

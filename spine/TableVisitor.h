@@ -22,7 +22,7 @@ class TableVisitor : public boost::static_visitor<>
   unsigned int itsCurrentColumn;
   unsigned int itsCurrentRow;
   boost::shared_ptr<Fmi::TimeFormatter> itsTimeFormatter;
-  boost::optional<boost::local_time::time_zone_ptr> itsTimeZonePtr;
+  boost::optional<Fmi::TimeZonePtr> itsTimeZonePtr;
   LonLatFormat itsLonLatFormat;
 
  public:
@@ -44,7 +44,7 @@ class TableVisitor : public boost::static_visitor<>
                const Fmi::ValueFormatter& valueformatter,
                std::vector<int> precisions,
                boost::shared_ptr<Fmi::TimeFormatter> timeformatter,
-               boost::optional<boost::local_time::time_zone_ptr> timezoneptr,
+               boost::optional<Fmi::TimeZonePtr> timezoneptr,
                unsigned int currentcolumn,
                unsigned int currentrow)
       : itsTable(table),
@@ -67,7 +67,7 @@ class TableVisitor : public boost::static_visitor<>
   void operator()(double d);
   void operator()(int i);
   void operator()(const LonLat& lonlat);
-  void operator()(const boost::local_time::local_date_time& ldt);
+  void operator()(const Fmi::LocalDateTime& ldt);
 
   // Set LonLat - value formatting
   TableVisitor& operator<<(LonLatFormat newformat);

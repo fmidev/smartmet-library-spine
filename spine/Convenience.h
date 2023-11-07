@@ -6,7 +6,7 @@
 #pragma once
 
 #include <boost/any.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <macgyver/DateTime.h>
 #include <boost/optional.hpp>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TimeParser.h>
@@ -40,10 +40,10 @@ char optional_char(const char* theValue, char theDefault);
 char optional_char(const boost::optional<std::string>& theValue, char theDefault);
 double optional_double(const char* theValue, double theDefault);
 double optional_double(const boost::optional<std::string>& theValue, double theDefault);
-boost::posix_time::ptime optional_time(const char* theValue,
-                                       const boost::posix_time::ptime& theDefault);
-boost::posix_time::ptime optional_time(const boost::optional<std::string>& theValue,
-                                       const boost::posix_time::ptime& theDefault);
+Fmi::DateTime optional_time(const char* theValue,
+                                       const Fmi::DateTime& theDefault);
+Fmi::DateTime optional_time(const boost::optional<std::string>& theValue,
+                                       const Fmi::DateTime& theDefault);
 
 std::string required_string(const char* theValue, const char* theError);
 std::string required_string(const boost::optional<std::string>& theValue, const char* theError);
@@ -60,8 +60,8 @@ char required_char(const char* theValue, const char* theError);
 char required_char(const boost::optional<std::string>& theValue, const char* theError);
 double required_double(const char* theValue, const char* theError);
 double required_double(const boost::optional<std::string>& theValue, const char* theError);
-boost::posix_time::ptime required_time(const char* theValue, const char* theError);
-boost::posix_time::ptime required_time(const boost::optional<std::string>& theValue,
+Fmi::DateTime required_time(const char* theValue, const char* theError);
+Fmi::DateTime required_time(const boost::optional<std::string>& theValue,
                                        const char* theError);
 
 std::string htmlescape(const std::string& theValue);
@@ -79,7 +79,7 @@ std::string boost_any_to_string(const boost::any& anyvalue,
 std::string boost_any_to_string(const boost::any& anyvalue);
 
 /**
- *  @brief Converts duration string to minutes: e.g. 1m = 1, 1h == 60, 1d = 1440
+ *  @brief Converts duration string to Fmi::Minutes: e.g. 1m = 1, 1h == 60, 1d = 1440
  */
 int duration_string_to_minutes(const std::string& interval);
 

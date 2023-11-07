@@ -63,7 +63,7 @@ bool looks_number(const std::string& theValue)
 bool looks_time(const std::string& theValue)
 {
   bool utc;
-  boost::posix_time::ptime t = Fmi::TimeParser::try_parse_iso(theValue, &utc);
+  Fmi::DateTime t = Fmi::TimeParser::try_parse_iso(theValue, &utc);
   return !t.is_not_a_date_time();
 }
 

@@ -2,7 +2,7 @@
 
 #include "HTTP.h"
 #include "Thread.h"
-#include <boost/date_time/posix_time/ptime.hpp>
+#include <macgyver/DateTime.h>
 #include <map>
 #include <string>
 
@@ -28,7 +28,7 @@ class ActiveRequests
   struct Info
   {
     HTTP::Request request;
-    boost::posix_time::ptime time;
+    Fmi::DateTime time;
   };
 
   using Requests = std::map<std::size_t, Info>;

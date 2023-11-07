@@ -93,7 +93,7 @@ void TableVisitor::operator()(const LonLat& lonlat)
   }
 }
 
-void TableVisitor::operator()(const boost::local_time::local_date_time& ldt)
+void TableVisitor::operator()(const Fmi::LocalDateTime& ldt)
 {
   try
   {

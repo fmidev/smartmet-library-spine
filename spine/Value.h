@@ -1,6 +1,6 @@
 #pragma once
 
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <macgyver/DateTime.h>
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
 
@@ -33,9 +33,9 @@ namespace Spine
  *   FIXME: Tämä ei varmaan ole paras paikka. Value luokka kuitenkin käyttää sen:
  *          Se olisi varmaan paremmin siirtää sen mualle
  */
-boost::posix_time::ptime string2ptime(const std::string& value,
-                                      const boost::optional<boost::posix_time::ptime>& ref_time =
-                                          boost::optional<boost::posix_time::ptime>());
+Fmi::DateTime string2ptime(const std::string& value,
+                                      const boost::optional<Fmi::DateTime>& ref_time =
+                                          boost::optional<Fmi::DateTime>());
 
 /**
  *   @brief Parses XML time from string
@@ -52,7 +52,7 @@ boost::posix_time::ptime string2ptime(const std::string& value,
  *   throws std::runtime_error if format is recognized but read data are invalid or
  *   time zone is not specified (one of 'Z', '+HH:MM' and '-HH::MM' must be specified)
  */
-boost::posix_time::ptime parse_xml_time(const std::string& value);
+Fmi::DateTime parse_xml_time(const std::string& value);
 
 /**
  *   @brief Read bool from string
@@ -157,7 +157,7 @@ class Value
                  uint64_t,
                  double,
                  std::string,
-                 boost::posix_time::ptime,
+                 Fmi::DateTime,
                  PointWrapper,
                  BoundingBox>
       data;
@@ -181,7 +181,7 @@ class Value
   inline explicit Value(long double x) { set_double(static_cast<double>(x)); }
   inline explicit Value(const char* x) { set_string(x); }
   inline explicit Value(const std::string& x) { set_string(x); }
-  inline explicit Value(const boost::posix_time::ptime& x) { set_ptime(x); }
+  inline explicit Value(const Fmi::DateTime& x) { set_ptime(x); }
   Value(const Point& x) : data(x) {}
   inline explicit Value(const BoundingBox& x) : data(x) {}
   ~Value() = default;
@@ -202,7 +202,7 @@ class Value
   inline void set_int(int64_t value) { data = value; }
   inline void set_uint(uint64_t value) { data = value; }
   inline void set_double(double value) { data = value; }
-  inline void set_ptime(const boost::posix_time::ptime value) { data = value; }
+  inline void set_ptime(const Fmi::DateTime value) { data = value; }
   inline void set_string(const std::string& value) { data = value; }
   inline void set_point(const Point& value)
   {
@@ -239,20 +239,20 @@ class Value
   std::string get_string() const;
 
   /**
-   *   @brief Gets boost::posix_time::ptime value
+   *   @brief Gets Fmi::DateTime value
    *
    *   @param use_extensions Whether to use additional parser to support
-   *          strings like '12 hours ago' or 'after 3 days'.
+   *          strings like '12 Fmi::SecondClock ago' or 'after 3 days'.
    *
    *   The default (false) is to use just Fmi\::TimeParser
    */
-  boost::posix_time::ptime get_ptime(bool use_extensions = false) const;
+  Fmi::DateTime get_ptime(bool use_extensions = false) const;
 
   Point get_point() const;
 
   BoundingBox get_bbox() const;
 
-  inline boost::posix_time::ptime get_ptime_ext() const { return get_ptime(true); }
+  inline Fmi::DateTime get_ptime_ext() const { return get_ptime(true); }
   static Value from_config(libconfig::Setting& setting);
 
   static Value from_config(libconfig::Config& config, const std::string& path);
@@ -321,7 +321,7 @@ double Value::get() const;
 template <>
 std::string Value::get() const;
 template <>
-boost::posix_time::ptime Value::get() const;
+Fmi::DateTime Value::get() const;
 template <>
 Point Value::get() const;
 template <>

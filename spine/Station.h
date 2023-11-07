@@ -2,7 +2,7 @@
 
 #include <boost/archive/xml_iarchive.hpp>
 #include <boost/archive/xml_oarchive.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <macgyver/DateTime.h>
 #include <list>
 
 namespace SmartMet
@@ -28,14 +28,14 @@ class Station
   std::string station_formal_name_fi;
   std::string station_formal_name_sv;
   std::string station_formal_name_en;
-  boost::posix_time::ptime station_start;
-  boost::posix_time::ptime station_end;
+  Fmi::DateTime station_start;
+  Fmi::DateTime station_end;
   double target_category = 0;
   std::string stationary;
   double latitude_out = 0;
   double longitude_out = 0;
   double station_elevation = 0;
-  boost::posix_time::ptime modified_last;
+  Fmi::DateTime modified_last;
   double modified_by = 0;
 
   // Possible station identifiers

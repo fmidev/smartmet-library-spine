@@ -319,14 +319,14 @@ double Value::get_double() const
   }
 }
 
-boost::posix_time::ptime Value::get_ptime(bool use_extensions) const
+Fmi::DateTime Value::get_ptime(bool use_extensions) const
 {
   try
   {
     switch (data.which())
     {
       case TI_PTIME:
-        return boost::get<boost::posix_time::ptime>(data);
+        return boost::get<Fmi::DateTime>(data);
 
       case TI_STRING:
         if (use_extensions)
@@ -339,7 +339,7 @@ boost::posix_time::ptime Value::get_ptime(bool use_extensions) const
         }
 
       default:
-        bad_value_type(METHOD_NAME, typeid(boost::posix_time::ptime));
+        bad_value_type(METHOD_NAME, typeid(Fmi::DateTime));
     }
   }
   catch (...)
@@ -513,7 +513,7 @@ std::string Value::dump_to_string() const
         return fmt::format("(string '{}')", boost::get<std::string>(data));
 
       case TI_PTIME:
-        return fmt::format("(time '{}')", pt::to_simple_string(boost::get<pt::ptime>(data)));
+        return fmt::format("(time '{}')", pt::to_simple_string(boost::get<Fmi::DateTime>(data)));
 
       case TI_POINT:
         return fmt::format("(point {})", boost::get<PointWrapper>(data).as_string());
@@ -571,7 +571,7 @@ std::string Value::to_string() const
         return boost::get<std::string>(data);
 
       case TI_PTIME:
-        return Fmi::to_iso_string(boost::get<pt::ptime>(data)) + "Z";
+        return Fmi::to_iso_string(boost::get<Fmi::DateTime>(data)) + "Z";
 
       case TI_POINT:
         return boost::get<PointWrapper>(data).as_string();
@@ -619,8 +619,8 @@ void Value::get_not_implemented_for(const std::type_info& type) const
   }
 }
 
-boost::posix_time::ptime string2ptime(const std::string& value,
-                                      const boost::optional<boost::posix_time::ptime>& ref_time)
+Fmi::DateTime string2ptime(const std::string& value,
+                                      const boost::optional<Fmi::DateTime>& ref_time)
 {
   try
   {
@@ -645,7 +645,7 @@ boost::posix_time::ptime string2ptime(const std::string& value,
 
     qi_rule rounded_minutes_p = ns::string("rounded") >> round_dir_p >> +ns::space >>
                                 qi::uint_[bl::var(rounded_min) = bl::_1] >> +ns::space >>
-                                (ns::string("minutes") | ns::string("minute") | ns::string("min"));
+                                (ns::string("Fmi::Minutes") | ns::string("minute") | ns::string("min"));
 
     qi_rule cond_rounded_p =
         ((+ns::space >> rounded_minutes_p) | qi::eps[bl::var(rounded_min) = 0]);
@@ -653,7 +653,7 @@ boost::posix_time::ptime string2ptime(const std::string& value,
     qi_rule now_p =
         ns::string("now")[bl::var(unit_coeff) = 0, bl::var(num_units) = 1] >> cond_rounded_p;
 
-    // Let us be lazy and accept for example '1 hours ago' or 'hours ago' as '1 hour ago'
+    // Let us be lazy and accept for example '1 Fmi::SecondClock ago' or 'Fmi::SecondClock ago' as '1 hour ago'
     qi_rule unit_p = (ns::string("second")[bl::var(unit_coeff) = 1] ||
                       ns::string("minute")[bl::var(unit_coeff) = 60] ||
                       ns::string("hour")[bl::var(unit_coeff) = 3600] ||
@@ -675,15 +675,15 @@ boost::posix_time::ptime string2ptime(const std::string& value,
         if (1440 % rounded_min != 0)
         {
           std::ostringstream msg;
-          msg << "Invalid request to round to full minutes in '" << value << "'";
+          msg << "Invalid request to round to full Fmi::Minutes in '" << value << "'";
           throw Fmi::Exception(BCP, msg.str());
         }
       }
 
-      pt::ptime t1 = ref_time ? *ref_time : pt::second_clock::universal_time();
+      Fmi::DateTime t1 = ref_time ? *ref_time : Fmi::SecondClock::universal_time();
       // FIXME: should we care about possible overflow here?
       int offset = static_cast<int>(num_units * unit_coeff);
-      pt::ptime t2 = t1 + pt::seconds(direction * offset);
+      Fmi::DateTime t2 = t1 + Fmi::Seconds(direction * offset);
 
       if (rounded_min != 0)
       {
@@ -691,7 +691,7 @@ boost::posix_time::ptime string2ptime(const std::string& value,
         long off = rounded_up ? rounded_sec - 1 : 0;
         long sec = rounded_sec * ((t2.time_of_day().total_seconds() + off) / rounded_sec);
         auto d = t2.date();
-        t2 = pt::ptime(d, pt::seconds(sec));
+        t2 = Fmi::DateTime(d, Fmi::Seconds(sec));
       }
 
       return t2;
@@ -708,7 +708,7 @@ boost::posix_time::ptime string2ptime(const std::string& value,
   }
 }
 
-boost::posix_time::ptime parse_xml_time(const std::string& value)
+Fmi::DateTime parse_xml_time(const std::string& value)
 {
   try
   {
@@ -762,12 +762,12 @@ boost::posix_time::ptime parse_xml_time(const std::string& value)
 
       try
       {
-        bg::date dt(year, month, day);
-        pt::time_duration part_of_day(
+        Fmi::Date dt(year, month, day);
+        Fmi::TimeDuration part_of_day(
             static_cast<int>(hours), static_cast<int>(minutes), static_cast<int>(seconds), 0);
-        pt::ptime t1(dt, part_of_day);
+        Fmi::DateTime t1(dt, part_of_day);
         int offset = (tz_off_sign == '+' ? 1 : -1) * static_cast<int>(60 * off_hours + off_min);
-        t1 -= pt::minutes(offset);
+        t1 -= Fmi::Minutes(offset);
         return t1;
       }
       catch (const std::exception& err)
@@ -880,7 +880,7 @@ std::string Value::get() const
 }
 
 template <>
-boost::posix_time::ptime Value::get() const
+Fmi::DateTime Value::get() const
 {
   try
   {

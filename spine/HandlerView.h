@@ -66,7 +66,7 @@ class HandlerView
   bool getLogging();
 
   // Clean too old entries from the log list
-  void cleanLog(const boost::posix_time::ptime& minTime);
+  void cleanLog(const Fmi::DateTime& minTime);
 
   // Flush pending requests to disk
   void flushLog();

@@ -22,7 +22,7 @@
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/bind/bind.hpp>
 #include <boost/core/demangle.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <macgyver/DateTime.h>
 #include <boost/filesystem/convenience.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/locale.hpp>
@@ -594,7 +594,7 @@ AccessLogStruct Reactor::getLoggedRequests(const std::string& thePlugin) const
       return std::make_tuple(true, requests, itsLogLastCleaned);
     }
 
-    return std::make_tuple(false, LoggedRequests(), boost::posix_time::ptime());
+    return std::make_tuple(false, LoggedRequests(), Fmi::DateTime());
   }
   catch (...)
   {
@@ -634,7 +634,7 @@ void print_requests(const Spine::ActiveRequests::Requests& requests)
 {
   // Based on Admin::Plugin::requestActiveRequests
 
-  auto now = boost::posix_time::microsec_clock::universal_time();
+  auto now = Fmi::MicrosecClock::universal_time();
 
   std::cout << "Printing active requests due to high load:\n"
             << "Number\tID\tTime\tDuration\tIP\tAPIKEY\t\tURI\n";
@@ -904,14 +904,14 @@ bool Reactor::isURIPrefix(const std::string& uri) const
   {
     // This function must be called as an argument to the cleaner thread
 
-    auto maxAge = boost::posix_time::hours(24);  // Here we give the maximum log time span, 24 hours
+    auto maxAge = Fmi::Hours(24);  // Here we give the maximum log time span, 24 Fmi::SecondClock
 
     while (!isShuttingDown())
     {
       // Sleep for some time
-      boost::this_thread::sleep(boost::posix_time::seconds(5));
+      boost::this_thread::sleep(Fmi::Seconds(5));
 
-      auto firstValidTime = boost::posix_time::second_clock::local_time() - maxAge;
+      auto firstValidTime = Fmi::SecondClock::local_time() - maxAge;
       for (auto& handlerPair : itsHandlers)
       {
         if (isShuttingDown())
@@ -965,7 +965,7 @@ void Reactor::setLogging(bool loggingEnabled)
       itsLogCleanerThread.reset(new boost::thread(boost::bind(&Reactor::cleanLog, this)));
 
       // Set log cleanup time
-      itsLogLastCleaned = boost::posix_time::second_clock::local_time();
+      itsLogLastCleaned = Fmi::SecondClock::local_time();
     }
     else
     {

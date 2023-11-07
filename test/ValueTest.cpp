@@ -165,11 +165,11 @@ BOOST_AUTO_TEST_CASE(test_double_value)
 
 BOOST_AUTO_TEST_CASE(test_ptime_value)
 {
-  BOOST_TEST_MESSAGE("+ [Value] Testing boost::posix_time::ptime value");
+  BOOST_TEST_MESSAGE("+ [Value] Testing Fmi::DateTime value");
 
   Value v1;
-  const pt::ptime now = pt::second_clock::universal_time();
-  pt::ptime t1;
+  const Fmi::DateTime now = Fmi::SecondClock::universal_time();
+  Fmi::DateTime t1;
   v1.set_ptime(now);
   BOOST_CHECK_THROW(v1.get_bool(), Fmi::Exception);
   BOOST_CHECK_THROW(v1.get_int(), Fmi::Exception);
@@ -178,7 +178,7 @@ BOOST_AUTO_TEST_CASE(test_ptime_value)
   BOOST_CHECK_THROW(v1.get_string(), Fmi::Exception);
   BOOST_CHECK_NO_THROW(t1 = v1.get_ptime());
   BOOST_CHECK(t1 == now);
-  BOOST_CHECK(now == v1.get<pt::ptime>());
+  BOOST_CHECK(now == v1.get<Fmi::DateTime>());
 
   v1.set_ptime(pt::time_from_string("2012-10-29 17:20:19"));
   BOOST_CHECK_EQUAL(std::string("20121029T172019Z"), v1.to_string());
@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_CASE(test_ptime_value)
 
 BOOST_AUTO_TEST_CASE(test_string_values)
 {
-  const pt::ptime now = pt::second_clock::universal_time();
+  const Fmi::DateTime now = Fmi::SecondClock::universal_time();
 
   BOOST_TEST_MESSAGE("+ [Value] Testing string value");
 
@@ -194,7 +194,7 @@ BOOST_AUTO_TEST_CASE(test_string_values)
   uint64_t u1;
   double d1;
   std::string s1;
-  pt::ptime t1;
+  Fmi::DateTime t1;
 
   Value v1;
   v1.set_string("123");
@@ -313,7 +313,7 @@ BOOST_AUTO_TEST_CASE(test_config_input)
 
   int64_t i1;
   double d1;
-  pt::ptime t1;
+  Fmi::DateTime t1;
   SmartMet::Spine::BoundingBox b1;
 
   BOOST_CHECK_NO_THROW(i1 = Value::from_config(config, "a").get_int());
@@ -347,7 +347,7 @@ BOOST_AUTO_TEST_CASE(test_checking_int_limits)
 
 BOOST_AUTO_TEST_CASE(test_checking_ptime_limits)
 {
-  BOOST_TEST_MESSAGE("+ [Value] Testing range check of boost::posix_time::ptime value");
+  BOOST_TEST_MESSAGE("+ [Value] Testing range check of Fmi::DateTime value");
 
   const Value lower_limit(pt::time_from_string("2013-01-01 00:00:00"));
   boost::optional<Value> upper_limit;
@@ -369,7 +369,7 @@ BOOST_AUTO_TEST_CASE(test_checking_ptime_limits)
 
 BOOST_AUTO_TEST_CASE(test_checking_ptime_limits_2)
 {
-  BOOST_TEST_MESSAGE("+ [Value] Testing range check of boost::posix_time::ptime value");
+  BOOST_TEST_MESSAGE("+ [Value] Testing range check of Fmi::DateTime value");
 
   const Value lower_limit(pt::time_from_string("2013-01-01 00:00:00"));
   boost::optional<Value> upper_limit;
@@ -395,7 +395,7 @@ BOOST_AUTO_TEST_CASE(test_checking_value_cast)
 
   const Value v2("2013-01-01 00:00:00");
   auto v2a = v2.to_ptime();
-  BOOST_CHECK(typeid(pt::ptime) == v2a.type());
+  BOOST_CHECK(typeid(Fmi::DateTime) == v2a.type());
   BOOST_CHECK_EQUAL(pt::time_from_string("2013-01-01 00:00:00"), v2a.get_ptime());
 }
 
@@ -416,9 +416,9 @@ BOOST_AUTO_TEST_CASE(test_parsing_relative_time_1)
 
   BOOST_TEST_MESSAGE("+ [string2ptime()] Testing parsing relative time: value 'now'");
 
-  pt::ptime t_ref = pt::time_from_string("2012-10-29 17:20:19");
-  pt::ptime t1;
-  pt::time_duration dt;
+  Fmi::DateTime t_ref = pt::time_from_string("2012-10-29 17:20:19");
+  Fmi::DateTime t1;
+  Fmi::TimeDuration dt;
 
   BOOST_REQUIRE_NO_THROW(t1 = string2ptime("now", t_ref));
   dt = t_ref - t1;
@@ -431,12 +431,12 @@ BOOST_AUTO_TEST_CASE(test_parsing_relative_time_2)
   namespace pt = boost::posix_time;
 
   BOOST_TEST_MESSAGE(
-      "+ [string2ptime()] Testing parsing relative time: values 'n seconds ago' and 'after n "
-      "seconds'");
+      "+ [string2ptime()] Testing parsing relative time: values 'n Fmi::Seconds ago' and 'after n "
+      "Fmi::Seconds'");
 
-  pt::ptime t_ref = pt::time_from_string("2012-10-29 17:20:19");
-  pt::ptime t1;
-  pt::time_duration dt;
+  Fmi::DateTime t_ref = pt::time_from_string("2012-10-29 17:20:19");
+  Fmi::DateTime t1;
+  Fmi::TimeDuration dt;
 
   BOOST_REQUIRE_NO_THROW(t1 = string2ptime("123 seconds ago", t_ref));
   dt = t_ref - t1;
@@ -453,12 +453,12 @@ BOOST_AUTO_TEST_CASE(test_parsing_relative_time_3)
   namespace pt = boost::posix_time;
 
   BOOST_TEST_MESSAGE(
-      "+ [string2ptime()] Testing parsing relative time: values 'n minutes ago' and 'after n "
-      "minutes'");
+      "+ [string2ptime()] Testing parsing relative time: values 'n Fmi::Minutes ago' and 'after n "
+      "Fmi::Minutes'");
 
-  pt::ptime t_ref = pt::time_from_string("2012-10-29 17:20:19");
-  pt::ptime t1;
-  pt::time_duration dt;
+  Fmi::DateTime t_ref = pt::time_from_string("2012-10-29 17:20:19");
+  Fmi::DateTime t1;
+  Fmi::TimeDuration dt;
 
   BOOST_REQUIRE_NO_THROW(t1 = string2ptime("64 minutes ago", t_ref));
   dt = t_ref - t1;
@@ -475,11 +475,11 @@ BOOST_AUTO_TEST_CASE(test_parsing_relative_time_4)
   namespace pt = boost::posix_time;
 
   BOOST_TEST_MESSAGE(
-      "+ [string2ptime()] Testing parsing relative time: values 'n hours ago' and 'after n hours'");
+      "+ [string2ptime()] Testing parsing relative time: values 'n Fmi::SecondClock ago' and 'after n Fmi::SecondClock'");
 
-  pt::ptime t_ref = pt::time_from_string("2012-10-29 17:20:19");
-  pt::ptime t1;
-  pt::time_duration dt;
+  Fmi::DateTime t_ref = pt::time_from_string("2012-10-29 17:20:19");
+  Fmi::DateTime t1;
+  Fmi::TimeDuration dt;
 
   BOOST_REQUIRE_NO_THROW(t1 = string2ptime("12 hours ago", t_ref));
   dt = t_ref - t1;
@@ -498,9 +498,9 @@ BOOST_AUTO_TEST_CASE(test_parsing_relative_time_5)
   BOOST_TEST_MESSAGE(
       "+ [string2ptime()] Testing parsing relative time: values 'n days ago' and 'after n days'");
 
-  pt::ptime t_ref = pt::time_from_string("2012-10-29 17:20:19");
-  pt::ptime t1;
-  pt::time_duration dt;
+  Fmi::DateTime t_ref = pt::time_from_string("2012-10-29 17:20:19");
+  Fmi::DateTime t1;
+  Fmi::TimeDuration dt;
 
   BOOST_REQUIRE_NO_THROW(t1 = string2ptime("3 days ago", t_ref));
   dt = t_ref - t1;
@@ -518,31 +518,31 @@ BOOST_AUTO_TEST_CASE(test_parsing_relative_time_with_rounding)
 
   BOOST_TEST_MESSAGE("+ [string2ptime()] Testing parsing relative time with rounding");
 
-  pt::ptime t_ref = pt::time_from_string("2012-10-29 17:22:19");
+  Fmi::DateTime t_ref = pt::time_from_string("2012-10-29 17:22:19");
 
-  pt::ptime t1;
-  pt::ptime t1_exp = pt::time_from_string("2012-10-29 15:20:00");
+  Fmi::DateTime t1;
+  Fmi::DateTime t1_exp = pt::time_from_string("2012-10-29 15:20:00");
   BOOST_REQUIRE_NO_THROW(t1 = string2ptime("2 hours ago rounded 5 min", t_ref));
   BOOST_CHECK_EQUAL(t1_exp, t1);
 
-  pt::ptime t2;
-  pt::ptime t2_exp = pt::time_from_string("2012-10-29 18:15:00");
+  Fmi::DateTime t2;
+  Fmi::DateTime t2_exp = pt::time_from_string("2012-10-29 18:15:00");
   BOOST_REQUIRE_NO_THROW(t2 = string2ptime("after 1 hour rounded 15 minutes", t_ref));
   BOOST_CHECK_EQUAL(t2_exp, t2);
 
-  pt::ptime t3;
-  pt::ptime t3_exp = pt::time_from_string("2012-10-29 17:00:00");
+  Fmi::DateTime t3;
+  Fmi::DateTime t3_exp = pt::time_from_string("2012-10-29 17:00:00");
   BOOST_REQUIRE_NO_THROW(t3 = string2ptime("now rounded 60 min", t_ref));
   BOOST_CHECK_EQUAL(t3_exp, t3);
 
-  pt::ptime t4;
-  pt::ptime t4_exp = pt::time_from_string("2012-10-29 15:25:00");
+  Fmi::DateTime t4;
+  Fmi::DateTime t4_exp = pt::time_from_string("2012-10-29 15:25:00");
   BOOST_REQUIRE_NO_THROW(t4 = string2ptime("2 hours ago rounded up 5 min", t_ref));
   BOOST_CHECK_EQUAL(t4_exp, t4);
 
-  pt::ptime t5;
-  pt::ptime t_ref5 = pt::time_from_string("2012-10-29 22:56:17");
-  pt::ptime t5_exp = pt::time_from_string("2012-10-30 00:00:00");
+  Fmi::DateTime t5;
+  Fmi::DateTime t_ref5 = pt::time_from_string("2012-10-29 22:56:17");
+  Fmi::DateTime t5_exp = pt::time_from_string("2012-10-30 00:00:00");
   BOOST_REQUIRE_NO_THROW(t5 = string2ptime("after 1 hour rounded up 5 min", t_ref5));
   BOOST_CHECK_EQUAL(t5_exp, t5);
 }
@@ -552,7 +552,7 @@ BOOST_AUTO_TEST_CASE(test_parse_xml_time)
   using namespace SmartMet::Spine;
   namespace pt = boost::posix_time;
 
-  pt::ptime t1;
+  Fmi::DateTime t1;
 
   BOOST_CHECK_NO_THROW(t1 = parse_xml_time("2013-05-15T12:59:12Z"));
   BOOST_CHECK_EQUAL(t1, pt::time_from_string("2013-05-15 12:59:12"));

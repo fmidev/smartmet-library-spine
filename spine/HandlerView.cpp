@@ -3,14 +3,14 @@
 #include "FmiApiKey.h"
 #include "Reactor.h"
 #include <boost/bind/bind.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <macgyver/DateTime.h>
 #include <boost/filesystem.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 
 namespace
 {
-bool isNotOld(const boost::posix_time::ptime& target, const SmartMet::Spine::LoggedRequest& compare)
+bool isNotOld(const Fmi::DateTime& target, const SmartMet::Spine::LoggedRequest& compare)
 {
   return compare.getRequestEndTime() > target;
 }
@@ -94,7 +94,7 @@ bool HandlerView::handle(Reactor& theReactor,
     else
     {
       auto key = theReactor.insertActiveRequest(theRequest);
-      auto before = boost::posix_time::microsec_clock::universal_time();
+      auto before = Fmi::MicrosecClock::universal_time();
 
       std::exception_ptr error;
       try
@@ -105,7 +105,7 @@ bool HandlerView::handle(Reactor& theReactor,
       {
         error = std::current_exception();
       }
-      auto accessDuration = boost::posix_time::microsec_clock::universal_time() - before;
+      auto accessDuration = Fmi::MicrosecClock::universal_time() - before;
       theReactor.removeActiveRequest(key, theResponse.getStatus());
 
       WriteLock lock(itsLoggingMutex);
@@ -117,7 +117,7 @@ bool HandlerView::handle(Reactor& theReactor,
         auto apikey = FmiApiKey::getFmiApiKey(theRequest);
 
         itsRequestLog.emplace_back(LoggedRequest(theRequest.getURI(),
-                                                 boost::posix_time::microsec_clock::local_time(),
+                                                 Fmi::MicrosecClock::local_time(),
                                                  accessDuration,
                                                  theResponse.getStatusString(),
                                                  theRequest.getClientIP(),
@@ -220,7 +220,7 @@ bool HandlerView::getLogging()
   return isLogging;
 }
 
-void HandlerView::cleanLog(const boost::posix_time::ptime& minTime)
+void HandlerView::cleanLog(const Fmi::DateTime& minTime)
 {
   try
   {

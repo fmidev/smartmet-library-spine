@@ -5,7 +5,7 @@
  * -----------------------------------------------
  */
 
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <macgyver/DateTime.h>
 #include <string>
 
 #include "HTTP.h"
@@ -18,8 +18,8 @@ class LoggedRequest
 {
  public:
   LoggedRequest(std::string theRequestString,
-                const boost::posix_time::ptime& requestEndTime,
-                boost::posix_time::time_duration accessDuration,
+                const Fmi::DateTime& requestEndTime,
+                Fmi::TimeDuration accessDuration,
                 std::string theStatus,
                 std::string theIP,
                 std::string theMethod,
@@ -28,10 +28,10 @@ class LoggedRequest
                 std::string theETag,
                 std::string theApiKey);
 
-  boost::posix_time::ptime getRequestEndTime() const;
-  boost::posix_time::ptime getRequestStartTime() const;
+  Fmi::DateTime getRequestEndTime() const;
+  Fmi::DateTime getRequestStartTime() const;
 
-  boost::posix_time::time_duration getAccessDuration() const;
+  Fmi::TimeDuration getAccessDuration() const;
 
   std::string getRequestString() const;
   std::string getStatus() const;
@@ -44,8 +44,8 @@ class LoggedRequest
 
  private:
   std::string itsRequestString;
-  boost::posix_time::ptime itsRequestEndTime;
-  boost::posix_time::time_duration itsAccessDuration;
+  Fmi::DateTime itsRequestEndTime;
+  Fmi::TimeDuration itsAccessDuration;
   std::string itsStatus;
   std::string itsIP;
   std::string itsMethod;
