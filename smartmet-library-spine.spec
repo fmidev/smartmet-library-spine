@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.10.20
+Version: 23.12.5
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -46,10 +46,10 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 23.8.30
-BuildRequires: smartmet-library-macgyver-devel >= 23.11.8
-BuildRequires: smartmet-library-newbase-devel >= 23.8.30
-BuildRequires: smartmet-utils-devel >= 23.8.23
+BuildRequires: smartmet-library-gis-devel >= 23.11.21
+BuildRequires: smartmet-library-macgyver-devel >= 23.11.21
+BuildRequires: smartmet-library-newbase-devel >= 23.11.21
+BuildRequires: smartmet-utils-devel >= 23.9.6
 
 %if 0%{?rhel} && 0%{rhel} == 7
 Requires: libpqxx < 1:7.0
@@ -84,10 +84,10 @@ Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
-Requires: smartmet-library-gis >= 23.8.30
-Requires: smartmet-library-macgyver >= 23.11.8
-Requires: smartmet-library-newbase >= 23.8.30
-Requires: smartmet-timezones >= 23.4.18
+Requires: smartmet-library-gis >= 23.11.21
+Requires: smartmet-library-macgyver >= 23.11.21
+Requires: smartmet-library-newbase >= 23.11.21
+Requires: smartmet-timezones >= 23.10.30
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
 #TestRequires: gdal35-devel
@@ -96,7 +96,7 @@ Requires: smartmet-timezones >= 23.4.18
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 23.11.8
+#TestRequires: smartmet-library-macgyver-devel >= 23.11.21
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -108,9 +108,9 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 23.11.8
-Requires: smartmet-library-gis-devel >= 23.8.30
-Requires: smartmet-library-newbase-devel >= 23.8.30
+Requires: smartmet-library-macgyver-devel >= 23.11.21
+Requires: smartmet-library-gis-devel >= 23.11.21
+Requires: smartmet-library-newbase-devel >= 23.11.21
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
@@ -154,6 +154,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Dec  5 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.12.5-1.fmi
+- Added thread pool settings for admin plugins
+
 * Fri Oct 20 2023 Andris Pavēnis <andris.pavenis@fmi.fi> 23.10.20-1.fmi
 - Value: formating to string update
 - smartmet-plugin-test: support compressed expected result files
