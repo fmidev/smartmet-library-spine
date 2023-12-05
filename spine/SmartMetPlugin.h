@@ -42,6 +42,9 @@ class SmartMetPlugin
   // Method to determine if incoming query is fast or slow
   virtual bool queryIsFast(const SmartMet::Spine::HTTP::Request &theRequest) const;
 
+  // Method to determine if incoming query is an admin query
+  virtual bool isAdminQuery(const SmartMet::Spine::HTTP::Request &theRequest) const;
+
   // Method to return cache statistics
   virtual Fmi::Cache::CacheStatistics getCacheStats() const { return {}; }
 

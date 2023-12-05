@@ -139,6 +139,9 @@ bool Options::parseOptions(int argc, char* argv[])
 
     const char* msgaccesslogdir = "access log directory";
 
+    const char* msgadminthreads = "set the number of threads for admin queries (default=100%)";
+    const char* msgadminrequeue = "set the maximum requeue size for admin queries";
+
     const char* msgslowthreads = "set the number of threads for slow queries (default=100%)";
     const char* msgslowrequeue = "set the maximum requeue size for slow queries";
 
@@ -161,11 +164,14 @@ bool Options::parseOptions(int argc, char* argv[])
 
     const char* msgcoredump = "coredump mask";
 
-    std::string slowthreads_str;  // --> slowpool.minsize
-    std::string fastthreads_str;  // --> fastpool.minsize
+    std::string adminthreads_str;  // --> adminpool.minsize
+    std::string slowthreads_str;   // --> slowpool.minsize
+    std::string fastthreads_str;   // --> fastpool.minsize
 
     // clang-format off
     desc.add_options()("help,h", msghelp)("version,V", msgversion)(
+        "adminthreads,N", po::value(&adminthreads_str), msgadminthreads)(
+        "maxadminrequeuesize,Q", po::value(&adminpool.maxrequeuesize)->default_value(adminpool.maxrequeuesize), msgadminrequeue)(
         "slowthreads,N", po::value(&slowthreads_str), msgslowthreads)(
         "maxslowrequeuesize,Q", po::value(&slowpool.maxrequeuesize)->default_value(slowpool.maxrequeuesize), msgslowrequeue)(
         "fastthreads,n", po::value(&fastthreads_str), msgfastthreads)(
@@ -226,13 +232,16 @@ bool Options::parseOptions(int argc, char* argv[])
     if (throttle.start_limit > throttle.limit)
       throttle.start_limit = throttle.limit;
 
+    if (!adminthreads_str.empty())
+      adminpool.minsize = parse_threads(adminthreads_str);
+
     if (!slowthreads_str.empty())
       slowpool.minsize = parse_threads(slowthreads_str);
 
     if (!fastthreads_str.empty())
       fastpool.minsize = parse_threads(fastthreads_str);
 
-    if (slowpool.minsize > 10000 || fastpool.minsize > 10000)
+    if (adminpool.minsize > 10000 || slowpool.minsize > 10000 || fastpool.minsize > 10000)
       throw Fmi::Exception(BCP, "The maximum number of threads is 10000!");
 
     if (compresslimit < 100)
@@ -335,6 +344,10 @@ void Options::parseConfig()
 
       lookupHostSetting(itsConfig, throttle.alert_script, "activerequests.alert_script");
 
+      auto adminpool_minsize = parse_threads(itsConfig, "adminpool.maxthreads");
+      if (adminpool_minsize)
+        adminpool.minsize = *adminpool_minsize;
+
       auto slowpool_minsize = parse_threads(itsConfig, "slowpool.maxthreads");
       if (slowpool_minsize)
         slowpool.minsize = *slowpool_minsize;
@@ -343,6 +356,7 @@ void Options::parseConfig()
       if (fastpool_minsize)
         fastpool.minsize = *fastpool_minsize;
 
+      lookupHostSetting(itsConfig, adminpool.maxrequeuesize, "adminpool.maxrequeuesize");
       lookupHostSetting(itsConfig, slowpool.maxrequeuesize, "slowpool.maxrequeuesize");
       lookupHostSetting(itsConfig, fastpool.maxrequeuesize, "fastpool.maxrequeuesize");
 
@@ -398,6 +412,8 @@ void Options::report() const
               << "Max fast queue size\t\t= " << fastpool.maxrequeuesize << "\n"
               << "Max slow threads\t\t= " << slowpool.minsize << "\n"
               << "Max slow queue size\t\t= " << slowpool.maxrequeuesize << "\n"
+              << "Max admin threads\t\t= " << adminpool.minsize << "\n"
+              << "Max admin queue size\t\t= " << adminpool.maxrequeuesize << "\n"
               << "Max active requests\t\t= " << throttle.limit << "\n"
               << "- at start\t\t\t= " << throttle.start_limit << "\n"
               << "- at slowdown\t\t\t= " << throttle.restart_limit << "\n"

@@ -3,8 +3,8 @@
 #include "FmiApiKey.h"
 #include "Reactor.h"
 #include <boost/bind/bind.hpp>
-#include <macgyver/DateTime.h>
 #include <boost/filesystem.hpp>
+#include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 
@@ -195,6 +195,18 @@ bool HandlerView::queryIsFast(HTTP::Request& theRequest) const
   try
   {
     return itsPlugin->queryIsFast(theRequest);
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+bool HandlerView::isAdminQuery(HTTP::Request& theRequest) const
+{
+  try
+  {
+    return itsPlugin->isAdminQuery(theRequest);
   }
   catch (...)
   {

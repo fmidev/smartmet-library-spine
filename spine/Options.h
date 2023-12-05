@@ -69,6 +69,7 @@ struct Options
 
   std::string accesslogdir{"/var/log/smartmet"};
 
+  PoolOptions adminpool;
   PoolOptions slowpool;
   PoolOptions fastpool;
 

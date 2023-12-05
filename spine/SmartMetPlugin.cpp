@@ -19,6 +19,19 @@ bool SmartMetPlugin::queryIsFast(const SmartMet::Spine::HTTP::Request & /* theRe
 {
   return false;
 }
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Default admin implementation. If not overrided in
+ * the actual plugin, handler calls are scheduled to the slow/fast pools
+ */
+// ----------------------------------------------------------------------
+
+bool SmartMetPlugin::isAdminQuery(const SmartMet::Spine::HTTP::Request & /* theRequest */) const
+{
+  return false;
+}
+
 // ======================================================================
 
 void SmartMetPlugin::initPlugin()
@@ -164,26 +177,26 @@ bool SmartMetPlugin::checkRequest(const SmartMet::Spine::HTTP::Request &theReque
         // https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
         if (theRequest.getHeader("Access-Control-Request-Method"))
         {
-            // Clone header 'Allow' to 'Access-Control-Allow-Methods' for CORS
-            auto h1 = theResponse.getHeader("Allow");
-            assert(bool(h1));  // HTTP::Response::stockOptionsResponse should have set this header
-            theResponse.setHeader("Access-Control-Allow-Methods", *h1);
+          // Clone header 'Allow' to 'Access-Control-Allow-Methods' for CORS
+          auto h1 = theResponse.getHeader("Allow");
+          assert(bool(h1));  // HTTP::Response::stockOptionsResponse should have set this header
+          theResponse.setHeader("Access-Control-Allow-Methods", *h1);
 
-            auto opt_origin = theRequest.getHeader("Origin");
-            if (opt_origin)
-            {
-                theResponse.setHeader("Access-Control-Allow-Origin", *opt_origin);
-            }
+          auto opt_origin = theRequest.getHeader("Origin");
+          if (opt_origin)
+          {
+            theResponse.setHeader("Access-Control-Allow-Origin", *opt_origin);
+          }
 
-            auto opt_req_headers = theRequest.getHeader("Access-Control-Request-Headers");
-            if (opt_req_headers)
-            {
-                // FIXME: Should be use actaully supported headers here.
-                //        Let us copy requested headers to the response for now
-                theResponse.setHeader("Access-Control-Allow-Headers", *opt_req_headers);
-            }
+          auto opt_req_headers = theRequest.getHeader("Access-Control-Request-Headers");
+          if (opt_req_headers)
+          {
+            // FIXME: Should be use actaully supported headers here.
+            //        Let us copy requested headers to the response for now
+            theResponse.setHeader("Access-Control-Allow-Headers", *opt_req_headers);
+          }
 
-            theResponse.setHeader("Access-Control-Max-Age", "86400");
+          theResponse.setHeader("Access-Control-Max-Age", "86400");
         }
 
         return true;
