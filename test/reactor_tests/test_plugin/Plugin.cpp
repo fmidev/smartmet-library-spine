@@ -37,7 +37,7 @@ void SmartMet::Plugin::Test::Plugin::init()
         throw std::runtime_error("Engine test function call result is incorrect");
     }
 
-    if (!itsReactor->addContentHandler(this,
+    if (!itsReactor->addPrivateContentHandler(this,
             "/test",
             [this](Reactor& theReactor,
                 const HTTP::Request& theRequest,
@@ -56,6 +56,19 @@ void SmartMet::Plugin::Test::Plugin::init()
                 HTTP::Response& theResponse)
             {
                 requestHandler(theReactor, theRequest, theResponse);
+            },
+            true))
+    {
+        throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
+    }
+
+    if (!itsReactor->addPrivateContentHandler(this,
+            "/uri-map",
+            [this](Reactor& theReactor,
+                const HTTP::Request& theRequest,
+                HTTP::Response& theResponse)
+            {
+                requestHandler2(theReactor, theRequest, theResponse);
             },
             true))
     {
@@ -81,6 +94,24 @@ void SmartMet::Plugin::Test::Plugin::requestHandler(
         return;
     }
     theResponse.setContent(dump_params(theRequest));
+}
+
+void SmartMet::Plugin::Test::Plugin::requestHandler2(
+    Reactor& theReactor,
+    const HTTP::Request& theRequest,
+    HTTP::Response& theResponse)
+{
+    (void) theReactor;
+    bool supportsPost = false;
+    if (checkRequest(theRequest, theResponse, supportsPost)) {
+        return;
+    }
+    std::ostringstream content;
+    const auto uri_map = theReactor.getURIMap();
+    for (const auto& item : uri_map) {
+        content << item.first << " --> " << item.second << std::endl;
+    }
+    theResponse.setContent(content.str());
 }
 
 std::string SmartMet::Plugin::Test::Plugin::dump_params(const HTTP::Request& theRequest) const

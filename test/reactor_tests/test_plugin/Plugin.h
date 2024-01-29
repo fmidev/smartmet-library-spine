@@ -28,6 +28,11 @@ namespace SmartMet
                             const Spine::HTTP::Request& theRequest,
                             Spine::HTTP::Response& theResponse) override;
 
+        void requestHandler2(Spine::Reactor& theReactor,
+                            const Spine::HTTP::Request& theRequest,
+            Spine::HTTP::Response& theResponse);
+
+
       private:
         std::string dump_params(const Spine::HTTP::Request& theRequest) const;
 
