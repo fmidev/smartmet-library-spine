@@ -113,6 +113,8 @@ class Reactor final
 
   int getRequiredAPIVersion() const;
   URIMap getURIMap() const;
+  boost::optional<std::string> getPluginName(const std::string& uri) const;
+  void dumpURIs(std::ostream& output) const;
   bool isURIPrefix(const std::string& uri) const;
   boost::optional<HandlerView&> getHandlerView(const HTTP::Request& theRequest);
 

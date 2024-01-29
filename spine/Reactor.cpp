@@ -883,6 +883,30 @@ URIMap Reactor::getURIMap() const
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Check whether provided value is available in URI list (including private ones)
+ */
+// ----------------------------------------------------------------------
+
+boost::optional<std::string> Reactor::getPluginName(const std::string& uri) const
+{
+  ReadLock lock(itsContentMutex);
+  auto it = itsHandlers.find(uri);
+  if (it != itsHandlers.end())
+    return it->second->getPluginName();
+  return boost::none;
+}
+
+void Reactor::dumpURIs(std::ostream& output) const
+{
+  ReadLock lock(itsContentMutex);
+  for (const auto& item : itsHandlers)
+  {
+      output << item.first << " --> " << item.second->getPluginName() << std::endl;
+  }
+}
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Check whether provided value should be considered as URI prefix
  */
 // ----------------------------------------------------------------------

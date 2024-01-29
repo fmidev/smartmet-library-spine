@@ -15,20 +15,21 @@ void prelude(const SmartMet::Spine::Reactor& reactor, const std::string& handler
   {
     // Wait for qengine to finish
     int timeout = 300;
-    auto handlers = reactor.getURIMap();
-    while ((handlers.find(handler_path) == handlers.end()) && (--timeout >= 0))
+    while (!reactor.getPluginName(handler_path) && (--timeout >= 0))
     {
       std::this_thread::sleep_for(std::chrono::seconds(1));
-      handlers = reactor.getURIMap();
     }
 
     if (timeout < 0)
     {
+      std::cout << "### Available handlers" << std::endl;
+      reactor.dumpURIs(std::cout);
+      std::cout << "### Expected: " << handler_path << std::endl;
       throw Fmi::Exception::Trace(BCP, "Timed out waiting for plugin to start");
     }
 
     cout << endl
-         << "Testing " << handlers[handler_path] << "  plugin" << std::endl
+         << "Testing " << *reactor.getPluginName(handler_path) << "  plugin" << std::endl
          << "============================" << std::endl;
   }
   catch (...)
