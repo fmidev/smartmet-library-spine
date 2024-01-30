@@ -46,9 +46,9 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 23.11.21
-BuildRequires: smartmet-library-macgyver-devel >= 23.11.21
-BuildRequires: smartmet-library-newbase-devel >= 23.11.21
+BuildRequires: smartmet-library-gis-devel >= 24.1.3
+BuildRequires: smartmet-library-macgyver-devel >= 24.1.17
+BuildRequires: smartmet-library-newbase-devel >= 24.1.30
 BuildRequires: smartmet-utils-devel >= 23.9.6
 
 %if 0%{?rhel} && 0%{rhel} == 7
@@ -84,9 +84,9 @@ Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
-Requires: smartmet-library-gis >= 23.11.21
-Requires: smartmet-library-macgyver >= 23.11.21
-Requires: smartmet-library-newbase >= 23.11.21
+Requires: smartmet-library-gis >= 24.1.3
+Requires: smartmet-library-macgyver >= 24.1.17
+Requires: smartmet-library-newbase >= 24.1.30
 Requires: smartmet-timezones >= 23.10.30
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -96,7 +96,7 @@ Requires: smartmet-timezones >= 23.10.30
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 23.11.21
+#TestRequires: smartmet-library-macgyver-devel >= 24.1.17
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -108,9 +108,9 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 23.11.21
-Requires: smartmet-library-gis-devel >= 23.11.21
-Requires: smartmet-library-newbase-devel >= 23.11.21
+Requires: smartmet-library-macgyver-devel >= 24.1.17
+Requires: smartmet-library-gis-devel >= 24.1.3
+Requires: smartmet-library-newbase-devel >= 24.1.30
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
