@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 23.12.5
+Version: 24.1.30
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -154,6 +154,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Jan 30 2024 Mika Heiskanen <mika.heiskanen@fmi.fi> 24.1.30-1.fmi
+- Repackaged due to newbase ABI changes
+
 * Tue Dec  5 2023 Mika Heiskanen <mika.heiskanen@fmi.fi> - 23.12.5-1.fmi
 - Added thread pool settings for admin plugins
 
