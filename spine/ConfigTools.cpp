@@ -156,7 +156,12 @@ void expandVariables(libconfig::Config& theConfig, libconfig::Setting& theSettin
             else
             {
               // Variable not defined in the configuration file. Maybe it is an environment variable
-              char* env = secure_getenv(var.c_str());
+
+	      // This is too secure for developers wanting for example access to $HOME to use their
+	      // own configuration files. Static analyzers may complain about this.
+              // char* env = secure_getenv(var.c_str());
+
+	      char* env = getenv(var.c_str());
               if (env == nullptr)
               {
                 throw Fmi::Exception(BCP, "Unknown variable name!")
