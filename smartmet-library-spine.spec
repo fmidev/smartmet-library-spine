@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 24.1.30
+Version: 24.2.8
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -154,6 +154,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Thu Feb  8 2024 Mika Heiskanen <mheiskan@rhel8.dev.fmi.fi> - 24.2.8-1.fmi
+- Replace secure_getenv with getenv to make developers life easier when for example accessing $HOME
+
 * Tue Jan 30 2024 Mika Heiskanen <mika.heiskanen@fmi.fi> 24.1.30-1.fmi
 - Repackaged due to newbase ABI changes
 
