@@ -2,6 +2,7 @@
 #include "Convenience.h"
 #include "HTTP.h"
 #include "Reactor.h"
+#include <iostream>
 #include <boost/thread.hpp>
 #include <boost/timer/timer.hpp>
 #include <macgyver/Exception.h>

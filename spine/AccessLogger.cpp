@@ -1,5 +1,6 @@
 #include "AccessLogger.h"
 #include "Convenience.h"
+#include <iostream>
 #include <boost/filesystem.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
