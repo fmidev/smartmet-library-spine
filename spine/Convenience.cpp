@@ -13,7 +13,6 @@
 #include <stdexcept>
 #include <string>
 
-namespace pt = boost::posix_time;
 namespace ba = boost::algorithm;
 
 namespace SmartMet

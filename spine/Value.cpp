@@ -488,7 +488,6 @@ std::string Value::dump_to_string() const
 {
   try
   {
-    namespace pt = boost::posix_time;
     namespace ba = boost::algorithm;
 
     switch (data.which())
@@ -513,7 +512,7 @@ std::string Value::dump_to_string() const
         return fmt::format("(string '{}')", boost::get<std::string>(data));
 
       case TI_PTIME:
-        return fmt::format("(time '{}')", pt::to_simple_string(boost::get<Fmi::DateTime>(data)));
+        return fmt::format("(time '{}')", Fmi::date_time::to_simple_string(boost::get<Fmi::DateTime>(data)));
 
       case TI_POINT:
         return fmt::format("(point {})", boost::get<PointWrapper>(data).as_string());
@@ -547,7 +546,6 @@ std::string Value::to_string() const
 {
   try
   {
-    namespace pt = boost::posix_time;
     namespace ba = boost::algorithm;
 
     switch (data.which())
@@ -627,7 +625,6 @@ Fmi::DateTime string2ptime(const std::string& value,
     namespace bl = boost::lambda;
     namespace ns = boost::spirit::standard;
     namespace qi = boost::spirit::qi;
-    namespace pt = boost::posix_time;
 
     using qi_rule = qi::rule<std::string::const_iterator, std::string()>;
 
@@ -715,8 +712,6 @@ Fmi::DateTime parse_xml_time(const std::string& value)
     namespace bl = boost::lambda;
     namespace ns = boost::spirit::standard;
     namespace qi = boost::spirit::qi;
-    namespace bg = boost::gregorian;
-    namespace pt = boost::posix_time;
 
     using qi_rule = qi::rule<std::string::const_iterator, std::string()>;
 

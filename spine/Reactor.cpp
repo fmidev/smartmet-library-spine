@@ -933,7 +933,7 @@ bool Reactor::isURIPrefix(const std::string& uri) const
     while (!isShuttingDown())
     {
       // Sleep for some time
-      boost::this_thread::sleep(Fmi::Seconds(5));
+      boost::this_thread::sleep(boost::posix_time::seconds(5));
 
       auto firstValidTime = Fmi::SecondClock::local_time() - maxAge;
       for (auto& handlerPair : itsHandlers)
