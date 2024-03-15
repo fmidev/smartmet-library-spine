@@ -146,8 +146,8 @@ void expandVariables(libconfig::Config& theConfig, libconfig::Setting& theSettin
             std::string varValue;
 
             // Searching a value for the variable but do not allow USER=$(USER)
-            if (theSetting.getName() != nullptr && var != theSetting.getName() &&
-                theConfig.exists(var))
+            std::string varname = (theSetting.getName() != nullptr ? theSetting.getName() : "");
+            if (var != varname && theConfig.exists(var))
             {
               const auto& setting = theConfig.lookup(var);
               if (setting.getType() != libconfig::Setting::TypeString)
