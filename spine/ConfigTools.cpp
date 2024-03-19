@@ -146,7 +146,8 @@ void expandVariables(libconfig::Config& theConfig, libconfig::Setting& theSettin
             std::string varValue;
 
             // Searching a value for the variable but do not allow USER=$(USER)
-            if (var != theSetting.getName() && theConfig.exists(var))
+            std::string varname = (theSetting.getName() != nullptr ? theSetting.getName() : "");
+            if (var != varname && theConfig.exists(var))
             {
               const auto& setting = theConfig.lookup(var);
               if (setting.getType() != libconfig::Setting::TypeString)
@@ -157,11 +158,11 @@ void expandVariables(libconfig::Config& theConfig, libconfig::Setting& theSettin
             {
               // Variable not defined in the configuration file. Maybe it is an environment variable
 
-	      // This is too secure for developers wanting for example access to $HOME to use their
-	      // own configuration files. Static analyzers may complain about this.
+              // This is too secure for developers wanting for example access to $HOME to use their
+              // own configuration files. Static analyzers may complain about this.
               // char* env = secure_getenv(var.c_str());
 
-	      char* env = getenv(var.c_str());
+              char* env = getenv(var.c_str());
               if (env == nullptr)
               {
                 throw Fmi::Exception(BCP, "Unknown variable name!")

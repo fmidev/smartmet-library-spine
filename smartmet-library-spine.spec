@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 24.2.8
+Version: 24.3.15
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -48,8 +48,8 @@ BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 24.1.3
 BuildRequires: smartmet-library-macgyver-devel >= 24.1.17
-BuildRequires: smartmet-library-newbase-devel >= 24.1.30
-BuildRequires: smartmet-utils-devel >= 23.9.6
+BuildRequires: smartmet-library-newbase-devel >= 24.3.11
+BuildRequires: smartmet-utils-devel >= 24.3.13
 
 %if 0%{?rhel} && 0%{rhel} == 7
 Requires: libpqxx < 1:7.0
@@ -86,8 +86,8 @@ Requires: libicu
 Requires: double-conversion
 Requires: smartmet-library-gis >= 24.1.3
 Requires: smartmet-library-macgyver >= 24.1.17
-Requires: smartmet-library-newbase >= 24.1.30
-Requires: smartmet-timezones >= 23.10.30
+Requires: smartmet-library-newbase >= 24.3.11
+Requires: smartmet-timezones >= 24.1.9
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
 #TestRequires: gdal35-devel
@@ -110,7 +110,7 @@ Requires: %{smartmet_boost}-devel
 Requires: dtl
 Requires: smartmet-library-macgyver-devel >= 24.1.17
 Requires: smartmet-library-gis-devel >= 24.1.3
-Requires: smartmet-library-newbase-devel >= 24.1.30
+Requires: smartmet-library-newbase-devel >= 24.3.11
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
@@ -154,6 +154,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Mar 15 2024 Mika Heiskanen <mika.heiskanen@fmi.fi> - 24.3.15-1.fmi
+- Fixed a potential sigsegv if environment variables are used in arrays of strings
+
 * Thu Feb  8 2024 Mika Heiskanen <mheiskan@rhel8.dev.fmi.fi> - 24.2.8-1.fmi
 - Replace secure_getenv with getenv to make developers life easier when for example accessing $HOME
 
