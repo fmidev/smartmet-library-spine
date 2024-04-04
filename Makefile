@@ -23,7 +23,6 @@ LIBS +=	-L$(libdir) \
 	-lboost_timer \
 	-lboost_chrono \
 	-lboost_thread \
-	-lboost_date_time \
 	-lboost_program_options \
 	-lboost_system \
 	-lboost_locale \
