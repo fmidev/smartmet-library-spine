@@ -1,7 +1,6 @@
 #include "TcpMultiQuery.h"
+#include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
-#include <boost/chrono.hpp>
-#include <boost/date_time/posix_time/ptime.hpp>
 #include <macgyver/Exception.h>
 #include <functional>
 
@@ -47,23 +46,34 @@ struct TcpMultiQuery::Query
   void report_error(std::string desc, boost::system::error_code error);
 };
 
-TcpMultiQuery::TcpMultiQuery(int timeout_sec) : timeout(io_service)
+struct TcpMultiQuery::Impl
 {
-  timeout.expires_from_now(boost::posix_time::seconds(timeout_sec));
+  Impl() : timeout(io_service)
+  {
+  }
 
-  timeout.async_wait(
+  boost::asio::io_service io_service;
+  boost::asio::basic_waitable_timer<std::chrono::system_clock> timeout;
+};
+
+TcpMultiQuery::TcpMultiQuery(int timeout_sec)
+   : impl(new Impl)
+{
+  impl->timeout.expires_from_now(std::chrono::seconds(timeout_sec));
+
+  impl->timeout.async_wait(
       [this](boost::system::error_code error_code)
       {
         if (error_code != boost::asio::error::operation_aborted)
         {
-          io_service.stop();
+          impl->io_service.stop();
         }
       });
 }
 
 TcpMultiQuery::~TcpMultiQuery()
 {
-  io_service.stop();
+  impl->io_service.stop();
 }
 
 void TcpMultiQuery::add_query(const std::string& id,
@@ -91,7 +101,7 @@ void TcpMultiQuery::execute()
 {
   if (not query_map.empty())
   {
-    io_service.run();
+    impl->io_service.run();
 
     for (const auto& query : query_map)
     {
@@ -126,7 +136,7 @@ TcpMultiQuery::Response TcpMultiQuery::operator[](const std::string& id) const
 void TcpMultiQuery::report_request_complete()
 {
   if (++num_completed_requests >= query_map.size())
-    timeout.cancel();
+    impl->timeout.cancel();
 }
 
 TcpMultiQuery::Query::Query(TcpMultiQuery& client,
@@ -138,8 +148,8 @@ TcpMultiQuery::Query::Query(TcpMultiQuery& client,
       host(std::move(host)),
       service(std::move(service)),
       request_body(std::move(request_body)),
-      resolver(client.io_service),
-      socket(client.io_service),
+      resolver(client.impl->io_service),
+      socket(client.impl->io_service),
       finished(false)
 {
 }

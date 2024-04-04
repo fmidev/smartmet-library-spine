@@ -1,8 +1,10 @@
 #pragma once
 
-#include <boost/asio.hpp>
+#include <boost/system/error_code.hpp>
 #include <map>
+#include <memory>
 #include <set>
+#include <string>
 
 namespace SmartMet
 {
@@ -64,9 +66,9 @@ class TcpMultiQuery
   void report_request_complete();
 
   struct Query;
+  struct Impl;
 
-  boost::asio::io_service io_service;
-  boost::asio::deadline_timer timeout;
+  std::unique_ptr<Impl> impl;
 
   std::map<std::string, std::shared_ptr<Query> > query_map;
 
