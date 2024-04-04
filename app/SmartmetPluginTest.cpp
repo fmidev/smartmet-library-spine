@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <thread>
+#include <csignal>
 #include <fontconfig/fontconfig.h>
 
 using namespace std;

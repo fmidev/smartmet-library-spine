@@ -14,7 +14,7 @@
 #include <boost/shared_ptr.hpp>
 
 // For asio buffer types
-#include <boost/asio.hpp>
+#include <boost/asio/buffer.hpp>
 
 #include <map>
 #include <string>
