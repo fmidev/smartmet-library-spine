@@ -12,50 +12,46 @@ namespace Spine
 class Station
 {
  public:
-  bool isFMIStation = false;
-  bool isRoadStation = false;
-  bool isMareographStation = false;
-  bool isBuoyStation = false;
-  bool isSYKEStation = false;
-  bool isForeignStation = false;
-
-  std::string station_type;
-  std::string distance;
-  double station_id = 0;
-  double access_policy_id = 0;
-  double station_status_id = 0;
+  std::string type;
   std::string language_code;
-  std::string station_formal_name_fi;
-  std::string station_formal_name_sv;
-  std::string station_formal_name_en;
+  std::string formal_name_fi;
+  std::string formal_name_sv;
+  std::string formal_name_en;
   Fmi::DateTime station_start;
   Fmi::DateTime station_end;
-  double target_category = 0;
-  std::string stationary;
-  double latitude_out = 0;
-  double longitude_out = 0;
-  double station_elevation = 0;
+  double latitude = 0;
+  double longitude = 0;
+  double elevation = 0;
+  bool isFmi = false;
+  bool isForeign = false;
+  bool isStationary = true;
+  bool isMareograph = false;
+  bool isBuoy = false;
+  bool isRoad = false;
+  bool isSyke = false;
   Fmi::DateTime modified_last;
-  double modified_by = 0;
 
   // Possible station identifiers
-  int wmo = 0;
-  int lpnn = 0;
-  int fmisid = 0;
-  int rwsid = 0;
+  std::string wsi;  // WIGOS Station Identifier
+  int fmisid = 0;   // FMI station number
+  int wmo = 0;      // WMO station number, deprecated
+  int lpnn = 0;     // Legacy FMI station number
+  int rwsid = 0;    // Road station number
+  int geoid = 0;    // Geonames ID
+  int modified_by = 0;
 
   // If the location is requested by finding the nearest observation
   // station for e.g. some latlon coordinates,
   // these fields come in handy when formatting the output
-  int geoid = 0;
   std::string requestedName;
-  double requestedLon = 0;
-  double requestedLat = 0;
-  double stationDirection = -1;  // negative number is marker that no direction is calculated
+  std::string distance;
   std::string timezone;
   std::string region;
   std::string country;
   std::string iso2;
+  double requestedLon = 0;
+  double requestedLat = 0;
+  double stationDirection = -1;  // negative number is marker that no direction is calculated
 
   // This will return the requested tag.
   // Because it is request dependent, it will not be serialized
@@ -65,46 +61,38 @@ class Station
   template <typename Archive>
   void serialize(Archive& ar, const unsigned /* version */)
   {
-    ar& BOOST_SERIALIZATION_NVP(isFMIStation);
-    ar& BOOST_SERIALIZATION_NVP(isRoadStation);
-    ar& BOOST_SERIALIZATION_NVP(isMareographStation);
-    ar& BOOST_SERIALIZATION_NVP(isBuoyStation);
-    ar& BOOST_SERIALIZATION_NVP(isSYKEStation);
-    ar& BOOST_SERIALIZATION_NVP(isForeignStation);
-    ar& BOOST_SERIALIZATION_NVP(station_type);
-    ar& BOOST_SERIALIZATION_NVP(distance);
-    ar& BOOST_SERIALIZATION_NVP(station_id);
-    ar& BOOST_SERIALIZATION_NVP(access_policy_id);
-    ar& BOOST_SERIALIZATION_NVP(station_status_id);
-    ar& BOOST_SERIALIZATION_NVP(language_code);
-    ar& BOOST_SERIALIZATION_NVP(station_formal_name_fi);
-    ar& BOOST_SERIALIZATION_NVP(station_formal_name_sv);
-    ar& BOOST_SERIALIZATION_NVP(station_formal_name_en);
-    ar& BOOST_SERIALIZATION_NVP(station_start);
-    ar& BOOST_SERIALIZATION_NVP(station_end);
-    ar& BOOST_SERIALIZATION_NVP(target_category);
-    ar& BOOST_SERIALIZATION_NVP(stationary);
-    ar& BOOST_SERIALIZATION_NVP(latitude_out);
-    ar& BOOST_SERIALIZATION_NVP(longitude_out);
-    ar& BOOST_SERIALIZATION_NVP(station_elevation);
-    ar& BOOST_SERIALIZATION_NVP(modified_last);
-    ar& BOOST_SERIALIZATION_NVP(modified_by);
-    ar& BOOST_SERIALIZATION_NVP(wmo);
-    ar& BOOST_SERIALIZATION_NVP(lpnn);
+    ar& BOOST_SERIALIZATION_NVP(wsi);
     ar& BOOST_SERIALIZATION_NVP(fmisid);
     ar& BOOST_SERIALIZATION_NVP(rwsid);
     ar& BOOST_SERIALIZATION_NVP(geoid);
-    ar& BOOST_SERIALIZATION_NVP(requestedName);
-    ar& BOOST_SERIALIZATION_NVP(requestedLon);
-    ar& BOOST_SERIALIZATION_NVP(requestedLat);
-    ar& BOOST_SERIALIZATION_NVP(stationDirection);
+    ar& BOOST_SERIALIZATION_NVP(wmo);
+    ar& BOOST_SERIALIZATION_NVP(lpnn);
+    ar& BOOST_SERIALIZATION_NVP(type);
+    ar& BOOST_SERIALIZATION_NVP(language_code);
+    ar& BOOST_SERIALIZATION_NVP(formal_name_fi);
+    ar& BOOST_SERIALIZATION_NVP(formal_name_sv);
+    ar& BOOST_SERIALIZATION_NVP(formal_name_en);
+    ar& BOOST_SERIALIZATION_NVP(station_start);
+    ar& BOOST_SERIALIZATION_NVP(station_end);
+    ar& BOOST_SERIALIZATION_NVP(latitude);
+    ar& BOOST_SERIALIZATION_NVP(longitude);
+    ar& BOOST_SERIALIZATION_NVP(elevation);
+    ar& BOOST_SERIALIZATION_NVP(isStationary);
+    ar& BOOST_SERIALIZATION_NVP(isFmi);
+    ar& BOOST_SERIALIZATION_NVP(isForeign);
+    ar& BOOST_SERIALIZATION_NVP(isMareograph);
+    ar& BOOST_SERIALIZATION_NVP(isBuoy);
+    ar& BOOST_SERIALIZATION_NVP(isRoad);
+    ar& BOOST_SERIALIZATION_NVP(isSyke);
     ar& BOOST_SERIALIZATION_NVP(timezone);
     ar& BOOST_SERIALIZATION_NVP(region);
     ar& BOOST_SERIALIZATION_NVP(country);
     ar& BOOST_SERIALIZATION_NVP(iso2);
+    ar& BOOST_SERIALIZATION_NVP(modified_by);
+    ar& BOOST_SERIALIZATION_NVP(modified_last);
   }
 
-  std::string hash() const;
+  std::size_t hash() const;
 
 };  // class Station
 
