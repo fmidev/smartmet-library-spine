@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 24.3.15
+Version: 24.4.5
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -46,7 +46,7 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 24.1.3
+BuildRequires: smartmet-library-gis-devel >= 24.3.25
 BuildRequires: smartmet-library-macgyver-devel >= 24.1.17
 BuildRequires: smartmet-library-newbase-devel >= 24.3.11
 BuildRequires: smartmet-utils-devel >= 24.3.13
@@ -84,7 +84,7 @@ Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
-Requires: smartmet-library-gis >= 24.1.3
+Requires: smartmet-library-gis >= 24.3.25
 Requires: smartmet-library-macgyver >= 24.1.17
 Requires: smartmet-library-newbase >= 24.3.11
 Requires: smartmet-timezones >= 24.1.9
@@ -109,7 +109,7 @@ Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
 Requires: smartmet-library-macgyver-devel >= 24.1.17
-Requires: smartmet-library-gis-devel >= 24.1.3
+Requires: smartmet-library-gis-devel >= 24.3.25
 Requires: smartmet-library-newbase-devel >= 24.3.11
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
@@ -154,6 +154,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Apr  5 2024 Mika Heiskanen <mika.heiskanen@fmi.fi> - 24.4.5-1.fmi
+- Added WIGOS wsi support
+
 * Fri Mar 15 2024 Mika Heiskanen <mika.heiskanen@fmi.fi> - 24.3.15-1.fmi
 - Fixed a potential sigsegv if environment variables are used in arrays of strings
 
