@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 24.4.5
+Version: 24.4.23
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -153,6 +153,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Apr 23 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.4.23-1.fmi
+- smartmet-plugin-test improvements
+
 * Fri Apr  5 2024 Mika Heiskanen <mika.heiskanen@fmi.fi> - 24.4.5-1.fmi
 - Added WIGOS wsi support
 
