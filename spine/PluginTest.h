@@ -19,12 +19,15 @@
 #include <boost/bind/bind.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/range/iterator_range.hpp>
+#include <fmt/format.h>
 #include <dtl/dtl.hpp>
+#include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/FileSystem.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/WorkQueue.h>
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <fstream>
 #include <iomanip>
 #include <list>
@@ -116,8 +119,8 @@ std::string get_diff(const std::string& src, const std::string& dest)
     std::string ret = out.str();
 
     if (ret.size() > 5000)
-      return "Diff size " + std::to_string(ret.size()) + " is too big (>5000)";
-    return ret;
+      return "  Diff size " + std::to_string(ret.size()) + " is too big (>5000)";
+    return "\n" + ret;
   }
   catch (...)
   {
@@ -500,6 +503,12 @@ bool PluginTest::process_query(const fs::path& fn,
 {
   using boost::filesystem::path;
 
+  const bool is_tty = isatty(fileno(stdout));
+  const std::string fg_fn = is_tty ? ANSI_FG_CYAN : "";
+  const std::string fg_red = is_tty ? ANSI_FG_RED : "";
+  const std::string fg_green = is_tty ? ANSI_FG_GREEN : "";
+  const std::string fg_default = is_tty ? ANSI_FG_DEFAULT : "";
+
   path inputfile(mInputDir);
   inputfile /= fn;
 
@@ -507,7 +516,7 @@ bool PluginTest::process_query(const fs::path& fn,
 
   std::ostringstream out;
 
-  out << fn.native() << ' ' << std::setw(dots) << std::setfill('.') << ". ";
+  out << fg_fn << fn.native() << fg_default << ' ' << std::setw(dots) << std::setfill('.') << ". ";
 
   std::string input = get_file_contents(inputfile);
 
@@ -531,11 +540,13 @@ bool PluginTest::process_query(const fs::path& fn,
     {
       SmartMet::Spine::HTTP::Response response;
 
+      const auto start_time = std::chrono::system_clock::now();
+
       auto view = reactor.getHandlerView(*query.second);
       if (!view)
       {
         ok = false;
-        out << "FAILED TO HANDLE REQUEST STRING";
+        out << fg_red << "FAILED TO HANDLE REQUEST STRING" << fg_default;
       }
       else
       {
@@ -559,6 +570,11 @@ bool PluginTest::process_query(const fs::path& fn,
         else
         {
           view->handle(reactor, *query.second, response);
+
+          const auto done_time = std::chrono::system_clock::now();
+          const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(done_time - start_time)
+                                    .count();
+          const std::string time_str = fmt::format("{:6.3f}", 0.001*duration);
 
           std::string result;
 
@@ -584,7 +600,8 @@ bool PluginTest::process_query(const fs::path& fn,
             ok = get_processed_response(scriptfile, result);
 
             if (!ok)
-              out << "FAIL (result processing failed)";
+              out << fg_red << "FAIL" << fg_default << "  " << time_str << "s "
+                  << fg_red << "(result processing failed)" << fg_default;
           }
 
           if (ok)
@@ -608,11 +625,11 @@ bool PluginTest::process_query(const fs::path& fn,
               std::string output = get_file_contents(*real_output_file);
 
               if (result == output)
-                out << "OK";
+                out << fg_green << "OK  " << fg_default << "  " << time_str << "s";
               else
               {
                 ok = false;
-                out << "FAIL";
+                out << fg_red << "FAIL" << fg_default << "  " << time_str << "s";
                 boost::filesystem::create_directories(failure_fn.parent_path());
                 put_file_contents(failure_fn, result);
                 out << get_diff(outputfile.string(), failure_fn.string());
@@ -623,7 +640,9 @@ bool PluginTest::process_query(const fs::path& fn,
               ok = false;
               boost::filesystem::create_directories(failure_fn.parent_path());
               put_file_contents(failure_fn, result);
-              out << "FAIL (expected result file '" << outputfile.string() << "' missing)";
+              out << fg_red << "FAIL" << fg_default << "  " << time_str
+                  << "  (expected result file '" << fg_red << outputfile.string()
+                  << fg_default << "' missing)";
             }
           }
         }
@@ -644,12 +663,12 @@ bool PluginTest::process_query(const fs::path& fn,
   else if (query.first == SmartMet::Spine::HTTP::ParsingStatus::FAILED)
   {
     ok = false;
-    std::cout << out.str() + "\nFAILED TO PARSE REQUEST STRING\n" << std::flush;
+    std::cout << out.str() + fg_red + "\nFAILED TO PARSE REQUEST STRING\n" + fg_default << std::flush;
   }
   else
   {
     ok = false;
-    std::cout << out.str() + "PARSED REQUEST ONLY PARTIALLY\n" << std::flush;
+    std::cout << out.str() + fg_red + "PARSED REQUEST ONLY PARTIALLY\n" + fg_default << std::flush;
   }
   return ok;
 }
