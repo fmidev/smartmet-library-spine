@@ -29,6 +29,7 @@
 #include <iomanip>
 #include <list>
 #include <numeric>
+#include <regex>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -357,6 +358,7 @@ class PluginTest
   void setOutputDir(const std::string& dir) { mOutputDir = dir; }
   void setFailDir(const std::string& dir) { mFailDir = dir; }
   void addIgnoreList(const std::string& fileName) { ignore_lists.push_back(fileName); }
+  void setFilter(const std::string& filter) { this->filter.reset(new std::regex(filter)); }
 
  private:
   struct IgnoreInfo
@@ -381,6 +383,7 @@ class PluginTest
                      SmartMet::Spine::Reactor& reactor,
                      IgnoreMap& ignores) const;
 
+  std::unique_ptr<std::regex> filter;
   std::vector<std::string> read_ignore_list(const std::string& dir) const;
   static std::vector<std::string> read_ignore_file(const std::string& fn);
 };  // class PluginTest
@@ -537,6 +540,7 @@ bool PluginTest::process_query(const fs::path& fn,
       else
       {
         auto ignores_it = ignores.find(fn.string());
+        bool filter_ok = not filter or std::regex_search(fn.string(), *filter);
         if (ignores_it != ignores.end())
         {
           ignores_it->second.found = true;
@@ -546,6 +550,11 @@ bool PluginTest::process_query(const fs::path& fn,
           {
             out << ": " << ignores_it->second.description;
           }
+        }
+        else if (not filter_ok)
+        {
+          ok = true;
+          out << "IGNORED BY FILTER";
         }
         else
         {
