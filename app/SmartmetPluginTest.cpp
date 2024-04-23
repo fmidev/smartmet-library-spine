@@ -64,6 +64,7 @@ FontConfigInit fcInit;
 #define nm_input "input-dir"
 #define nm_expected "expected-output-dir"
 #define nm_failures "failures-dir"
+#define nm_filter "filter"
 #define nm_threads "num-threads"
 #define nm_ignore "ignore"
 #define nm_timeout "timeout"
@@ -99,7 +100,10 @@ int main(int argc, char* argv[])
         (nm_failures ",f", po::value<std::string>(), "Directory where to write actual output in case of failures (default value 'failures')")
         (nm_threads ",n", po::value<int>(), "Number of threads (default 10)")
         (nm_ignore ",I", po::value<std::vector<std::string> >(), "Optional parameter to specify files containing lists of tests to be skipped. File .testignore from input directory is used of none specified. May be provided 0 or more times")
-        (nm_timeout, po::value<unsigned>(), "Timeout of entire test run in seconds (missing or value  0 means no timeout");
+        (nm_timeout, po::value<unsigned>(), "Timeout of entire test run in seconds (missing or value  0 means no timeout")
+        (nm_filter, po::value<std::string>(), "Filter for test names to include(regex pattern,\n"
+                                               "all tests not excluded by ignore lists are included by default)")
+        ;
     // clang-format on
 
     po::variables_map opt;
@@ -153,6 +157,10 @@ int main(int argc, char* argv[])
       if (opt.count(nm_expected))
       {
         tester.setOutputDir(opt[nm_expected].as<std::string>());
+      }
+      if (opt.count(nm_filter))
+      {
+        tester.setFilter(opt[nm_filter].as<std::string>());
       }
       if (opt.count(nm_failures))
       {
