@@ -88,7 +88,7 @@ void SmartMetPlugin::shutdownPlugin()
       std::cout << ("  -- waiting the plugin (" + getPluginName() +
                     ") to complete its initialization phase\n")
                 << std::flush;
-      boost::this_thread::sleep(boost::posix_time::milliseconds(3000));
+      boost::this_thread::sleep_for(boost::chrono::milliseconds(3000));
     }
 
     while (responseCounter < requestCounter)
@@ -97,7 +97,7 @@ void SmartMetPlugin::shutdownPlugin()
                     ") to complete its processing (" + std::to_string(responseCounter) + "/" +
                     std::to_string(requestCounter) + "\n")
                 << std::flush;
-      boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
+      boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
     }
   }
   catch (...)

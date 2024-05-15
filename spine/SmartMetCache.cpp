@@ -47,7 +47,7 @@ SmartMetCache::~SmartMetCache()
       boost::this_thread::disable_interruption do_not_disturb;
       itsCondition.notify_one();
       theLock.unlock();
-      boost::this_thread::sleep(boost::posix_time::milliseconds(200));
+      boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
       itsFileThread->interrupt();
       itsFileThread->join();
     }

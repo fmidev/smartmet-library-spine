@@ -44,7 +44,7 @@ void basic()
     cache.insert(keys[i], boost::make_shared<std::string>(values[i]));
   }
 
-  boost::this_thread::sleep(boost::posix_time::seconds(2));
+  boost::this_thread::sleep_for(boost::chrono::seconds(2));
 
   auto content = cache.getContent();
 
@@ -87,7 +87,7 @@ void find()
     cache.insert(keys[i], boost::make_shared<std::string>(values[i]));
   }
 
-  boost::this_thread::sleep(boost::posix_time::seconds(1));
+  boost::this_thread::sleep_for(boost::chrono::seconds(1));
 
   std::vector<std::size_t> search = {7, 6, 5, 4};
 
@@ -100,7 +100,7 @@ void find()
       TEST_FAILED("Incorrect result on key '" + s + "' should be '" + values[number - 1] +
                   "', got '" + *res + "'");
     }
-    boost::this_thread::sleep(boost::posix_time::millisec(500));
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(500));
   }
 
   auto content = cache.getContent();
@@ -149,12 +149,12 @@ void promote()
   }
 
   // Wait for disk flush
-  boost::this_thread::sleep(boost::posix_time::seconds(1));
+  boost::this_thread::sleep_for(boost::chrono::seconds(1));
 
   for (int i = 0; i < 4; ++i)
   {
     auto res = cache.find((unsigned)keys2[i]);
-    boost::this_thread::sleep(boost::posix_time::millisec(1000));
+    boost::this_thread::sleep_for(boost::chrono::milliseconds(1000));
   }
 
   auto content = cache.getContent();
@@ -180,7 +180,7 @@ void promote()
   // ignored = cache.find(2);
   // ignored = cache.find(1);
 
-  // boost::this_thread::sleep(boost::posix_time::seconds(1));
+  // boost::this_thread::sleep_for(boost::chrono::seconds(1));
 
   // auto content = cache.getContent();
 
