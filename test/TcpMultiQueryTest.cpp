@@ -85,7 +85,7 @@ class server
     {
       if (sleep_ms > 0)
       {
-        timer.expires_from_now(boost::posix_time::milliseconds(sleep_ms));
+        timer.expires_from_now(std::chrono::milliseconds(sleep_ms));
         timer.async_wait(
             [this](boost::system::error_code e)
             {
@@ -145,7 +145,7 @@ class server
     }
 
     tcp::socket socket_;
-    boost::asio::deadline_timer timer;
+    boost::asio::basic_waitable_timer<std::chrono::system_clock> timer;
     enum
     {
       max_length = 1024

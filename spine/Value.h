@@ -13,7 +13,7 @@ namespace SmartMet
 namespace Spine
 {
 /**
- *   @brief Read boost::posix_time::ptime from std::string
+ *   @brief Read Fmi::DateTime from std::string
  *
  *   Supports following formats:
  *   - one supported by Fmi::TimeParser::parse
