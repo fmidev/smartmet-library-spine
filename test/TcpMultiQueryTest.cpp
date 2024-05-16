@@ -145,7 +145,7 @@ class server
     }
 
     tcp::socket socket_;
-    boost::asio::basic_waitable_timer<std::chrono::system_clock> timer;
+    boost::asio::basic_waitable_timer<std::chrono::steady_clock> timer;
     enum
     {
       max_length = 1024

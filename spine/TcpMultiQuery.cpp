@@ -53,7 +53,7 @@ struct TcpMultiQuery::Impl
   }
 
   boost::asio::io_service io_service;
-  boost::asio::basic_waitable_timer<std::chrono::system_clock> timeout;
+  boost::asio::basic_waitable_timer<std::chrono::steady_clock> timeout;
 };
 
 TcpMultiQuery::TcpMultiQuery(int timeout_sec)
