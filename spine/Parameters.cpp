@@ -140,6 +140,7 @@ bool IsDataIndependent(FmiParameterName param)
     case kFmiWDay:
     case kFmiWmoStationNumber:
     case kFmiWeekday:
+    case kFmiWSI:
     case kFmiXMLTime:
       return true;
     default:
