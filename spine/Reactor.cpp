@@ -510,7 +510,7 @@ boost::optional<HandlerView&> Reactor::getHandlerView(const HTTP::Request& theRe
     for (const auto& item : uriPrefixes)
     {
       std::size_t len = item.length();
-      if (resource.substr(0, len) == item)
+      if (resource.substr(0, len) == item && (resource.length() == len || resource[len] == '/'))
       {
         remapped = true;
         resource = item;

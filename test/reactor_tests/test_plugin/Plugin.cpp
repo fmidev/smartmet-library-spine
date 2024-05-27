@@ -50,7 +50,7 @@ void SmartMet::Plugin::Test::Plugin::init()
     }
 
     if (!itsReactor->addContentHandler(this,
-            "/test_prefix/",
+            "/test_prefix",
             [this](Reactor& theReactor,
                 const HTTP::Request& theRequest,
                 HTTP::Response& theResponse)
