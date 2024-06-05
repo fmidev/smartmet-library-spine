@@ -35,7 +35,7 @@ BuildRequires: ctpp2-devel
 BuildRequires: dtl
 BuildRequires: fmt-devel >= %{smartmet_fmt_min}, fmt-devel < %{smartmet_fmt_max}
 BuildRequires: gcc-c++
-BuildRequires: gdal35-devel
+BuildRequires: gdal38-devel
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel >= 1.8.4
 BuildRequires: libconfig17 >= 1.7.3
@@ -51,15 +51,15 @@ BuildRequires: smartmet-library-macgyver-devel >= 24.5.6
 BuildRequires: smartmet-library-newbase-devel >= 24.5.6
 BuildRequires: smartmet-utils-devel >= 24.3.13
 
-%if 0%{?rhel} && 0%{rhel} == 7
+%if 0%{?rhel} && 0%{rhel} == 8
 Requires: libpqxx < 1:7.0
-BuildRequires: libpqxx-devel < 1:7.0
-#TestRequires: libpqxx-devel < 1:7.0
-%else
-%if 0%{?rhel} && 0%{rhel} >= 8
-Requires: libpqxx >= 1:7.7.0, libpqxx < 1:7.8.0
 BuildRequires: libpqxx-devel >= 1:7.7.0, libpqxx-devel < 1:7.8.0
 #TestRequires: libpqxx-devel >= 1:7.7.0, libpqxx-devel < 1:7.8.0
+%else
+%if 0%{?rhel} && 0%{rhel} >= 8
+Requires: libpqxx >= 1:7.9.0, libpqxx < 1:7.10.0
+BuildRequires: libpqxx-devel >= 1:7.9.0, libpqxx-devel < 1:7.10.0
+#TestRequires: libpqxx-devel >= 1:7.9.0, libpqxx-devel < 1:7.10.0
 %else
 Requires: libpqxx
 BuildRequires: libpqxx-devel
@@ -77,7 +77,7 @@ Requires: %{smartmet_boost}-thread
 Requires: %{smartmet_boost}-timer
 Requires: ctpp2
 Requires: fmt >= %{smartmet_fmt_min}, fmt < %{smartmet_fmt_max}
-Requires: gdal35-libs
+Requires: gdal38-libs
 Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
@@ -89,7 +89,7 @@ Requires: smartmet-library-newbase >= 24.5.6
 Requires: smartmet-timezones >= 24.1.9
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
-#TestRequires: gdal35-devel
+#TestRequires: gdal38-devel
 #TestRequires: jsoncpp-devel >= 1.8.4
 #TestRequires: make
 #TestRequires: smartmet-library-regression
