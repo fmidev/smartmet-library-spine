@@ -8,6 +8,7 @@
 #include "ConfigTools.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <optional>
 #include <boost/optional.hpp>
 #include <boost/program_options.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
@@ -43,7 +44,7 @@ unsigned int parse_threads(const std::string& str)
 }
 
 // Parse config setting for number of threads
-boost::optional<unsigned int> parse_threads(const libconfig::Config& config,
+std::optional<unsigned int> parse_threads(const libconfig::Config& config,
                                             const std::string& name)
 {
   try
@@ -187,7 +188,7 @@ bool Options::parseOptions(int argc, char* argv[])
         "verbose,v", po::bool_switch(&verbose)->default_value(verbose), msgverbose)(
         "quiet", po::bool_switch(&quiet)->default_value(quiet), msgquiet)(
         "stacktrace", po::bool_switch(&quiet)->default_value(stacktrace), msgstacktrace)(
-        "coredump_filter",po::value(&coredump_filter), msgcoredump)(
+        "coredump_filter",po::value<unsigned int>(), msgcoredump)( 
         "logrequests", po::bool_switch(&logrequests)->default_value(logrequests), msglogrequest)(
         "configfile,c", po::value(&configfile)->default_value(configfile), msgconf)(
         "libdir,L", po::value(&directory)->default_value(directory), msglib)(
@@ -228,6 +229,11 @@ bool Options::parseOptions(int argc, char* argv[])
 
       return false;
     }
+
+    if (opt.count("coredump_filter") != 0)
+      coredump_filter = opt["coredump_filter"].as<unsigned int>();
+    else
+      coredump_filter = std::nullopt;
 
     if (throttle.start_limit > throttle.limit)
       throttle.start_limit = throttle.limit;

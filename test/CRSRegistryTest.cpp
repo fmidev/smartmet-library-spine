@@ -28,7 +28,7 @@ BOOST_AUTO_TEST_CASE(test_coordinate_transformation_1)
   registry.register_epsg("UTM-ZONE-35", 4037);
   registry.register_epsg("WGS72-UTM-35", 32235);
 
-  boost::shared_ptr<CRSRegistry::Transformation> conv, conv2;
+  std::shared_ptr<CRSRegistry::Transformation> conv, conv2;
 
   BOOST_REQUIRE_NO_THROW(conv = registry.create_transformation("WGS84", "UTM-ZONE-35"));
   NFmiPoint p1(24.0, 60.0), p2, p3;
@@ -64,12 +64,12 @@ BOOST_AUTO_TEST_CASE(test_coordinate_transformation_2)
   BOOST_TEST_MESSAGE("+ [Coordinate system registry class] conversion (swap coordinates)");
 
   CRSRegistry registry;
-  registry.register_epsg("WGS84", 4326, boost::optional<std::string>(), true);
-  registry.register_epsg("WGS84B", 4326, boost::optional<std::string>(), false);
+  registry.register_epsg("WGS84", 4326, std::optional<std::string>(), true);
+  registry.register_epsg("WGS84B", 4326, std::optional<std::string>(), false);
   registry.register_epsg("UTM-ZONE-35", 4037);
   registry.register_epsg("WGS72-UTM-35", 32235);
 
-  boost::shared_ptr<CRSRegistry::Transformation> conv, conv2;
+  std::shared_ptr<CRSRegistry::Transformation> conv, conv2;
 
   BOOST_REQUIRE_NO_THROW(conv = registry.create_transformation("WGS84", "UTM-ZONE-35"));
   NFmiPoint p1(60.0, 24.0), p2, p3;

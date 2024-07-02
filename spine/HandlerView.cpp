@@ -24,7 +24,7 @@ namespace SmartMet
 namespace Spine
 {
 HandlerView::HandlerView(ContentHandler theHandler,
-                         boost::shared_ptr<IPFilter::IPFilter> theIpFilter,
+                         std::shared_ptr<IPFilter::IPFilter> theIpFilter,
                          SmartMetPlugin* thePlugin,
                          const std::string& theResource,
                          bool loggingStatus,

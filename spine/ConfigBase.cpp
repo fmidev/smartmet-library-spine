@@ -48,7 +48,7 @@ ConfigBase::ConfigBase(const std::string& file_name, const std::string& config_n
   }
 }
 
-ConfigBase::ConfigBase(const boost::shared_ptr<libconfig::Config>& config,
+ConfigBase::ConfigBase(const std::shared_ptr<libconfig::Config>& config,
                        const std::string& config_name)
     : file_name("<none>"), config_name(config_name), itsConfig(config)
 {
@@ -57,7 +57,7 @@ ConfigBase::ConfigBase(const boost::shared_ptr<libconfig::Config>& config,
     if (not config)
     {
       throw Fmi::Exception(BCP, "Configuration not provided!")
-          .addDetail("Empty boost::shared_ptr<>")
+          .addDetail("Empty std::shared_ptr<>")
           .addParameter("Name", config_name);
     }
   }

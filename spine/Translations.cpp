@@ -32,7 +32,7 @@ const std::string& Translations::getDefaultLanguage() const
   return itsParameterTranslations.getDefaultLanguage();
 }
 
-boost::optional<std::string> Translations::getParameterTranslation(const std::string& theParam,
+std::optional<std::string> Translations::getParameterTranslation(const std::string& theParam,
 																   int theValue,
 																   const std::string& theLanguage) const
 {
@@ -40,13 +40,13 @@ boost::optional<std::string> Translations::getParameterTranslation(const std::st
 }
 
 
-boost::optional<std::string> Translations::getStringTranslation(const std::string& theKey,
+std::optional<std::string> Translations::getStringTranslation(const std::string& theKey,
 																const std::string& theLanguage) const
 {
   return itsStringTranslations.getStringTranslation(theKey, theLanguage);
 }
 
-boost::optional<std::vector<std::string>> Translations::getStringArrayTranslation(const std::string& theKey,
+std::optional<std::vector<std::string>> Translations::getStringArrayTranslation(const std::string& theKey,
 																				  const std::string& theLanguage) const
 {
   return itsStringTranslations.getStringArrayTranslation(theKey, theLanguage);

@@ -83,7 +83,7 @@ CRSRegistry::~CRSRegistry() = default;
 
 void CRSRegistry::register_epsg(const std::string& name,
                                 int epsg_code,
-                                const boost::optional<std::string>& regex,
+                                const std::optional<std::string>& regex,
                                 bool swap_coord)
 {
   try
@@ -116,7 +116,7 @@ void CRSRegistry::register_epsg(const std::string& name,
 
 void CRSRegistry::register_proj4(const std::string& name,
                                  const std::string& proj4_def,
-                                 const boost::optional<std::string>& regex,
+                                 const std::optional<std::string>& regex,
                                  bool swap_coord)
 {
   try
@@ -151,7 +151,7 @@ void CRSRegistry::register_proj4(const std::string& name,
 
 void CRSRegistry::register_wkt(const std::string& name,
                                const std::string& wkt_def,
-                               const boost::optional<std::string>& regex,
+                               const std::optional<std::string>& regex,
                                bool swap_coord)
 {
   try
@@ -195,14 +195,14 @@ void CRSRegistry::register_wkt(const std::string& name,
   }
 }
 
-boost::shared_ptr<CRSRegistry::Transformation> CRSRegistry::create_transformation(
+std::shared_ptr<CRSRegistry::Transformation> CRSRegistry::create_transformation(
     const std::string& from, const std::string& to)
 {
   try
   {
     const MapEntry& e_from = get_entry(from);
     const MapEntry& e_to = get_entry(to);
-    boost::shared_ptr<Transformation> result;
+    std::shared_ptr<Transformation> result;
 
     if (&e_from == &e_to)
     {
@@ -402,7 +402,7 @@ CRSRegistry::Transformation::Transformation() = default;
 
 CRSRegistry::Transformation::~Transformation() = default;
 
-CRSRegistry::MapEntry::MapEntry(std::string theName, const boost::optional<std::string>& text)
+CRSRegistry::MapEntry::MapEntry(std::string theName, const std::optional<std::string>& text)
     : name(std::move(theName)), cs(new OGRSpatialReference)
 {
   try
@@ -642,7 +642,7 @@ void CRSRegistry::read_crs_dir(const fs::path& theDir)
       if (fs::is_regular_file(entry) and not ba::starts_with(fn, ".") and
           not ba::starts_with(fn, "#") and ba::ends_with(fn, ".conf"))
       {
-        boost::shared_ptr<Spine::ConfigBase> desc(
+        std::shared_ptr<Spine::ConfigBase> desc(
             new Spine::ConfigBase(entry.string(), "CRS description"));
 
         try

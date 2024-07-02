@@ -41,7 +41,7 @@ void basic()
 
   for (int i = 0; i < 5; ++i)
   {
-    cache.insert(keys[i], boost::make_shared<std::string>(values[i]));
+    cache.insert(keys[i], std::make_shared<std::string>(values[i]));
   }
 
   boost::this_thread::sleep_for(boost::chrono::seconds(2));
@@ -84,7 +84,7 @@ void find()
 
   for (int i = 0; i < 7; ++i)
   {
-    cache.insert(keys[i], boost::make_shared<std::string>(values[i]));
+    cache.insert(keys[i], std::make_shared<std::string>(values[i]));
   }
 
   boost::this_thread::sleep_for(boost::chrono::seconds(1));
@@ -140,12 +140,12 @@ void promote()
 
   for (int i = 0; i < 5; ++i)
   {
-    cache.insert(keys2[i], boost::make_shared<std::string>(values2[i]));
+    cache.insert(keys2[i], std::make_shared<std::string>(values2[i]));
   }
 
   for (int i = 0; i < 5; ++i)
   {
-    cache.insert(keys1[i], boost::make_shared<std::string>(values1[i]));
+    cache.insert(keys1[i], std::make_shared<std::string>(values1[i]));
   }
 
   // Wait for disk flush

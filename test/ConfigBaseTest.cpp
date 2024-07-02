@@ -67,9 +67,9 @@ class TestConfig : public libconfig::Config
   }
 };
 
-boost::shared_ptr<libconfig::Config> create_config()
+std::shared_ptr<libconfig::Config> create_config()
 {
-  boost::shared_ptr<libconfig::Config> config(new TestConfig);
+  std::shared_ptr<libconfig::Config> config(new TestConfig);
   return config;
 }
 }  // namespace
@@ -82,7 +82,7 @@ BOOST_AUTO_TEST_CASE(get_simple_config_entries)
   BOOST_TEST_MESSAGE("+ [ConfigBase] Testing getting mandatory and optional configuration entries");
 
   auto raw_config = create_config();
-  boost::shared_ptr<SmartMet::Spine::ConfigBase> config;
+  std::shared_ptr<SmartMet::Spine::ConfigBase> config;
 
   BOOST_REQUIRE_NO_THROW(
       config.reset(new SmartMet::Spine::ConfigBase(raw_config, "Test configuration")));
@@ -121,7 +121,7 @@ BOOST_AUTO_TEST_CASE(get_config_array_no_nesting)
       "+ [ConfigBase] Testing getting configuration array (array directly under root)");
 
   auto raw_config = create_config();
-  boost::shared_ptr<SmartMet::Spine::ConfigBase> config;
+  std::shared_ptr<SmartMet::Spine::ConfigBase> config;
 
   BOOST_REQUIRE_NO_THROW(
       config.reset(new SmartMet::Spine::ConfigBase(raw_config, "Test configuration")));
@@ -143,7 +143,7 @@ BOOST_AUTO_TEST_CASE(get_nested_config_entries)
   BOOST_TEST_MESSAGE("+ [ConfigBase] Testing getting nested cong entries");
 
   auto raw_config = create_config();
-  boost::shared_ptr<SmartMet::Spine::ConfigBase> config;
+  std::shared_ptr<SmartMet::Spine::ConfigBase> config;
 
   BOOST_REQUIRE_NO_THROW(
       config.reset(new SmartMet::Spine::ConfigBase(raw_config, "Test configuration")));
@@ -172,7 +172,7 @@ BOOST_AUTO_TEST_CASE(get_array_deep)
   BOOST_TEST_MESSAGE("+ [ConfigBase] Testing getting array from internal configuration entries");
 
   auto raw_config = create_config();
-  boost::shared_ptr<ConfigBase> config;
+  std::shared_ptr<ConfigBase> config;
 
   BOOST_REQUIRE_NO_THROW(config.reset(new ConfigBase(raw_config, "Test configuration")));
 
@@ -194,7 +194,7 @@ BOOST_AUTO_TEST_CASE(test_parameter_redirection_1)
   BOOST_TEST_MESSAGE("+ [ConfigBase] Testing configuration entry redirect");
 
   auto raw_config = create_config();
-  boost::shared_ptr<ConfigBase> config;
+  std::shared_ptr<ConfigBase> config;
 
   BOOST_REQUIRE_NO_THROW(config.reset(new ConfigBase(raw_config, "Test configuration")));
 

@@ -409,7 +409,7 @@ Message::Message(HeaderMap headerMap, std::string version, bool isChunked)
 
 Message::Message() : itsVersion("1.0") {}
 
-boost::optional<std::string> Message::getHeader(const std::string& headerName) const
+std::optional<std::string> Message::getHeader(const std::string& headerName) const
 {
   try
   {
@@ -425,7 +425,7 @@ boost::optional<std::string> Message::getHeader(const std::string& headerName) c
   }
 }
 
-boost::optional<std::string> Message::getProtocol() const
+std::optional<std::string> Message::getProtocol() const
 {
   return getHeader("X-Forwarded-Proto");
 }
@@ -775,7 +775,7 @@ ParamMap Request::getParameterMap() const
   return itsParameters;
 }
 
-boost::optional<std::string> Request::getParameter(const std::string& paramName) const
+std::optional<std::string> Request::getParameter(const std::string& paramName) const
 {
   try
   {
@@ -913,7 +913,7 @@ void Response::setContent(const std::string& theContent)
   }
 }
 
-void Response::setContent(const boost::shared_ptr<std::string>& theContent)
+void Response::setContent(const std::shared_ptr<std::string>& theContent)
 {
   try
   {
@@ -925,7 +925,7 @@ void Response::setContent(const boost::shared_ptr<std::string>& theContent)
   }
 }
 
-void Response::setContent(const boost::shared_ptr<std::vector<char>>& theContent)
+void Response::setContent(const std::shared_ptr<std::vector<char>>& theContent)
 {
   try
   {
@@ -949,7 +949,7 @@ void Response::setContent(const boost::shared_array<char>& theContent, std::size
   }
 }
 
-void Response::setContent(const boost::shared_ptr<ContentStreamer>& theContent)
+void Response::setContent(const std::shared_ptr<ContentStreamer>& theContent)
 {
   try
   {
@@ -964,7 +964,7 @@ void Response::setContent(const boost::shared_ptr<ContentStreamer>& theContent)
   }
 }
 
-void Response::setContent(const boost::shared_ptr<ContentStreamer>& theContent,
+void Response::setContent(const std::shared_ptr<ContentStreamer>& theContent,
                           std::size_t contentSize)
 {
   try
@@ -1404,14 +1404,14 @@ MessageContent::MessageContent(const std::string& theContent)
 {
 }
 
-MessageContent::MessageContent(const boost::shared_ptr<std::string>& theContent)
+MessageContent::MessageContent(const std::shared_ptr<std::string>& theContent)
     : stringPtrContent(theContent),
       contentSize(theContent->size()),
       itsType(content_type::stringPtrType)
 {
 }
 
-MessageContent::MessageContent(const boost::shared_ptr<std::vector<char>>& theContent)
+MessageContent::MessageContent(const std::shared_ptr<std::vector<char>>& theContent)
     : vectorContent(theContent), contentSize(theContent->size()), itsType(content_type::vectorType)
 {
 }
@@ -1422,14 +1422,14 @@ MessageContent::MessageContent(boost::shared_array<char> theContent, std::size_t
 {
 }
 
-MessageContent::MessageContent(boost::shared_ptr<ContentStreamer> theContent)
+MessageContent::MessageContent(std::shared_ptr<ContentStreamer> theContent)
     : streamContent(std::move(theContent)),
       contentSize(std::numeric_limits<std::size_t>::max()),
       itsType(content_type::streamType)
 {
 }
 
-MessageContent::MessageContent(boost::shared_ptr<ContentStreamer> theContent,
+MessageContent::MessageContent(std::shared_ptr<ContentStreamer> theContent,
                                std::size_t contentSize)
     : streamContent(theContent), contentSize(contentSize), itsType(content_type::streamType)
 {

@@ -6,9 +6,9 @@
 #include <boost/any.hpp>
 #include <boost/array.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/optional.hpp>
+#include <optional>
 #include <boost/regex.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <macgyver/TypeName.h>
 #include <newbase/NFmiPoint.h>
 #include <map>
@@ -30,11 +30,11 @@ class CRSRegistry
   {
     std::string name;
     boost::basic_regex<char> regex;
-    boost::shared_ptr<OGRSpatialReference> cs;
+    std::shared_ptr<OGRSpatialReference> cs;
     std::map<std::string, boost::any> attrib_map;
     bool swap_coord;
 
-    MapEntry(std::string theName, const boost::optional<std::string>& text);
+    MapEntry(std::string theName, const std::optional<std::string>& text);
   };
 
  public:
@@ -73,20 +73,20 @@ class CRSRegistry
 
   void register_epsg(const std::string& name,
                      int epsg_code,
-                     const boost::optional<std::string>& regex = boost::optional<std::string>(),
+                     const std::optional<std::string>& regex = std::optional<std::string>(),
                      bool swap_coord = false);
 
   void register_proj4(const std::string& name,
                       const std::string& proj4_def,
-                      const boost::optional<std::string>& regex = boost::optional<std::string>(),
+                      const std::optional<std::string>& regex = std::optional<std::string>(),
                       bool swap_coord = false);
 
   void register_wkt(const std::string& name,
                     const std::string& wkt_def,
-                    const boost::optional<std::string>& regex = boost::optional<std::string>(),
+                    const std::optional<std::string>& regex = std::optional<std::string>(),
                     bool swap_coord = false);
 
-  boost::shared_ptr<Transformation> create_transformation(const std::string& from,
+  std::shared_ptr<Transformation> create_transformation(const std::string& from,
                                                           const std::string& to);
 
   SmartMet::Spine::BoundingBox convert_bbox(const SmartMet::Spine::BoundingBox& src,

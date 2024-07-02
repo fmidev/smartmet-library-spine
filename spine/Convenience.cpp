@@ -33,7 +33,7 @@ std::string optional_string(const char* theValue, const std::string& theDefault)
   }
 }
 
-std::string optional_string(const boost::optional<std::string>& theValue,
+std::string optional_string(const std::optional<std::string>& theValue,
                             const std::string& theDefault)
 {
   try
@@ -62,7 +62,7 @@ bool optional_bool(const char* theValue, bool theDefault)
   }
 }
 
-bool optional_bool(const boost::optional<std::string>& theValue, bool theDefault)
+bool optional_bool(const std::optional<std::string>& theValue, bool theDefault)
 {
   try
   {
@@ -90,7 +90,7 @@ int optional_int(const char* theValue, int theDefault)
   }
 }
 
-int optional_int(const boost::optional<std::string>& theValue, int theDefault)
+int optional_int(const std::optional<std::string>& theValue, int theDefault)
 {
   try
   {
@@ -118,7 +118,7 @@ std::size_t optional_size(const char* theValue, std::size_t theDefault)
   }
 }
 
-std::size_t optional_size(const boost::optional<std::string>& theValue, std::size_t theDefault)
+std::size_t optional_size(const std::optional<std::string>& theValue, std::size_t theDefault)
 {
   try
   {
@@ -146,7 +146,7 @@ unsigned long optional_unsigned_long(const char* theValue, unsigned long theDefa
   }
 }
 
-unsigned long optional_unsigned_long(const boost::optional<std::string>& theValue,
+unsigned long optional_unsigned_long(const std::optional<std::string>& theValue,
                                      unsigned long theDefault)
 {
   try
@@ -175,7 +175,7 @@ char optional_char(const char* theValue, char theDefault)
   }
 }
 
-char optional_char(const boost::optional<std::string>& theValue, char theDefault)
+char optional_char(const std::optional<std::string>& theValue, char theDefault)
 {
   try
   {
@@ -203,7 +203,7 @@ double optional_double(const char* theValue, double theDefault)
   }
 }
 
-double optional_double(const boost::optional<std::string>& theValue, double theDefault)
+double optional_double(const std::optional<std::string>& theValue, double theDefault)
 {
   try
   {
@@ -232,7 +232,7 @@ Fmi::DateTime optional_time(const char* theValue,
   }
 }
 
-Fmi::DateTime optional_time(const boost::optional<std::string>& theValue,
+Fmi::DateTime optional_time(const std::optional<std::string>& theValue,
                                        const Fmi::DateTime& theDefault)
 {
   try
@@ -254,7 +254,7 @@ std::string required_string(const char* theValue, const char* theError)
   return theValue;
 }
 
-std::string required_string(const boost::optional<std::string>& theValue, const char* theError)
+std::string required_string(const std::optional<std::string>& theValue, const char* theError)
 {
   if (!theValue)
     throw Fmi::Exception(BCP, theError);
@@ -275,7 +275,7 @@ bool required_bool(const char* theValue, const char* theError)
   }
 }
 
-bool required_bool(const boost::optional<std::string>& theValue, const char* theError)
+bool required_bool(const std::optional<std::string>& theValue, const char* theError)
 {
   try
   {
@@ -303,7 +303,7 @@ int required_int(const char* theValue, const char* theError)
   }
 }
 
-int required_int(const boost::optional<std::string>& theValue, const char* theError)
+int required_int(const std::optional<std::string>& theValue, const char* theError)
 {
   try
   {
@@ -331,7 +331,7 @@ std::size_t required_size(const char* theValue, const char* theError)
   }
 }
 
-std::size_t required_size(const boost::optional<std::string>& theValue, const char* theError)
+std::size_t required_size(const std::optional<std::string>& theValue, const char* theError)
 {
   try
   {
@@ -359,7 +359,7 @@ unsigned long required_unsigned_long(const char* theValue, const char* theError)
   }
 }
 
-unsigned long required_unsigned_long(const boost::optional<std::string>& theValue,
+unsigned long required_unsigned_long(const std::optional<std::string>& theValue,
                                      const char* theError)
 {
   try
@@ -388,7 +388,7 @@ char required_char(const char* theValue, const char* theError)
   }
 }
 
-char required_char(const boost::optional<std::string>& theValue, const char* theError)
+char required_char(const std::optional<std::string>& theValue, const char* theError)
 {
   try
   {
@@ -416,7 +416,7 @@ double required_double(const char* theValue, const char* theError)
   }
 }
 
-double required_double(const boost::optional<std::string>& theValue, const char* theError)
+double required_double(const std::optional<std::string>& theValue, const char* theError)
 {
   try
   {
@@ -444,7 +444,7 @@ Fmi::DateTime required_time(const char* theValue, const char* theError)
   }
 }
 
-Fmi::DateTime required_time(const boost::optional<std::string>& theValue,
+Fmi::DateTime required_time(const std::optional<std::string>& theValue,
                                        const char* theError)
 {
   try

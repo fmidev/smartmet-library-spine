@@ -16,7 +16,7 @@
 
 #include <boost/array.hpp>
 #include <boost/scoped_ptr.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 namespace SmartMet
 {
@@ -33,7 +33,7 @@ class SequenceFilter
   virtual bool match(const std::string& sequence) const = 0;
 };
 
-using SequenceFilterPtr = boost::shared_ptr<SequenceFilter>;
+using SequenceFilterPtr = std::shared_ptr<SequenceFilter>;
 
 // Matches any ip token (*)
 class AnyFilter : public SequenceFilter
@@ -92,7 +92,7 @@ class IPConfig : public ConfigBase
 
   explicit IPConfig(const std::string& configFile, const std::string& root = "");
 
-  explicit IPConfig(const boost::shared_ptr<libconfig::Config>& configPtr,
+  explicit IPConfig(const std::shared_ptr<libconfig::Config>& configPtr,
                     const std::string& root = "");
 
   const std::vector<std::string>& getTokens() const;
@@ -121,7 +121,7 @@ class IPFilter
  public:
   explicit IPFilter(const std::string& configFile, const std::string& root = "");
 
-  explicit IPFilter(const boost::shared_ptr<libconfig::Config>& configPtr,
+  explicit IPFilter(const std::shared_ptr<libconfig::Config>& configPtr,
                     const std::string& root = "");
 
   explicit IPFilter(const std::vector<std::string>& formatTokens);

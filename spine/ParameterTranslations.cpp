@@ -38,7 +38,7 @@ void ParameterTranslations::addTranslation(const std::string& theParam,
   itsTranslations[theParamName][theValue][theLanguage] = theTranslation;
 }
 
-boost::optional<std::string> ParameterTranslations::getTranslation(
+std::optional<std::string> ParameterTranslations::getTranslation(
     const std::string& theParam, int theValue, const std::string& theLanguage) const
 {
   auto theParamName = Fmi::ascii_tolower_copy(theParam);

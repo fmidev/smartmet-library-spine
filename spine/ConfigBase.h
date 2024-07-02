@@ -1,7 +1,7 @@
 #pragma once
 
 #include <boost/current_function.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <macgyver/Exception.h>
 #include <macgyver/TypeName.h>
 #include <libconfig.h++>
@@ -44,7 +44,7 @@ class ConfigBase
    *   @param config_name The name of the configuration for error messages (only
    *          used if non empty string specified)
    */
-  explicit ConfigBase(const boost::shared_ptr<libconfig::Config>& config,
+  explicit ConfigBase(const std::shared_ptr<libconfig::Config>& config,
                       const std::string& config_name = "");
 
   virtual ~ConfigBase();
@@ -419,7 +419,7 @@ class ConfigBase
 
   const std::string file_name;
   const std::string config_name;
-  boost::shared_ptr<libconfig::Config> itsConfig;
+  std::shared_ptr<libconfig::Config> itsConfig;
 };
 
 // Partial specialization of template method for workarounding assignment ambiguity problem

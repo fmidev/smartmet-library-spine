@@ -3,7 +3,7 @@
 #include "ParameterTranslations.h"
 #include "StringTranslations.h"
 #include <libconfig.h++>
-#include <boost/optional.hpp>
+#include <optional>
 #include <map>
 #include <string>
 
@@ -23,12 +23,12 @@ class Translations
   void setDefaultLanguage(const std::string& theDefaultLanguage);
   const std::string& getDefaultLanguage() const;
 
-  boost::optional<std::string> getParameterTranslation(const std::string& theParam,
+  std::optional<std::string> getParameterTranslation(const std::string& theParam,
 													   int theValue,
 													   const std::string& theLanguage) const;
-  boost::optional<std::string> getStringTranslation(const std::string& theKey,
+  std::optional<std::string> getStringTranslation(const std::string& theKey,
 													const std::string& theLanguage) const;
-  boost::optional<std::vector<std::string>> getStringArrayTranslation(const std::string& theKey,
+  std::optional<std::vector<std::string>> getStringArrayTranslation(const std::string& theKey,
 																	  const std::string& theLanguage) const;
 
  private:

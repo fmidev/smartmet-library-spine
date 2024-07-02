@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include <boost/optional.hpp>
-#include <boost/shared_ptr.hpp>
+#include <optional>
+#include <memory>
 #include <gis/LandCover.h>
 
 #include <iostream>
@@ -45,7 +45,7 @@ class Location
   std::string feature;   // feature code
   std::string country;   // country name, depends on translation, is not const
 
-  boost::optional<int> fmisid;  // station id
+  std::optional<int> fmisid;  // station id
 
   double longitude = std::numeric_limits<double>::quiet_NaN();  // longitude
   double latitude = std::numeric_limits<double>::quiet_NaN();   // latitude
@@ -127,7 +127,7 @@ class Location
   }
 };  // class Location
 
-using LocationPtr = boost::shared_ptr<const Location>;
+using LocationPtr = std::shared_ptr<const Location>;
 using LocationList = std::list<LocationPtr>;
 
 std::string formatLocation(const Location& loc, const std::string& key);
