@@ -3,6 +3,7 @@
 #include "FileCache.h"
 #include <boost/filesystem/operations.hpp>
 #include <macgyver/Exception.h>
+#include <macgyver/FileSystem.h>
 #include <fstream>
 #include <stdexcept>
 
@@ -16,11 +17,18 @@ namespace Spine
  */
 // ----------------------------------------------------------------------
 
-std::string FileCache::get(const boost::filesystem::path& thePath) const
+std::string FileCache::get(const std::filesystem::path& thePath) const
 {
   try
   {
-    std::time_t mtime = boost::filesystem::last_write_time(thePath);
+    const std::optional<std::time_t> opt_mtime = Fmi::last_write_time(thePath);
+    if (!opt_mtime)
+    {
+      Fmi::Exception err(BCP, "Failed to get last write time");
+      err.addParameter("path", thePath);
+      throw err;
+    }
+    std::time_t mtime = *opt_mtime;
 
     // Try using the cache with a lock first
     {
@@ -62,14 +70,14 @@ std::string FileCache::get(const boost::filesystem::path& thePath) const
  */
 // ----------------------------------------------------------------------
 
-std::size_t FileCache::last_modified(const boost::filesystem::path& thePath) const
+std::size_t FileCache::last_modified(const std::filesystem::path& thePath) const
 {
   try
   {
     boost::system::error_code ec;
-    std::time_t modtime = boost::filesystem::last_write_time(thePath, ec);
-    if (ec.value() == boost::system::errc::success)
-      return modtime;
+    std::optional<std::time_t> modtime = Fmi::last_write_time(thePath);
+    if (modtime)
+      return *modtime;
     return 0;
   }
   catch (...)

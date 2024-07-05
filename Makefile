@@ -18,7 +18,6 @@ LIBS +=	-L$(libdir) \
 	-lsmartmet-newbase \
 	-lsmartmet-macgyver \
         -ldouble-conversion \
-	-lboost_filesystem \
 	-lboost_regex \
 	-lboost_timer \
 	-lboost_chrono \

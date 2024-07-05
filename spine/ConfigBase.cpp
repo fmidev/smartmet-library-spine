@@ -1,7 +1,7 @@
 #include "ConfigBase.h"
 #include "ConfigTools.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <boost/lambda/lambda.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 #include <boost/spirit/include/qi.hpp>
@@ -30,7 +30,7 @@ ConfigBase::ConfigBase(const std::string& file_name, const std::string& config_n
     try
     {
       // Enable sensible relative include paths
-      boost::filesystem::path p = file_name;
+      std::filesystem::path p = file_name;
       p.remove_filename();
       itsConfig->setIncludeDir(p.c_str());
 
@@ -531,7 +531,7 @@ std::string ConfigBase::get_optional_path(const std::string& theName,
 
   if (value[0] != '/')
   {
-    boost::filesystem::path p(file_name);
+    std::filesystem::path p(file_name);
     auto prefix = p.parent_path().string();
     // prevent "f.conf" from being expanded to "/f.conf"
     if (!prefix.empty())
@@ -551,7 +551,7 @@ std::string ConfigBase::get_mandatory_path(const std::string& theName) const
 
   if (value[0] != '/')
   {
-    boost::filesystem::path p(file_name);
+    std::filesystem::path p(file_name);
     auto prefix = p.parent_path().string();
     // prevent "f.conf" from being expanded to "/f.conf"
     if (!prefix.empty())
@@ -574,7 +574,7 @@ std::vector<std::string> ConfigBase::get_mandatory_path_array(const std::string&
     if (!get_config_array(theName, paths, min_size, max_size))
       throw Fmi::Exception(BCP, "Failed to read array of strings from variable " + theName);
 
-    boost::filesystem::path p(file_name);
+    std::filesystem::path p(file_name);
 
     for (auto& path : paths)
     {

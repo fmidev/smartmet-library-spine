@@ -24,7 +24,7 @@
 #include <boost/core/demangle.hpp>
 #include <macgyver/DateTime.h>
 #include <boost/filesystem/convenience.hpp>
-#include <boost/filesystem/path.hpp>
+#include <filesystem>
 #include <boost/locale.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/process/child.hpp>
@@ -52,7 +52,7 @@ extern "C"
 }
 
 using namespace boost::placeholders;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace
 {
@@ -694,7 +694,7 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
       if (itsOptions.verbose)
         print_requests(getActiveRequests());
 
-      if (!boost::filesystem::exists(itsOptions.throttle.alert_script))
+      if (!std::filesystem::exists(itsOptions.throttle.alert_script))
       {
         std::cerr << Spine::log_time_str() << " Configured alert script  "
                   << itsOptions.throttle.alert_script << " does not exist" << std::endl;

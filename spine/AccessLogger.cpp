@@ -1,7 +1,7 @@
 #include "AccessLogger.h"
 #include "Convenience.h"
 #include <iostream>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 
@@ -19,7 +19,7 @@ std::string makeAccessLogFileName(const std::string& resource, const std::string
       id = id.substr(0, id.size() - 1);
 
     // Build access log full path
-    boost::filesystem::path filepath(accessLogDir);
+    std::filesystem::path filepath(accessLogDir);
 
     if (!id.empty())
     {
@@ -43,15 +43,15 @@ std::unique_ptr<std::ofstream> makeAccessLogFile(const std::string& resource,
   try
   {
     // Create the log directory if it is missing
-    if (!boost::filesystem::exists(accessLogDir))
+    if (!std::filesystem::exists(accessLogDir))
     {
       std::cout << SmartMet::Spine::log_time_str() << " creating access log directory "
                 << accessLogDir << std::endl;
-      boost::filesystem::create_directories(accessLogDir);
+      std::filesystem::create_directories(accessLogDir);
     }
 
     // Error if the path is not a directory
-    if (!boost::filesystem::is_directory(accessLogDir))
+    if (!std::filesystem::is_directory(accessLogDir))
       throw std::runtime_error("Access log path '" + accessLogDir + "' is not a directory");
 
     // Otherwise create a log file in the directory

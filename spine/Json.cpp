@@ -178,7 +178,7 @@ void JSON::preprocess(Json::Value& theJson,
           // 1) Check from path
           json_file = thePath + "/" + filename;
           // If file not found, check from theRootPath
-          if (!boost::filesystem::exists(json_file))
+          if (!std::filesystem::exists(json_file))
             filename.insert(filename.begin(), '/');
         }
         // Check from theRootPath
@@ -186,11 +186,11 @@ void JSON::preprocess(Json::Value& theJson,
         {
           // 1) Check from root-path
           json_file = theRootPath + filename;
-          if (!boost::filesystem::exists(json_file))
+          if (!std::filesystem::exists(json_file))
           {
             // 2) Check from root-path/resources/layers
             json_file = theRootPath + "/resources/layers" + filename;
-            if (!boost::filesystem::exists(json_file))
+            if (!std::filesystem::exists(json_file))
             {
               // 3) Check from root-path/resources
               json_file = theRootPath + "/resources" + filename;

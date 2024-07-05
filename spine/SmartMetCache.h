@@ -1,5 +1,5 @@
 #pragma once
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <memory>
 #include <deque>
 #include <string>
@@ -10,7 +10,7 @@ namespace SmartMet
 {
 namespace Spine
 {
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 struct BufferSizeFunction
 {

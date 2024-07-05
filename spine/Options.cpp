@@ -8,7 +8,6 @@
 #include "ConfigTools.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem/operations.hpp>
-#include <optional>
 #include <boost/optional.hpp>
 #include <boost/program_options.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
@@ -16,6 +15,8 @@
 #include <macgyver/StringConversion.h>
 #include <fstream>
 #include <iostream>
+#include <optional>
+#include <filesystem>
 
 namespace SmartMet
 {
@@ -285,7 +286,7 @@ void Options::parseConfig()
     if (configfile.empty())
       return;
 
-    if (!boost::filesystem::exists(configfile))
+    if (!std::filesystem::exists(configfile))
       throw Fmi::Exception(BCP, "Configuration file missing")
           .addParameter("configfile", configfile);
 
@@ -295,7 +296,7 @@ void Options::parseConfig()
     try
     {
       // Enable sensible relative include paths
-      boost::filesystem::path p = configfile;
+      std::filesystem::path p = configfile;
       p.remove_filename();
       itsConfig.setIncludeDir(p.c_str());
 

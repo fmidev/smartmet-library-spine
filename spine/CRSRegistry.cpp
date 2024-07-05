@@ -14,7 +14,7 @@
 namespace ba = boost::algorithm;
 namespace qi = boost::spirit::qi;
 namespace ac = boost::spirit::ascii;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 #if GDAL_VERSION_MAJOR >= 3
 #define OGRFree(x) CPLFree(x)

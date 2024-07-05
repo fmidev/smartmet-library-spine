@@ -5,7 +5,7 @@
 #include "Value.h"
 #include <boost/any.hpp>
 #include <boost/array.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <optional>
 #include <boost/regex.hpp>
 #include <memory>
@@ -69,7 +69,7 @@ class CRSRegistry
 
   void parse_single_crs_def(Spine::ConfigBase& theConfig, libconfig::Setting& theEntry);
 
-  void read_crs_dir(const boost::filesystem::path& theDir);
+  void read_crs_dir(const std::filesystem::path& theDir);
 
   void register_epsg(const std::string& name,
                      int epsg_code,

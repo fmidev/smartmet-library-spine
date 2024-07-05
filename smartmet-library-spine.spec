@@ -68,7 +68,6 @@ BuildRequires: libpqxx-devel
 %endif
 
 Requires: %{smartmet_boost}-chrono
-Requires: %{smartmet_boost}-filesystem
 Requires: %{smartmet_boost}-iostreams
 Requires: %{smartmet_boost}-program-options
 Requires: %{smartmet_boost}-regex
