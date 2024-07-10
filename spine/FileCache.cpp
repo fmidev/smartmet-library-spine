@@ -21,15 +21,7 @@ std::string FileCache::get(const std::filesystem::path& thePath) const
 {
   try
   {
-    const std::optional<std::time_t> opt_mtime = Fmi::last_write_time(thePath);
-    if (!opt_mtime)
-    {
-      Fmi::Exception err(BCP, "Failed to get last write time");
-      err.addParameter("path", thePath);
-      throw err;
-    }
-    std::time_t mtime = *opt_mtime;
-
+    const std::time_t mtime = Fmi::last_write_time(thePath);
     // Try using the cache with a lock first
     {
       ReadLock lock(itsMutex);
@@ -75,10 +67,8 @@ std::size_t FileCache::last_modified(const std::filesystem::path& thePath) const
   try
   {
     boost::system::error_code ec;
-    std::optional<std::time_t> modtime = Fmi::last_write_time(thePath);
-    if (modtime)
-      return *modtime;
-    return 0;
+    const std::time_t modtime = Fmi::last_write_time_or(thePath, 0);
+    return modtime;
   }
   catch (...)
   {
