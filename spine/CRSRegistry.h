@@ -3,7 +3,7 @@
 #include "ConfigBase.h"
 #include "Thread.h"
 #include "Value.h"
-#include <boost/any.hpp>
+#include <any>
 #include <boost/array.hpp>
 #include <filesystem>
 #include <optional>
@@ -31,7 +31,7 @@ class CRSRegistry
     std::string name;
     boost::basic_regex<char> regex;
     std::shared_ptr<OGRSpatialReference> cs;
-    std::map<std::string, boost::any> attrib_map;
+    std::map<std::string, std::any> attrib_map;
     bool swap_coord;
 
     MapEntry(std::string theName, const std::optional<std::string>& text);
@@ -116,10 +116,10 @@ class CRSRegistry
 
     try
     {
-      *value = boost::any_cast<Type>(it->second);
+      *value = std::any_cast<Type>(it->second);
       return true;
     }
-    catch (const boost::bad_any_cast&)
+    catch (const std::bad_any_cast&)
     {
       handle_get_attribute_error(crs_name, attrib_name, it->second.type(), typeid(Type));
     }

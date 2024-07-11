@@ -5,7 +5,7 @@
 // ======================================================================
 #pragma once
 
-#include <boost/any.hpp>
+#include <any>
 #include <macgyver/DateTime.h>
 #include <optional>
 #include <macgyver/StringConversion.h>
@@ -70,16 +70,16 @@ Fmi::DateTime required_time(const std::optional<std::string>& theValue,
 std::string htmlescape(const std::string& theValue);
 
 /**
- *  @brief Returns content of boost::any as string
+ *  @brief Returns content of std::any as string
  */
-std::string boost_any_to_string(const boost::any& anyvalue,
+std::string boost_any_to_string(const std::any& anyvalue,
                                 const Fmi::ValueFormatter& vf,
                                 int precision);
 
 /**
- *  @brief Returns content of boost::any as string
+ *  @brief Returns content of std::any as string
  */
-std::string boost_any_to_string(const boost::any& anyvalue);
+std::string boost_any_to_string(const std::any& anyvalue);
 
 /**
  *  @brief Converts duration string to Fmi::Minutes: e.g. 1m = 1, 1h == 60, 1d = 1440
