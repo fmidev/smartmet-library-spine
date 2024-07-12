@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 24.5.27
+Version: 24.7.12
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -152,6 +152,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Jul 12 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.7.12-1.fmi
+- Replace many boost library types with C++ standard library ones
+
 * Mon May 27 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.5.27-1.fmi
 - Update URI prefix handling
 
