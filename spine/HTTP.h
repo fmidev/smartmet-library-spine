@@ -8,10 +8,10 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/logic/tribool.hpp>
-#include <boost/optional.hpp>
+#include <optional>
 #include <boost/range.hpp>
 #include <boost/shared_array.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 // For asio buffer types
 #include <boost/asio/buffer.hpp>
@@ -191,15 +191,15 @@ class MessageContent
 
   MessageContent(const std::string& theContent);
 
-  explicit MessageContent(const boost::shared_ptr<std::string>& theContent);
+  explicit MessageContent(const std::shared_ptr<std::string>& theContent);
 
-  explicit MessageContent(const boost::shared_ptr<std::vector<char>>& theContent);
+  explicit MessageContent(const std::shared_ptr<std::vector<char>>& theContent);
 
   MessageContent(boost::shared_array<char> theContent, std::size_t theSize);
 
-  explicit MessageContent(boost::shared_ptr<ContentStreamer> theContent);
+  explicit MessageContent(std::shared_ptr<ContentStreamer> theContent);
 
-  MessageContent(boost::shared_ptr<ContentStreamer> theContent, std::size_t contentSize);
+  MessageContent(std::shared_ptr<ContentStreamer> theContent, std::size_t contentSize);
 
   boost::asio::const_buffer getBuffer();
 
@@ -219,10 +219,10 @@ class MessageContent
 
  private:
   std::string stringContent;
-  boost::shared_ptr<std::vector<char>> vectorContent;
+  std::shared_ptr<std::vector<char>> vectorContent;
   boost::shared_array<char> arrayContent;
-  boost::shared_ptr<ContentStreamer> streamContent;
-  boost::shared_ptr<std::string> stringPtrContent;
+  std::shared_ptr<ContentStreamer> streamContent;
+  std::shared_ptr<std::string> stringPtrContent;
   std::size_t contentSize;
 
   content_type itsType;
@@ -246,7 +246,7 @@ class Message
    */
   // ----------------------------------------------------------------------
 
-  boost::optional<std::string> getHeader(const std::string& headerName) const;
+  std::optional<std::string> getHeader(const std::string& headerName) const;
 
   // ----------------------------------------------------------------------
   /*!
@@ -254,7 +254,7 @@ class Message
    */
   // ----------------------------------------------------------------------
 
-  boost::optional<std::string> getProtocol() const;
+  std::optional<std::string> getProtocol() const;
 
   // ----------------------------------------------------------------------
   /*!
@@ -383,7 +383,7 @@ class Request : public Message
    * Throws runtime_error if more than one value is present
    */
   // ----------------------------------------------------------------------
-  boost::optional<std::string> getParameter(const std::string& paramName) const;
+  std::optional<std::string> getParameter(const std::string& paramName) const;
 
   // ----------------------------------------------------------------------
   /*!
@@ -591,14 +591,14 @@ class Response : public Message
    * \brief Set message content (ptr to string)
    */
   // ----------------------------------------------------------------------
-  void setContent(const boost::shared_ptr<std::string>& theContent);
+  void setContent(const std::shared_ptr<std::string>& theContent);
 
   // ----------------------------------------------------------------------
   /*!
    * \brief Set message content (pointer to vector)
    */
   // ----------------------------------------------------------------------
-  void setContent(const boost::shared_ptr<std::vector<char>>& theContent);
+  void setContent(const std::shared_ptr<std::vector<char>>& theContent);
 
   // ----------------------------------------------------------------------
   /*!
@@ -612,7 +612,7 @@ class Response : public Message
    * \brief Set message content (stream content with known size)
    */
   // ----------------------------------------------------------------------
-  void setContent(const boost::shared_ptr<ContentStreamer>& theContent, std::size_t contentSize);
+  void setContent(const std::shared_ptr<ContentStreamer>& theContent, std::size_t contentSize);
 
   // ----------------------------------------------------------------------
   /*!
@@ -620,7 +620,7 @@ class Response : public Message
    * This implies the use of chunked transfer encoding
    */
   // ----------------------------------------------------------------------
-  void setContent(const boost::shared_ptr<ContentStreamer>& theContent);
+  void setContent(const std::shared_ptr<ContentStreamer>& theContent);
 
   // ----------------------------------------------------------------------
   /*!

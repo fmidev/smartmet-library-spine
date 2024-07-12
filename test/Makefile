@@ -20,7 +20,6 @@ INCLUDES += -I../spine
 LIBS += ../libsmartmet-spine.so \
 	-lsmartmet-macgyver \
 	$(REQUIRED_LIBS) \
-	-lboost_filesystem \
 	-lboost_iostreams \
 	-lboost_regex \
 	-lboost_date_time \

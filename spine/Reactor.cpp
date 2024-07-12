@@ -24,7 +24,7 @@
 #include <boost/core/demangle.hpp>
 #include <macgyver/DateTime.h>
 #include <boost/filesystem/convenience.hpp>
-#include <boost/filesystem/path.hpp>
+#include <filesystem>
 #include <boost/locale.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/process/child.hpp>
@@ -52,7 +52,7 @@ extern "C"
 }
 
 using namespace boost::placeholders;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace
 {
@@ -396,7 +396,7 @@ bool Reactor::addContentHandlerImpl(bool isPrivate,
     std::string pluginName = thePlugin->getPluginName();
 
     auto itsFilter = itsIPFilters.find(Fmi::ascii_tolower_copy(pluginName));
-    boost::shared_ptr<IPFilter::IPFilter> filter;
+    std::shared_ptr<IPFilter::IPFilter> filter;
     if (itsFilter != itsIPFilters.end())
     {
       filter = itsFilter->second;
@@ -495,10 +495,12 @@ std::size_t Reactor::removeContentHandlers(SmartMetPlugin* thePlugin)
 // ----------------------------------------------------------------------
 /*!
  * \brief Obtain the Handler view corresponding to the given request
+ *
+ * Returns pointer to handler or nullptr when not found
  */
 // ----------------------------------------------------------------------
 
-boost::optional<HandlerView&> Reactor::getHandlerView(const HTTP::Request& theRequest)
+HandlerView* Reactor::getHandlerView(const HTTP::Request& theRequest)
 {
   try
   {
@@ -534,14 +536,14 @@ boost::optional<HandlerView&> Reactor::getHandlerView(const HTTP::Request& theRe
       if (itsCatchNoMatch)
       {
         // Return with true, as this was catched by external handler
-        return *itsCatchNoMatchHandler;
+        return &*itsCatchNoMatchHandler;
       }
 
       // No match found -- return with failure
-      return {};
+      return nullptr;
     }
 
-    return *it->second;
+    return &*it->second;
   }
   catch (...)
   {
@@ -692,7 +694,7 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
       if (itsOptions.verbose)
         print_requests(getActiveRequests());
 
-      if (!boost::filesystem::exists(itsOptions.throttle.alert_script))
+      if (!std::filesystem::exists(itsOptions.throttle.alert_script))
       {
         std::cerr << Spine::log_time_str() << " Configured alert script  "
                   << itsOptions.throttle.alert_script << " does not exist" << std::endl;
@@ -887,13 +889,13 @@ URIMap Reactor::getURIMap() const
  */
 // ----------------------------------------------------------------------
 
-boost::optional<std::string> Reactor::getPluginName(const std::string& uri) const
+std::optional<std::string> Reactor::getPluginName(const std::string& uri) const
 {
   ReadLock lock(itsContentMutex);
   auto it = itsHandlers.find(uri);
   if (it != itsHandlers.end())
     return it->second->getPluginName();
-  return boost::none;
+  return std::nullopt;
 }
 
 void Reactor::dumpURIs(std::ostream& output) const
@@ -1074,7 +1076,7 @@ bool Reactor::loadPlugin(const std::string& sectionName,
 
     if (not filterTokens.empty())
     {
-      boost::shared_ptr<IPFilter::IPFilter> theFilter;
+      std::shared_ptr<IPFilter::IPFilter> theFilter;
 
       try
       {
@@ -1097,7 +1099,7 @@ bool Reactor::loadPlugin(const std::string& sectionName,
       }
     }
 
-    boost::shared_ptr<DynamicPlugin> plugin(new DynamicPlugin(theFilename, configfile, *this));
+    std::shared_ptr<DynamicPlugin> plugin(new DynamicPlugin(theFilename, configfile, *this));
 
     if (plugin.get() != nullptr)
     {

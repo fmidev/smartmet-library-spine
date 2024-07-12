@@ -181,7 +181,7 @@ IPConfig::IPConfig(const std::string& configFile, const std::string& root) : Con
   }
 }
 
-IPConfig::IPConfig(const boost::shared_ptr<libconfig::Config>& configPtr, const std::string& root)
+IPConfig::IPConfig(const std::shared_ptr<libconfig::Config>& configPtr, const std::string& root)
     : ConfigBase(configPtr)
 {
   try
@@ -231,7 +231,7 @@ IPFilter::IPFilter(const std::string& configFile, const std::string& root)
   }
 }
 
-IPFilter::IPFilter(const boost::shared_ptr<libconfig::Config>& configPtr, const std::string& root)
+IPFilter::IPFilter(const std::shared_ptr<libconfig::Config>& configPtr, const std::string& root)
     : itsConfig(new IPConfig(configPtr, root))
 {
   try

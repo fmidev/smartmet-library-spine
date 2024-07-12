@@ -1,7 +1,7 @@
 #include "StringTranslations.h"
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <json/reader.h>
 #include <iostream>
 
@@ -86,7 +86,7 @@ void StringTranslations::readTranslations(const libconfig::Config& theConfig)
   }
 }
 
-boost::optional<std::string> StringTranslations::getStringTranslation(const std::string& theKey,
+std::optional<std::string> StringTranslations::getStringTranslation(const std::string& theKey,
 																	  const std::string& theLanguage) const
 {
   if(itsStringTranslations.find(theKey) == itsStringTranslations.end())
@@ -102,7 +102,7 @@ boost::optional<std::string> StringTranslations::getStringTranslation(const std:
   return content.at(theLanguage);
 }
 
-boost::optional<std::vector<std::string>> StringTranslations::getStringArrayTranslation(const std::string& theKey,
+std::optional<std::vector<std::string>> StringTranslations::getStringArrayTranslation(const std::string& theKey,
 																						const std::string& theLanguage) const
 {
   if(itsStringArrayTranslations.find(theKey) == itsStringArrayTranslations.end())

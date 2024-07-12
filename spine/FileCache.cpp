@@ -3,6 +3,7 @@
 #include "FileCache.h"
 #include <boost/filesystem/operations.hpp>
 #include <macgyver/Exception.h>
+#include <macgyver/FileSystem.h>
 #include <fstream>
 #include <stdexcept>
 
@@ -16,12 +17,11 @@ namespace Spine
  */
 // ----------------------------------------------------------------------
 
-std::string FileCache::get(const boost::filesystem::path& thePath) const
+std::string FileCache::get(const std::filesystem::path& thePath) const
 {
   try
   {
-    std::time_t mtime = boost::filesystem::last_write_time(thePath);
-
+    const std::time_t mtime = Fmi::last_write_time(thePath);
     // Try using the cache with a lock first
     {
       ReadLock lock(itsMutex);
@@ -62,15 +62,13 @@ std::string FileCache::get(const boost::filesystem::path& thePath) const
  */
 // ----------------------------------------------------------------------
 
-std::size_t FileCache::last_modified(const boost::filesystem::path& thePath) const
+std::size_t FileCache::last_modified(const std::filesystem::path& thePath) const
 {
   try
   {
     boost::system::error_code ec;
-    std::time_t modtime = boost::filesystem::last_write_time(thePath, ec);
-    if (ec.value() == boost::system::errc::success)
-      return modtime;
-    return 0;
+    const std::time_t modtime = Fmi::last_write_time_or(thePath, 0);
+    return modtime;
   }
   catch (...)
   {

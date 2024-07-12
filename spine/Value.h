@@ -1,8 +1,9 @@
 #pragma once
 
+#include "Convenience.h"
 #include <macgyver/DateTime.h>
-#include <boost/optional.hpp>
-#include <boost/variant.hpp>
+#include <optional>
+#include <variant>
 
 #include <libconfig.h++>
 #include <ostream>
@@ -34,8 +35,8 @@ namespace Spine
  *          Se olisi varmaan paremmin siirtää sen mualle
  */
 Fmi::DateTime string2ptime(const std::string& value,
-                                      const boost::optional<Fmi::DateTime>& ref_time =
-                                          boost::optional<Fmi::DateTime>());
+                                      const std::optional<Fmi::DateTime>& ref_time =
+                                          std::optional<Fmi::DateTime>());
 
 /**
  *   @brief Parses XML time from string
@@ -151,7 +152,7 @@ class Value
     PointWrapper(const Point& p) : Point(p) {}
   };
 
-  boost::variant<Empty,
+  std::variant<Empty,
                  bool,
                  int64_t,
                  uint64_t,
@@ -191,10 +192,10 @@ class Value
   inline bool operator!=(const Value& x) const { return !(data == x.data); }
   void reset();
 
-  inline bool is_empty() const { return data.which() == TI_EMPTY; }
+  inline bool is_empty() const { return data.index() == 0; }
   inline const std::type_info& type() const
   {
-    const std::type_info& ti = data.type();
+    const std::type_info& ti = std::visit(TypeInfoVisitor(data), data);
     return ti == typeid(PointWrapper) ? typeid(Point) : ti;
   }
 
@@ -218,19 +219,19 @@ class Value
    *   corresponding type
    */
   const Value& check_limits(
-      const boost::optional<Value>& lower_limit = boost::optional<Value>(),
-      const boost::optional<Value>& upper_limit = boost::optional<Value>()) const;
+      const std::optional<Value>& lower_limit = std::optional<Value>(),
+      const std::optional<Value>& upper_limit = std::optional<Value>()) const;
 
-  inline Value& check_limits(const boost::optional<Value>& lower_limit = boost::optional<Value>(),
-                             const boost::optional<Value>& upper_limit = boost::optional<Value>())
+  inline Value& check_limits(const std::optional<Value>& lower_limit = std::optional<Value>(),
+                             const std::optional<Value>& upper_limit = std::optional<Value>())
   {
     const Value* v = this;
     v->check_limits(lower_limit, upper_limit);
     return *this;
   }
 
-  bool inside_limits(const boost::optional<Value>& lower_limit = boost::optional<Value>(),
-                     const boost::optional<Value>& upper_limit = boost::optional<Value>()) const;
+  bool inside_limits(const std::optional<Value>& lower_limit = std::optional<Value>(),
+                     const std::optional<Value>& upper_limit = std::optional<Value>()) const;
 
   bool get_bool() const;
   int64_t get_int() const;

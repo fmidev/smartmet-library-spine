@@ -1,5 +1,5 @@
 #include "ConfigTools.h"
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <macgyver/Exception.h>
 #include <cstdlib>
 
@@ -23,7 +23,7 @@ bool fixPathSetting(const libconfig::Config& theConfig,
   if (theValue[0] == '/')
     return true;
 
-  boost::filesystem::path p{theConfig.lookup(theVariable).getSourceFile()};
+  std::filesystem::path p{theConfig.lookup(theVariable).getSourceFile()};
   auto prefix = p.parent_path().string();
 
   // prevent "f.conf" from being expanded to "/f.conf"
@@ -74,7 +74,7 @@ bool lookupConfigSetting(const libconfig::Config& theConfig,
 
   // Try searching the directory for host specific files
 
-  if (!boost::filesystem::is_directory(configpath))
+  if (!std::filesystem::is_directory(configpath))
     return false;
 
   // For name.host.domain try in this order:
@@ -88,7 +88,7 @@ bool lookupConfigSetting(const libconfig::Config& theConfig,
   while (!hostname.empty())
   {
     std::string tmp = configpath + "/" + hostname + ".conf";
-    if (boost::filesystem::exists(tmp))
+    if (std::filesystem::exists(tmp))
     {
       theValue = tmp;
       return true;

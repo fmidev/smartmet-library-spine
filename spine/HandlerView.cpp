@@ -4,7 +4,7 @@
 #include "Reactor.h"
 #include <iostream>
 #include <boost/bind/bind.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
@@ -24,7 +24,7 @@ namespace SmartMet
 namespace Spine
 {
 HandlerView::HandlerView(ContentHandler theHandler,
-                         boost::shared_ptr<IPFilter::IPFilter> theIpFilter,
+                         std::shared_ptr<IPFilter::IPFilter> theIpFilter,
                          SmartMetPlugin* thePlugin,
                          const std::string& theResource,
                          bool loggingStatus,

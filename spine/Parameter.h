@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <boost/optional.hpp>
+#include <optional>
 #include <newbase/NFmiParameterName.h>
 #include <array>
 #include <limits>
@@ -46,7 +46,7 @@ class Parameter
   FmiParameterName number() const { return itsNumber; }
   Type type() const { return itsType; }
   std::string typestring() const;
-  const boost::optional<int>& getSensorNumber() const { return itsSensorNumber; }
+  const std::optional<int>& getSensorNumber() const { return itsSensorNumber; }
   const std::string& getSensorParameter() const { return itsSensorParameter; }
   void setSensorNumber(int nbr) { itsSensorNumber = nbr; }
   void setSensorParameter(const std::string& param) { itsSensorParameter = param; }
@@ -69,7 +69,7 @@ class Parameter
   std::string itsAlias;
   Type itsType;
   FmiParameterName itsNumber;
-  boost::optional<int> itsSensorNumber;
+  std::optional<int> itsSensorNumber;
   std::string itsSensorParameter;
 
 };  // class Parameter

@@ -17,7 +17,6 @@
 #include "Reactor.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/bind/bind.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <fmt/format.h>
 #include <dtl/dtl.hpp>
@@ -28,6 +27,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <list>
@@ -41,7 +41,7 @@
 #include <newbase/NFmiGlobals.h>
 
 namespace ba = boost::algorithm;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace SmartMet
 {
@@ -145,7 +145,7 @@ bool check_path(bool ok, const fs::path& p)
   }
 }
 
-void add_to_path_list(fs::directory_entry& entry,
+void add_to_path_list(const fs::directory_entry& entry,
                       std::list<fs::path>* dest,
                       const std::list<fs::path>* top_parts,
                       unsigned max_files)
@@ -193,7 +193,7 @@ std::list<fs::path> recursive_directory_contents(const fs::path& top, unsigned m
   {
     using boost::bind;
 
-    if (!boost::filesystem::exists(top) || !boost::filesystem::is_directory(top))
+    if (!std::filesystem::exists(top) || !std::filesystem::is_directory(top))
       throw Fmi::Exception(BCP, "Could not open directory '" + top.string() + "' for reading!");
 
     std::list<fs::path> result;
@@ -213,7 +213,7 @@ std::list<fs::path> recursive_directory_contents(const fs::path& top, unsigned m
 
 // ----------------------------------------------------------------------
 
-std::string get_file_contents(const boost::filesystem::path& filename)
+std::string get_file_contents(const std::filesystem::path& filename)
 {
   try
   {
@@ -233,7 +233,7 @@ std::string get_file_contents(const boost::filesystem::path& filename)
 
 // ----------------------------------------------------------------------
 
-void put_file_contents(const boost::filesystem::path& filename, const std::string& data)
+void put_file_contents(const std::filesystem::path& filename, const std::string& data)
 {
   try
   {
@@ -284,11 +284,11 @@ std::string get_full_response(SmartMet::Spine::HTTP::Response& response)
 
 // ----------------------------------------------------------------------
 
-bool get_processed_response(const boost::filesystem::path& scriptfile, std::string& result)
+bool get_processed_response(const std::filesystem::path& scriptfile, std::string& result)
 {
   try
   {
-    using boost::filesystem::path;
+    using std::filesystem::path;
 
     bool ok = false;
     FILE* handle = nullptr;
@@ -330,7 +330,7 @@ bool get_processed_response(const boost::filesystem::path& scriptfile, std::stri
       pclose(handle);
 
     // Keeping the failures helps debugging, do not delete:
-    // boost::filesystem::remove(temp_fn);
+    // std::filesystem::remove(temp_fn);
 
     return ok;
   }
@@ -401,7 +401,7 @@ int PluginTest::test(SmartMet::Spine::Options& options, PreludeFunction prelude,
 
 int PluginTest::run(SmartMet::Spine::Options& options, const PreludeFunction& prelude) const
 {
-  using boost::filesystem::path;
+  using std::filesystem::path;
 
   try
   {
@@ -501,7 +501,7 @@ bool PluginTest::process_query(const fs::path& fn,
                                SmartMet::Spine::Reactor& reactor,
                                IgnoreMap& ignores) const
 {
-  using boost::filesystem::path;
+  using std::filesystem::path;
 
   const bool is_tty = isatty(fileno(stdout));
   const std::string fg_fn = is_tty ? ANSI_FG_CYAN : "";
@@ -630,7 +630,7 @@ bool PluginTest::process_query(const fs::path& fn,
               {
                 ok = false;
                 out << fg_red << "FAIL" << fg_default << "  " << time_str << "s";
-                boost::filesystem::create_directories(failure_fn.parent_path());
+                std::filesystem::create_directories(failure_fn.parent_path());
                 put_file_contents(failure_fn, result);
                 out << get_diff(outputfile.string(), failure_fn.string());
               }
@@ -638,7 +638,7 @@ bool PluginTest::process_query(const fs::path& fn,
             else
             {
               ok = false;
-              boost::filesystem::create_directories(failure_fn.parent_path());
+              std::filesystem::create_directories(failure_fn.parent_path());
               put_file_contents(failure_fn, result);
               out << fg_red << "FAIL" << fg_default << "  " << time_str
                   << "  (expected result file '" << fg_red << outputfile.string()

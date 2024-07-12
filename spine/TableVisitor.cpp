@@ -104,7 +104,7 @@ void TableVisitor::operator()(const Fmi::LocalDateTime& ldt)
     else if (itsTimeFormatter != nullptr)
     {
       if (itsTimeZonePtr)
-        res = itsTimeFormatter->format(ldt.local_time_in(itsTimeZonePtr.get()));
+        res = itsTimeFormatter->format(ldt.local_time_in(*itsTimeZonePtr));
       else
         res = itsTimeFormatter->format(ldt.utc_time());
     }

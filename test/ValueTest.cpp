@@ -349,7 +349,7 @@ BOOST_AUTO_TEST_CASE(test_checking_ptime_limits)
   BOOST_TEST_MESSAGE("+ [Value] Testing range check of Fmi::DateTime value");
 
   const Value lower_limit(Fmi::date_time::time_from_string("2013-01-01 00:00:00"));
-  boost::optional<Value> upper_limit;
+  std::optional<Value> upper_limit;
 
   BOOST_CHECK_THROW(
       Value(Fmi::date_time::time_from_string("2011-03-04 12:13:13")).check_limits(lower_limit, upper_limit),
@@ -371,7 +371,7 @@ BOOST_AUTO_TEST_CASE(test_checking_ptime_limits_2)
   BOOST_TEST_MESSAGE("+ [Value] Testing range check of Fmi::DateTime value");
 
   const Value lower_limit(Fmi::date_time::time_from_string("2013-01-01 00:00:00"));
-  boost::optional<Value> upper_limit;
+  std::optional<Value> upper_limit;
 
   BOOST_CHECK(not Value(Fmi::date_time::time_from_string("2011-03-04 12:13:13"))
                       .inside_limits(lower_limit, upper_limit));

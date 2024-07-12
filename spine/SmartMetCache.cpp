@@ -80,7 +80,7 @@ SmartMetCache::ValueType SmartMetCache::find(KeyType hash)
       return {};
 
     // Promote result to memcache and return
-    auto entry = boost::make_shared<std::string>(std::move(*fileresult));
+    auto entry = std::make_shared<std::string>(std::move(*fileresult));
 
     std::vector<std::pair<KeyType, ValueType>> evictedItems;
     itsMemoryCache.insert(hash, entry, evictedItems);

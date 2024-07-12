@@ -7,7 +7,7 @@
 #pragma once
 
 #include "TableFormatter.h"
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <string>
 
 namespace SmartMet

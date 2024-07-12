@@ -3,8 +3,8 @@
 #include "LonLat.h"
 #include "None.h"
 #include "Table.h"
-#include <boost/optional.hpp>
-#include <boost/variant.hpp>
+#include <optional>
+#include <variant>
 #include "macgyver/LocalDateTime.h"
 #include <macgyver/TimeFormatter.h>
 #include <macgyver/ValueFormatter.h>
@@ -13,7 +13,7 @@ namespace SmartMet
 {
 namespace Spine
 {
-class TableVisitor : public boost::static_visitor<>
+class TableVisitor
 {
  private:
   Table& itsTable;
@@ -21,8 +21,8 @@ class TableVisitor : public boost::static_visitor<>
   std::vector<int> itsPrecisions;
   unsigned int itsCurrentColumn;
   unsigned int itsCurrentRow;
-  boost::shared_ptr<Fmi::TimeFormatter> itsTimeFormatter;
-  boost::optional<Fmi::TimeZonePtr> itsTimeZonePtr;
+  std::shared_ptr<Fmi::TimeFormatter> itsTimeFormatter;
+  std::optional<Fmi::TimeZonePtr> itsTimeZonePtr;
   LonLatFormat itsLonLatFormat;
 
  public:
@@ -43,8 +43,8 @@ class TableVisitor : public boost::static_visitor<>
   TableVisitor(Table& table,
                const Fmi::ValueFormatter& valueformatter,
                std::vector<int> precisions,
-               boost::shared_ptr<Fmi::TimeFormatter> timeformatter,
-               boost::optional<Fmi::TimeZonePtr> timezoneptr,
+               std::shared_ptr<Fmi::TimeFormatter> timeformatter,
+               std::optional<Fmi::TimeZonePtr> timezoneptr,
                unsigned int currentcolumn,
                unsigned int currentrow)
       : itsTable(table),
