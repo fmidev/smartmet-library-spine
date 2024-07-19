@@ -484,9 +484,9 @@ Request::Request(HeaderMap headerMap,
                  RequestMethod method,
                  bool hasParsedPostData)
     : Message(headerMap, version, false),  // Now only unchunked requests
-      itsContent(std::move(body)),
+      itsContent(body),
       itsParameters(std::move(theParameters)),
-      itsMethod(std::move(method)),
+      itsMethod(method),
       itsResource(std::move(resource)),
       itsHasParsedPostData(hasParsedPostData)
 {
@@ -1589,14 +1589,14 @@ static const int B64index[256] = {
 
 static std::string base64decode(const std::string& input)
 {
-  const char* p = input.c_str();
-  size_t len = input.size();
+  const unsigned char* p = reinterpret_cast<const unsigned char* >(input.c_str());
+  std::size_t len = input.size();
 
   int pad = static_cast<int>(len > 0 && ((len % 4 != 0) || p[len - 1] == '='));
   const std::size_t L = ((len + 3) / 4 - pad) * 4;
   std::string str(L / 4 * 3 + pad, '\0');
 
-  for (size_t i = 0, j = 0; i < L; i += 4)
+  for (std::size_t i = 0, j = 0; i < L; i += 4)
   {
     int n = B64index[static_cast<int>(p[i])] << 18 | B64index[static_cast<int>(p[i + 1])] << 12 |
             B64index[static_cast<int>(p[i + 2])] << 6 | B64index[static_cast<int>(p[i + 3])];
