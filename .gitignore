@@ -21,4 +21,5 @@ spserver/spserver-0.9.3/spserver/*.o
 /.settings/
 .cproject
 .project
+/.vscode
 dist/
