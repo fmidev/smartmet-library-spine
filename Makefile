@@ -14,10 +14,9 @@ DEFINES = -DUNIX -D_REENTRANT
 
 # Common library compiling template
 
-LIBS +=	-L$(libdir) \
-	-lsmartmet-newbase \
+LIBS +=	-lsmartmet-newbase \
 	-lsmartmet-macgyver \
-        -ldouble-conversion \
+	-ldouble-conversion \
 	-lboost_regex \
 	-lboost_timer \
 	-lboost_chrono \
