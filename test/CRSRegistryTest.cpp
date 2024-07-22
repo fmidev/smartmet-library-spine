@@ -43,7 +43,7 @@ BOOST_AUTO_TEST_CASE(test_coordinate_transformation_1)
   BOOST_CHECK_SMALL(24.0 - p3.X(), 1e-8);
   BOOST_CHECK_SMALL(60.0 - p3.Y(), 1e-8);
 
-  boost::array<double, 3> x1, x2;
+  std::array<double, 3> x1, x2;
   x1[0] = 24.0;
   x1[1] = 60.0;
   x1[2] = 10.0;
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(test_coordinate_transformation_2)
   BOOST_CHECK_SMALL(24.0 - p3.X(), 1e-8);
   BOOST_CHECK_SMALL(60.0 - p3.Y(), 1e-8);
 
-  boost::array<double, 3> x1, x2;
+  std::array<double, 3> x1, x2;
   x1[0] = 60.0;
   x1[1] = 24.0;
   x1[2] = 10.0;

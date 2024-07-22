@@ -42,7 +42,7 @@ class CRSRegistry::IdentityTransformation : public CRSRegistry::Transformation
 
   NFmiPoint transform(const NFmiPoint& src) override;
 
-  boost::array<double, 3> transform(const boost::array<double, 3>& src) override;
+  std::array<double, 3> transform(const std::array<double, 3>& src) override;
 
   void transform(OGRGeometry& geometry) override;
 };
@@ -68,7 +68,7 @@ class CRSRegistry::TransformationImpl : public CRSRegistry::Transformation
 
   NFmiPoint transform(const NFmiPoint& src) override;
 
-  boost::array<double, 3> transform(const boost::array<double, 3>& src) override;
+  std::array<double, 3> transform(const std::array<double, 3>& src) override;
 
   void transform(OGRGeometry& geometry) override;
 };
@@ -451,8 +451,8 @@ NFmiPoint CRSRegistry::IdentityTransformation::transform(const NFmiPoint& src)
   return src;
 }
 
-boost::array<double, 3> CRSRegistry::IdentityTransformation::transform(
-    const boost::array<double, 3>& src)
+std::array<double, 3> CRSRegistry::IdentityTransformation::transform(
+    const std::array<double, 3>& src)
 {
   return src;
 }
@@ -524,8 +524,8 @@ NFmiPoint CRSRegistry::TransformationImpl::transform(const NFmiPoint& src)
   }
 }
 
-boost::array<double, 3> CRSRegistry::TransformationImpl::transform(
-    const boost::array<double, 3>& src)
+std::array<double, 3> CRSRegistry::TransformationImpl::transform(
+    const std::array<double, 3>& src)
 {
   try
   {
@@ -534,7 +534,7 @@ boost::array<double, 3> CRSRegistry::TransformationImpl::transform(
     double z = src[2];
     if (conv->Transform(1, &x, &y, &z))
     {
-      boost::array<double, 3> result;
+      std::array<double, 3> result;
       result[0] = swap2 ? y : x;
       result[1] = swap2 ? x : y;
       result[2] = z;

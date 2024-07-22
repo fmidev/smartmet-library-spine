@@ -4,7 +4,7 @@
 #include "Thread.h"
 #include "Value.h"
 #include <any>
-#include <boost/array.hpp>
+#include <array>
 #include <filesystem>
 #include <optional>
 #include <boost/regex.hpp>
@@ -51,7 +51,7 @@ class CRSRegistry
     virtual std::string get_src_name() const = 0;
     virtual std::string get_dest_name() const = 0;
     virtual NFmiPoint transform(const NFmiPoint& src) = 0;
-    virtual boost::array<double, 3> transform(const boost::array<double, 3>& src) = 0;
+    virtual std::array<double, 3> transform(const std::array<double, 3>& src) = 0;
     virtual void transform(OGRGeometry& geometry) = 0;
   };
 

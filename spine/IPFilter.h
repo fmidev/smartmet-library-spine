@@ -14,7 +14,7 @@
 
 #include <string>
 
-#include <boost/array.hpp>
+#include <array>
 #include <boost/scoped_ptr.hpp>
 #include <memory>
 
@@ -79,7 +79,7 @@ class AddressFilter
   bool match(const std::vector<std::string>& ipTokens) const;
 
  private:
-  boost::array<SequenceFilterPtr, 4> itsFilters;
+  std::array<SequenceFilterPtr, 4> itsFilters;
 };
 
 // Class for filter configuration
