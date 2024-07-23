@@ -26,6 +26,7 @@ LIBS +=	-lsmartmet-newbase \
 	-lboost_locale \
 	-lctpp2 \
 	$(REQUIRED_LIBS) \
+	$(PREFIX_LDFLAGS) \
 	-ldl \
 	-lrt
 

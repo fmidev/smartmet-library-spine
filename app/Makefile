@@ -10,7 +10,7 @@ DEFINES = -DUNIX -D_REENTRANT
 
 # Common library compiling template
 
-LIBS +=	-L$(libdir) \
+LIBS +=	\
 	-lsmartmet-macgyver \
 	-lsmartmet-newbase \
 	-lboost_thread \
@@ -19,6 +19,7 @@ LIBS +=	-L$(libdir) \
 	-lboost_locale \
 	-lctpp2 \
 	$(REQUIRED_LIBS) \
+	$(PREFIX_LDFLAGS) \
 	-ldl \
 	-lrt \
 	-lpthread
