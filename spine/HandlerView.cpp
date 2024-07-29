@@ -137,7 +137,7 @@ bool HandlerView::handle(Reactor& theReactor,
   }
   catch (...)
   {
-    std::cerr << "Operation failed! HandlerView::handle aborted" << std::endl;
+    std::cerr << Fmi::Exception::Trace(BCP, "Operation failed! HandlerView::handle aborted") << std::endl;
     return true;
   }
 }
