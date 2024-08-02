@@ -25,8 +25,8 @@ Requires: mariadb-libs
 %define smartmet_boost boost
 %endif
 
-%define smartmet_fmt_min 8.1.1
-%define smartmet_fmt_max 8.2.0
+%define smartmet_fmt_min 11.0.0
+%define smartmet_fmt_max 12.0.0
 
 BuildRequires: %{smartmet_boost}-chrono
 BuildRequires: %{smartmet_boost}-devel
@@ -75,7 +75,7 @@ Requires: %{smartmet_boost}-system
 Requires: %{smartmet_boost}-thread
 Requires: %{smartmet_boost}-timer
 Requires: ctpp2
-Requires: fmt >= %{smartmet_fmt_min}, fmt < %{smartmet_fmt_max}
+Requires: fmt-libs >= %{smartmet_fmt_min}, fmt-libs < %{smartmet_fmt_max}
 Requires: gdal38-libs
 Requires: hdf5
 Requires: jsoncpp >= 1.8.4
