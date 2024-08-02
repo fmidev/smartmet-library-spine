@@ -26,8 +26,8 @@
 #include "Thread.h"
 
 #include <boost/function.hpp>
-#include <boost/optional.hpp>
-#include <boost/shared_ptr.hpp>
+#include <optional>
+#include <memory>
 #include <macgyver/AsyncTaskGroup.h>
 #include <macgyver/CacheStats.h>
 
@@ -113,10 +113,10 @@ class Reactor final
 
   int getRequiredAPIVersion() const;
   URIMap getURIMap() const;
-  boost::optional<std::string> getPluginName(const std::string& uri) const;
+  std::optional<std::string> getPluginName(const std::string& uri) const;
   void dumpURIs(std::ostream& output) const;
   bool isURIPrefix(const std::string& uri) const;
-  boost::optional<HandlerView&> getHandlerView(const HTTP::Request& theRequest);
+  HandlerView* getHandlerView(const HTTP::Request& theRequest);
 
   bool addContentHandler(SmartMetPlugin* thePlugin,
                          const std::string& theDir,
@@ -246,7 +246,7 @@ class Reactor final
 
   // Content handling
   mutable MutexType itsContentMutex;
-  using HandlerPtr = boost::shared_ptr<HandlerView>;
+  using HandlerPtr = std::shared_ptr<HandlerView>;
   using Handlers = std::map<std::string, HandlerPtr>;
 
   Handlers itsHandlers;
@@ -263,7 +263,7 @@ class Reactor final
 
   // Filters are determined at construction, an will be stored here until inserted into the handler
   // views
-  using FilterMap = std::map<std::string, boost::shared_ptr<IPFilter::IPFilter> >;
+  using FilterMap = std::map<std::string, std::shared_ptr<IPFilter::IPFilter> >;
   FilterMap itsIPFilters;
 
   // Event hooks
@@ -278,7 +278,7 @@ class Reactor final
 
   // Plugins
 
-  using PluginList = std::list<boost::shared_ptr<DynamicPlugin> >;
+  using PluginList = std::list<std::shared_ptr<DynamicPlugin> >;
   PluginList itsPlugins;
 
   // Engines
@@ -305,7 +305,7 @@ class Reactor final
   std::atomic<bool> itsLoggingEnabled{false};
   mutable MutexType itsLoggingMutex;
   Fmi::DateTime itsLogLastCleaned;
-  boost::shared_ptr<boost::thread> itsLogCleanerThread;
+  std::shared_ptr<boost::thread> itsLogCleanerThread;
 
   mutable std::atomic_bool itsHighLoadFlag{false};       // is the load high
   mutable std::atomic_uint itsActiveRequestsLimit{0};    // current maximum

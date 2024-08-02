@@ -9,10 +9,10 @@
 
 #include <libconfig.h++>
 
-#include <boost/filesystem/operations.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/program_options.hpp>
 
+#include <filesystem>
 #include <iostream>
 #include <string>
 
@@ -50,7 +50,7 @@ Options options;
 bool parse_options(int argc, char* argv[], Options& options)
 {
   namespace po = boost::program_options;
-  namespace fs = boost::filesystem;
+  namespace fs = std::filesystem;
 
   po::options_description desc("Allowed options");
   desc.add_options()("help,h", "print out help message")(

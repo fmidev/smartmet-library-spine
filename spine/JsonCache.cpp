@@ -4,6 +4,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/functional/hash.hpp>
 #include <macgyver/Exception.h>
+#include <macgyver/FileSystem.h>
 #include <fstream>
 #include <stdexcept>
 
@@ -30,13 +31,13 @@ JsonCache::Data::Data(std::time_t theTime, Json::Value theJson)
  */
 // ----------------------------------------------------------------------
 
-Json::Value JsonCache::get(const boost::filesystem::path& thePath) const
+Json::Value JsonCache::get(const std::filesystem::path& thePath) const
 {
   try
   {
-    std::time_t mtime = boost::filesystem::last_write_time(thePath);
+    std::time_t mtime = Fmi::last_write_time(thePath);
 
-    std::size_t hash = boost::filesystem::hash_value(thePath);
+    std::size_t hash = std::filesystem::hash_value(thePath);
 
     // Try using the cache with a lock first
     {

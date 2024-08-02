@@ -14,7 +14,7 @@
 #pragma once
 
 #include "Thread.h"
-#include <boost/filesystem/path.hpp>
+#include <filesystem>
 #include <map>
 #include <string>
 
@@ -25,8 +25,8 @@ namespace Spine
 class FileCache
 {
  public:
-  std::string get(const boost::filesystem::path& thePath) const;
-  std::size_t last_modified(const boost::filesystem::path& thePath) const;
+  std::string get(const std::filesystem::path& thePath) const;
+  std::size_t last_modified(const std::filesystem::path& thePath) const;
 
  private:
   struct FileContents
@@ -41,7 +41,7 @@ class FileCache
     }
   };
 
-  using Cache = std::map<boost::filesystem::path, FileContents>;
+  using Cache = std::map<std::filesystem::path, FileContents>;
   mutable MutexType itsMutex;
   mutable Cache itsCache;
 

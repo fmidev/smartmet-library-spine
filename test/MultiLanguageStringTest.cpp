@@ -22,7 +22,7 @@ BOOST_AUTO_TEST_CASE(test_multi_language_string_1)
 
   BOOST_TEST_MESSAGE("+ [Parse from configuration]");
 
-  boost::shared_ptr<libconfig::Config> config(new libconfig::Config);
+  std::shared_ptr<libconfig::Config> config(new libconfig::Config);
   auto& root = config->getRoot();
   auto& ml_root = root.add("test", Setting::TypeGroup);
   ml_root.add("eng", Setting::TypeString) = "An example";
@@ -55,7 +55,7 @@ BOOST_AUTO_TEST_CASE(test_multi_language_string_2)
 
   BOOST_TEST_MESSAGE("+ [Parse from configuration: default language translation missing]");
 
-  boost::shared_ptr<libconfig::Config> config(new libconfig::Config);
+  std::shared_ptr<libconfig::Config> config(new libconfig::Config);
   auto& root = config->getRoot();
   auto& ml_root = root.add("test", Setting::TypeGroup);
   ml_root.add("eng", Setting::TypeString) = "An example";
@@ -72,7 +72,7 @@ BOOST_AUTO_TEST_CASE(test_multi_language_string_3)
 
   BOOST_TEST_MESSAGE("+ [Parse from configuration: string provided instead of a group]");
 
-  boost::shared_ptr<libconfig::Config> config(new libconfig::Config);
+  std::shared_ptr<libconfig::Config> config(new libconfig::Config);
   auto& root = config->getRoot();
   auto& test = root.add("test", Setting::TypeString);
   test = "foobar";

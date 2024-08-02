@@ -21,7 +21,7 @@ namespace FmiApiKey
  */
 // ----------------------------------------------------------------------
 
-boost::optional<std::string> getFmiApiKey(const HTTP::Request& theRequest, bool checkAccessToken)
+std::optional<std::string> getFmiApiKey(const HTTP::Request& theRequest, bool checkAccessToken)
 {
   try
   {

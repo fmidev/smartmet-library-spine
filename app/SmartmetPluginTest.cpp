@@ -2,6 +2,7 @@
 #include <boost/program_options.hpp>
 #include <macgyver/DebugTools.h>
 #include <macgyver/PostgreSQLConnection.h>
+#include <macgyver/StaticCleanup.h>
 #include <iostream>
 #include <sstream>
 #include <thread>
@@ -74,6 +75,8 @@ FontConfigInit fcInit;
 int main(int argc, char* argv[])
 {
   Fmi::Exception::ForceStackTrace force_stack_trace;
+
+  Fmi::StaticCleanup::AtExit cleanup;
 
   if (std::setlocale(LC_ALL, "en_US.UTF-8") == nullptr)
   {

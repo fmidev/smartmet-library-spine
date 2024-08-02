@@ -7,7 +7,7 @@
 #pragma once
 
 #include "Thread.h"
-#include <boost/filesystem/path.hpp>
+#include <filesystem>
 #include <json/json.h>
 #include <string>
 #include <unordered_map>
@@ -20,7 +20,7 @@ class JsonCache
 {
  public:
   // Always return a copy
-  Json::Value get(const boost::filesystem::path& thePath) const;
+  Json::Value get(const std::filesystem::path& thePath) const;
 
  private:
   struct Data

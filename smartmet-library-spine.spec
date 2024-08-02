@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 24.5.27
+Version: 24.7.30
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -46,9 +46,9 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 24.3.25
-BuildRequires: smartmet-library-macgyver-devel >= 24.5.6
-BuildRequires: smartmet-library-newbase-devel >= 24.5.6
+BuildRequires: smartmet-library-gis-devel >= 24.7.12
+BuildRequires: smartmet-library-macgyver-devel >= 24.7.31
+BuildRequires: smartmet-library-newbase-devel >= 24.7.12
 BuildRequires: smartmet-utils-devel >= 24.3.13
 
 %if 0%{?rhel} && 0%{rhel} == 8
@@ -68,7 +68,6 @@ BuildRequires: libpqxx-devel
 %endif
 
 Requires: %{smartmet_boost}-chrono
-Requires: %{smartmet_boost}-filesystem
 Requires: %{smartmet_boost}-iostreams
 Requires: %{smartmet_boost}-program-options
 Requires: %{smartmet_boost}-regex
@@ -83,9 +82,9 @@ Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
-Requires: smartmet-library-gis >= 24.3.25
-Requires: smartmet-library-macgyver >= 24.5.6
-Requires: smartmet-library-newbase >= 24.5.6
+Requires: smartmet-library-gis >= 24.7.12
+Requires: smartmet-library-macgyver >= 24.7.31
+Requires: smartmet-library-newbase >= 24.7.12
 Requires: smartmet-timezones >= 24.1.9
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -95,7 +94,7 @@ Requires: smartmet-timezones >= 24.1.9
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 24.5.6
+#TestRequires: smartmet-library-macgyver-devel >= 24.7.31
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -107,9 +106,9 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 24.5.6
-Requires: smartmet-library-gis-devel >= 24.3.25
-Requires: smartmet-library-newbase-devel >= 24.5.6
+Requires: smartmet-library-macgyver-devel >= 24.7.31
+Requires: smartmet-library-gis-devel >= 24.7.12
+Requires: smartmet-library-newbase-devel >= 24.7.12
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
@@ -153,6 +152,15 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Jul 30 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.7.30-1.fmi
+- HandlerView: improve error reporting
+
+* Mon Jul 22 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.7.22-1.fmi
+- Replace BOOST_FOREACH and boost::array
+
+* Fri Jul 12 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.7.12-1.fmi
+- Replace many boost library types with C++ standard library ones
+
 * Mon May 27 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.5.27-1.fmi
 - Update URI prefix handling
 

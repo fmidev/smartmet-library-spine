@@ -20,8 +20,8 @@ using SmartMet::Spine::Value;
 
 template <typename NumType>
 NumType check_limits_impl(NumType arg,
-                          const boost::optional<Value>& lower_limit,
-                          const boost::optional<Value>& upper_limit,
+                          const std::optional<Value>& lower_limit,
+                          const std::optional<Value>& upper_limit,
                           NumType (Value::*getter)() const)
 {
   try
@@ -55,8 +55,8 @@ NumType check_limits_impl(NumType arg,
 
 template <typename NumType>
 bool inside_limits_impl(NumType arg,
-                        const boost::optional<Value>& lower_limit,
-                        const boost::optional<Value>& upper_limit,
+                        const std::optional<Value>& lower_limit,
+                        const std::optional<Value>& upper_limit,
                         NumType (Value::*getter)() const)
 {
   try
@@ -88,12 +88,12 @@ void Value::reset()
   }
 }
 
-const Value& Value::check_limits(const boost::optional<Value>& lower_limit,
-                                 const boost::optional<Value>& upper_limit) const
+const Value& Value::check_limits(const std::optional<Value>& lower_limit,
+                                 const std::optional<Value>& upper_limit) const
 {
   try
   {
-    switch (data.which())
+    switch (data.index())
     {
       case TI_EMPTY:
       case TI_BOOL:
@@ -125,12 +125,12 @@ const Value& Value::check_limits(const boost::optional<Value>& lower_limit,
   }
 }
 
-bool Value::inside_limits(const boost::optional<Value>& lower_limit,
-                          const boost::optional<Value>& upper_limit) const
+bool Value::inside_limits(const std::optional<Value>& lower_limit,
+                          const std::optional<Value>& upper_limit) const
 {
   try
   {
-    switch (data.which())
+    switch (data.index())
     {
       case TI_EMPTY:
       case TI_BOOL:
@@ -141,7 +141,7 @@ bool Value::inside_limits(const boost::optional<Value>& lower_limit,
         if (lower_limit or upper_limit)
         {
           std::ostringstream msg;
-          msg << "Usupported type '" << demangle_cpp_type_name(data.type().name()) << "'";
+          msg << "Usupported type '" << demangle_cpp_type_name(type().name()) << "'";
           throw Fmi::Exception(BCP, msg.str());
         }
 
@@ -170,19 +170,19 @@ bool Value::get_bool() const
 {
   try
   {
-    switch (data.which())
+    switch (data.index())
     {
       case TI_BOOL:
-        return boost::get<bool>(data);
+        return std::get<bool>(data);
 
       case TI_INT:
-        return boost::get<int64_t>(data) != 0;
+        return std::get<int64_t>(data) != 0;
 
       case TI_UINT:
-        return boost::get<uint64_t>(data) != 0;
+        return std::get<uint64_t>(data) != 0;
 
       case TI_STRING:
-        return string2bool(boost::get<std::string>(data));
+        return string2bool(std::get<std::string>(data));
 
       default:
         bad_value_type(METHOD_NAME, typeid(bool));
@@ -199,13 +199,13 @@ int64_t Value::get_int() const
   try
   {
     uint64_t tmp;
-    switch (data.which())
+    switch (data.index())
     {
       case TI_INT:
-        return boost::get<int64_t>(data);
+        return std::get<int64_t>(data);
 
       case TI_UINT:
-        tmp = boost::get<uint64_t>(data);
+        tmp = std::get<uint64_t>(data);
         if (tmp > static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))
         {
           std::ostringstream msg;
@@ -217,13 +217,13 @@ int64_t Value::get_int() const
       case TI_STRING:
         try
         {
-          return Fmi::stol(boost::get<std::string>(data));
+          return Fmi::stol(std::get<std::string>(data));
         }
         catch (const std::exception&)
         {
           std::ostringstream msg;
           msg << "Failed to read an integer value from the string '"
-              << boost::get<std::string>(data) << "'!";
+              << std::get<std::string>(data) << "'!";
           throw Fmi::Exception(BCP, msg.str()).disableStackTrace();
         }
 
@@ -243,13 +243,13 @@ uint64_t Value::get_uint() const
   {
     int64_t tmp;
 
-    switch (data.which())
+    switch (data.index())
     {
       case TI_UINT:
-        return boost::get<uint64_t>(data);
+        return std::get<uint64_t>(data);
 
       case TI_INT:
-        tmp = boost::get<int64_t>(data);
+        tmp = std::get<int64_t>(data);
         if (tmp < 0)
         {
           std::ostringstream msg;
@@ -261,13 +261,13 @@ uint64_t Value::get_uint() const
       case TI_STRING:
         try
         {
-          return Fmi::stoul(boost::get<std::string>(data));
+          return Fmi::stoul(std::get<std::string>(data));
         }
         catch (const std::exception&)
         {
           std::ostringstream msg;
           msg << "Failed to read an unsigned integer value from the string '"
-              << boost::get<std::string>(data) << "'!";
+              << std::get<std::string>(data) << "'!";
           throw Fmi::Exception(BCP, msg.str()).disableStackTrace();
         }
 
@@ -285,26 +285,26 @@ double Value::get_double() const
 {
   try
   {
-    switch (data.which())
+    switch (data.index())
     {
       case TI_INT:
-        return static_cast<double>(boost::get<int64_t>(data));
+        return static_cast<double>(std::get<int64_t>(data));
 
       case TI_UINT:
-        return static_cast<double>(boost::get<uint64_t>(data));
+        return static_cast<double>(std::get<uint64_t>(data));
 
       case TI_DOUBLE:
-        return boost::get<double>(data);
+        return std::get<double>(data);
 
       case TI_STRING:
         try
         {
-          return Fmi::stod(Fmi::trim_copy(boost::get<std::string>(data)));
+          return Fmi::stod(Fmi::trim_copy(std::get<std::string>(data)));
         }
         catch (const std::exception&)
         {
           std::ostringstream msg;
-          msg << "Failed to read a double value from the string '" << boost::get<std::string>(data)
+          msg << "Failed to read a double value from the string '" << std::get<std::string>(data)
               << "'";
           throw Fmi::Exception(BCP, msg.str()).disableStackTrace();
         }
@@ -323,19 +323,19 @@ Fmi::DateTime Value::get_ptime(bool use_extensions) const
 {
   try
   {
-    switch (data.which())
+    switch (data.index())
     {
       case TI_PTIME:
-        return boost::get<Fmi::DateTime>(data);
+        return std::get<Fmi::DateTime>(data);
 
       case TI_STRING:
         if (use_extensions)
         {
-          return string2ptime(boost::get<std::string>(data));
+          return string2ptime(std::get<std::string>(data));
         }
         else
         {
-          return Fmi::TimeParser::parse(boost::get<std::string>(data));
+          return Fmi::TimeParser::parse(std::get<std::string>(data));
         }
 
       default:
@@ -352,12 +352,12 @@ Point Value::get_point() const
 {
   try
   {
-    int ind = data.which();
+    int ind = data.index();
     if (ind == TI_POINT)
-      return boost::get<PointWrapper>(data);
+      return std::get<PointWrapper>(data);
 
     if (ind == TI_STRING)
-      return Point(boost::get<std::string>(data));
+      return Point(std::get<std::string>(data));
 
     bad_value_type(METHOD_NAME, typeid(Point));
   }
@@ -371,12 +371,12 @@ BoundingBox Value::get_bbox() const
 {
   try
   {
-    int ind = data.which();
+    int ind = data.index();
     if (ind == TI_BBOX)
-      return boost::get<BoundingBox>(data);
+      return std::get<BoundingBox>(data);
 
     if (ind == TI_STRING)
-      return BoundingBox(boost::get<std::string>(data));
+      return BoundingBox(std::get<std::string>(data));
 
     bad_value_type(METHOD_NAME, typeid(BoundingBox));
   }
@@ -390,10 +390,10 @@ std::string Value::get_string() const
 {
   try
   {
-    switch (data.which())
+    switch (data.index())
     {
       case TI_STRING:
-        return boost::get<std::string>(data);
+        return std::get<std::string>(data);
 
         // FIXME: Do we need conversions from other types back to string?
 
@@ -490,35 +490,35 @@ std::string Value::dump_to_string() const
   {
     namespace ba = boost::algorithm;
 
-    switch (data.which())
+    switch (data.index())
     {
       case TI_EMPTY:
         return "(empty)";
 
       case TI_BOOL:
-        return fmt::format("(bool {})", (boost::get<bool>(data) ? "true" : "false"));
+        return fmt::format("(bool {})", (std::get<bool>(data) ? "true" : "false"));
         break;
 
       case TI_INT:
-        return fmt::format("(int {})", boost::get<int64_t>(data));
+        return fmt::format("(int {})", std::get<int64_t>(data));
 
       case TI_UINT:
-        return fmt::format("(uint {})", boost::get<uint64_t>(data));
+        return fmt::format("(uint {})", std::get<uint64_t>(data));
 
       case TI_DOUBLE:
-        return ba::trim_right_copy(fmt::format("(double {:<-14g})", boost::get<double>(data)));
+        return ba::trim_right_copy(fmt::format("(double {:<-14g})", std::get<double>(data)));
 
       case TI_STRING:
-        return fmt::format("(string '{}')", boost::get<std::string>(data));
+        return fmt::format("(string '{}')", std::get<std::string>(data));
 
       case TI_PTIME:
-        return fmt::format("(time '{}')", Fmi::date_time::to_simple_string(boost::get<Fmi::DateTime>(data)));
+        return fmt::format("(time '{}')", Fmi::date_time::to_simple_string(std::get<Fmi::DateTime>(data)));
 
       case TI_POINT:
-        return fmt::format("(point {})", boost::get<PointWrapper>(data).as_string());
+        return fmt::format("(point {})", std::get<PointWrapper>(data).as_string());
 
       case TI_BBOX:
-        return fmt::format("(bbox {})", boost::get<BoundingBox>(data).as_string());
+        return fmt::format("(bbox {})", std::get<BoundingBox>(data).as_string());
 
       default:
         throw Fmi::Exception(BCP, "INTERNAL ERROR: unrecognized type code");
@@ -548,34 +548,34 @@ std::string Value::to_string() const
   {
     namespace ba = boost::algorithm;
 
-    switch (data.which())
+    switch (data.index())
     {
       case TI_EMPTY:
         throw Fmi::Exception(BCP, "Uninitialized value");
 
       case TI_BOOL:
-        return boost::get<bool>(data) ? "true" : "false";
+        return std::get<bool>(data) ? "true" : "false";
 
       case TI_INT:
-        return fmt::format("{}", boost::get<int64_t>(data));
+        return fmt::format("{}", std::get<int64_t>(data));
 
       case TI_UINT:
-        return fmt::format("{}", boost::get<uint64_t>(data));
+        return fmt::format("{}", std::get<uint64_t>(data));
 
       case TI_DOUBLE:
-          return fmt::format("{:<.14g}", boost::get<double>(data));
+          return fmt::format("{:<.14g}", std::get<double>(data));
 
       case TI_STRING:
-        return boost::get<std::string>(data);
+        return std::get<std::string>(data);
 
       case TI_PTIME:
-        return Fmi::to_iso_string(boost::get<Fmi::DateTime>(data)) + "Z";
+        return Fmi::to_iso_string(std::get<Fmi::DateTime>(data)) + "Z";
 
       case TI_POINT:
-        return boost::get<PointWrapper>(data).as_string();
+        return std::get<PointWrapper>(data).as_string();
 
       case TI_BBOX:
-        return boost::get<BoundingBox>(data).as_string();
+        return std::get<BoundingBox>(data).as_string();
 
       default:
         throw Fmi::Exception(BCP, "INTERNAL ERROR: unrecognized type code");
@@ -592,7 +592,7 @@ void Value::bad_value_type(const std::string& location, const std::type_info& ex
   try
   {
     std::ostringstream msg;
-    msg << location << ": conversion from " << demangle_cpp_type_name(data.type().name()) << " to "
+    msg << location << ": conversion from " << demangle_cpp_type_name(type().name()) << " to "
         << demangle_cpp_type_name(exp_type.name())
         << " is not supported (value=" << dump_to_string() << ")";
     throw Fmi::Exception(BCP, msg.str());
@@ -618,7 +618,7 @@ void Value::get_not_implemented_for(const std::type_info& type) const
 }
 
 Fmi::DateTime string2ptime(const std::string& value,
-                                      const boost::optional<Fmi::DateTime>& ref_time)
+                                      const std::optional<Fmi::DateTime>& ref_time)
 {
   try
   {

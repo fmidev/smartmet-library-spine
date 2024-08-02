@@ -14,11 +14,9 @@ DEFINES = -DUNIX -D_REENTRANT
 
 # Common library compiling template
 
-LIBS +=	-L$(libdir) \
-	-lsmartmet-newbase \
+LIBS +=	-lsmartmet-newbase \
 	-lsmartmet-macgyver \
-        -ldouble-conversion \
-	-lboost_filesystem \
+	-ldouble-conversion \
 	-lboost_regex \
 	-lboost_timer \
 	-lboost_chrono \
@@ -28,6 +26,7 @@ LIBS +=	-L$(libdir) \
 	-lboost_locale \
 	-lctpp2 \
 	$(REQUIRED_LIBS) \
+	$(PREFIX_LDFLAGS) \
 	-ldl \
 	-lrt
 

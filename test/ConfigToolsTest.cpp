@@ -41,9 +41,9 @@ class TestConfig : public libconfig::Config
   }
 };
 
-boost::shared_ptr<libconfig::Config> create_config()
+std::shared_ptr<libconfig::Config> create_config()
 {
-  boost::shared_ptr<libconfig::Config> config(new TestConfig);
+  std::shared_ptr<libconfig::Config> config(new TestConfig);
   SmartMet::Spine::expandVariables(*config);
   return config;
 }

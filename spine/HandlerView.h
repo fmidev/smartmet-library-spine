@@ -7,7 +7,7 @@
 #include "SmartMetPlugin.h"
 #include "Thread.h"
 #include <boost/function.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <string>
 
 namespace SmartMet
@@ -26,7 +26,7 @@ class HandlerView
  public:
   // Regular plugin
   HandlerView(ContentHandler theHandler,
-              boost::shared_ptr<IPFilter::IPFilter> theIpFilter,
+              std::shared_ptr<IPFilter::IPFilter> theIpFilter,
               SmartMetPlugin* thePlugin,
               const std::string& theResource,
               bool loggingStatus,
@@ -94,7 +94,7 @@ class HandlerView
   ContentHandler itsHandler;
 
   // Any registered IP Filters
-  boost::shared_ptr<IPFilter::IPFilter> itsIpFilter;
+  std::shared_ptr<IPFilter::IPFilter> itsIpFilter;
 
   // Non-owning pointer to the plugin
   SmartMetPlugin* itsPlugin = nullptr;

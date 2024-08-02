@@ -1,7 +1,7 @@
 #pragma once
 
 #include <libconfig.h++>
-#include <boost/optional.hpp>
+#include <optional>
 #include <map>
 #include <string>
 
@@ -20,7 +20,7 @@ public:
   void setDefaultLanguage(const std::string& theLanguage);
   const std::string& getDefaultLanguage() const;
 
-  boost::optional<std::string> getTranslation(const std::string& theParam,
+  std::optional<std::string> getTranslation(const std::string& theParam,
                                               int theValue,
                                               const std::string& theLanguage) const;
 

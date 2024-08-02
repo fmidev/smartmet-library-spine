@@ -4,7 +4,7 @@
 #include "Reactor.h"
 #include <iostream>
 #include <boost/bind/bind.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
@@ -24,7 +24,7 @@ namespace SmartMet
 namespace Spine
 {
 HandlerView::HandlerView(ContentHandler theHandler,
-                         boost::shared_ptr<IPFilter::IPFilter> theIpFilter,
+                         std::shared_ptr<IPFilter::IPFilter> theIpFilter,
                          SmartMetPlugin* thePlugin,
                          const std::string& theResource,
                          bool loggingStatus,
@@ -137,7 +137,7 @@ bool HandlerView::handle(Reactor& theReactor,
   }
   catch (...)
   {
-    std::cerr << "Operation failed! HandlerView::handle aborted" << std::endl;
+    std::cerr << Fmi::Exception::Trace(BCP, "Operation failed! HandlerView::handle aborted") << std::endl;
     return true;
   }
 }

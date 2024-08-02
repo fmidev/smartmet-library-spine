@@ -3,12 +3,12 @@
 #include "ConfigBase.h"
 #include "Thread.h"
 #include "Value.h"
-#include <boost/any.hpp>
-#include <boost/array.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/optional.hpp>
+#include <any>
+#include <array>
+#include <filesystem>
+#include <optional>
 #include <boost/regex.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <macgyver/TypeName.h>
 #include <newbase/NFmiPoint.h>
 #include <map>
@@ -30,11 +30,11 @@ class CRSRegistry
   {
     std::string name;
     boost::basic_regex<char> regex;
-    boost::shared_ptr<OGRSpatialReference> cs;
-    std::map<std::string, boost::any> attrib_map;
+    std::shared_ptr<OGRSpatialReference> cs;
+    std::map<std::string, std::any> attrib_map;
     bool swap_coord;
 
-    MapEntry(std::string theName, const boost::optional<std::string>& text);
+    MapEntry(std::string theName, const std::optional<std::string>& text);
   };
 
  public:
@@ -51,7 +51,7 @@ class CRSRegistry
     virtual std::string get_src_name() const = 0;
     virtual std::string get_dest_name() const = 0;
     virtual NFmiPoint transform(const NFmiPoint& src) = 0;
-    virtual boost::array<double, 3> transform(const boost::array<double, 3>& src) = 0;
+    virtual std::array<double, 3> transform(const std::array<double, 3>& src) = 0;
     virtual void transform(OGRGeometry& geometry) = 0;
   };
 
@@ -69,24 +69,24 @@ class CRSRegistry
 
   void parse_single_crs_def(Spine::ConfigBase& theConfig, libconfig::Setting& theEntry);
 
-  void read_crs_dir(const boost::filesystem::path& theDir);
+  void read_crs_dir(const std::filesystem::path& theDir);
 
   void register_epsg(const std::string& name,
                      int epsg_code,
-                     const boost::optional<std::string>& regex = boost::optional<std::string>(),
+                     const std::optional<std::string>& regex = std::optional<std::string>(),
                      bool swap_coord = false);
 
   void register_proj4(const std::string& name,
                       const std::string& proj4_def,
-                      const boost::optional<std::string>& regex = boost::optional<std::string>(),
+                      const std::optional<std::string>& regex = std::optional<std::string>(),
                       bool swap_coord = false);
 
   void register_wkt(const std::string& name,
                     const std::string& wkt_def,
-                    const boost::optional<std::string>& regex = boost::optional<std::string>(),
+                    const std::optional<std::string>& regex = std::optional<std::string>(),
                     bool swap_coord = false);
 
-  boost::shared_ptr<Transformation> create_transformation(const std::string& from,
+  std::shared_ptr<Transformation> create_transformation(const std::string& from,
                                                           const std::string& to);
 
   SmartMet::Spine::BoundingBox convert_bbox(const SmartMet::Spine::BoundingBox& src,
@@ -116,10 +116,10 @@ class CRSRegistry
 
     try
     {
-      *value = boost::any_cast<Type>(it->second);
+      *value = std::any_cast<Type>(it->second);
       return true;
     }
-    catch (const boost::bad_any_cast&)
+    catch (const std::bad_any_cast&)
     {
       handle_get_attribute_error(crs_name, attrib_name, it->second.type(), typeid(Type));
     }

@@ -6,7 +6,7 @@
 
 #pragma once
 #include "HTTP.h"
-#include <boost/optional.hpp>
+#include <optional>
 #include <string>
 
 namespace SmartMet
@@ -16,7 +16,7 @@ namespace Spine
 namespace FmiApiKey
 {
 // Get request apikey from header or url
-boost::optional<std::string> getFmiApiKey(const HTTP::Request& theRequest,
+std::optional<std::string> getFmiApiKey(const HTTP::Request& theRequest,
                                           bool checkAccessToken = false);
 
 }  // namespace FmiApiKey

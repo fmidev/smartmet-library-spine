@@ -6,11 +6,11 @@
 
 #pragma once
 
-#include <boost/optional.hpp>
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <libconfig.h++>
 #include <string>
 #include <thread>
+#include <macgyver/Optional.h>
 
 namespace SmartMet
 {
@@ -58,7 +58,7 @@ struct Options
   bool logrequests = false;
   bool compress = false;
   unsigned int compresslimit = 1000;
-  boost::optional<unsigned int> coredump_filter;  // Linux default is 0x33
+  std::optional<unsigned int> coredump_filter;  // Linux default is 0x33
   bool defaultlogging = true;
   bool lazylinking = true;
   bool stacktrace = false;

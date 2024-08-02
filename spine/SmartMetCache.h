@@ -1,6 +1,6 @@
 #pragma once
-#include <boost/filesystem.hpp>
-#include <boost/shared_ptr.hpp>
+#include <filesystem>
+#include <memory>
 #include <deque>
 #include <string>
 
@@ -10,11 +10,11 @@ namespace SmartMet
 {
 namespace Spine
 {
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 struct BufferSizeFunction
 {
-  static std::size_t getSize(const boost::shared_ptr<std::string>& theValue)
+  static std::size_t getSize(const std::shared_ptr<std::string>& theValue)
   {
     return theValue->size();
   }
@@ -30,7 +30,7 @@ class SmartMetCache
 {
   using KeyType = std::size_t;
 
-  using ValueType = boost::shared_ptr<std::string>;
+  using ValueType = std::shared_ptr<std::string>;
 
  public:
   /*

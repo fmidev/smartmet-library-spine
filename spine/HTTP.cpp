@@ -409,7 +409,7 @@ Message::Message(HeaderMap headerMap, std::string version, bool isChunked)
 
 Message::Message() : itsVersion("1.0") {}
 
-boost::optional<std::string> Message::getHeader(const std::string& headerName) const
+std::optional<std::string> Message::getHeader(const std::string& headerName) const
 {
   try
   {
@@ -425,7 +425,7 @@ boost::optional<std::string> Message::getHeader(const std::string& headerName) c
   }
 }
 
-boost::optional<std::string> Message::getProtocol() const
+std::optional<std::string> Message::getProtocol() const
 {
   return getHeader("X-Forwarded-Proto");
 }
@@ -484,9 +484,9 @@ Request::Request(HeaderMap headerMap,
                  RequestMethod method,
                  bool hasParsedPostData)
     : Message(headerMap, version, false),  // Now only unchunked requests
-      itsContent(std::move(body)),
+      itsContent(body),
       itsParameters(std::move(theParameters)),
-      itsMethod(std::move(method)),
+      itsMethod(method),
       itsResource(std::move(resource)),
       itsHasParsedPostData(hasParsedPostData)
 {
@@ -775,7 +775,7 @@ ParamMap Request::getParameterMap() const
   return itsParameters;
 }
 
-boost::optional<std::string> Request::getParameter(const std::string& paramName) const
+std::optional<std::string> Request::getParameter(const std::string& paramName) const
 {
   try
   {
@@ -913,7 +913,7 @@ void Response::setContent(const std::string& theContent)
   }
 }
 
-void Response::setContent(const boost::shared_ptr<std::string>& theContent)
+void Response::setContent(const std::shared_ptr<std::string>& theContent)
 {
   try
   {
@@ -925,7 +925,7 @@ void Response::setContent(const boost::shared_ptr<std::string>& theContent)
   }
 }
 
-void Response::setContent(const boost::shared_ptr<std::vector<char>>& theContent)
+void Response::setContent(const std::shared_ptr<std::vector<char>>& theContent)
 {
   try
   {
@@ -949,7 +949,7 @@ void Response::setContent(const boost::shared_array<char>& theContent, std::size
   }
 }
 
-void Response::setContent(const boost::shared_ptr<ContentStreamer>& theContent)
+void Response::setContent(const std::shared_ptr<ContentStreamer>& theContent)
 {
   try
   {
@@ -964,7 +964,7 @@ void Response::setContent(const boost::shared_ptr<ContentStreamer>& theContent)
   }
 }
 
-void Response::setContent(const boost::shared_ptr<ContentStreamer>& theContent,
+void Response::setContent(const std::shared_ptr<ContentStreamer>& theContent,
                           std::size_t contentSize)
 {
   try
@@ -1404,14 +1404,14 @@ MessageContent::MessageContent(const std::string& theContent)
 {
 }
 
-MessageContent::MessageContent(const boost::shared_ptr<std::string>& theContent)
+MessageContent::MessageContent(const std::shared_ptr<std::string>& theContent)
     : stringPtrContent(theContent),
       contentSize(theContent->size()),
       itsType(content_type::stringPtrType)
 {
 }
 
-MessageContent::MessageContent(const boost::shared_ptr<std::vector<char>>& theContent)
+MessageContent::MessageContent(const std::shared_ptr<std::vector<char>>& theContent)
     : vectorContent(theContent), contentSize(theContent->size()), itsType(content_type::vectorType)
 {
 }
@@ -1422,14 +1422,14 @@ MessageContent::MessageContent(boost::shared_array<char> theContent, std::size_t
 {
 }
 
-MessageContent::MessageContent(boost::shared_ptr<ContentStreamer> theContent)
+MessageContent::MessageContent(std::shared_ptr<ContentStreamer> theContent)
     : streamContent(std::move(theContent)),
       contentSize(std::numeric_limits<std::size_t>::max()),
       itsType(content_type::streamType)
 {
 }
 
-MessageContent::MessageContent(boost::shared_ptr<ContentStreamer> theContent,
+MessageContent::MessageContent(std::shared_ptr<ContentStreamer> theContent,
                                std::size_t contentSize)
     : streamContent(theContent), contentSize(contentSize), itsType(content_type::streamType)
 {
@@ -1589,14 +1589,14 @@ static const int B64index[256] = {
 
 static std::string base64decode(const std::string& input)
 {
-  const char* p = input.c_str();
-  size_t len = input.size();
+  const unsigned char* p = reinterpret_cast<const unsigned char* >(input.c_str());
+  std::size_t len = input.size();
 
   int pad = static_cast<int>(len > 0 && ((len % 4 != 0) || p[len - 1] == '='));
   const std::size_t L = ((len + 3) / 4 - pad) * 4;
   std::string str(L / 4 * 3 + pad, '\0');
 
-  for (size_t i = 0, j = 0; i < L; i += 4)
+  for (std::size_t i = 0, j = 0; i < L; i += 4)
   {
     int n = B64index[static_cast<int>(p[i])] << 18 | B64index[static_cast<int>(p[i + 1])] << 12 |
             B64index[static_cast<int>(p[i + 2])] << 6 | B64index[static_cast<int>(p[i + 3])];
