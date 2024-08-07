@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 24.7.30
+Version: 24.8.7
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -152,6 +152,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Aug  7 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.8.7-1.fmi
+- Update to gdal-3.8, geos-3.12, proj-94 and fmt-11
+
 * Tue Jul 30 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.7.30-1.fmi
 - HandlerView: improve error reporting
 
