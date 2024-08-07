@@ -46,10 +46,10 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 24.7.12
-BuildRequires: smartmet-library-macgyver-devel >= 24.7.31
-BuildRequires: smartmet-library-newbase-devel >= 24.7.12
-BuildRequires: smartmet-utils-devel >= 24.3.13
+BuildRequires: smartmet-library-gis-devel >= 24.8.7
+BuildRequires: smartmet-library-macgyver-devel >= 24.8.7
+BuildRequires: smartmet-library-newbase-devel >= 24.8.7
+BuildRequires: smartmet-utils-devel >= 24.8.7
 
 %if 0%{?rhel} && 0%{rhel} == 8
 Requires: libpqxx >= 1:7.7.0 libpqxx < 1:7.8.0
@@ -82,9 +82,9 @@ Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
-Requires: smartmet-library-gis >= 24.7.12
-Requires: smartmet-library-macgyver >= 24.7.31
-Requires: smartmet-library-newbase >= 24.7.12
+Requires: smartmet-library-gis >= 24.8.7
+Requires: smartmet-library-macgyver >= 24.8.7
+Requires: smartmet-library-newbase >= 24.8.7
 Requires: smartmet-timezones >= 24.1.9
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -94,7 +94,7 @@ Requires: smartmet-timezones >= 24.1.9
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 24.7.31
+#TestRequires: smartmet-library-macgyver-devel >= 24.8.7
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -106,9 +106,9 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 24.7.31
-Requires: smartmet-library-gis-devel >= 24.7.12
-Requires: smartmet-library-newbase-devel >= 24.7.12
+Requires: smartmet-library-macgyver-devel >= 24.8.7
+Requires: smartmet-library-gis-devel >= 24.8.7
+Requires: smartmet-library-newbase-devel >= 24.8.7
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
