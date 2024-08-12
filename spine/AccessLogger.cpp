@@ -58,11 +58,21 @@ std::unique_ptr<std::ofstream> makeAccessLogFile(const std::string& resource,
     std::string path = ::makeAccessLogFileName(resource, accessLogDir);
 
     std::unique_ptr<std::ofstream> file(new std::ofstream());
-    file->open(path, std::ofstream::out | std::ofstream::app);
-    if (!file->is_open())
+    const auto flags = file->exceptions();
+    file->exceptions(std::ofstream::failbit | std::ofstream::badbit);
+    try // Open the file
     {
-      throw Fmi::Exception(BCP, "Could not open access log file: " + path);
+      file->open(path, std::ofstream::out | std::ofstream::app);
     }
+    catch (const std::system_error& e)
+    {
+      Fmi::Exception error(BCP, "Could not open access log file: " + path);
+      error.addParameter("Error code", e.code().message());
+      error.addParameter("Error category", e.code().category().name());
+      throw error;
+    }
+
+    file->exceptions(flags);
 
     return file;
   }
