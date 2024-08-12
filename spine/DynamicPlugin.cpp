@@ -152,6 +152,7 @@ void DynamicPlugin::pluginOpen()
                            "Unable to load dynamic library plugin: " +
                                err_msg);  // NOLINT dlerror is not thread safe
       boost::match_results<std::string::const_iterator> what;
+      error.addParameter("Library", itsFilename);
       if (boost::regex_search(err_msg, what, r_sym, boost::match_default))
       {
         const std::string mangled_sym_name(what[1].first, what[1].second);
