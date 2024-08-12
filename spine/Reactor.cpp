@@ -1262,6 +1262,7 @@ bool Reactor::loadEngine(const std::string& sectionName,
       Fmi::Exception error(
           BCP,
           "Unable to load dynamic engine class library: " + err_msg);  // NOLINT not thread safe
+      error.addParameter("Library", theFilename);
       boost::match_results<std::string::const_iterator> what;
       if (boost::regex_search(err_msg, what, r_sym, boost::match_default))
       {
