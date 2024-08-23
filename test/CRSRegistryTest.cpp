@@ -146,3 +146,20 @@ BOOST_AUTO_TEST_CASE(test_crs_attrib)
   BOOST_CHECK(found);
   BOOST_CHECK_CLOSE(foo, bar, 1e-10);
 }
+
+BOOST_AUTO_TEST_CASE(test_read_crs_dir)
+{
+  BOOST_TEST_MESSAGE("+ [Reading CRS definitions from directory]");
+
+  CRSRegistry registry;
+  registry.read_crs_dir("crs");
+
+  BOOST_CHECK_EQUAL(registry.size(), 11);
+  for (const auto& key : registry.get_crs_keys())
+  {
+    std::string proj4;
+    BOOST_REQUIRE_NO_THROW(proj4 = registry.get_proj4(key));
+    BOOST_CHECK(not proj4.empty());
+  }
+  registry.dump_info(std::cout);
+}
