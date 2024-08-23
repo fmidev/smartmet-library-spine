@@ -16,7 +16,7 @@ test_suite* init_unit_test_suite(int argc, char* argv[])
   BOOST_TEST_MESSAGE("");
   BOOST_TEST_MESSAGE(name);
   BOOST_TEST_MESSAGE(std::string(std::strlen(name), '='));
-  return NULL;
+  return nullptr;
 }
 
 BOOST_AUTO_TEST_CASE(test_coordinate_transformation_1)

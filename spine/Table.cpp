@@ -5,7 +5,6 @@
 // ======================================================================
 
 #include "Table.h"
-#include <boost/format.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/TypeName.h>
 #include <sstream>
@@ -74,8 +73,6 @@ const std::string& Table::get(std::size_t theColumn, std::size_t theRow) const
 {
   try
   {
-    using boost::format;
-    using boost::str;
     // Cannot extract values from empty data
 
     if (itsList.empty())

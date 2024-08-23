@@ -1,11 +1,11 @@
 
 #include "CRSRegistry.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/format.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TypeName.h>
+#include <fmt/format.h>
 #include <ogr_geometry.h>
 #include <ogr_spatialref.h>
 #include <ogr_srs_api.h>
@@ -590,11 +590,11 @@ void CRSRegistry::parse_single_crs_def(Spine::ConfigBase& theConfig, libconfig::
 
     if (theEntry.exists("epsg"))
     {
-      using boost::format;
+      using namespace std::string_literals;
       int epsg = theConfig.get_mandatory_config_param<int>(theEntry, "epsg");
-      const std::string def_regex = str(format("(?:urn:ogc:def:crs:|)EPSG:{1,2}%04u") % epsg);
-      const std::string def_proj_uri =
-          str(format("http://www.opengis.net/def/crs/EPSG/0/%04u") % epsg);
+      const std::string epsg_str = fmt::format("%04u", epsg);
+      const std::string def_regex = "(?:urn:ogc:def:crs:|)EPSG:{1,2}"s + epsg_str;
+      const std::string def_proj_uri = "http://www.opengis.net/def/crs/EPSG/0/"s + epsg_str;
       auto regex = theConfig.get_optional_config_param<std::string>(theEntry, "regex", def_regex);
       proj_uri =
           theConfig.get_optional_config_param<std::string>(theEntry, "projUri", def_proj_uri);
