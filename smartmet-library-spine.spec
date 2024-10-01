@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 24.8.12
+Version: 24.9.28
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -47,9 +47,9 @@ BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 24.8.7
-BuildRequires: smartmet-library-macgyver-devel >= 24.8.7
-BuildRequires: smartmet-library-newbase-devel >= 24.8.7
-BuildRequires: smartmet-utils-devel >= 24.8.7
+BuildRequires: smartmet-library-macgyver-devel >= 24.9.28
+BuildRequires: smartmet-library-newbase-devel >= 24.9.25
+BuildRequires: smartmet-utils-devel >= 24.9.10
 
 %if 0%{?rhel} && 0%{rhel} == 8
 Requires: libpqxx >= 1:7.7.0 libpqxx < 1:7.8.0
@@ -83,9 +83,9 @@ Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: double-conversion
 Requires: smartmet-library-gis >= 24.8.7
-Requires: smartmet-library-macgyver >= 24.8.7
-Requires: smartmet-library-newbase >= 24.8.7
-Requires: smartmet-timezones >= 24.1.9
+Requires: smartmet-library-macgyver >= 24.9.28
+Requires: smartmet-library-newbase >= 24.9.25
+Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
 #TestRequires: gdal38-devel
@@ -94,7 +94,7 @@ Requires: smartmet-timezones >= 24.1.9
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 24.8.7
+#TestRequires: smartmet-library-macgyver-devel >= 24.9.28
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -106,9 +106,9 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 24.8.7
+Requires: smartmet-library-macgyver-devel >= 24.9.28
 Requires: smartmet-library-gis-devel >= 24.8.7
-Requires: smartmet-library-newbase-devel >= 24.8.7
+Requires: smartmet-library-newbase-devel >= 24.9.25
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
@@ -152,6 +152,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sat Sep 28 2024 Mika Heiskanen <mika.heiskanen@fmi.fi> - 24.9.28-1.fmi
+- Repackaged due to PostgreSQLConnection ABI change
+
 * Mon Aug 12 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.8.12-1.fmi
 - Small error reporting improvements
 
