@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 24.9.28
+Version: 24.10.4
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -152,6 +152,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Oct  4 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.10.4-1.fmi
+- smartmet-plugin-test: add command line option --force-stack-trace to expose stack traces otherwise disabled
+
 * Sat Sep 28 2024 Mika Heiskanen <mika.heiskanen@fmi.fi> - 24.9.28-1.fmi
 - Repackaged due to PostgreSQLConnection ABI change
 
