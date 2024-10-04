@@ -23,7 +23,6 @@
 #include <boost/bind/bind.hpp>
 #include <boost/core/demangle.hpp>
 #include <macgyver/DateTime.h>
-#include <boost/filesystem/convenience.hpp>
 #include <filesystem>
 #include <boost/locale.hpp>
 #include <boost/make_shared.hpp>
