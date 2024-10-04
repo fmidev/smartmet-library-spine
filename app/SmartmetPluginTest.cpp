@@ -71,6 +71,7 @@ FontConfigInit fcInit;
 #define nm_ignore "ignore"
 #define nm_timeout "timeout"
 #define nm_handler "handler"
+#define nm_force_stack_trace "force-stack-trace"
 
 int main(int argc, char* argv[])
 {
@@ -107,6 +108,8 @@ int main(int argc, char* argv[])
         (nm_timeout, po::value<unsigned>(), "Timeout of entire test run in seconds (missing or value  0 means no timeout")
         (nm_filter, po::value<std::string>(), "Filter for test names to include(regex pattern,\n"
                                                "all tests not excluded by ignore lists are included by default)")
+        (nm_force_stack_trace, "Force stack trace on all exceptions including those for which output or stack trace\n"
+                               "is disabled (for debugging)")
         ;
     // clang-format on
 
@@ -144,6 +147,11 @@ int main(int argc, char* argv[])
     {
       if (signal(SIGALRM, alarm_handler) == SIG_ERR)
         throw Fmi::Exception(BCP, "Failed to et SIGALRM handler");
+    }
+
+    if (opt.count(nm_force_stack_trace))
+    {
+      Fmi::Exception::global_force_stack_trace = true;
     }
 
     try
