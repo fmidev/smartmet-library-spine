@@ -66,7 +66,6 @@ std::size_t FileCache::last_modified(const std::filesystem::path& thePath) const
 {
   try
   {
-    boost::system::error_code ec;
     const std::time_t modtime = Fmi::last_write_time_or(thePath, 0);
     return modtime;
   }
