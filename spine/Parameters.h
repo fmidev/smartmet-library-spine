@@ -9,7 +9,6 @@ namespace Spine
 namespace Parameters
 {
 bool IsMetaParameter(FmiParameterName param);
-bool IsLandscaped(FmiParameterName param);
 bool IsDataIndependent(FmiParameterName param);
 bool IsDataDerived(FmiParameterName param);
 }  // namespace Parameters

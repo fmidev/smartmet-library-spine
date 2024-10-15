@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include <optional>
 #include <newbase/NFmiParameterName.h>
 #include <array>
 #include <limits>
+#include <optional>
 #include <string>
 
 namespace SmartMet
@@ -21,10 +21,9 @@ class Parameter
  public:
   enum class Type
   {
-    Data,             // directly in querydata (temperature)
-    DataDerived,      // calculated (wind chill, heat index etc)
-    DataIndependent,  // coordinates, times, astrometry, ...
-    Landscaped        // topography, land/sea corrections
+    Data,            // directly in querydata (temperature)
+    DataDerived,     // calculated (wind chill, heat index etc)
+    DataIndependent  // coordinates, times, astrometry, ...
   };
 
   Parameter() = delete;

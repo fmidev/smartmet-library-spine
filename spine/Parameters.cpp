@@ -15,59 +15,6 @@ bool IsMetaParameter(FmiParameterName param)
   return false;
 }
 
-bool IsLandscaped(FmiParameterName param)
-{
-  switch (param)
-  {
-    case kFmiDewPoint:
-    case kFmiTemperature:
-    case kFmiMinimumTemperature:
-    case kFmiMaximumTemperature:
-    case kFmiMinimumTemperature06:
-    case kFmiMaximumTemperature06:
-    case kFmiMinimumTemperature24h:
-    case kFmiMaximumTemperature24h:
-    case kFmiDailyMeanTemperature:
-    case kFmiMaximumTemperatureF100:
-    case kFmiMaximumTemperatureF99:
-    case kFmiMaximumTemperatureF97_5:
-    case kFmiMaximumTemperatureF95:
-    case kFmiMaximumTemperatureF87_5:
-    case kFmiMaximumTemperatureF50:
-    case kFmiMaximumTemperatureF12_5:
-    case kFmiMaximumTemperatureF5:
-    case kFmiMaximumTemperatureF2_5:
-    case kFmiMaximumTemperatureF1:
-    case kFmiMaximumTemperatureF0:
-    case kFmiMinimumTemperatureF100:
-    case kFmiMinimumTemperatureF99:
-    case kFmiMinimumTemperatureF97_5:
-    case kFmiMinimumTemperatureF95:
-    case kFmiMinimumTemperatureF87_5:
-    case kFmiMinimumTemperatureF50:
-    case kFmiMinimumTemperatureF12_5:
-    case kFmiMinimumTemperatureF5:
-    case kFmiMinimumTemperatureF2_5:
-    case kFmiMinimumTemperatureF1:
-    case kFmiMinimumTemperatureF0:
-
-    case kFmiTemperatureSeaF100:
-    case kFmiTemperatureSeaF99:
-    case kFmiTemperatureSeaF97_5:
-    case kFmiTemperatureSeaF95:
-    case kFmiTemperatureSeaF87_5:
-    case kFmiTemperatureSeaF50:
-    case kFmiTemperatureSeaF12_5:
-    case kFmiTemperatureSeaF5:
-    case kFmiTemperatureSeaF2_5:
-    case kFmiTemperatureSeaF1:
-    case kFmiTemperatureSeaF0:
-      return true;
-    default:
-      return false;
-  }
-}
-
 bool IsDataIndependent(FmiParameterName param)
 {
   switch (param)

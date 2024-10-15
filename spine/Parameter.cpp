@@ -61,8 +61,6 @@ std::string Parameter::typestring() const
         return "DataDerived";
       case Type::DataIndependent:
         return "DataIndependent";
-      case Type::Landscaped:
-        return "Landscaped";
     }
     // NOT REACHED
     return "";
@@ -113,9 +111,6 @@ std::ostream& operator<<(std::ostream& out, const Parameter& param)
       break;
     case Parameter::Type::DataIndependent:
       out << "DataIndepentent";
-      break;
-    case Parameter::Type::Landscaped:
-      out << "Landscaped";
       break;
   }
   out << " number=" << static_cast<int>(param.itsNumber) << "\n";
