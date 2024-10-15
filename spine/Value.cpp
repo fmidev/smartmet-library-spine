@@ -648,7 +648,7 @@ Fmi::DateTime string2ptime(const std::string& value,
         ((+ns::space >> rounded_minutes_p) | qi::eps[bl::var(rounded_min) = 0]);
 
     qi_rule now_p =
-        ns::string("now")[bl::var(unit_coeff) = 0, bl::var(num_units) = 1] >> cond_rounded_p;
+        ns::string("now")[(bl::var(unit_coeff) = 0, bl::var(num_units) = 1)] >> cond_rounded_p;
 
     // Let us be lazy and accept for example '1 Fmi::SecondClock ago' or 'Fmi::SecondClock ago' as '1 hour ago'
     qi_rule unit_p = (ns::string("second")[bl::var(unit_coeff) = 1] ||
@@ -739,7 +739,7 @@ Fmi::DateTime parse_xml_time(const std::string& value)
         ((ns::char_(':') >> uint2_p[bl::var(seconds) = bl::_1]) | qi::eps[bl::var(seconds) = 0]);
 
     qi_rule tz_p =
-        ns::char_('Z')[bl::var(off_hours) = 0, bl::var(off_min) = 0, bl::var(tz_off_sign) = '+'] |
+        ns::char_('Z')[(bl::var(off_hours) = 0, bl::var(off_min) = 0, bl::var(tz_off_sign) = '+')] |
         (ns::char_("+-")[bl::var(tz_off_sign) = bl::_1] >> uint2_p[bl::var(off_hours) = bl::_1] >>
          ns::char_(':') >> uint2_p[bl::var(off_min) = bl::_1]);
 
