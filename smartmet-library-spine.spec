@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 24.10.4
+Version: 24.10.15
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -48,7 +48,7 @@ BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 24.8.7
 BuildRequires: smartmet-library-macgyver-devel >= 24.10.4
-BuildRequires: smartmet-library-newbase-devel >= 24.9.25
+BuildRequires: smartmet-library-newbase-devel >= 24.10.15
 BuildRequires: smartmet-utils-devel >= 24.9.10
 
 %if 0%{?rhel} && 0%{rhel} == 8
@@ -84,7 +84,7 @@ Requires: libicu
 Requires: double-conversion
 Requires: smartmet-library-gis >= 24.8.7
 Requires: smartmet-library-macgyver >= 24.10.4
-Requires: smartmet-library-newbase >= 24.9.25
+Requires: smartmet-library-newbase >= 24.10.15
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -108,7 +108,7 @@ Requires: %{smartmet_boost}-devel
 Requires: dtl
 Requires: smartmet-library-macgyver-devel >= 24.10.4
 Requires: smartmet-library-gis-devel >= 24.8.7
-Requires: smartmet-library-newbase-devel >= 24.9.25
+Requires: smartmet-library-newbase-devel >= 24.10.15
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
@@ -152,6 +152,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Oct 15 2024 Mika Heiskanen <mika.heiskanen@fmi.fi> - 24.10.15-1.fmi
+- Removed landscaped parameters as obsolete
+
 * Fri Oct  4 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.10.4-1.fmi
 - smartmet-plugin-test: add command line option --force-stack-trace to expose stack traces otherwise disabled
 
