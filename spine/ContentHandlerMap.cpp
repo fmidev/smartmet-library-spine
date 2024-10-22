@@ -219,3 +219,130 @@ catch (...)
 {
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
+
+SmartMet::Spine::AccessLogStruct ContentHandlerMap::getLoggedRequests(const std::string& thePlugin) const
+try
+{
+    if (itsLoggingEnabled)
+    {
+      std::string pluginNameInLowerCase = Fmi::ascii_tolower_copy(thePlugin);
+      LoggedRequests requests;
+      ReadLock lock(itsContentMutex);
+      for (const auto& handler : itsHandlers)
+      {
+        if (pluginNameInLowerCase == "all" ||
+            pluginNameInLowerCase == Fmi::ascii_tolower_copy(handler.second->getPluginName()))
+          requests.insert(std::make_pair(handler.first, handler.second->getLoggedRequests()));
+      }
+      return std::make_tuple(true, requests, itsLogLastCleaned);
+    }
+
+    return std::make_tuple(false, LoggedRequests(), Fmi::DateTime());
+}
+catch(const std::exception& e)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
+std::optional<std::string> ContentHandlerMap::getPluginName(const std::string& uri) const
+{
+  ReadLock lock(itsContentMutex);
+  auto it = itsHandlers.find(uri);
+  if (it != itsHandlers.end())
+    return it->second->getPluginName();
+  return std::nullopt;
+}
+
+
+void ContentHandlerMap::dumpURIs(std::ostream& output) const
+{
+  ReadLock lock(itsContentMutex);
+  for (const auto& item : itsHandlers)
+  {
+      output << item.first << " --> " << item.second->getPluginName() << std::endl;
+  }
+}
+
+void ContentHandlerMap::setLogging(bool loggingEnabled)
+try
+{
+  WriteLock lock(itsLoggingMutex);
+
+  // Check for no change in status
+  if (itsLoggingEnabled == loggingEnabled)
+    return;
+
+  itsLoggingEnabled = loggingEnabled;
+
+  if (itsLoggingEnabled)
+  {
+    // See if cleaner thread is running for some reason
+    if (itsLogCleanerThread.get() != nullptr && itsLogCleanerThread->joinable())
+    {
+      // Kill any remaining thread
+      itsLogCleanerThread->interrupt();
+      itsLogCleanerThread->join();
+    }
+
+    // Launch log cleaner thread
+    itsLogCleanerThread.reset(new boost::thread(boost::bind(&ContentHandlerMap::cleanLog, this)));
+
+    // Set log cleanup time
+    itsLogLastCleaned = Fmi::SecondClock::local_time();
+  }
+  else
+  {
+    // Status set to false, make the transition true->false
+    // Erase log, stop cleaning thread
+    itsLogCleanerThread->interrupt();
+    itsLogCleanerThread->join();
+  }
+
+  // Set logging status for ALL plugins
+  WriteLock lock2(itsContentMutex);
+  for (auto& handlerPair : itsHandlers)
+  {
+    handlerPair.second->setLogging(itsLoggingEnabled);
+  }
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
+/* [[noreturn]] */ void ContentHandlerMap::cleanLog()
+try
+{
+  // This function must be called as an argument to the cleaner thread
+
+  auto maxAge = Fmi::Hours(24);  // Here we give the maximum log time span, 24 Fmi::SecondClock
+
+  while (!Reactor::isShuttingDown())
+  {
+    // Sleep for some time
+    boost::this_thread::sleep_for(boost::chrono::seconds(5));
+
+    auto firstValidTime = Fmi::SecondClock::local_time() - maxAge;
+
+    ReadLock lock(itsLoggingMutex);
+    for (auto& handlerPair : itsHandlers)
+    {
+      if (Reactor::isShuttingDown())
+        return;
+
+      handlerPair.second->cleanLog(firstValidTime);
+      handlerPair.second->flushLog();
+    }
+
+    if (itsLogLastCleaned < firstValidTime)
+    {
+      itsLogLastCleaned = firstValidTime;
+    }
+  }
+}
+catch (...)
+{
+  // FIXME: should we really catch all exceptions here?
+  //        it will cause SIGABRT
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}

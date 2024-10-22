@@ -3,11 +3,13 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <thread>
+#include <boost/thread.hpp>
+#include "LoggedRequest.h"
 #include "IPFilter.h"
 #include "HandlerView.h"
 #include "Options.h"
 #include "SmartMetPlugin.h"
+#include <macgyver/DateTime.h>
 
 namespace SmartMet
 {
@@ -32,6 +34,45 @@ public:
     void setNoMatchHandler(ContentHandler theHandler);
 
     /**
+     * @brief Add a new public handler to the map
+     *
+     * @param thePlugin Pointer to the plugin that provides the handler
+     * @param theUri URI to be handled
+     * @param theHandler Handler function
+     * @param handlesUriPrefix If true, the handler is used for all URIs starting with theUri
+     * @retval true Handler added successfully
+     *
+     * Handlers added by this method are included in the response of URIMap
+     */
+    inline bool addContentHandler(SmartMetPlugin* thePlugin,
+                                  const std::string& theUri,
+                                  const ContentHandler& theHandler,
+                                  bool handlesUriPrefix = false)
+    {
+        return addContentHandler(thePlugin, theUri, theHandler, handlesUriPrefix, false);
+    }
+
+    /**
+     * @brief Add a new private handler to the map
+     *
+     * @param thePlugin Pointer to the plugin that provides the handler
+     * @param theUri URI to be handled
+     * @param theHandler Handler function
+     * @param handlesUriPrefix If true, the handler is used for all URIs starting with theUri
+     * @retval true Handler added successfully
+     *
+     * Handlers added by this method are not included in the response of URIMap and as result
+     * not advertized to the frontend
+     */
+    inline bool addPrivateContentHandler(SmartMetPlugin* thePlugin,
+                                         const std::string& theUri,
+                                         const ContentHandler& theHandler,
+                                         bool handlesUriPrefix = false)
+    {
+        return addContentHandler(thePlugin, theUri, theHandler, handlesUriPrefix, true);
+    }
+
+    /**
      * @brief Add a new handler to the map
      *
      * @param thePlugin Pointer to the plugin that provides the handler
@@ -43,8 +84,8 @@ public:
     bool addContentHandler(SmartMetPlugin* thePlugin,
                            const std::string& theUri,
                            const ContentHandler& theHandler,
-                           bool handlesUriPrefix = false,
-                           bool isPrivate = false);
+                           bool handlesUriPrefix,
+                           bool isPrivate);
 
     /**
      * @brief Remove all handlers provided by the plugin
@@ -69,6 +110,45 @@ public:
      */
     URIMap getURIMap() const;
 
+    /*
+    * @brief Get copy of the log
+    */
+    AccessLogStruct getLoggedRequests(const std::string& thePlugin) const;
+
+    /**
+     * @brief Get the plugin name for the given URI
+     *
+     * @param uri URI to be checked (including private handlers)
+     * @return Plugin name or std::nullopt if not found
+     */
+    std::optional<std::string> getPluginName(const std::string& uri) const;
+
+    /**
+     * @brief Dump all handler URIs to specified stream
+     */
+    void dumpURIs(std::ostream& output) const;
+
+    /**
+     * @brief Set request logging activity on or off
+     *
+     * @param loggingEnable New logging status
+     */
+    void setLogging(bool loggingEnabled);
+
+    /**
+     * @brief Get current logging status
+     */
+    inline bool getLogging() const
+    {
+        return itsLoggingEnabled;
+    }
+
+private:
+    /**
+     * @brief Clean log od old entries
+     */
+    void cleanLog();
+
 private:
     const Options& itsOptions;
     std::atomic<bool> itsLoggingEnabled;
@@ -79,6 +159,10 @@ private:
 
     mutable MutexType itsContentMutex;
     mutable MutexType itsLoggingMutex;
+
+    Fmi::DateTime itsLogLastCleaned;
+    std::shared_ptr<boost::thread> itsLogCleanerThread;
+
 };
 
 }  // namespace Spine
