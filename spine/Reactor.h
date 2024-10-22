@@ -23,6 +23,7 @@
 #include "SmartMet.h"
 #include "SmartMetEngine.h"
 #include "SmartMetPlugin.h"
+#include "ContentHandlerMap.h"
 #include "Thread.h"
 
 #include <boost/function.hpp>
@@ -49,7 +50,7 @@ class DynamicPlugin;
 using URIMap = std::map<std::string, std::string>;
 
 // SmartMet base class
-class Reactor final
+class Reactor final : public ContentHandlerMap
 {
  public:
   static std::atomic<Reactor*> instance;
@@ -76,8 +77,6 @@ class Reactor final
 
   // Logging
 
-  void setLogging(bool loggingEnabled);
-  bool getLogging() const;
   bool lazyLinking() const;
   AccessLogStruct getLoggedRequests(const std::string& thePlugin) const;
 
@@ -112,25 +111,8 @@ class Reactor final
   bool isEncrypted() const { return itsOptions.encryptionEnabled; }
 
   int getRequiredAPIVersion() const;
-  URIMap getURIMap() const;
-  std::optional<std::string> getPluginName(const std::string& uri) const;
-  void dumpURIs(std::ostream& output) const;
-  bool isURIPrefix(const std::string& uri) const;
-  HandlerView* getHandlerView(const HTTP::Request& theRequest);
 
-  bool addContentHandler(SmartMetPlugin* thePlugin,
-                         const std::string& theDir,
-                         const ContentHandler& theCallBackFunction,
-                         bool handlesUriPrefix = false);
-
-  bool addPrivateContentHandler(SmartMetPlugin* thePlugin,
-                                const std::string& theDir,
-                                const ContentHandler& theCallBackFunction,
-                                bool handlesUriPrefix = false);
-  bool setNoMatchHandler(const ContentHandler& theHandler);
-  std::size_t removeContentHandlers(SmartMetPlugin* thePlugin);
-
-  /**
+    /**
    *   @brief Static method for reporting failure which requires Reactor shutdown
    */
   static void reportFailure(const std::string& message);
@@ -231,12 +213,6 @@ class Reactor final
    */
   std::vector<std::pair<std::string, std::string> > findLibraries(const std::string& theName) const;
 
-  bool addContentHandlerImpl(bool isPrivate,
-                             SmartMetPlugin* thePlugin,
-                             const std::string& theUri,
-                             const ContentHandler& theHandler,
-                             bool handlesUriPrefix);
-
   SmartMetEngine* getEnginePtr(const std::string& theClassName, void* user_data);
 
   // SmartMet API Version
@@ -245,26 +221,7 @@ class Reactor final
   const Options& itsOptions;
 
   // Content handling
-  mutable MutexType itsContentMutex;
   using HandlerPtr = std::shared_ptr<HandlerView>;
-  using Handlers = std::map<std::string, HandlerPtr>;
-
-  Handlers itsHandlers;
-
-  /**
-   *   @brief URI prefixes that must be linked with handlers
-   *   - index is begin part of URI (for example /edr/, which could handle esim.
-   *     /edr/collection/something/area?... .
-   */
-  std::set<std::string> uriPrefixes;
-
-  bool itsCatchNoMatch = false;
-  HandlerPtr itsCatchNoMatchHandler;
-
-  // Filters are determined at construction, an will be stored here until inserted into the handler
-  // views
-  using FilterMap = std::map<std::string, std::shared_ptr<IPFilter::IPFilter> >;
-  FilterMap itsIPFilters;
 
   // Event hooks
 
@@ -299,13 +256,6 @@ class Reactor final
   ConfigList itsEngineConfigs;
 
   std::unique_ptr<Fmi::AsyncTaskGroup> itsInitTasks;
-
-  // Logging
-
-  std::atomic<bool> itsLoggingEnabled{false};
-  mutable MutexType itsLoggingMutex;
-  Fmi::DateTime itsLogLastCleaned;
-  std::shared_ptr<boost::thread> itsLogCleanerThread;
 
   mutable std::atomic_bool itsHighLoadFlag{false};       // is the load high
   mutable std::atomic_uint itsActiveRequestsLimit{0};    // current maximum

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <atomic>
 #include <map>
 #include <memory>
@@ -143,6 +145,11 @@ public:
         return itsLoggingEnabled;
     }
 
+    /**
+     * @brief Check whether provided value should be considered as URI prefix
+     */
+    bool isURIPrefix(const std::string& uri) const;
+
 private:
     /**
      * @brief Clean log od old entries
@@ -154,7 +161,14 @@ private:
     std::atomic<bool> itsLoggingEnabled;
     std::unique_ptr<HandlerView> itsCatchNoMatchHandler;
     std::map<std::string, std::unique_ptr<HandlerView>> itsHandlers;
+
+    /**
+     *   @brief URI prefixes that must be linked with handlers
+     *   - index is begin part of URI (for example /edr/, which could handle esim.
+     *     /edr/collection/something/area?... .
+     */
     std::set<std::string> itsUriPrefixes;
+
     std::map<std::string, std::shared_ptr<IPFilter::IPFilter>> itsIPFilters;
 
     mutable MutexType itsContentMutex;

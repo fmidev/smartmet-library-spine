@@ -346,3 +346,8 @@ catch (...)
   //        it will cause SIGABRT
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
+
+bool ContentHandlerMap::isURIPrefix(const std::string& uri) const
+{
+  return itsUriPrefixes.count(uri) > 0;
+}
