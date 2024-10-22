@@ -45,6 +45,11 @@ catch (...)
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
 
+void ContentHandlerMap::setAdminUri(const std::string& theUri)
+{
+  WriteLock lock(itsContentMutex);
+  itsAdminUri = theUri;
+}
 
 bool ContentHandlerMap::addContentHandler(SmartMetPlugin* thePlugin,
                                           const std::string& theUri,
@@ -82,7 +87,15 @@ try
     itsUriPrefixes.insert(theUri);
   }
 
-  itsHandlers[theUri] = std::move(handler);
+  const auto result = itsHandlers.emplace(theUri, std::move(handler));
+  if (not result.second)
+  {
+    const std::string name = result.first->second->getPluginName();
+    std::ostringstream msg;
+    msg << "Attempt to register URI " << theUri << " for plugin " << pluginName
+        << " failed: URI already registered for plugin " << name;
+    throw Fmi::Exception(BCP, msg.str());
+  }
 
   return true;
 }
@@ -111,6 +124,22 @@ try
                 << " handled by plugin " << name << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
     }
   }
+
+  for (auto it = itsAdminRequestHandlers.begin(); it != itsAdminRequestHandlers.end();)
+  {
+    auto curr = it++;
+    if (curr->second and curr->second->usesPlugin(thePlugin))
+    {
+      const std::string what = curr->first;
+      const std::string name = curr->second->getPluginName();
+      itsAdminRequestHandlers.erase(curr);
+      itsAdminRequestsRequiringAuthentication.erase(what);
+      std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN
+                << " Removed admin request handler for plugin " << name
+                << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << " (what='" << what << ")" <<  std::endl;
+    }
+  }
+
   return count;
 }
 catch (...)
@@ -135,6 +164,22 @@ try
       resource = item;
       break;
     }
+  }
+
+  // Try to find an admin request handler if itsAdminUri is set and resource matches it
+  if (itsAdminUri and *itsAdminUri == resource)
+  {
+    const auto opt_what = theRequest.getParameter("what");
+    if (opt_what)
+    {
+      auto it = itsAdminRequestHandlers.find(*opt_what);
+      if (it != itsAdminRequestHandlers.end())
+      {
+        return &*it->second;
+      }
+    }
+
+    return &*itsCatchNoMatchHandler;
   }
 
   // Try to find a content handler
@@ -350,4 +395,47 @@ catch (...)
 bool ContentHandlerMap::isURIPrefix(const std::string& uri) const
 {
   return itsUriPrefixes.count(uri) > 0;
+}
+
+bool ContentHandlerMap::addAdminRequestHandler(SmartMetPlugin* thePlugin,
+                                              const std::string& what,
+                                              bool requiresAuthentication,
+                                              const ContentHandler& theHandler,
+                                              const std::string& description)
+try
+{
+  WriteLock lock(itsContentMutex);
+
+  std::shared_ptr<IPFilter::IPFilter> filter;
+
+  // FIXME: get IP filter for admin requests
+
+  std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN
+            << " Registered admin request handler for plugin " << thePlugin->getPluginName()
+            << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << " (what='" << what << "')" << std::endl;
+
+  std::unique_ptr<HandlerView> handler(new HandlerView(theHandler,
+                                                  filter,
+                                                  thePlugin,
+                                                  *adminUri,
+                                                  itsLoggingEnabled,
+                                                  false,
+                                                  itsOptions.accesslogdir));
+  handler->requiresAuth(requiresAuthentication);
+
+  const auto result = itsAdminRequestHandlers.emplace(what, std::move(handler));
+  if (not result.second)
+  {
+    const std::string name = result.first->second->getPluginName();
+    std::ostringstream err;
+    err << "Failed to add admin request (what='" << what << "') for plugin '"
+        << thePlugin->getPluginName() << "' (already defined for plugin '" << name << "')";
+    throw Fmi::Exception(BCP, err.str());
+  }
+
+  return true;
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }

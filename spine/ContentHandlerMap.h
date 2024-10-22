@@ -11,6 +11,7 @@
 #include "HandlerView.h"
 #include "Options.h"
 #include "SmartMetPlugin.h"
+#include "Table.h"
 #include <macgyver/DateTime.h>
 
 namespace SmartMet
@@ -138,6 +139,12 @@ public:
     void setLogging(bool loggingEnabled);
 
     /**
+     *  @brief Set admin request URI
+     *  @param uri URI to be used for admin requests
+     */
+    void setAdminUri(const std::string& uri);
+
+    /**
      * @brief Get current logging status
      */
     inline bool getLogging() const
@@ -150,6 +157,24 @@ public:
      */
     bool isURIPrefix(const std::string& uri) const;
 
+    /**
+     * @brief Add a new admin request handler
+     *
+     * @param thePlugin Pointer to the plugin that provides the handler
+     * @param what Contents of 'what' field for this request
+     * @param requiresAuthentication If true, the request requires authentication
+     * @param theHandler Handler function
+     * @param description Description of the request
+     * @retval true Handler added successfully
+     *
+     * Admin requests are also removed when removeContentHandlers is called for the plugin
+     */
+    bool addAdminRequestHandler(SmartMetPlugin* thePlugin,
+                                const std::string& what,
+                                bool requiresAuthentication,
+                                const ContentHandler& theHandler,
+                                const std::string& description);
+
 private:
     /**
      * @brief Clean log od old entries
@@ -158,9 +183,40 @@ private:
 
 private:
     const Options& itsOptions;
+
+    std::optional<std::string> adminUri;
+
+    /**
+     * @brief Logging status (enabled/diasabled)
+     *
+     * Can be changed by setLogging method
+     */
     std::atomic<bool> itsLoggingEnabled;
+
+    /**
+     * @brief Handler for cases when no match is found for the URI
+     */
     std::unique_ptr<HandlerView> itsCatchNoMatchHandler;
+
+    /**
+     * @brief Handlers for URIs
+     */
     std::map<std::string, std::unique_ptr<HandlerView>> itsHandlers;
+
+    /**
+     * @brief Admin request URI
+     */
+    std::optional<std::string> itsAdminUri;
+
+    /**
+     * @brief Admin request handlers
+     */
+    std::map<std::string, std::unique_ptr<HandlerView> > itsAdminRequestHandlers;
+
+    /**
+     * @brief Admin requests which require authentication
+     */
+    std::set<std::string> itsAdminRequestsRequiringAuthentication;
 
     /**
      *   @brief URI prefixes that must be linked with handlers
@@ -169,6 +225,9 @@ private:
      */
     std::set<std::string> itsUriPrefixes;
 
+    /**
+     * @brief IP filters for the plugins
+     */
     std::map<std::string, std::shared_ptr<IPFilter::IPFilter>> itsIPFilters;
 
     mutable MutexType itsContentMutex;
@@ -176,7 +235,6 @@ private:
 
     Fmi::DateTime itsLogLastCleaned;
     std::shared_ptr<boost::thread> itsLogCleanerThread;
-
 };
 
 }  // namespace Spine
