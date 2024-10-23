@@ -14,7 +14,7 @@ namespace Spine
 {
 SmartMetEngine::~SmartMetEngine() = default;
 
-void SmartMetEngine::construct(const std::string& /* engineName */, Reactor* reactor)
+void SmartMetEngine::construct(const std::string& engineName, Reactor* reactor)
 {
   try
   {
@@ -24,6 +24,7 @@ void SmartMetEngine::construct(const std::string& /* engineName */, Reactor* rea
 
     isReady = true;
     itsCond.notify_all();
+    itsName = engineName;
   }
   catch (...)
   {

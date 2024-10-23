@@ -133,7 +133,9 @@ try
     for (auto it2 = curr->second.begin(); it2 == curr->second.end(); )
     {
       auto item = it2++;
-      if (item->first == thePlugin)
+      const AdminRequestTarget& target = item->first;
+      const SmartMetPlugin* plugin = *std::get_if<SmartMetPlugin*>(&target);
+      if (plugin and plugin == thePlugin)
       {
         curr->second.erase(item);
         std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN
@@ -396,7 +398,7 @@ bool ContentHandlerMap::isURIPrefix(const std::string& uri) const
   return itsUriPrefixes.count(uri) > 0;
 }
 
-bool ContentHandlerMap::addAdminRequestHandler(SmartMetPlugin* thePlugin,
+bool ContentHandlerMap::addAdminRequestHandler(AdminRequestTarget target,
                                               const std::string& what,
                                               bool requiresAuthentication,
                                               const ContentHandler& theHandler,
@@ -411,12 +413,13 @@ try
   // FIXME: get IP filter for admin requests
 
   std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN
-            << " Registered admin request handler for plugin " << thePlugin->getPluginName()
-            << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << " (what='" << what << "')" << std::endl;
+            << " Registered admin request handler for " << targetName(target)
+            << ' ' << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << " (what='" << what << "')"
+            << std::endl;
 
   auto handler = std::make_unique<AdminRequestInfo>();
   handler->what = what;
-  handler->plugin = thePlugin;
+  handler->target = target;
   handler->requiresAuthentication = requiresAuthentication;
   handler->handler = theHandler;
   handler->description = description;
@@ -424,7 +427,7 @@ try
   // Try adding plugin entry for admin requests. It does not matter whether
   // plugin is already present as pos1.first is always valid is always valid
   const auto pos1 = itsAdminRequestHandlers.emplace(what,
-    std::map<SmartMetPlugin*, std::unique_ptr<AdminRequestInfo>>());
+    std::map<AdminRequestTarget, std::unique_ptr<AdminRequestInfo>>());
 
   // Should be new entry if unique==true
   if (pos1.second)
@@ -432,10 +435,10 @@ try
     if (itsUniqueAdminRequests.count(what))
     {
       // Already defined and some earlier request required to be unique : report error
-      const std::string name = pos1.first->second.begin()->second->plugin->getPluginName();
+      const std::string name = targetName(target);
       std::ostringstream err;
-      err << "Failed to add admin request (what='" << what << "') for plugin '"
-          << thePlugin->getPluginName() << "' (already defined and required to be unique)";
+      err << "Failed to add admin request (what='" << what << "') for " << name
+          << " (already defined and required to be unique)";
       throw Fmi::Exception(BCP, err.str());
     }
   }
@@ -444,23 +447,23 @@ try
     if (unique)
     {
       // Already defined and required to be unique : report error
-      const std::string name = pos1.first->second.begin()->second->plugin->getPluginName();
+      const std::string name = targetName(target);
       std::ostringstream err;
       err << "Failed to add admin request (what='" << what << "') for plugin '"
-          << thePlugin->getPluginName() << "' (already defined and required to be unique)";
+          << name << "' (already defined and required to be unique)";
       throw Fmi::Exception(BCP, err.str());
     }
   }
 
   auto& dest_map = pos1.first->second;
 
-  const auto result = dest_map.emplace(thePlugin, std::move(handler));
+  const auto result = dest_map.emplace(target, std::move(handler));
   if (not result.second)
   {
-    const std::string name = result.first->second->plugin->getPluginName();
+    const std::string name = targetName(target);
     std::ostringstream err;
     err << "Failed to add admin request (what='" << what << "') for plugin '"
-        << thePlugin->getPluginName() << "' (already defined)";
+        << name << "' (already defined)";
     throw Fmi::Exception(BCP, err.str());
   }
 
@@ -475,6 +478,40 @@ catch (...)
 {
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
+
+bool ContentHandlerMap::removeAdminRequestHandler(AdminRequestTarget target,
+                                                 const std::string& what)
+try
+{
+  WriteLock lock(itsContentMutex);
+
+  const auto it1 = itsAdminRequestHandlers.find(what);
+  if (it1 != itsAdminRequestHandlers.end())
+  {
+    auto& dest_map = it1->second;
+    const auto it2 = dest_map.find(target);
+    if (it2 != dest_map.end())
+    {
+      dest_map.erase(it2);
+      if (itsUniqueAdminRequests.count(what))
+      {
+        itsUniqueAdminRequests.erase(what);
+      }
+      return true;
+    }
+  }
+
+  std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
+            << " Admin request handler not found for " << targetName(target)
+            << ' ' << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << " (what='" << what << "')"
+            << std::endl;
+  return false;
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
 
 bool ContentHandlerMap::executeAdminRequest(
     const HTTP::Request& theRequest,
@@ -561,7 +598,7 @@ std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequests() co
     const std::string& what = item1.first;
     for (const auto& item2 : item1.second)
     {
-      const std::string& plugin_name = item2.second->plugin->getPluginName();
+      const std::string& plugin_name = targetName(item2.second->target);
       const std::string& description = item2.second->description;
       const std::string authInfo = item2.second->requiresAuthentication ? "yes" : "no";
       const std::string unique = itsUniqueAdminRequests.count(what) ? "yes" : "no";
@@ -570,8 +607,25 @@ std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequests() co
       result->set(2, y, authInfo);
       result->set(3, y, unique);
       result->set(4, y, description);
+      y++;
     }
-    y++;
   }
   return result;
+}
+
+std::string ContentHandlerMap::targetName(
+    const ContentHandlerMap::AdminRequestTarget& target)
+{
+  if (auto* ptr = std::get_if<SmartMetPlugin *>(&target))
+  {
+    return (*ptr)->getPluginName() + " plugin";
+  }
+
+  if (auto* ptr = std::get_if<SmartMetEngine *>(&target))
+  {
+    return (*ptr)->getEngineName() + " engine";
+  }
+
+  throw Fmi::Exception(BCP, "INTERNAL ERROR: Unknown admin request target");
+
 }

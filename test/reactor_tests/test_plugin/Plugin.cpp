@@ -20,7 +20,7 @@ SmartMet::Plugin::Test::Plugin::~Plugin()
 
 const std::string& SmartMet::Plugin::Test::Plugin::getPluginName() const
 {
-    static const std::string name = "Test plugin";
+    static const std::string name = "Test";
     return name;
 }
 
@@ -97,7 +97,8 @@ void SmartMet::Plugin::Test::Plugin::init()
             "test1",
             false,
             &Plugin::testAdminHandler1,
-            "Test admin handler without authentication"))
+            "Test admin handler without authentication",
+            false))
     {
         throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
     }
@@ -178,7 +179,15 @@ void SmartMet::Plugin::Test::Plugin::testAdminHandler1(
                             const Spine::HTTP::Request& theRequest,
                             Spine::HTTP::Response& theResponse)
 {
-    theResponse.setContent("Test admin handler 1\n");
+    std::vector<std::string> text;
+    text.push_back("Hello from test plugin");
+    if (theResponse.getContent() != "")
+        text.push_back(theResponse.getContent());
+    std::sort(text.begin(), text.end());
+    std::ostringstream output;
+    for (const auto& item : text)
+        output << item << '\n';
+    theResponse.setContent(output.str());
     theResponse.setStatus(HTTP::Status::ok);
 }
 
@@ -201,7 +210,7 @@ void SmartMet::Plugin::Test::Plugin::testAdminHandler3(
     TableFormatterOptions opt;
     const std::string content = formatter->format(
         *result,
-        {"what", "plugin", "auth", "unique", "description"},
+        {"what", "target", "auth", "unique", "description"},
         theRequest,
         opt);
     Json::Value doc;

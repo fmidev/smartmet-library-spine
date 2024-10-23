@@ -5,11 +5,13 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <variant>
 #include <boost/thread.hpp>
 #include "LoggedRequest.h"
 #include "IPFilter.h"
 #include "HandlerView.h"
 #include "Options.h"
+#include "SmartMetEngine.h"
 #include "SmartMetPlugin.h"
 #include "Table.h"
 #include <macgyver/DateTime.h>
@@ -26,7 +28,16 @@ using URIMap = std::map<std::string, std::string>;
 class ContentHandlerMap
 {
 public:
+    /**
+     * @brief Possible targets of admin requests
+     *
+     * Admin requests could be implemented by both plugins and engines.
+     */
+    using AdminRequestTarget = std::variant<SmartMetPlugin*, SmartMetEngine*>;
+
+public:
     ContentHandlerMap(const Options& options);
+
     virtual ~ContentHandlerMap();
 
     /**
@@ -162,7 +173,7 @@ public:
     /**
      * @brief Add a new admin request handler
      *
-     * @param thePlugin Pointer to the plugin that provides the handler
+     * @param target Pointer to the plugin or engine that provides the handler
      * @param what Contents of 'what' field for this request
      * @param requiresAuthentication If true, the request requires authentication
      * @param theHandler Handler function
@@ -171,12 +182,18 @@ public:
      *
      * Admin requests are also removed when removeContentHandlers is called for the plugin
      */
-    bool addAdminRequestHandler(SmartMetPlugin* thePlugin,
+    bool addAdminRequestHandler(AdminRequestTarget target,
                                 const std::string& what,
                                 bool requiresAuthentication,
                                 const ContentHandler& theHandler,
                                 const std::string& description,
                                 bool unique = true);
+
+    /**
+     * @brief Remove admin request handler
+     */
+    bool removeAdminRequestHandler(AdminRequestTarget target,
+                                   const std::string& what);
 
     /**
      *  @brief Execute admin request and return the result.
@@ -196,15 +213,19 @@ private:
      */
     void cleanLog();
 
+    static std::string targetName(const AdminRequestTarget& target);
+
 private:
 
     struct AdminRequestInfo
     {
         std::string what;
-        SmartMetPlugin* plugin;
+        AdminRequestTarget target;
         bool requiresAuthentication;
         ContentHandler handler;
         std::string description;
+
+        std::string name() const;
     };
 
     const Options& itsOptions;
@@ -236,7 +257,7 @@ private:
     /**
      * @brief Admin request handlers
      */
-    std::map<std::string, std::map<SmartMetPlugin*, std::unique_ptr<AdminRequestInfo> > > itsAdminRequestHandlers;
+    std::map<std::string, std::map<AdminRequestTarget, std::unique_ptr<AdminRequestInfo> > > itsAdminRequestHandlers;
 
     /**
      * @brief Admin requests which are unique (used to avoid duplicates)
