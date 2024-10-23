@@ -32,6 +32,19 @@ namespace SmartMet
                             const Spine::HTTP::Request& theRequest,
             Spine::HTTP::Response& theResponse);
 
+        void adminHandler(Spine::Reactor& theReactor,
+                          const Spine::HTTP::Request& theRequest,
+                          Spine::HTTP::Response& theResponse);
+
+        static void testAdminHandler1(Spine::Reactor& theReactor,
+                              const Spine::HTTP::Request& theRequest,
+                              Spine::HTTP::Response& theResponse);
+
+        static void testAdminHandler2(Spine::Reactor& theReactor,
+                              const Spine::HTTP::Request& theRequest,
+                              Spine::HTTP::Response& theResponse);
+
+        static bool authCallback(const Spine::HTTP::Request& theRequest);
 
       private:
         std::string dump_params(const Spine::HTTP::Request& theRequest) const;

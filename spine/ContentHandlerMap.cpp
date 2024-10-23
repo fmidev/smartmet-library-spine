@@ -128,10 +128,10 @@ try
   for (auto it = itsAdminRequestHandlers.begin(); it != itsAdminRequestHandlers.end();)
   {
     auto curr = it++;
-    if (curr->second and curr->second->usesPlugin(thePlugin))
+    if (curr->second and curr->second->plugin == thePlugin)
     {
       const std::string what = curr->first;
-      const std::string name = curr->second->getPluginName();
+      const std::string name = curr->second->plugin->getPluginName();
       itsAdminRequestHandlers.erase(curr);
       itsAdminRequestsRequiringAuthentication.erase(what);
       std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN
@@ -164,22 +164,6 @@ try
       resource = item;
       break;
     }
-  }
-
-  // Try to find an admin request handler if itsAdminUri is set and resource matches it
-  if (itsAdminUri and *itsAdminUri == resource)
-  {
-    const auto opt_what = theRequest.getParameter("what");
-    if (opt_what)
-    {
-      auto it = itsAdminRequestHandlers.find(*opt_what);
-      if (it != itsAdminRequestHandlers.end())
-      {
-        return &*it->second;
-      }
-    }
-
-    return &*itsCatchNoMatchHandler;
   }
 
   // Try to find a content handler
@@ -414,19 +398,17 @@ try
             << " Registered admin request handler for plugin " << thePlugin->getPluginName()
             << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << " (what='" << what << "')" << std::endl;
 
-  std::unique_ptr<HandlerView> handler(new HandlerView(theHandler,
-                                                  filter,
-                                                  thePlugin,
-                                                  *adminUri,
-                                                  itsLoggingEnabled,
-                                                  false,
-                                                  itsOptions.accesslogdir));
-  handler->requiresAuth(requiresAuthentication);
+  auto handler = std::make_unique<AdminRequestInfo>();
+  handler->what = what;
+  handler->plugin = thePlugin;
+  handler->requiresAuthentication = requiresAuthentication;
+  handler->handler = theHandler;
+  handler->description = description;
 
   const auto result = itsAdminRequestHandlers.emplace(what, std::move(handler));
   if (not result.second)
   {
-    const std::string name = result.first->second->getPluginName();
+    const std::string name = result.first->second->plugin->getPluginName();
     std::ostringstream err;
     err << "Failed to add admin request (what='" << what << "') for plugin '"
         << thePlugin->getPluginName() << "' (already defined for plugin '" << name << "')";
@@ -439,3 +421,66 @@ catch (...)
 {
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
+
+bool ContentHandlerMap::executeAdminRequest(
+    const HTTP::Request& theRequest,
+    HTTP::Response& theResponse,
+    std::function<bool(const HTTP::Request&)> authCallback)
+{
+  try
+  {
+    ReadLock lock(itsContentMutex);
+
+    const auto what = theRequest.getParameter("what");
+    if (not what)
+    {
+      theResponse.setStatus(HTTP::Status::bad_request);
+      theResponse.setContent("Missing 'what' parameter\n");
+      return false;
+    }
+
+    const auto it = itsAdminRequestHandlers.find(*what);
+    if (it == itsAdminRequestHandlers.end())
+    {
+      theResponse.setStatus(HTTP::Status::not_found);
+      theResponse.setContent("Unknown admin request: " + *what);
+      return false;
+    }
+
+    const auto& handler = it->second;
+
+    lock.unlock();
+
+    if (handler->requiresAuthentication)
+    {
+      if (authCallback)
+      {
+        if (!authCallback(theRequest))
+        {
+          theResponse.setStatus(HTTP::Status::unauthorized);
+          theResponse.setContent("Authentication required");
+          return false;
+        }
+      } else {
+        theResponse.setStatus(HTTP::Status::forbidden);
+        theResponse.setContent("Authentication required but callback not provided");
+        return false;
+      }
+    }
+
+    Reactor* reactor = dynamic_cast<Reactor*>(this);
+    if (!reactor)
+    {
+      throw Fmi::Exception(BCP, "Reactor not available");
+    }
+
+    handler->handler(*reactor, theRequest, theResponse);
+
+    return true;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+

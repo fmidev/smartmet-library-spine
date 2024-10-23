@@ -1,4 +1,5 @@
 #include "Plugin.h"
+#include <functional>
 #include <json/json.h>
 
 SmartMet::Plugin::Test::Plugin::Plugin(SmartMet::Spine::Reactor *theReactor, const char *theConfig)
@@ -74,6 +75,40 @@ void SmartMet::Plugin::Test::Plugin::init()
     {
         throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
     }
+
+    if (!itsReactor->addPrivateContentHandler(this,
+            "/admin",
+            [this](Reactor& theReactor,
+                const HTTP::Request& theRequest,
+                HTTP::Response& theResponse)
+            {
+                adminHandler(theReactor, theRequest, theResponse);
+            },
+            true))
+    {
+        throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
+    }
+
+    if (!itsReactor->addAdminRequestHandler(
+            this,
+            "test1",
+            false,
+            &Plugin::testAdminHandler1,
+            "Test admin handler without authetication"))
+    {
+        throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
+    }
+
+    if (!itsReactor->addAdminRequestHandler(
+            this,
+            "test2",
+            true,
+            &Plugin::testAdminHandler2,
+            "Test admin handler with authetication"))
+    {
+        throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
+    }
+
 }
 
 void SmartMet::Plugin::Test::Plugin::shutdown()
@@ -112,6 +147,43 @@ void SmartMet::Plugin::Test::Plugin::requestHandler2(
         content << item.first << " --> " << item.second << std::endl;
     }
     theResponse.setContent(content.str());
+}
+
+void SmartMet::Plugin::Test::Plugin::adminHandler(
+                            Spine::Reactor& theReactor,
+                            const Spine::HTTP::Request& theRequest,
+                            Spine::HTTP::Response& theResponse)
+{
+    theReactor.executeAdminRequest(
+        theRequest,
+        theResponse,
+        &Plugin::authCallback);
+}
+
+void SmartMet::Plugin::Test::Plugin::testAdminHandler1(
+                            Spine::Reactor& theReactor,
+                            const Spine::HTTP::Request& theRequest,
+                            Spine::HTTP::Response& theResponse)
+{
+    theResponse.setContent("Test admin handler 1\n");
+    theResponse.setStatus(HTTP::Status::ok);
+}
+
+void SmartMet::Plugin::Test::Plugin::testAdminHandler2(
+                            Spine::Reactor& theReactor,
+                            const Spine::HTTP::Request& theRequest,
+                            Spine::HTTP::Response& theResponse)
+{
+    theResponse.setContent("Test admin handler 2\n");
+    theResponse.setStatus(HTTP::Status::ok);
+}
+
+bool SmartMet::Plugin::Test::Plugin::authCallback(
+                            const Spine::HTTP::Request& theRequest)
+{
+    const auto opt_user = theRequest.getParameter("user");
+    const auto opt_password = theRequest.getParameter("password");
+    return opt_user and *opt_user == "foo" and opt_password and *opt_password == "bar";
 }
 
 std::string SmartMet::Plugin::Test::Plugin::dump_params(const HTTP::Request& theRequest) const

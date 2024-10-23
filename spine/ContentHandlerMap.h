@@ -19,6 +19,8 @@ namespace SmartMet
 namespace Spine
 {
 
+class Reactor;
+
 using URIMap = std::map<std::string, std::string>;
 
 class ContentHandlerMap
@@ -175,6 +177,16 @@ public:
                                 const ContentHandler& theHandler,
                                 const std::string& description);
 
+    /**
+     *  @brief Execute admin request and return the result.
+     *
+     *  Performs authentication if required for request using authentication callback.
+     */
+    bool executeAdminRequest(
+            const HTTP::Request& theRequest,
+            HTTP::Response& theResponse,
+            std::function<bool(const HTTP::Request&)> authCallback);
+
 private:
     /**
      * @brief Clean log od old entries
@@ -182,6 +194,16 @@ private:
     void cleanLog();
 
 private:
+
+    struct AdminRequestInfo
+    {
+        std::string what;
+        SmartMetPlugin* plugin;
+        bool requiresAuthentication;
+        ContentHandler handler;
+        std::string description;
+    };
+
     const Options& itsOptions;
 
     std::optional<std::string> adminUri;
@@ -211,7 +233,7 @@ private:
     /**
      * @brief Admin request handlers
      */
-    std::map<std::string, std::unique_ptr<HandlerView> > itsAdminRequestHandlers;
+    std::map<std::string, std::unique_ptr<AdminRequestInfo> > itsAdminRequestHandlers;
 
     /**
      * @brief Admin requests which require authentication
