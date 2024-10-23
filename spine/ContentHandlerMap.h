@@ -175,7 +175,8 @@ public:
                                 const std::string& what,
                                 bool requiresAuthentication,
                                 const ContentHandler& theHandler,
-                                const std::string& description);
+                                const std::string& description,
+                                bool unique = true);
 
     /**
      *  @brief Execute admin request and return the result.
@@ -186,6 +187,8 @@ public:
             const HTTP::Request& theRequest,
             HTTP::Response& theResponse,
             std::function<bool(const HTTP::Request&)> authCallback);
+
+    std::unique_ptr<Table> getAdminRequests() const;
 
 private:
     /**
@@ -233,7 +236,12 @@ private:
     /**
      * @brief Admin request handlers
      */
-    std::map<std::string, std::unique_ptr<AdminRequestInfo> > itsAdminRequestHandlers;
+    std::map<std::string, std::map<SmartMetPlugin*, std::unique_ptr<AdminRequestInfo> > > itsAdminRequestHandlers;
+
+    /**
+     * @brief Admin requests which are unique (used to avoid duplicates)
+     */
+    std::set<std::string> itsUniqueAdminRequests;
 
     /**
      * @brief Admin requests which require authentication

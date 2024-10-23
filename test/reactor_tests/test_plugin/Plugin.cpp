@@ -1,5 +1,8 @@
 #include "Plugin.h"
+#include "TableFormatterOptions.h"
+#include "TableFormatterFactory.h"
 #include <functional>
+#include <sstream>
 #include <json/json.h>
 
 SmartMet::Plugin::Test::Plugin::Plugin(SmartMet::Spine::Reactor *theReactor, const char *theConfig)
@@ -94,7 +97,7 @@ void SmartMet::Plugin::Test::Plugin::init()
             "test1",
             false,
             &Plugin::testAdminHandler1,
-            "Test admin handler without authetication"))
+            "Test admin handler without authentication"))
     {
         throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
     }
@@ -104,7 +107,17 @@ void SmartMet::Plugin::Test::Plugin::init()
             "test2",
             true,
             &Plugin::testAdminHandler2,
-            "Test admin handler with authetication"))
+            "Test admin handler with authentication"))
+    {
+        throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
+    }
+
+    if (!itsReactor->addAdminRequestHandler(
+            this,
+            "list",
+            false,
+            &Plugin::testAdminHandler3,
+            "List all admin requests"))
     {
         throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
     }
@@ -177,6 +190,30 @@ void SmartMet::Plugin::Test::Plugin::testAdminHandler2(
     theResponse.setContent("Test admin handler 2\n");
     theResponse.setStatus(HTTP::Status::ok);
 }
+
+void SmartMet::Plugin::Test::Plugin::testAdminHandler3(
+                            Spine::Reactor& theReactor,
+                            const Spine::HTTP::Request& theRequest,
+                            Spine::HTTP::Response& theResponse)
+{
+    const auto result = theReactor.getAdminRequests();
+    auto formatter = TableFormatterFactory::create("json");
+    TableFormatterOptions opt;
+    const std::string content = formatter->format(
+        *result,
+        {"what", "plugin", "auth", "unique", "description"},
+        theRequest,
+        opt);
+    Json::Value doc;
+    std::istringstream input(content);
+    Json::CharReaderBuilder builder;
+    Json::parseFromStream(builder, input, &doc, nullptr);
+    std::ostringstream output;
+    output << doc.toStyledString();
+    theResponse.setContent(output.str());
+    theResponse.setStatus(HTTP::Status::ok);
+}
+
 
 bool SmartMet::Plugin::Test::Plugin::authCallback(
                             const Spine::HTTP::Request& theRequest)

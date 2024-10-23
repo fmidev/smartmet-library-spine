@@ -125,18 +125,33 @@ try
     }
   }
 
-  for (auto it = itsAdminRequestHandlers.begin(); it != itsAdminRequestHandlers.end();)
+  for (auto it1 = itsAdminRequestHandlers.begin(); it1 != itsAdminRequestHandlers.end(); )
   {
-    auto curr = it++;
-    if (curr->second and curr->second->plugin == thePlugin)
+    int erased = 0;
+    auto curr = it1++;
+    const std::string what = curr->first;
+    for (auto it2 = curr->second.begin(); it2 == curr->second.end(); )
     {
-      const std::string what = curr->first;
-      const std::string name = curr->second->plugin->getPluginName();
-      itsAdminRequestHandlers.erase(curr);
-      itsAdminRequestsRequiringAuthentication.erase(what);
-      std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN
-                << " Removed admin request handler for plugin " << name
-                << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << " (what='" << what << ")" <<  std::endl;
+      auto item = it2++;
+      if (item->first == thePlugin)
+      {
+        curr->second.erase(item);
+        std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN
+                  << " Removed admin handler (what=')" << what
+                  << "' for plugin " << thePlugin->getPluginName()
+                  << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+        if (itsUniqueAdminRequests.count(what))
+        {
+          itsUniqueAdminRequests.erase(what);
+        }
+        erased++;
+      }
+
+      if (erased && curr->second.empty())
+      {
+        itsAdminRequestHandlers.erase(curr);
+        count += erased;
+      }
     }
   }
 
@@ -385,7 +400,8 @@ bool ContentHandlerMap::addAdminRequestHandler(SmartMetPlugin* thePlugin,
                                               const std::string& what,
                                               bool requiresAuthentication,
                                               const ContentHandler& theHandler,
-                                              const std::string& description)
+                                              const std::string& description,
+                                              bool unique)
 try
 {
   WriteLock lock(itsContentMutex);
@@ -405,14 +421,52 @@ try
   handler->handler = theHandler;
   handler->description = description;
 
-  const auto result = itsAdminRequestHandlers.emplace(what, std::move(handler));
+  // Try adding plugin entry for admin requests. It does not matter whether
+  // plugin is already present as pos1.first is always valid is always valid
+  const auto pos1 = itsAdminRequestHandlers.emplace(what,
+    std::map<SmartMetPlugin*, std::unique_ptr<AdminRequestInfo>>());
+
+  // Should be new entry if unique==true
+  if (pos1.second)
+  {
+    if (itsUniqueAdminRequests.count(what))
+    {
+      // Already defined and some earlier request required to be unique : report error
+      const std::string name = pos1.first->second.begin()->second->plugin->getPluginName();
+      std::ostringstream err;
+      err << "Failed to add admin request (what='" << what << "') for plugin '"
+          << thePlugin->getPluginName() << "' (already defined and required to be unique)";
+      throw Fmi::Exception(BCP, err.str());
+    }
+  }
+  else
+  {
+    if (unique)
+    {
+      // Already defined and required to be unique : report error
+      const std::string name = pos1.first->second.begin()->second->plugin->getPluginName();
+      std::ostringstream err;
+      err << "Failed to add admin request (what='" << what << "') for plugin '"
+          << thePlugin->getPluginName() << "' (already defined and required to be unique)";
+      throw Fmi::Exception(BCP, err.str());
+    }
+  }
+
+  auto& dest_map = pos1.first->second;
+
+  const auto result = dest_map.emplace(thePlugin, std::move(handler));
   if (not result.second)
   {
     const std::string name = result.first->second->plugin->getPluginName();
     std::ostringstream err;
     err << "Failed to add admin request (what='" << what << "') for plugin '"
-        << thePlugin->getPluginName() << "' (already defined for plugin '" << name << "')";
+        << thePlugin->getPluginName() << "' (already defined)";
     throw Fmi::Exception(BCP, err.str());
+  }
+
+  if (unique)
+  {
+    itsUniqueAdminRequests.insert(what);
   }
 
   return true;
@@ -447,11 +501,19 @@ bool ContentHandlerMap::executeAdminRequest(
       return false;
     }
 
-    const auto& handler = it->second;
+    // Check whether any of the handlers require authentication
+    // Assume that all handlers for the same 'what' require the same authentication
+    bool requiresAuth = false;
+    for (const auto& item : it->second)
+    {
+      if (item.second->requiresAuthentication)
+      {
+        requiresAuth = true;
+        break;
+      }
+    };
 
-    lock.unlock();
-
-    if (handler->requiresAuthentication)
+    if (requiresAuth)
     {
       if (authCallback)
       {
@@ -471,10 +533,15 @@ bool ContentHandlerMap::executeAdminRequest(
     Reactor* reactor = dynamic_cast<Reactor*>(this);
     if (!reactor)
     {
-      throw Fmi::Exception(BCP, "Reactor not available");
+      throw Fmi::Exception(BCP, "INTERNAL ERROR: Reactor not available");
     }
 
-    handler->handler(*reactor, theRequest, theResponse);
+    for (const auto& item : it->second)
+    {
+      // FIXME: what to do if one handler of several throws an exception?
+      const auto& handler = item.second->handler;
+      handler(*reactor, theRequest, theResponse);
+    }
 
     return true;
   }
@@ -484,3 +551,27 @@ bool ContentHandlerMap::executeAdminRequest(
   }
 }
 
+std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequests() const
+{
+  int y = 0;
+  auto result = std::make_unique<SmartMet::Spine::Table>();
+  ReadLock lock(itsContentMutex);
+  for (const auto& item1 : itsAdminRequestHandlers)
+  {
+    const std::string& what = item1.first;
+    for (const auto& item2 : item1.second)
+    {
+      const std::string& plugin_name = item2.second->plugin->getPluginName();
+      const std::string& description = item2.second->description;
+      const std::string authInfo = item2.second->requiresAuthentication ? "yes" : "no";
+      const std::string unique = itsUniqueAdminRequests.count(what) ? "yes" : "no";
+      result->set(0, y, what);
+      result->set(1, y, plugin_name);
+      result->set(2, y, authInfo);
+      result->set(3, y, unique);
+      result->set(4, y, description);
+    }
+    y++;
+  }
+  return result;
+}

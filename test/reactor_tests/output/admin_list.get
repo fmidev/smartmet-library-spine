@@ -1,0 +1,23 @@
+[
+	{
+		"auth" : "no",
+		"description" : "List all admin requests",
+		"plugin" : "Test plugin",
+		"unique" : "yes",
+		"what" : "list"
+	},
+	{
+		"auth" : "no",
+		"description" : "Test admin handler without authentication",
+		"plugin" : "Test plugin",
+		"unique" : "yes",
+		"what" : "test1"
+	},
+	{
+		"auth" : "yes",
+		"description" : "Test admin handler with authentication",
+		"plugin" : "Test plugin",
+		"unique" : "yes",
+		"what" : "test2"
+	}
+]

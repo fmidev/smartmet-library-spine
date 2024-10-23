@@ -44,6 +44,10 @@ namespace SmartMet
                               const Spine::HTTP::Request& theRequest,
                               Spine::HTTP::Response& theResponse);
 
+        static void testAdminHandler3(Spine::Reactor& theReactor,
+                              const Spine::HTTP::Request& theRequest,
+                              Spine::HTTP::Response& theResponse);
+
         static bool authCallback(const Spine::HTTP::Request& theRequest);
 
       private:
