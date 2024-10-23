@@ -206,7 +206,7 @@ void SmartMet::Plugin::Test::Plugin::testAdminHandler3(
                             Spine::HTTP::Response& theResponse)
 {
     const auto result = theReactor.getAdminRequests();
-    auto formatter = TableFormatterFactory::create("json");
+    std::unique_ptr<TableFormatter> formatter(TableFormatterFactory::create("json"));
     TableFormatterOptions opt;
     const std::string content = formatter->format(
         *result,
