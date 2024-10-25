@@ -3,17 +3,19 @@
 #include <cmath>
 
 using namespace SmartMet::Spine;
+using namespace SmartMet::Engine::Test;
 
-SmartMet::Engine::Test::Engine::Engine(const char* theConfigFile)
+Engine::Engine(const char* theConfigFile)
 {
   Reactor* reactor = Reactor::instance;
-  reactor->addAdminRequestHandler(
-        this, "engine-test", false, &Engine::testAdminHandler,
-        "Test engine admin handler without authentication");
+
+  reactor->addAdminRequestHandlers(
+        this, {"testFail2", "testFail"}, false, &Engine::testFailingAdminHandler,
+        "Test failing engine admin handler without authentication");
 
   reactor->addAdminRequestHandler(
-        this, "test1", false, &Engine::testAdminHandler,
-        "Test engine admin handler with authentication (duplicate with plugin)");
+        this, "testOK", false, &Engine::testOKAdminHandler,
+        "Test engine admin handler with authentication");
 }
 
 SmartMet::Engine::Test::Engine::~Engine()
@@ -29,21 +31,14 @@ double SmartMet::Engine::Test::Engine::testFunct(double x)
     return std::sin(x);
 }
 
-void SmartMet::Engine::Test::Engine::testAdminHandler(
-      Spine::Reactor& theReactor,
-      const Spine::HTTP::Request& theRequest,
-      Spine::HTTP::Response& theResponse)
+bool Engine::testFailingAdminHandler(Reactor&, const HTTP::Request&)
 {
-  std::vector<std::string> text;
-  text.push_back("Hello from test engine");
-  if (theResponse.getContent() != "")
-    text.push_back(theResponse.getContent());
-  std::sort(text.begin(), text.end());
-  std::ostringstream output;
-  for (const auto& item : text)
-    output << item << '\n';
-  theResponse.setContent(output.str());
-  theResponse.setStatus(HTTP::Status::ok);
+    return false;
+}
+
+bool Engine::testOKAdminHandler(Reactor& theReactor, const HTTP::Request&)
+{
+    return true;
 }
 
 void SmartMet::Engine::Test::Engine::init()

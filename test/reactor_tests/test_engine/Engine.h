@@ -18,9 +18,11 @@ namespace SmartMet
 
           double testFunct(double x);
 
-          static void testAdminHandler(Spine::Reactor& theReactor,
-                                       const Spine::HTTP::Request& theRequest,
-                                       Spine::HTTP::Response& theResponse);
+          static bool testFailingAdminHandler(Spine::Reactor& theReactor,
+                                              const Spine::HTTP::Request& theRequest);
+
+          static bool testOKAdminHandler(Spine::Reactor& theReactor,
+                                         const Spine::HTTP::Request& theRequest);
 
       protected:
           void init() override;

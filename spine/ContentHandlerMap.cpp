@@ -3,20 +3,37 @@
 #include <macgyver/StringConversion.h>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <iostream>
+#include <sstream>
 #include "ConfigTools.h"
 #include "Convenience.h"
 #include "HTTP.h"
 #include "Reactor.h"
+#include "TableFormatterFactory.h"
+#include "TableFormatterOptions.h"
 
 using SmartMet::Spine::ContentHandler;
 using SmartMet::Spine::ContentHandlerMap;
 using SmartMet::Spine::HandlerView;
 using SmartMet::Spine::Reactor;
 
+
+
 ContentHandlerMap::ContentHandlerMap(const Options& options)
 try
     : itsOptions(options)
 {
+  // Register admin request handler for listing all availab all admin requests
+  // Note that will be only available in case if there is plugin that handles
+  // admin requests
+  addAdminRequestHandler(
+    NoTarget{},
+    "list",
+    false,
+    [this](Reactor&, const HTTP::Request&) -> std::unique_ptr<Table>
+    {
+      return getAdminRequests();
+     },
+    "List all admin requests");
 }
 catch (...)
 {
@@ -398,14 +415,16 @@ bool ContentHandlerMap::isURIPrefix(const std::string& uri) const
   return itsUriPrefixes.count(uri) > 0;
 }
 
-bool ContentHandlerMap::addAdminRequestHandler(AdminRequestTarget target,
-                                              const std::string& what,
-                                              bool requiresAuthentication,
-                                              const ContentHandler& theHandler,
-                                              const std::string& description,
-                                              bool unique)
+bool ContentHandlerMap::addAdminRequestHandler(
+    AdminRequestTarget target,
+    const std::string& what,
+    bool requiresAuthentication,
+    const ContentHandlerMap::AdminRequestHandler& theHandler,
+    const std::string& description)
 try
 {
+  bool unique = not std::holds_alternative<AdminBoolRequestHandler>(theHandler);
+
   WriteLock lock(itsContentMutex);
 
   std::shared_ptr<IPFilter::IPFilter> filter;
@@ -573,11 +592,71 @@ bool ContentHandlerMap::executeAdminRequest(
       throw Fmi::Exception(BCP, "INTERNAL ERROR: Reactor not available");
     }
 
+    bool ok = true;
+    bool haveBoolAdminRequests = false;
+    bool haveNonBoolAdminRequests = false;
+    std::ostringstream errors;
+
     for (const auto& item : it->second)
     {
       // FIXME: what to do if one handler of several throws an exception?
-      const auto& handler = item.second->handler;
-      handler(*reactor, theRequest, theResponse);
+      const AdminRequestHandler& handler = item.second->handler;
+      if (std::holds_alternative<AdminBoolRequestHandler>(handler))
+      {
+        // Cannot be mixed with non bool handlers
+        if (haveNonBoolAdminRequests)
+          throw Fmi::Exception(BCP, "INTERNAL ERROR: Mixed admin request handlers");
+        haveBoolAdminRequests = true;
+        ok &= handleAdminBoolRequest(
+          errors,
+          std::get<AdminBoolRequestHandler>(handler),
+          *reactor,
+          theRequest);
+      }
+      else
+      {
+        // Cannot be mixed with any other handlers
+        if (haveBoolAdminRequests or haveNonBoolAdminRequests)
+          throw Fmi::Exception(BCP, "INTERNAL ERROR: Mixed or dupplicate admin request handlers");
+        haveNonBoolAdminRequests = true;
+
+        if (std::holds_alternative<AdminStringRequestHandler>(handler))
+        {
+          handleAdminStringRequest(
+            errors,
+            std::get<AdminStringRequestHandler>(handler),
+            *reactor,
+            theRequest,
+            theResponse);
+        }
+        else if (std::holds_alternative<AdminTableRequestHandler>(handler))
+        {
+          handleAdminTableRequest(
+            errors,
+            std::get<AdminTableRequestHandler>(handler),
+            *reactor,
+            theRequest, theResponse);
+        }
+        else if (std::holds_alternative<AdminCustomRequestHandler>(handler))
+        {
+          handleAdminCustomRequest(
+            errors,
+            std::get<AdminCustomRequestHandler>(handler),
+            *reactor,
+            theRequest,
+            theResponse);
+        }
+        else
+        {
+          throw Fmi::Exception(BCP, "INTERNAL ERROR: Unknown admin request handler type");
+        }
+      }
+    }
+
+    if (haveBoolAdminRequests)
+    {
+      theResponse.setStatus(ok ? HTTP::Status::ok : HTTP::Status::internal_server_error);
+      theResponse.setContent(ok ? "OK\n" : errors.str());
     }
 
     return true;
@@ -613,19 +692,113 @@ std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequests() co
   return result;
 }
 
+
 std::string ContentHandlerMap::targetName(
     const ContentHandlerMap::AdminRequestTarget& target)
 {
-  if (auto* ptr = std::get_if<SmartMetPlugin *>(&target))
+  if (std::holds_alternative<SmartMetPlugin *>(target))
   {
-    return (*ptr)->getPluginName() + " plugin";
+    return std::get<SmartMetPlugin*>(target)->getPluginName() + " plugin";
   }
-
-  if (auto* ptr = std::get_if<SmartMetEngine *>(&target))
+  else if (std::holds_alternative<SmartMetEngine *>(target))
   {
-    return (*ptr)->getEngineName() + " engine";
+    return std::get<SmartMetEngine*>(target)->getEngineName() + " engine";
   }
+  else if (std::holds_alternative<NoTarget>(target))
+  {
+    return "<none>";
+  }
+  else
+  {
+    throw Fmi::Exception(BCP, "INTERNAL ERROR: Unknown admin request target");
+  }
+}
 
-  throw Fmi::Exception(BCP, "INTERNAL ERROR: Unknown admin request target");
 
+bool ContentHandlerMap::handleAdminBoolRequest(
+    std::ostream& errors,
+    const AdminBoolRequestHandler& handler,
+    Reactor& reactor,
+    const HTTP::Request& request)
+try
+{
+  return handler(reactor, request);
+}
+catch (const std::exception& err)
+{
+  errors << "Exception: " << err.what() << std::endl;
+  return false;
+}
+catch (...)
+{
+  errors << "Unknown exception" << std::endl;
+  return false;
+}
+
+
+void ContentHandlerMap::handleAdminTableRequest(
+    std::ostream& errors,
+    const AdminTableRequestHandler& handler,
+    Reactor& reactor,
+    const HTTP::Request& request,
+    HTTP::Response& response)
+try
+{
+  using namespace SmartMet::Spine;
+  std::unique_ptr<Table> result = handler(reactor, request);
+  std::optional<std::string> fmt = request.getParameter("format");
+  TableFormatterOptions opt;
+  // FIXME: get options from request
+  std::unique_ptr<TableFormatter> formatter(TableFormatterFactory::create(fmt ? *fmt : "ascii"));
+  // FIXME: add header info to Table
+  const std::string formattedResult = formatter->format(*result, {}, request, opt);
+  response.setContent(formattedResult);
+  response.setStatus(HTTP::Status::ok);
+}
+catch (...)
+{
+  std::ostringstream msg;
+  msg << Fmi::Exception(BCP, "Operation failed");
+  response.setStatus(HTTP::Status::internal_server_error);
+  response.setContent(msg.str());
+}
+
+
+void ContentHandlerMap::handleAdminStringRequest(
+    std::ostream& errors,
+    const AdminStringRequestHandler& handler,
+    Reactor& reactor,
+    const HTTP::Request& request,
+    HTTP::Response& response)
+try
+{
+  std::string result = handler(reactor, request);
+  response.setContent(result);
+  response.setStatus(HTTP::Status::ok);
+}
+catch (...)
+{
+  std::ostringstream msg;
+  msg << Fmi::Exception(BCP, "Operation failed");
+  response.setStatus(HTTP::Status::internal_server_error);
+  response.setContent(msg.str());
+}
+
+
+void ContentHandlerMap::handleAdminCustomRequest(
+    std::ostream& errors,
+    const AdminCustomRequestHandler& handler,
+    Reactor& reactor,
+    const HTTP::Request& request,
+    HTTP::Response& response)
+try
+{
+  handler(reactor, request, response);
+}
+catch (...)
+{
+  std::ostringstream msg;
+  msg << Fmi::Exception(BCP, "Operation failed");
+  response.setStatus(HTTP::Status::internal_server_error);
+  response.setContent(msg.str());
 }

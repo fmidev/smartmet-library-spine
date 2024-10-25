@@ -5,6 +5,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <type_traits>
 #include <variant>
 #include <boost/thread.hpp>
 #include "LoggedRequest.h"
@@ -29,11 +30,37 @@ class ContentHandlerMap
 {
 public:
     /**
+     * @brief Admin requests without target
+     *
+     * Note that one still needs top level handler to actually handle these.
+     */
+    struct NoTarget
+    {
+        // Only defined to allow comparison of AdminRequestTarget objects
+        inline bool operator <(const NoTarget&) const { return false; }
+    };
+
+    /**
      * @brief Possible targets of admin requests
      *
-     * Admin requests could be implemented by both plugins and engines.
+     * Admin requests could be implemented by both plugins and engines
+     * and also as stand-alone without any targets
      */
-    using AdminRequestTarget = std::variant<SmartMetPlugin*, SmartMetEngine*>;
+    using AdminRequestTarget = std::variant<SmartMetPlugin*,
+                                            SmartMetEngine*,
+                                            NoTarget>;
+
+    using AdminBoolRequestHandler = std::function<bool(Reactor&, const HTTP::Request&)>;
+    using AdminTableRequestHandler = std::function<std::unique_ptr<Table>(Reactor&, const HTTP::Request&)>;
+    using AdminStringRequestHandler = std::function<std::string(Reactor&, const HTTP::Request&)>;
+    using AdminCustomRequestHandler = std::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)>;
+
+    using AdminRequestHandler = std::variant<AdminBoolRequestHandler,
+                                             AdminTableRequestHandler,
+                                             AdminStringRequestHandler,
+                                             AdminCustomRequestHandler>;
+
+    using AuthenticationCallback = std::function<bool(const HTTP::Request&)>;
 
 public:
     ContentHandlerMap(const Options& options);
@@ -185,9 +212,41 @@ public:
     bool addAdminRequestHandler(AdminRequestTarget target,
                                 const std::string& what,
                                 bool requiresAuthentication,
-                                const ContentHandler& theHandler,
-                                const std::string& description,
-                                bool unique = true);
+                                const AdminRequestHandler& theHandler,
+                                const std::string& description);
+
+
+    /**
+     * @brief Add admin request handlers pointing to the same target
+     **/
+    template 
+    <typename Container,
+        std::enable_if
+        <
+            std::is_assignable
+            <
+                std::string,
+                typename std::iterator_traits
+                <
+                    typename Container::iterator
+                >::value_type
+            >::value,
+            bool
+        >::type = false
+    >
+    bool addAdminRequestHandlers(AdminRequestTarget target,
+                                 const Container& what,
+                                 bool requiresAuthentication,
+                                 const AdminRequestHandler& theHandler,
+                                 const std::string& description)
+    {
+        bool result = true;
+        for (const auto& item : what)
+        {
+            result &= addAdminRequestHandler(target, item, requiresAuthentication, theHandler, description);
+        }
+        return result;
+    }
 
     /**
      * @brief Remove admin request handler
@@ -215,6 +274,33 @@ private:
 
     static std::string targetName(const AdminRequestTarget& target);
 
+    bool handleAdminBoolRequest(
+            std::ostream& errors,
+            const AdminBoolRequestHandler& handler,
+            Reactor& reactor,
+            const HTTP::Request& request);
+
+    void handleAdminTableRequest(
+            std::ostream& errors,
+            const AdminTableRequestHandler& handler,
+            Reactor& reactor,
+            const HTTP::Request& request,
+            HTTP::Response& response);
+
+    void handleAdminStringRequest(
+            std::ostream& errors,
+            const AdminStringRequestHandler& handler,
+            Reactor& reactor,
+            const HTTP::Request& request,
+            HTTP::Response& response);
+
+    void handleAdminCustomRequest(
+            std::ostream& errors,
+            const AdminCustomRequestHandler& handler,
+            Reactor& reactor,
+            const HTTP::Request& request,
+            HTTP::Response& response);
+
 private:
 
     struct AdminRequestInfo
@@ -222,15 +308,21 @@ private:
         std::string what;
         AdminRequestTarget target;
         bool requiresAuthentication;
-        ContentHandler handler;
+        AdminRequestHandler handler;
         std::string description;
 
-        std::string name() const;
+        //std::string name() const;
+
+        /**
+         * @brief Check if the request is unique
+         *
+         * All requests except those which return bool must be unique
+         * (cannot be registered twice from different plugins/engines)
+         */
+        bool unique() const;
     };
 
     const Options& itsOptions;
-
-    std::optional<std::string> adminUri;
 
     /**
      * @brief Logging status (enabled/diasabled)
@@ -257,7 +349,15 @@ private:
     /**
      * @brief Admin request handlers
      */
-    std::map<std::string, std::map<AdminRequestTarget, std::unique_ptr<AdminRequestInfo> > > itsAdminRequestHandlers;
+    std::map
+    <
+        std::string,
+        std::map
+        <
+            AdminRequestTarget,
+            std::unique_ptr<AdminRequestInfo>
+        >
+    > itsAdminRequestHandlers;
 
     /**
      * @brief Admin requests which are unique (used to avoid duplicates)
