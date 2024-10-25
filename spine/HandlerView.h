@@ -6,7 +6,7 @@
 #include "LogRange.h"
 #include "SmartMetPlugin.h"
 #include "Thread.h"
-#include <boost/function.hpp>
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -19,7 +19,7 @@ namespace Spine
 class Reactor;
 class AccessLogger;
 
-using ContentHandler = boost::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)>;
+using ContentHandler = std::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)>;
 
 class HandlerView
 {
