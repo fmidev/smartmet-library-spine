@@ -14,6 +14,12 @@ namespace SmartMet
 {
 namespace Spine
 {
+
+namespace
+{
+  const std::vector<std::string> empty_names;
+}
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Test if the table is empty
@@ -275,6 +281,86 @@ void Table::setPaging(std::size_t startRow, std::size_t maxResults)
 {
   itsStartRow = startRow;
   itsMaxResults = maxResults;
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Set table title
+ */
+// ----------------------------------------------------------------------
+void Table::setTitle(const std::string& title)
+{
+  getMutableMetadata().title = title;
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Get table title
+ */
+// ----------------------------------------------------------------------
+std::optional<std::string> Table::getTitle() const
+{
+  if (!itsMetadata)
+    return std::nullopt;
+
+  return itsMetadata->title;
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Set column names
+ */
+// ----------------------------------------------------------------------
+void Table::setNames(const std::vector<std::string>& names)
+{
+  getMutableMetadata().names = names;
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Get column names
+ */
+// ----------------------------------------------------------------------
+const std::vector<std::string>& Table::getNames() const
+{
+  if (!itsMetadata)
+    return empty_names;
+
+  return itsMetadata->names;
+}
+
+const std::vector<std::string>& Table::getNames(
+    const std::vector<std::string>& overrideNames,
+    bool checkSize) const
+{
+  const std::vector<std::string>* names = &overrideNames;
+  if (names->empty())
+  {
+    names = &getNames();
+  }
+
+  if (checkSize && names->size() < maxi())
+  {
+    std::ostringstream msg;
+    msg << "Table has " << maxi() << " columns, but only " << names->size()
+        << " column names are provided";
+    throw std::runtime_error(msg.str());
+  }
+
+  return *names;
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Get mutable metadata (create on first use)
+ */
+// ----------------------------------------------------------------------
+Table::Metadata& Table::getMutableMetadata()
+{
+  if (!itsMetadata)
+    itsMetadata.reset(new Metadata());
+
+  return *itsMetadata;
 }
 
 }  // namespace Spine

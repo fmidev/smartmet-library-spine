@@ -55,6 +55,62 @@ void format()
   TEST_PASSED();
 }
 
+void format_names_from_table()
+{
+  SmartMet::Spine::Table tab;
+  SmartMet::Spine::TableFormatter::Names names{"a", "b", "c", "d"};
+  tab.setNames(names);
+
+  tab.set(0, 0, "0");
+  tab.set(1, 2, "12");
+  tab.set(3, 1, "31");
+  tab.set(2, 1, "");
+
+  const char* res = R"("a","b","c","d"
+0,"NaN","NaN","NaN"
+"NaN","NaN","NaN",31
+"NaN",12,"NaN","NaN"
+)";
+
+  SmartMet::Spine::HTTP::Request req;
+
+  SmartMet::Spine::CsvFormatter fmt;
+  auto out = fmt.format(tab, {}, req, config);
+
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "Expected result:\n" + res);
+
+  TEST_PASSED();
+}
+
+void format_partial_names_from_table()
+{
+  SmartMet::Spine::Table tab;
+  SmartMet::Spine::TableFormatter::Names names{"a", "b"};
+  tab.setNames(names);
+
+  tab.set(0, 0, "0");
+  tab.set(1, 2, "12");
+  tab.set(3, 1, "31");
+  tab.set(2, 1, "");
+
+  const char* res = R"("a","b","",""
+0,"NaN","NaN","NaN"
+"NaN","NaN","NaN",31
+"NaN",12,"NaN","NaN"
+)";
+
+  SmartMet::Spine::HTTP::Request req;
+
+  SmartMet::Spine::CsvFormatter fmt;
+  auto out = fmt.format(tab, {}, req, config);
+
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "Expected result:\n" + res);
+
+  TEST_PASSED();
+}
+
 // ----------------------------------------------------------------------
 
 void missingtext()
@@ -121,6 +177,8 @@ class tests : public tframe::tests
   void test(void)
   {
     TEST(format);
+    TEST(format_names_from_table);
+    TEST(format_partial_names_from_table);
     TEST(missingtext);
     TEST(empty);
   }

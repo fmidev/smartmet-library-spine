@@ -280,10 +280,12 @@ std::string PhpFormatter::format(const Table& theTable,
     Table::Indexes cols = theTable.columns();
     Table::Indexes rows = theTable.rows();
 
-    if (atts.empty())
-      return format_plain(theTable, theNames, theReq, cols, rows);
+    const auto& names = theTable.getNames(theNames, true);
 
-    return format_attributes(theTable, theNames, theReq, cols, rows, atts) + ";\n";
+    if (atts.empty())
+      return format_plain(theTable, names, theReq, cols, rows);
+
+    return format_attributes(theTable, names, theReq, cols, rows, atts) + ";\n";
   }
   catch (...)
   {

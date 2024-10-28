@@ -68,10 +68,16 @@ std::string HtmlFormatter::format(const Table& theTable,
     std::string out;
     out.reserve(TableFormatter::default_minimum_size);
 
+    const std::optional<std::string>& title = theTable.getTitle();
+    if (title)
+      out += "<h1>" + *title + "</h1>\n";
+
+    const auto& names = theTable.getNames(theNames, false);
+
     out += "<table><tr>";
     for (const auto& nam : cols)
     {
-      const std::string& name = theNames[nam];
+      const std::string& name = nam < names.size() ? names[nam] : "";
       out += "<th>";
       out += htmlescape(name);
       out += "</th>";
