@@ -26,7 +26,7 @@ class DebugFormatter : public TableFormatter
 
  protected:
   std::string missing_value(const HTTP::Request& theReq) const;
-  std::string make_header() const;
+  std::string make_header(const Table& theTable) const;
   std::string make_content(const Table& theTable, const HTTP::Request& theReq, bool escape) const;
 };
 }  // namespace Spine

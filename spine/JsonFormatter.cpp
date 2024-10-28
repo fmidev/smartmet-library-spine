@@ -268,7 +268,9 @@ std::string JsonFormatter::format(const Table& theTable,
     Table::Indexes cols = theTable.columns();
     Table::Indexes rows = theTable.rows();
 
-    return format_recursively(theTable, theNames, theReq, cols, rows, atts);
+    const auto& names = theTable.getNames(theNames, true);
+
+    return format_recursively(theTable, names, theReq, cols, rows, atts);
   }
   catch (...)
   {

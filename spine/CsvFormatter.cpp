@@ -9,6 +9,7 @@
 #include "HTTP.h"
 #include "Table.h"
 #include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <fmt/format.h>
@@ -19,6 +20,7 @@
 #include <list>
 #include <set>
 
+namespace ba = boost::algorithm;
 namespace SmartMet
 {
 namespace Spine
@@ -98,12 +100,22 @@ std::string CsvFormatter::format(const Table& theTable,
     out.reserve(TableFormatter::default_minimum_size);
 
     // First the header row
+    const auto& names = theTable.getNames(theNames, false);
 
-    for (const auto& name : theNames)
+    const std::set<std::size_t> cols_set = theTable.columns();
+    if (cols_set.empty() && !names.empty())
     {
-      if (!out.empty())
-        out += ',';
-      out += escape_csv(name);
+      out += "\"" + ba::join(names, "\",\"") + "\"";
+    }
+    else
+    {
+      for (const auto& nam : theTable.columns())
+      {
+        const std::string& name = nam >= names.size() ? "" : names[nam];
+        if (!out.empty())
+          out += ',';
+        out += escape_csv(name);
+      }
     }
     out += "\n";
 

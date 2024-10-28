@@ -30,7 +30,7 @@ std::string ImageFormatter::format(const Table& theTable,
 {
   try
   {
-    auto out = make_header();
+    auto out = make_header(theTable);
 
     out += "<table>";
 
