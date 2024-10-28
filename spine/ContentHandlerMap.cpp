@@ -383,31 +383,36 @@ try
   while (!Reactor::isShuttingDown())
   {
     // Sleep for some time
-    boost::this_thread::sleep_for(boost::chrono::seconds(5));
-
-    auto firstValidTime = Fmi::SecondClock::local_time() - maxAge;
-
-    ReadLock lock(itsLoggingMutex);
-    for (auto& handlerPair : itsHandlers)
+    try
     {
-      if (Reactor::isShuttingDown())
-        return;
+      boost::this_thread::sleep_for(boost::chrono::seconds(5));
 
-      handlerPair.second->cleanLog(firstValidTime);
-      handlerPair.second->flushLog();
+      auto firstValidTime = Fmi::SecondClock::local_time() - maxAge;
+
+      ReadLock lock(itsLoggingMutex);
+      for (auto& handlerPair : itsHandlers)
+      {
+        if (Reactor::isShuttingDown())
+          return;
+
+        handlerPair.second->cleanLog(firstValidTime);
+        handlerPair.second->flushLog();
+      }
+
+      if (itsLogLastCleaned < firstValidTime)
+      {
+        itsLogLastCleaned = firstValidTime;
+      }
     }
-
-    if (itsLogLastCleaned < firstValidTime)
+    catch(const std::exception& e)
     {
-      itsLogLastCleaned = firstValidTime;
+      std::cerr << e.what() << '\n';
     }
   }
 }
 catch (...)
 {
-  // FIXME: should we really catch all exceptions here?
-  //        it will cause SIGABRT
-  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  std::cout << Fmi::Exception::Trace(BCP, "Operation failed!") << std::endl;
 }
 
 bool ContentHandlerMap::isURIPrefix(const std::string& uri) const
