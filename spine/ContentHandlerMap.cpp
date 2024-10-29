@@ -16,38 +16,26 @@ using SmartMet::Spine::ContentHandlerMap;
 using SmartMet::Spine::HandlerView;
 using SmartMet::Spine::Reactor;
 
-
+namespace p = std::placeholders;
 
 ContentHandlerMap::ContentHandlerMap(const Options& options)
 try
     : itsOptions(options)
 {
-  // Register admin request handler for listing all availab all admin requests
-  // Note that will be only available in case if there is plugin that handles
-  // admin requests
-  addAdminRequestHandler(
-    NoTarget{}, "list", false,
-    [this](Reactor&, const HTTP::Request&) -> std::unique_ptr<Table>
-    {
-      return getAdminRequests();
-    },
-    "List all admin requests");
+  // Register some admin request handlers
 
-  addAdminRequestHandler(
-    NoTarget{}, "getlogging", false,
-    [this](Reactor& reactor, const HTTP::Request& request) -> std::string
-    {
-      return getLoggingRequest(reactor, request) ? "true" : "false";
-    },
-    "Get logging status");
+  AdminTableRequestHandler getAdminRequests = std::bind(&ContentHandlerMap::getAdminRequests, this);
+  AdminTableRequestHandler getLoggingRequest = std::bind(&ContentHandlerMap::getLoggingRequest, this, p::_1, p::_2);
+  AdminBoolRequestHandler setLoggingRequest = std::bind(&ContentHandlerMap::setLoggingRequest, this, p::_1, p::_2);
 
-  addAdminRequestHandler(
-    NoTarget{}, "setlogging", true,
-    [this](Reactor& reactor, const HTTP::Request& request) -> bool
-    {
-      return setLoggingRequest(reactor, request);
-    },
-    "Set logging status");
+  addAdminTableRequestHandler(NoTarget{}, "list", false,
+    std::bind(&ContentHandlerMap::getAdminRequests, this), "List all admin requests");
+
+  addAdminTableRequestHandler(NoTarget{}, "getlogging", false,
+    std::bind(&ContentHandlerMap::getLoggingRequest, this, p::_1, p::_2), "Get logging status");
+
+  addAdminBoolRequestHandler(NoTarget{}, "setlogging", true,
+    std::bind(&ContentHandlerMap::setLoggingRequest, this, p::_1, p::_2), "Set logging status");
 }
 catch (...)
 {
@@ -434,11 +422,12 @@ bool ContentHandlerMap::isURIPrefix(const std::string& uri) const
   return itsUriPrefixes.count(uri) > 0;
 }
 
-bool ContentHandlerMap::addAdminRequestHandler(
+
+bool ContentHandlerMap::addAdminRequestHandlerImpl(
     AdminRequestTarget target,
     const std::string& what,
     bool requiresAuthentication,
-    const ContentHandlerMap::AdminRequestHandler& theHandler,
+    AdminRequestHandler theHandler,
     const std::string& description)
 try
 {
@@ -626,11 +615,23 @@ bool ContentHandlerMap::executeAdminRequest(
         if (haveNonBoolAdminRequests)
           throw Fmi::Exception(BCP, "INTERNAL ERROR: Mixed admin request handlers");
         haveBoolAdminRequests = true;
-        ok &= handleAdminBoolRequest(
-          errors,
-          std::get<AdminBoolRequestHandler>(handler),
-          *reactor,
-          theRequest);
+        const std::string id = "Handler: {" + targetName(item.second->target) + ":" + item.second->what
+               + "} - " + item.second->description;
+        try
+        {
+          bool currOk = handleAdminBoolRequest(
+            errors,
+            std::get<AdminBoolRequestHandler>(handler),
+            *reactor,
+            theRequest);
+          ok = ok && currOk;
+          errors << (currOk ? "OK    : " : "ERROR  ") << id << std::endl;
+        }
+        catch (...)
+        {
+          ok = false;
+          errors << "ERROR : " << id << std::endl;
+        }
       }
       else
       {
@@ -675,7 +676,7 @@ bool ContentHandlerMap::executeAdminRequest(
     if (haveBoolAdminRequests)
     {
       theResponse.setStatus(ok ? HTTP::Status::ok : HTTP::Status::internal_server_error);
-      theResponse.setContent(ok ? "OK\n" : errors.str());
+      theResponse.setContent(errors.str());
     }
 
     return true;
@@ -685,6 +686,14 @@ bool ContentHandlerMap::executeAdminRequest(
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
+
+void ContentHandlerMap::cleanAdminRequests()
+{
+  WriteLock lock(itsContentMutex);
+  itsAdminRequestHandlers.clear();
+  itsUniqueAdminRequests.clear();
+}
+
 
 std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequests() const
 {
@@ -736,6 +745,18 @@ std::string ContentHandlerMap::targetName(
 }
 
 
+bool ContentHandlerMap::addAdminBoolRequestHandler(
+    AdminRequestTarget target,
+    const std::string& what,
+    bool requiresAuthentication,
+    std::function<bool(Reactor&, const HTTP::Request&)> theHandler,
+    const std::string& description)
+{
+  return addAdminRequestHandlerImpl(target, what, requiresAuthentication,
+    AdminRequestHandler(theHandler), description);
+}
+
+
 bool ContentHandlerMap::handleAdminBoolRequest(
     std::ostream& errors,
     const AdminBoolRequestHandler& handler,
@@ -743,6 +764,7 @@ bool ContentHandlerMap::handleAdminBoolRequest(
     const HTTP::Request& request)
 try
 {
+  std::ostringstream info;
   return handler(reactor, request);
 }
 catch (const std::exception& err)
@@ -754,6 +776,17 @@ catch (...)
 {
   errors << "Unknown exception" << std::endl;
   return false;
+}
+
+bool ContentHandlerMap::addAdminTableRequestHandler(
+        AdminRequestTarget target,
+        const std::string& what,
+        bool requiresAuthentication,
+        std::function<std::unique_ptr<Table>(Reactor&, const HTTP::Request&)> theHandler,
+        const std::string& description)
+{
+  return addAdminRequestHandlerImpl(target, what, requiresAuthentication,
+  AdminRequestHandler(theHandler), description);
 }
 
 
@@ -772,6 +805,7 @@ try
 
   // FIXME: get options from request
   std::unique_ptr<TableFormatter> formatter(TableFormatterFactory::create(fmt ? *fmt : "debug"));
+  std::cout << "Formatter type: " << typeid(*formatter).name() << std::endl;
   // FIXME: add header info to Table
   const std::string formattedResult = formatter->format(*result, {}, request, opt);
 
@@ -786,6 +820,18 @@ catch (...)
   msg << Fmi::Exception(BCP, "Operation failed");
   response.setStatus(HTTP::Status::internal_server_error);
   response.setContent(msg.str());
+}
+
+
+bool ContentHandlerMap::addAdminStringRequestHandler(
+        AdminRequestTarget target,
+        const std::string& what,
+        bool requiresAuthentication,
+        std::function<std::string(Reactor&, const HTTP::Request&)> theHandler,
+        const std::string& description)
+{
+  return addAdminRequestHandlerImpl(target, what, requiresAuthentication,
+    AdminRequestHandler(theHandler), description);
 }
 
 
@@ -807,6 +853,18 @@ catch (...)
   msg << Fmi::Exception(BCP, "Operation failed");
   response.setStatus(HTTP::Status::internal_server_error);
   response.setContent(msg.str());
+}
+
+
+bool ContentHandlerMap::addAdminCustomRequestHandler(
+        AdminRequestTarget target,
+        const std::string& what,
+        bool requiresAuthentication,
+        std::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)> theHandler,
+        const std::string& description)
+{
+  return addAdminRequestHandlerImpl(target, what, requiresAuthentication,
+    AdminRequestHandler(theHandler), description);
 }
 
 

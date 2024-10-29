@@ -7,22 +7,10 @@ using namespace SmartMet::Engine::Test;
 
 Engine::Engine(const char* theConfigFile)
 {
-  Reactor* reactor = Reactor::instance;
-
-  reactor->addAdminRequestHandlers(
-        this, {"testFail2", "testFail"}, false, &Engine::testFailingAdminHandler,
-        "Test failing engine admin handler without authentication");
-
-  reactor->addAdminRequestHandler(
-        this, "testOK", false, &Engine::testOKAdminHandler,
-        "Test engine admin handler with authentication");
 }
 
 SmartMet::Engine::Test::Engine::~Engine()
 {
-  Reactor* reactor = Reactor::instance;
-  reactor->removeAdminRequestHandler(this, "test1");
-  reactor->removeAdminRequestHandler(this, "engine-test");
 }
 
 double SmartMet::Engine::Test::Engine::testFunct(double x)
@@ -31,18 +19,19 @@ double SmartMet::Engine::Test::Engine::testFunct(double x)
     return std::sin(x);
 }
 
-bool Engine::testFailingAdminHandler(Reactor&, const HTTP::Request&)
-{
-    return false;
-}
-
-bool Engine::testOKAdminHandler(Reactor& theReactor, const HTTP::Request&)
-{
-    return true;
-}
-
 void SmartMet::Engine::Test::Engine::init()
 {
+  Reactor* reactor = Reactor::instance;
+
+  reactor->addAdminBoolRequestHandler(
+        this, "testFail", false,
+        [](Reactor&, const HTTP::Request&) -> bool { return false; },
+        "Failing bool engine admin request");
+
+  reactor->addAdminBoolRequestHandler(
+        this, "testOK", false,
+        [](Reactor&, const HTTP::Request&) -> bool { return true; },
+        "Test engine admin handler with authentication");
 }
 
 void SmartMet::Engine::Test::Engine::shutdown()

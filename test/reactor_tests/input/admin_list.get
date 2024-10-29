@@ -1,1 +1,0 @@
-GET /admin?what=list HTTP/1.0

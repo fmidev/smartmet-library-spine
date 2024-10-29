@@ -36,12 +36,6 @@ namespace SmartMet
                           const Spine::HTTP::Request& theRequest,
                           Spine::HTTP::Response& theResponse);
 
-        static bool okBoolAdminHandler(Spine::Reactor&, const HTTP::Request&);
-
-        static bool failingBoolAdminHandler(Spine::Reactor&, const HTTP::Request&);
-
-        static std::string adminStringHandler(Spine::Reactor&, const HTTP::Request&);
-
         static bool authCallback(const Spine::HTTP::Request& theRequest);
 
       private:

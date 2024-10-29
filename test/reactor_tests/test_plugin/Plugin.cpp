@@ -94,25 +94,19 @@ void Plugin::init()
         throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
     }
 
-    if (!itsReactor->addAdminRequestHandler(
-            this,
-            "testFail",
-            false,
-            &Plugin::failingBoolAdminHandler,
-            "Test failing bool Admin request handler"))
+    if (!itsReactor->addAdminBoolRequestHandler(this, "testFail", false,
+        [](Reactor&, const HTTP::Request&) -> bool { return false; },
+        "Failing bool admin handler"))
     {
-        throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
+        throw Fmi::Exception(BCP, "Failed to register test content handler");
     }
 
-    if (!itsReactor->addAdminRequestHandler(
-            this,
-            "testOK",
-            true,
-            &Plugin::okBoolAdminHandler,
-            "Test OK admin request handler with authentication"))
+    if (!itsReactor->addAdminBoolRequestHandler(this, "testOK", false,
+        [](Reactor&, const HTTP::Request&) -> bool { return true; }, "Failing OK admin handler"))
     {
-        throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
+        throw Fmi::Exception(BCP, "Failed to register test content handler");
     }
+
 }
 
 void Plugin::shutdown()
@@ -162,21 +156,6 @@ void Plugin::adminHandler(
         theRequest,
         theResponse,
         &Plugin::authCallback);
-}
-
-bool Plugin::okBoolAdminHandler(Spine::Reactor&, const Spine::HTTP::Request&)
-{
-    return true;
-}
-
-bool Plugin::failingBoolAdminHandler(Spine::Reactor&, const Spine::HTTP::Request&)
-{
-    return false;
-}
-
-std::string Plugin::adminStringHandler(Spine::Reactor&, const Spine::HTTP::Request&)
-{
-    return "Test admin handler 2\n";
 }
 
 bool SmartMet::Plugin::Test::Plugin::authCallback(

@@ -198,6 +198,46 @@ public:
     bool isURIPrefix(const std::string& uri) const;
 
     /**
+     * @brief Add admin bool request handler
+     */
+    bool addAdminBoolRequestHandler(
+        AdminRequestTarget target,
+        const std::string& what,
+        bool requiresAuthentication,
+        std::function<bool(Reactor&, const HTTP::Request&)> theHandler,
+        const std::string& description);
+
+    /**
+     * @brief Add admin table request handler
+     */
+    bool addAdminTableRequestHandler(
+        AdminRequestTarget target,
+        const std::string& what,
+        bool requiresAuthentication,
+        std::function<std::unique_ptr<Table>(Reactor&, const HTTP::Request&)> theHandler,
+        const std::string& description);
+
+    /**
+     * @brief Add admin string request handler
+     */
+    bool addAdminStringRequestHandler(
+        AdminRequestTarget target,
+        const std::string& what,
+        bool requiresAuthentication,
+        std::function<std::string(Reactor&, const HTTP::Request&)> theHandler,
+        const std::string& description);
+
+    /**
+     * @brief Add admin custom request handler
+     */
+    bool addAdminCustomRequestHandler(
+        AdminRequestTarget target,
+        const std::string& what,
+        bool requiresAuthentication,
+        std::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)> theHandler,
+        const std::string& description);
+
+    /**
      * @brief Add a new admin request handler
      *
      * @param target Pointer to the plugin or engine that provides the handler
@@ -208,30 +248,17 @@ public:
      * @retval true Handler added successfully
      *
      * Admin requests are also removed when removeContentHandlers is called for the plugin
+     *
+     * This method does not support providing std::bind results directly as theHandler
+     * due to C++ limitations: 2 conversions required
+     *    (std::bind result -> std::function -> std::variant)
+     * Use wrapper function for each type to workaround this problem
      */
-    bool addAdminRequestHandler(AdminRequestTarget target,
-                                const std::string& what,
-                                bool requiresAuthentication,
-                                const AdminRequestHandler& theHandler,
-                                const std::string& description);
-
-
-    /**
-     * @brief Add admin request handlers pointing to the same target
-     **/
-    bool addAdminRequestHandlers(AdminRequestTarget target,
-                                 const std::vector<std::string>& what,
-                                 bool requiresAuthentication,
-                                 const AdminRequestHandler& theHandler,
-                                 const std::string& description)
-    {
-        bool result = true;
-        for (const auto& item : what)
-        {
-            result &= addAdminRequestHandler(target, item, requiresAuthentication, theHandler, description);
-        }
-        return result;
-    }
+    bool addAdminRequestHandlerImpl(AdminRequestTarget target,
+                                    const std::string& what,
+                                    bool requiresAuthentication,
+                                    AdminRequestHandler theHandler,
+                                    const std::string& description);
 
     /**
      * @brief Remove admin request handler
@@ -248,6 +275,8 @@ public:
             const HTTP::Request& theRequest,
             HTTP::Response& theResponse,
             std::function<bool(const HTTP::Request&)> authCallback);
+
+    void cleanAdminRequests();
 
     std::unique_ptr<Table> getAdminRequests() const;
 

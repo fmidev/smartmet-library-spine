@@ -1150,6 +1150,9 @@ void Reactor::shutdown_impl()
     // We are no more interested about init task errors when shutdown has been requested
     itsInitTasks->stop_on_error(false);
 
+    // At first clean all admin request handlers
+    cleanAdminRequests();
+
     // Requesting all plugins to shutdown. Notice that now the plugins know
     // how many requests they have received and how many responses they have sent.
     // In the other words, the plugins wait until the number of responses equals to

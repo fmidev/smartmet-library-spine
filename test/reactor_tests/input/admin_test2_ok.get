@@ -1,1 +1,0 @@
-GET /admin?what=test2&user=foo&password=bar HTTP/1.0
