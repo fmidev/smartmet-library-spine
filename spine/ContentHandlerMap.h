@@ -286,6 +286,14 @@ private:
             const HTTP::Request& request,
             HTTP::Response& response);
 
+    std::unique_ptr<Table> getLoggingRequest(
+            Reactor& reactor,
+            const HTTP::Request& theRequest) const;
+
+    bool setLoggingRequest(
+            Reactor& reactor,
+            const HTTP::Request& theRequest);
+
 private:
 
     struct AdminRequestInfo
@@ -314,7 +322,7 @@ private:
      *
      * Can be changed by setLogging method
      */
-    std::atomic<bool> itsLoggingEnabled;
+    std::atomic<bool> itsLoggingEnabled{false};
 
     /**
      * @brief Handler for cases when no match is found for the URI

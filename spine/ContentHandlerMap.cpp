@@ -26,14 +26,28 @@ try
   // Note that will be only available in case if there is plugin that handles
   // admin requests
   addAdminRequestHandler(
-    NoTarget{},
-    "list",
-    false,
+    NoTarget{}, "list", false,
     [this](Reactor&, const HTTP::Request&) -> std::unique_ptr<Table>
     {
       return getAdminRequests();
-     },
+    },
     "List all admin requests");
+
+  addAdminRequestHandler(
+    NoTarget{}, "getlogging", false,
+    [this](Reactor& reactor, const HTTP::Request& request) -> std::string
+    {
+      return getLoggingRequest(reactor, request) ? "true" : "false";
+    },
+    "Get logging status");
+
+  addAdminRequestHandler(
+    NoTarget{}, "setlogging", true,
+    [this](Reactor& reactor, const HTTP::Request& request) -> bool
+    {
+      return setLoggingRequest(reactor, request);
+    },
+    "Set logging status");
 }
 catch (...)
 {
@@ -676,6 +690,8 @@ std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequests() co
 {
   int y = 0;
   auto result = std::make_unique<SmartMet::Spine::Table>();
+  result->setTitle("Admin requests summary");
+  result->setNames({"what", "target", "requires authentication", "unique", "description"});
   ReadLock lock(itsContentMutex);
   for (const auto& item1 : itsAdminRequestHandlers)
   {
@@ -753,10 +769,14 @@ try
   std::unique_ptr<Table> result = handler(reactor, request);
   std::optional<std::string> fmt = request.getParameter("format");
   TableFormatterOptions opt;
+
   // FIXME: get options from request
-  std::unique_ptr<TableFormatter> formatter(TableFormatterFactory::create(fmt ? *fmt : "ascii"));
+  std::unique_ptr<TableFormatter> formatter(TableFormatterFactory::create(fmt ? *fmt : "debug"));
   // FIXME: add header info to Table
   const std::string formattedResult = formatter->format(*result, {}, request, opt);
+
+  std::string mime = formatter->mimetype() + "; charset=UTF-8";
+  response.setHeader("Content-Type", mime);
   response.setContent(formattedResult);
   response.setStatus(HTTP::Status::ok);
 }
@@ -806,4 +826,50 @@ catch (...)
   msg << Fmi::Exception(BCP, "Operation failed");
   response.setStatus(HTTP::Status::internal_server_error);
   response.setContent(msg.str());
+}
+
+
+std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getLoggingRequest(
+    Reactor& reactor,
+    const HTTP::Request& theRequest) const
+try
+{
+  std::unique_ptr<SmartMet::Spine::Table> result(new SmartMet::Spine::Table);
+  result->setNames({"LoggingStatus"});
+
+  bool isCurrentlyLogging = getLogging();
+  if (isCurrentlyLogging)
+    result->set(0, 0, "Enabled");
+  else
+    result->set(0, 0, "Disabled");
+
+  return result;
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
+bool ContentHandlerMap::setLoggingRequest(
+    Reactor& reactor,
+    const HTTP::Request& theRequest)
+{
+    // First parse if logging status change is requested
+    auto loggingFlag = theRequest.getParameter("status");
+    if (!loggingFlag)
+      throw Fmi::Exception(BCP, "Logging parameter value not set.");
+
+    std::string flag = *loggingFlag;
+    // Logging status change requested
+    if (flag == "enable")
+    {
+      setLogging(true);
+      return true;
+    }
+    if (flag == "disable")
+    {
+      setLogging(false);
+      return true;
+    }
+    throw Fmi::Exception(BCP, "Invalid logging parameter value: " + flag);
 }
