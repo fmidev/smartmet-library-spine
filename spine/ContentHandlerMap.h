@@ -219,23 +219,8 @@ public:
     /**
      * @brief Add admin request handlers pointing to the same target
      **/
-    template 
-    <typename Container,
-        std::enable_if
-        <
-            std::is_assignable
-            <
-                std::string,
-                typename std::iterator_traits
-                <
-                    typename Container::iterator
-                >::value_type
-            >::value,
-            bool
-        >::type = false
-    >
     bool addAdminRequestHandlers(AdminRequestTarget target,
-                                 const Container& what,
+                                 const std::vector<std::string>& what,
                                  bool requiresAuthentication,
                                  const AdminRequestHandler& theHandler,
                                  const std::string& description)
