@@ -9,6 +9,7 @@
 #include "Convenience.h"
 #include "DynamicPlugin.h"
 #include "FmiApiKey.h"
+#include "HostInfo.h"
 #include "Names.h"
 #include "Options.h"
 #include "SmartMet.h"
@@ -34,6 +35,7 @@
 #include <macgyver/Exception.h>
 #include <macgyver/PostgreSQLConnection.h>
 #include <macgyver/StringConversion.h>
+#include <macgyver/TimeFormatter.h>
 
 #include <algorithm>
 #include <condition_variable>
@@ -51,6 +53,7 @@ extern "C"
 }
 
 using namespace boost::placeholders;
+using namespace std::string_literals;
 namespace fs = std::filesystem;
 
 namespace
@@ -211,6 +214,22 @@ Reactor::Reactor(Options& options)
                       << std::endl;
           }
         });
+
+    addAdminTableRequestHandler(NoTarget{}, "lastrequests", false,
+      std::bind(&Reactor::requestLastRequests, this, std::placeholders::_2),
+      "Get last requests");
+
+    addAdminTableRequestHandler(NoTarget{}, "activerequests", false,
+      std::bind(&Reactor::requestActiveRequests, this, std::placeholders::_2),
+      "Get active request info");
+
+    addAdminTableRequestHandler(NoTarget{}, "cachestats", false,
+      std::bind(&Reactor::requestCacheStats, this, std::placeholders::_2),
+      "Request cache stats");
+
+    addAdminTableRequestHandler(NoTarget{}, "servicestats", false,
+      std::bind(&Reactor::requestServiceStats, this, std::placeholders::_2),
+      "Request servics stats");
   }
   catch (...)
   {
@@ -1375,6 +1394,305 @@ void Reactor::notifyShutdownComplete()
   std::unique_lock<std::mutex> lock(shutdownFinishedMutex);
   gShutdownComplete = true;
   shutdownFinishedCond.notify_all();
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+// Admin requests handled by Reactor
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+namespace
+{
+std::string average_and_format(long total_microsecs, unsigned long requests)
+{
+  try
+  {
+    // Average global request time
+    double average_time = total_microsecs / (1000.0 * requests);
+    if (std::isnan(average_time))
+      return "Not available";
+
+    std::stringstream ss;
+    ss << std::setprecision(4) << average_time;
+    return ss.str();
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+}  // namespace
+
+std::unique_ptr<Table> Reactor::requestLastRequests(const HTTP::Request& theRequest) const
+try
+{
+  std::unique_ptr<Table> result = std::make_unique<Table>();
+  std::vector<std::string> headers = {"Time", "Duration", "RequestString"};
+
+  // Get optional parameters from the request
+  const std::string format = optional_string(theRequest.getParameter("format"), "json");
+  const std::string s_minutes = optional_string(theRequest.getParameter("minutes"), "1");
+  const std::string pluginName = optional_string(theRequest.getParameter("plugin"), "all");
+  const unsigned minutes = std::min(1440UL, std::min(1UL, Fmi::stoul(s_minutes)));
+
+  result->setTitle(
+    "Last requests of " + (pluginName == "all" ? "all plugins" : pluginName + " plugin")
+    + " for last " + Fmi::to_string(minutes) + " minute" + (minutes == 1 ? "" : "s"));
+
+  const auto currentRequests = getLoggedRequests(pluginName);
+
+  std::size_t row = 0;
+  auto firstValidTime = Fmi::SecondClock::local_time() - Fmi::Minutes(minutes);
+
+  for (const auto& req : std::get<1>(currentRequests))
+  {
+    auto firstConsidered = std::find_if(req.second.begin(),
+                                        req.second.end(),
+                                        [&firstValidTime](const Spine::LoggedRequest &compare)
+                                        { return compare.getRequestEndTime() > firstValidTime; });
+
+    for (auto reqIt = firstConsidered; reqIt != req.second.end();
+         ++reqIt)  // NOLINT(modernize-loop-convert)
+    {
+      std::size_t column = 0;
+      std::string endtime = Fmi::to_iso_extended_string(reqIt->getRequestEndTime().time_of_day());
+      std::string msec_duration = average_and_format(
+          reqIt->getAccessDuration().total_microseconds(), 1);  // just format the single duration
+      result->set(column++, row, endtime);
+      result->set(column++, row, msec_duration);
+      result->set(column++, row, reqIt->getRequestString());
+      ++row;
+    }
+  }
+
+  return result;
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
+std::unique_ptr<Table> Reactor::requestActiveRequests(const HTTP::Request& theRequest) const
+{
+    std::unique_ptr<Table> reqTable = std::make_unique<Table>();
+
+    // Obtain logging information
+    auto requests = getActiveRequests();
+
+    auto now = Fmi::MicrosecClock::universal_time();
+
+    std::size_t row = 0;
+    for (const auto &id_info : requests)
+    {
+      const auto id = id_info.first;
+      const auto &time = id_info.second.time;
+      const auto &req = id_info.second.request;
+
+      const auto ip = req.getClientIP();
+      const auto hostname = Spine::HostInfo::getHostName(ip);
+
+      auto duration = now - time;
+
+      const bool check_access_token = true;
+      auto apikey = Spine::FmiApiKey::getFmiApiKey(req, check_access_token);
+
+      auto originIP = req.getHeader("X-Forwarded-For");
+      auto originhostname = ""s;
+      if (originIP)
+      {
+        auto loc = originIP->find(',');
+        if (loc == std::string::npos)
+          originhostname = Spine::HostInfo::getHostName(*originIP);
+        else
+          originhostname = Spine::HostInfo::getHostName(originIP->substr(0, loc));
+      }
+
+      std::size_t column = 0;
+      reqTable->set(column++, row, Fmi::to_string(id));
+      reqTable->set(column++, row, Fmi::to_iso_extended_string(time.time_of_day()));
+      reqTable->set(column++, row, Fmi::to_string(duration.total_milliseconds() / 1000.0));
+      reqTable->set(column++, row, ip);
+      reqTable->set(column++, row, hostname);
+      reqTable->set(column++, row, (originIP ? *originIP : ""s));
+      reqTable->set(column++, row, originhostname);
+      reqTable->set(column++, row, apikey ? *apikey : "-");
+      reqTable->set(column++, row, req.getURI());
+      ++row;
+    }
+
+    reqTable->setNames({ "Id",
+                         "Time",
+                         "Duration",
+                         "ClientIP",
+                         "ClientHost",
+                         "OriginIP",
+                         "OriginHost",
+                         "Apikey",
+                         "RequestString"});
+    return reqTable;
+}
+
+std::unique_ptr<Table> Reactor::requestCacheStats(const HTTP::Request& theRequest) const
+{
+  std::unique_ptr<Table> data_table = std::make_unique<Table>();
+  data_table->setTitle("CacheStatistics");
+  data_table->setNames({"#",
+                        "cache_name",
+                        "maxsize",
+                        "size",
+                        "inserts",
+                        "hits",
+                        "misses",
+                        "hitrate",
+                        "hits/min",
+                        "inserts/min",
+                        "created",
+                        "age"});
+
+  auto now = Fmi::MicrosecClock::universal_time();
+  auto cache_stats = getCacheStats();
+
+  auto timeFormat = Spine::optional_string(theRequest.getParameter("timeformat"), "sql");
+  std::unique_ptr<Fmi::TimeFormatter> timeFormatter(Fmi::TimeFormatter::create(timeFormat));
+
+  size_t row = 1;
+  for (const auto &item : cache_stats)
+  {
+    const auto &name = item.first;
+    const auto &stat = item.second;
+
+    data_table->set(0, row, Fmi::to_string(row));
+    data_table->set(1, row, name);
+    data_table->set(2, row, Fmi::to_string(stat.maxsize));
+    data_table->set(3, row, Fmi::to_string(stat.size));
+    data_table->set(4, row, Fmi::to_string(stat.inserts));
+    data_table->set(5, row, Fmi::to_string(stat.hits));
+    data_table->set(6, row, Fmi::to_string(stat.misses));
+
+    try
+    {
+      auto duration = (now - stat.starttime).total_seconds();
+      auto n = stat.hits + stat.misses;
+      auto hit_rate = (n == 0 ? 0.0 : stat.hits * 100.0 / n);
+      auto hits_per_min = (duration == 0 ? 0.0 : 60.0 * stat.hits / duration);
+      auto inserts_per_min = (duration == 0 ? 0.0 : 60.0 * stat.inserts / duration);
+
+      data_table->set(7, row, Fmi::to_string("%.1f", hit_rate));
+      data_table->set(8, row, Fmi::to_string("%.1f", hits_per_min));
+      data_table->set(9, row, Fmi::to_string("%.1f", inserts_per_min));
+      data_table->set(10, row, timeFormatter->format(stat.starttime));
+      data_table->set(11, row, Fmi::to_simple_string(now - stat.starttime));
+    }
+    catch (...)
+    {
+      data_table->set(7, row, "?");
+      data_table->set(8, row, "?");
+      data_table->set(9, row, "?");
+      data_table->set(10, row, "?");
+      data_table->set(11, row, "?");
+    }
+    row++;
+  }
+  return data_table;
+}
+
+
+std::unique_ptr<Table> Reactor::requestServiceStats(const HTTP::Request& theRequest) const
+try
+{
+  const std::vector<std::string> headers{
+        "Handler", "LastMinute", "LastHour", "Last24Hours", "AverageDuration"};
+  std::unique_ptr<Table> statsTable = std::make_unique<Table>();
+  statsTable->setNames(headers);
+
+
+  std::string pluginName = Spine::optional_string(theRequest.getParameter("plugin"), "all");
+  auto currentRequests = getLoggedRequests(pluginName);  // This is type tuple<bool,LogRange,DateTime>
+
+  auto currentTime = Fmi::MicrosecClock::local_time();
+
+  std::size_t row = 0;
+  unsigned long total_minute = 0;
+  unsigned long total_hour = 0;
+  unsigned long total_day = 0;
+  long global_microsecs = 0;
+
+  for (const auto &reqpair : std::get<1>(currentRequests))
+  {
+    // Lets calculate how many hits we have in minute,hour and day and since start
+    unsigned long inMinute = 0;
+    unsigned long inHour = 0;
+    unsigned long inDay = 0;
+    long total_microsecs = 0;
+    // We go from newest to oldest
+
+    for (const auto &item : reqpair.second)
+    {
+      auto sinceDuration = currentTime - item.getRequestEndTime();
+      auto accessDuration = item.getAccessDuration();
+
+      total_microsecs += accessDuration.total_microseconds();
+
+      global_microsecs += accessDuration.total_microseconds();
+
+      if (sinceDuration < Fmi::Hours(24))
+      {
+        ++inDay;
+        ++total_day;
+        if (sinceDuration < Fmi::Hours(1))
+        {
+          ++inHour;
+          ++total_hour;
+          if (sinceDuration < Fmi::Minutes(1))
+          {
+            ++inMinute;
+            ++total_minute;
+          }
+        }
+      }
+    }
+
+    std::size_t column = 0;
+
+    statsTable->set(column, row, reqpair.first);
+    ++column;
+
+    statsTable->set(column, row, Fmi::to_string(inMinute));
+    ++column;
+
+    statsTable->set(column, row, Fmi::to_string(inHour));
+    ++column;
+
+    statsTable->set(column, row, Fmi::to_string(inDay));
+    ++column;
+
+    std::string msecs = average_and_format(total_microsecs, inDay);
+    statsTable->set(column, row, msecs);
+
+    ++row;
+  }
+
+  // Finally insert totals
+  std::size_t column = 0;
+
+  statsTable->set(column, row, "Total requests");
+  ++column;
+
+  statsTable->set(column, row, Fmi::to_string(total_minute));
+  ++column;
+
+  statsTable->set(column, row, Fmi::to_string(total_hour));
+  ++column;
+
+  statsTable->set(column, row, Fmi::to_string(total_day));
+  ++column;
+
+  std::string msecs = average_and_format(global_microsecs, total_day);
+  statsTable->set(column, row, msecs);
+
+  return statsTable;
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
 
 }  // namespace Spine

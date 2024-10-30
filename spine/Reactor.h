@@ -78,7 +78,6 @@ class Reactor final : public ContentHandlerMap
   // Logging
 
   bool lazyLinking() const;
-  AccessLogStruct getLoggedRequests(const std::string& thePlugin) const;
 
   bool isLoadHigh() const;
 
@@ -193,6 +192,13 @@ class Reactor final : public ContentHandlerMap
   void notifyShutdownComplete();
 
   std::thread shutdownWatchThread;
+  std::unique_ptr<Table> requestLastRequests(const HTTP::Request& theRequest) const;
+
+  std::unique_ptr<Table> requestActiveRequests(const HTTP::Request& theRequest) const;
+
+  std::unique_ptr<Table> requestCacheStats(const HTTP::Request& theRequest) const;
+
+  std::unique_ptr<Table> requestServiceStats(const HTTP::Request& theRequest) const;
 
   Fmi::AsyncTaskGroup shutdownTasks;
 
