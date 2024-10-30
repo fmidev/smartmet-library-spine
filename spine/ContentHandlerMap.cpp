@@ -15,6 +15,7 @@ using SmartMet::Spine::ContentHandler;
 using SmartMet::Spine::ContentHandlerMap;
 using SmartMet::Spine::HandlerView;
 using SmartMet::Spine::Reactor;
+using SmartMet::Spine::Table;
 
 namespace p = std::placeholders;
 
@@ -36,6 +37,9 @@ try
 
   addAdminBoolRequestHandler(NoTarget{}, "setlogging", true,
     std::bind(&ContentHandlerMap::setLoggingRequest, this, p::_1, p::_2), "Set logging status");
+
+  addAdminTableRequestHandler(NoTarget{}, "serviceinfo", false,
+    std::bind(&ContentHandlerMap::serviceInfoRequest, this, p::_1, p::_2), "Get info about available services");
 }
 catch (...)
 {
@@ -700,7 +704,7 @@ std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequests() co
   int y = 0;
   auto result = std::make_unique<SmartMet::Spine::Table>();
   result->setTitle("Admin requests summary");
-  result->setNames({"what", "target", "requires authentication", "unique", "description"});
+  result->setNames({"What", "Target", "Authentication", "Unique", "Description"});
   ReadLock lock(itsContentMutex);
   for (const auto& item1 : itsAdminRequestHandlers)
   {
@@ -736,7 +740,7 @@ std::string ContentHandlerMap::targetName(
   }
   else if (std::holds_alternative<NoTarget>(target))
   {
-    return "<none>";
+    return "<builtin>";
   }
   else
   {
@@ -802,13 +806,8 @@ try
   std::unique_ptr<Table> result = handler(reactor, request);
   std::optional<std::string> fmt = request.getParameter("format");
   TableFormatterOptions opt;
-
-  // FIXME: get options from request
   std::unique_ptr<TableFormatter> formatter(TableFormatterFactory::create(fmt ? *fmt : "debug"));
-  std::cout << "Formatter type: " << typeid(*formatter).name() << std::endl;
-  // FIXME: add header info to Table
   const std::string formattedResult = formatter->format(*result, {}, request, opt);
-
   std::string mime = formatter->mimetype() + "; charset=UTF-8";
   response.setHeader("Content-Type", mime);
   response.setContent(formattedResult);
@@ -887,12 +886,12 @@ catch (...)
 }
 
 
-std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getLoggingRequest(
+std::unique_ptr<Table> ContentHandlerMap::getLoggingRequest(
     Reactor& reactor,
     const HTTP::Request& theRequest) const
 try
 {
-  std::unique_ptr<SmartMet::Spine::Table> result(new SmartMet::Spine::Table);
+  std::unique_ptr<Table> result(new SmartMet::Spine::Table);
   result->setNames({"LoggingStatus"});
 
   bool isCurrentlyLogging = getLogging();
@@ -930,4 +929,30 @@ bool ContentHandlerMap::setLoggingRequest(
       return true;
     }
     throw Fmi::Exception(BCP, "Invalid logging parameter value: " + flag);
+}
+
+std::unique_ptr<Table> ContentHandlerMap::serviceInfoRequest(
+    Reactor&,
+    const HTTP::Request&)
+try
+{
+  std::unique_ptr<Table> result(new SmartMet::Spine::Table);
+  result->setNames({"   URI   ", "   Is prefix   ", "   Provided by   "});
+  ReadLock lock(itsContentMutex);
+  int row = 0;
+  for (const auto& item : itsHandlers)
+  {
+    const std::unique_ptr<HandlerView>& handler = item.second;
+    const std::string& name = item.first;
+    const SmartMetPlugin* plugin = handler->getPlugin();
+    result->set(0, row, name);
+    result->set(1, row, (itsUriPrefixes.count(name) ? "yes" : "no"));
+    result->set(2, row, (plugin ? plugin->getPluginName() + " plugin" : "<builtin>" ));
+    row++;
+  }
+  return result;
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }

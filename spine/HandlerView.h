@@ -86,6 +86,8 @@ class HandlerView
   // Check whether handler uses specified plugin
   bool usesPlugin(const SmartMetPlugin* plugin) const;
 
+  const SmartMetPlugin* getPlugin() const { return itsPlugin; }
+
   // Get URI
   const std::string& getResource() const;
 

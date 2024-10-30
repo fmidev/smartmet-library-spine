@@ -75,8 +75,7 @@ void Plugin::init()
                 HTTP::Response& theResponse)
             {
                 requestHandler2(theReactor, theRequest, theResponse);
-            },
-            true))
+            }))
     {
         throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
     }
@@ -88,8 +87,7 @@ void Plugin::init()
                 HTTP::Response& theResponse)
             {
                 adminHandler(theReactor, theRequest, theResponse);
-            },
-            true))
+            }))
     {
         throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
     }

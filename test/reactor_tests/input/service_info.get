@@ -1,0 +1,1 @@
+GET /admin?what=serviceinfo&format=debug HTTP/1.0

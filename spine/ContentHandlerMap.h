@@ -323,6 +323,10 @@ private:
             Reactor& reactor,
             const HTTP::Request& theRequest);
 
+    std::unique_ptr<Table> serviceInfoRequest(
+            Reactor&,
+            const HTTP::Request&);
+
 private:
 
     struct AdminRequestInfo
