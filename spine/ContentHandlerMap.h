@@ -34,11 +34,7 @@ public:
      *
      * Note that one still needs top level handler to actually handle these.
      */
-    struct NoTarget
-    {
-        // Only defined to allow comparison of AdminRequestTarget objects
-        inline bool operator <(const NoTarget&) const { return false; }
-    };
+    using NoTarget = std::monostate;
 
     /**
      * @brief Possible targets of admin requests
@@ -46,9 +42,9 @@ public:
      * Admin requests could be implemented by both plugins and engines
      * and also as stand-alone without any targets
      */
-    using AdminRequestTarget = std::variant<SmartMetPlugin*,
-                                            SmartMetEngine*,
-                                            NoTarget>;
+    using AdminRequestTarget = std::variant<NoTarget,
+                                            SmartMetPlugin*,
+                                            SmartMetEngine*>;
 
     using AdminBoolRequestHandler = std::function<bool(Reactor&, const HTTP::Request&)>;
     using AdminTableRequestHandler = std::function<std::unique_ptr<Table>(Reactor&, const HTTP::Request&)>;
