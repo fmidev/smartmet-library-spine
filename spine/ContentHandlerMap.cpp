@@ -17,17 +17,28 @@ using SmartMet::Spine::HandlerView;
 using SmartMet::Spine::Reactor;
 using SmartMet::Spine::Table;
 
+using namespace std::string_literals;
+
 namespace p = std::placeholders;
 
 ContentHandlerMap::ContentHandlerMap(const Options& options)
 try
     : itsOptions(options)
+    , itsAdminHandlerInfo(new AdminHandlerInfo(options))
 {
   // Register some admin request handlers
 
   AdminTableRequestHandler getAdminRequests = std::bind(&ContentHandlerMap::getAdminRequests, this);
   AdminTableRequestHandler getLoggingRequest = std::bind(&ContentHandlerMap::getLoggingRequest, this, p::_1, p::_2);
   AdminBoolRequestHandler setLoggingRequest = std::bind(&ContentHandlerMap::setLoggingRequest, this, p::_1, p::_2);
+
+  // FIXME: get value of itsAdminUri from options
+  // FIXME: setup IP access rules for admin requests from configuration
+  if (itsAdminHandlerInfo->itsAdminUri)
+  {
+    addPrivateContentHandler(nullptr, *itsAdminHandlerInfo->itsAdminUri,
+      std::bind(&ContentHandlerMap::handleAdminRequest, this, p::_2, p::_3));
+  }
 
   addAdminTableRequestHandler(NoTarget{}, "list", false,
     std::bind(&ContentHandlerMap::getAdminRequests, this), "List all admin requests");
@@ -48,6 +59,14 @@ catch (...)
 
 
 ContentHandlerMap::~ContentHandlerMap() = default;
+
+namespace
+{
+  std::string plugin_name(const SmartMetPlugin* plugin)
+  {
+    return plugin ? plugin->getPluginName() : "<builtin>";
+  } 
+}
 
 
 void ContentHandlerMap::setNoMatchHandler(ContentHandler theHandler)
@@ -71,7 +90,7 @@ catch (...)
 void ContentHandlerMap::setAdminUri(const std::string& theUri)
 {
   WriteLock lock(itsContentMutex);
-  itsAdminUri = theUri;
+  itsAdminHandlerInfo->itsAdminUri = theUri;
 }
 
 bool ContentHandlerMap::addContentHandler(SmartMetPlugin* thePlugin,
@@ -84,7 +103,7 @@ try
   WriteLock lock(itsContentMutex);
   WriteLock lock2(itsLoggingMutex);
 
-  const std::string pluginName = thePlugin->getPluginName();
+  const std::string pluginName = plugin_name(thePlugin);
 
   auto itsFilter = itsIPFilters.find(Fmi::ascii_tolower_copy(pluginName));
   std::shared_ptr<IPFilter::IPFilter> filter;
@@ -95,7 +114,7 @@ try
 
   std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
             << (isPrivate ? "private " : "") << "URI " << theUri << " for plugin "
-            << thePlugin->getPluginName() << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+            << pluginName << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
 
   std::unique_ptr<HandlerView> handler(new HandlerView(theHandler,
                                                        filter,
@@ -163,7 +182,7 @@ try
         curr->second.erase(item);
         std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN
                   << " Removed admin handler (what=')" << what
-                  << "' for plugin " << thePlugin->getPluginName()
+                  << "' for plugin " << plugin_name(thePlugin)
                   << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
         if (itsUniqueAdminRequests.count(what))
         {
@@ -427,6 +446,27 @@ bool ContentHandlerMap::isURIPrefix(const std::string& uri) const
 }
 
 
+
+void ContentHandlerMap::handleAdminRequest(
+    const HTTP::Request& request,
+    HTTP::Response& response)
+try
+{
+  Reactor* theReactor = getReactor();
+  if (theReactor)
+  {
+    theReactor->executeAdminRequest(
+        request,
+        response,
+        itsAdminHandlerInfo->itsAdminAuthenticationCallback);
+  }
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
+
 bool ContentHandlerMap::addAdminRequestHandlerImpl(
     AdminRequestTarget target,
     const std::string& what,
@@ -544,6 +584,13 @@ catch (...)
 }
 
 
+void ContentHandlerMap::setAdminAuthenticationCallback(AuthenticationCallback callback)
+{
+  WriteLock lock(itsContentMutex);
+  itsAdminHandlerInfo->itsAdminAuthenticationCallback = callback;
+}
+
+
 bool ContentHandlerMap::executeAdminRequest(
     const HTTP::Request& theRequest,
     HTTP::Response& theResponse,
@@ -598,7 +645,7 @@ bool ContentHandlerMap::executeAdminRequest(
       }
     }
 
-    Reactor* reactor = dynamic_cast<Reactor*>(this);
+    Reactor* reactor = getReactor();
     if (!reactor)
     {
       throw Fmi::Exception(BCP, "INTERNAL ERROR: Reactor not available");
@@ -955,4 +1002,25 @@ try
 catch (...)
 {
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
+Reactor* ContentHandlerMap::getReactor()
+{
+  // Currently Reactor is class derived from ContentHandlerMap
+  return dynamic_cast<Reactor*>(this);
+}
+
+
+ContentHandlerMap::AdminHandlerInfo::AdminHandlerInfo(const Options& options)
+try
+{
+    std::string uri;
+    options.itsConfig.lookupValue("admin.uri", uri);
+    if (uri != "") {
+        itsAdminUri = uri;
+    }
+}
+catch (...)
+{
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }

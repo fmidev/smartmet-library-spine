@@ -195,7 +195,9 @@ bool HandlerView::queryIsFast(HTTP::Request& theRequest) const
 {
   try
   {
-    return itsPlugin->queryIsFast(theRequest);
+    // Assume that all requests with no plugin are fast queries
+    // Otherwise ask the plugin
+    return !itsPlugin || itsPlugin->queryIsFast(theRequest);
   }
   catch (...)
   {
@@ -207,7 +209,9 @@ bool HandlerView::isAdminQuery(HTTP::Request& theRequest) const
 {
   try
   {
-    return itsPlugin->isAdminQuery(theRequest);
+    // Assume that all requests with no plugin are admin queries
+    // Otherwise ask the plugin if it is an admin query
+    return !itsPlugin || itsPlugin->isAdminQuery(theRequest);
   }
   catch (...)
   {
@@ -219,7 +223,7 @@ std::string HandlerView::getPluginName() const
 {
   try
   {
-    return itsPlugin->getPluginName();
+    return itsPlugin ? itsPlugin->getPluginName() : "<builtin>";
   }
   catch (...)
   {

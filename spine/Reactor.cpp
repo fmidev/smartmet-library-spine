@@ -1169,8 +1169,17 @@ void Reactor::shutdown_impl()
     // We are no more interested about init task errors when shutdown has been requested
     itsInitTasks->stop_on_error(false);
 
+    //---------------------------------------------------------------------------------------------
+    // Perform preliminary cleanup of base class ContentHandlerMap to avoid some objects
+    // staying around after plugins and engines have been deleted.
+    //
     // At first clean all admin request handlers
     cleanAdminRequests();
+    //
+    // Clean also admin request authentication callback
+    setAdminAuthenticationCallback(AuthenticationCallback{});
+    // Preliminary base class cleanup finished
+    //---------------------------------------------------------------------------------------------
 
     // Requesting all plugins to shutdown. Notice that now the plugins know
     // how many requests they have received and how many responses they have sent.

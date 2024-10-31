@@ -80,17 +80,7 @@ void Plugin::init()
         throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
     }
 
-    if (!itsReactor->addPrivateContentHandler(this,
-            "/admin",
-            [this](Reactor& theReactor,
-                const HTTP::Request& theRequest,
-                HTTP::Response& theResponse)
-            {
-                adminHandler(theReactor, theRequest, theResponse);
-            }))
-    {
-        throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
-    }
+    itsReactor->setAdminAuthenticationCallback(&Plugin::authCallback);
 
     if (!itsReactor->addAdminBoolRequestHandler(this, "testFail", false,
         [](Reactor&, const HTTP::Request&) -> bool { return false; },
@@ -143,17 +133,6 @@ void Plugin::requestHandler2(
         content << item.first << " --> " << item.second << std::endl;
     }
     theResponse.setContent(content.str());
-}
-
-void Plugin::adminHandler(
-                            Spine::Reactor& theReactor,
-                            const Spine::HTTP::Request& theRequest,
-                            Spine::HTTP::Response& theResponse)
-{
-    theReactor.executeAdminRequest(
-        theRequest,
-        theResponse,
-        &Plugin::authCallback);
 }
 
 bool SmartMet::Plugin::Test::Plugin::authCallback(

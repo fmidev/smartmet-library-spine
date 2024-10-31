@@ -278,6 +278,14 @@ public:
 
     void cleanAdminRequests();
 
+    /**
+     * @brief Set admin request authentication callback
+     *
+     * Only needed if some admin requests require authentication and these
+     * requests are handled through this class (itsAdminUri is not empty)
+     */
+    void setAdminAuthenticationCallback(AuthenticationCallback callback);
+
     std::unique_ptr<Table> getAdminRequests() const;
 
 private:
@@ -287,6 +295,10 @@ private:
     void cleanLog();
 
     static std::string targetName(const AdminRequestTarget& target);
+
+    void handleAdminRequest(
+            const HTTP::Request& request,
+            HTTP::Response& response);
 
     bool handleAdminBoolRequest(
             std::ostream& errors,
@@ -329,6 +341,8 @@ private:
 
 private:
 
+    Reactor* getReactor();
+
     struct AdminRequestInfo
     {
         std::string what;
@@ -346,6 +360,36 @@ private:
          * (cannot be registered twice from different plugins/engines)
          */
         bool unique() const;
+    };
+
+    /**
+     * @brief Information about top level admin request handler
+     *
+     * This handler is registrated by addPrivateContentHandler method when
+     * present (konfiguration settings) and is used to handle admin requests
+     *
+     * An alternative is to leave it empty and handle admin requests in the
+     * some plugin (like smartmet-plugin-admin)
+     *
+     * These fields below are put into separate struct to avoid ABI breakage
+     * if changes are made to AdminHandlerInfo
+     */
+    struct AdminHandlerInfo
+    {
+        /**
+         * @brief Admin request URI. Default is empty
+         */
+        std::optional<std::string> itsAdminUri;
+
+        /**
+         * @brief Admin request authentication callback
+         *
+         * Admin requests thet require authentication is blocked if not set
+         * (returns 403 Forbidden) or if the callback returns false
+         */
+        AuthenticationCallback itsAdminAuthenticationCallback;
+
+        AdminHandlerInfo(const Options& options);
     };
 
     const Options& itsOptions;
@@ -367,10 +411,6 @@ private:
      */
     std::map<std::string, std::unique_ptr<HandlerView>> itsHandlers;
 
-    /**
-     * @brief Admin request URI
-     */
-    std::optional<std::string> itsAdminUri;
 
     /**
      * @brief Admin request handlers
@@ -401,6 +441,8 @@ private:
      *     /edr/collection/something/area?... .
      */
     std::set<std::string> itsUriPrefixes;
+
+    std::unique_ptr<AdminHandlerInfo> itsAdminHandlerInfo;
 
     /**
      * @brief IP filters for the plugins
