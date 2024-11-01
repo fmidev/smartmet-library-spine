@@ -47,7 +47,7 @@ std::string DebugFormatter::make_header(const Table& theTable) const
       "</head><body>\n";
   const std::optional<std::string> title;
   if (title)
-    out += "<h1>" + *title + "</h1>\n";
+    out += "<h1>" + htmlescape(*title) + "</h1>\n";
   return out;
 }
 

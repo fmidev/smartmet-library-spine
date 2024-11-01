@@ -70,7 +70,7 @@ std::string HtmlFormatter::format(const Table& theTable,
 
     const std::optional<std::string>& title = theTable.getTitle();
     if (title)
-      out += "<h1>" + *title + "</h1>\n";
+      out += "<h1>" + htmlescape(*title) + "</h1>\n";
 
     const auto& names = theTable.getNames(theNames, false);
 
