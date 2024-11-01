@@ -2,10 +2,12 @@
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/AnsiEscapeCodes.h>
+#include <macgyver/TimeFormatter.h>
 #include <iostream>
 #include <sstream>
 #include "ConfigTools.h"
 #include "Convenience.h"
+#include "HostInfo.h"
 #include "HTTP.h"
 #include "Reactor.h"
 #include "TableFormatterFactory.h"
@@ -738,6 +740,37 @@ bool ContentHandlerMap::executeAdminRequest(
       }
     }
 
+    // We return JSON, hence we should enable CORS
+    theResponse.setHeader("Access-Control-Allow-Origin", "*");
+
+      // Adding response headers
+
+    const int expires_seconds = 1;
+    Fmi::DateTime t_now = Fmi::SecondClock::universal_time();
+    Fmi::DateTime t_expires = t_now + Fmi::Seconds(expires_seconds);
+    std::shared_ptr<Fmi::TimeFormatter> tformat(Fmi::TimeFormatter::create("http"));
+    std::string cachecontrol = "public, max-age=" + std::to_string(expires_seconds);
+    std::string expiration = tformat->format(t_expires);
+    std::string modification = tformat->format(t_now);
+
+    theResponse.setHeader("Cache-Control", cachecontrol);
+    theResponse.setHeader("Expires", expiration);
+    theResponse.setHeader("Last-Modified", modification);
+
+    /* This will need some thought
+             if(response.first.size() == 0)
+             {
+             std::cerr << "Warning: Empty input for request "
+             << theRequest.getOriginalQueryString()
+             << " from "
+             << theRequest.getClientIP()
+             << std::endl;
+             }
+    */
+#ifdef MYDEBUG
+      std::cout << "Output:" << std::endl << response << std::endl;
+#endif
+
     if (haveBoolAdminRequests)
     {
       theResponse.setStatus(ok ? HTTP::Status::ok : HTTP::Status::internal_server_error);
@@ -748,7 +781,23 @@ bool ContentHandlerMap::executeAdminRequest(
   }
   catch (...)
   {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+    // Catching all exceptions
+
+    Fmi::Exception exception(BCP, "Request processing exception!", nullptr);
+    exception.addParameter("URI", theRequest.getURI());
+    exception.addParameter("ClientIP", theRequest.getClientIP());
+    exception.addParameter("HostName", Spine::HostInfo::getHostName(theRequest.getClientIP()));
+    exception.printError();
+
+    theResponse.setStatus(Spine::HTTP::Status::bad_request);
+
+    // Adding the first exception information into the response header
+
+    std::string firstMessage = exception.what();
+    boost::algorithm::replace_all(firstMessage, "\n", " ");
+    if (firstMessage.size() > 300)
+    firstMessage.resize(300);
+    theResponse.setHeader("X-Admin-Error", firstMessage);
   }
 }
 
