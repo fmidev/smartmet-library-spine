@@ -377,7 +377,8 @@ private:
      * present (konfiguration settings) and is used to handle admin requests
      *
      * An alternative is to leave it empty and handle admin requests in the
-     * some plugin (like smartmet-plugin-admin)
+     * some plugin (like smartmet-plugin-admin). In this case this structure is
+     * not used
      *
      * These fields below are put into separate struct to avoid ABI breakage
      * if changes are made to AdminHandlerInfo
