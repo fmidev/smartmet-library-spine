@@ -136,7 +136,7 @@ void Plugin::requestHandler2(
 }
 
 bool SmartMet::Plugin::Test::Plugin::authCallback(
-                            const Spine::HTTP::Request& theRequest)
+                            const Spine::HTTP::Request& theRequest, HTTP::Response&)
 {
     const auto opt_user = theRequest.getParameter("user");
     const auto opt_password = theRequest.getParameter("password");

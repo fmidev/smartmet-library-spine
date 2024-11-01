@@ -594,7 +594,7 @@ void ContentHandlerMap::setAdminAuthenticationCallback(AuthenticationCallback ca
 bool ContentHandlerMap::executeAdminRequest(
     const HTTP::Request& theRequest,
     HTTP::Response& theResponse,
-    std::function<bool(const HTTP::Request&)> authCallback)
+    std::function<bool(const HTTP::Request&, HTTP::Response&)> authCallback)
 {
   try
   {
@@ -632,10 +632,24 @@ bool ContentHandlerMap::executeAdminRequest(
     {
       if (authCallback)
       {
-        if (!authCallback(theRequest))
+        try
         {
-          theResponse.setStatus(HTTP::Status::unauthorized);
-          theResponse.setContent("Authentication required");
+          theResponse.setContent (""); // Clear any previous content
+          bool authPassed = authCallback(theRequest, theResponse);
+          if (not authPassed)
+          {
+            if (theResponse.getContent() == "")
+            {
+              theResponse.setStatus(HTTP::Status::unauthorized);
+              theResponse.setContent("Unauthorized");
+            }
+            return false;
+          }
+        }
+        catch (const Fmi::Exception&)
+        {
+          theResponse.setStatus(HTTP::Status::bad_request);
+          theResponse.setContent("Corrupt Authorization header");
           return false;
         }
       } else {

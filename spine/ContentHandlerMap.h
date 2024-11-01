@@ -56,7 +56,19 @@ public:
                                              AdminStringRequestHandler,
                                              AdminCustomRequestHandler>;
 
-    using AuthenticationCallback = std::function<bool(const HTTP::Request&)>;
+    /**
+     *  @brief Handler for authentication
+     *
+     *  @param theRequest Request to be authenticated
+     *  @param theResponse Response must be unchanged when authetication succeeds.
+     *               Callback is expected to fill in response when authentication
+     *               fails or some other error occurs. Method executeAdminRequest
+     *               will however take care of setting the correct status code if
+     *               that is not done by the callback.
+     *  @retval true Authentication succeeded
+     *  @retval false Authentication failed (or an error occurred)
+     */
+    using AuthenticationCallback = std::function<bool(const HTTP::Request&, HTTP::Response&)>;
 
 public:
     ContentHandlerMap(const Options& options);
@@ -270,7 +282,7 @@ public:
     bool executeAdminRequest(
             const HTTP::Request& theRequest,
             HTTP::Response& theResponse,
-            std::function<bool(const HTTP::Request&)> authCallback);
+            std::function<bool(const HTTP::Request&, HTTP::Response&)> authCallback);
 
     void cleanAdminRequests();
 
