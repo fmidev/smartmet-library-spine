@@ -3,7 +3,7 @@
 #include "FmiApiKey.h"
 #include "Reactor.h"
 #include <iostream>
-#include <boost/bind/bind.hpp>
+#include <functional>
 #include <filesystem>
 #include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
@@ -17,7 +17,7 @@ bool isNotOld(const Fmi::DateTime& target, const SmartMet::Spine::LoggedRequest&
 }
 }  // namespace
 
-using namespace boost::placeholders;
+using namespace std::placeholders;
 
 namespace SmartMet
 {
@@ -231,13 +231,13 @@ std::string HandlerView::getPluginName() const
   }
 }
 
-bool HandlerView::getLogging()
+bool HandlerView::getLogging() const
 {
   ReadLock lock(itsLoggingMutex);
   return isLogging;
 }
 
-void HandlerView::cleanLog(const Fmi::DateTime& minTime)
+void HandlerView::cleanLog(const Fmi::DateTime& minTime, bool flush)
 {
   try
   {
@@ -275,6 +275,11 @@ void HandlerView::cleanLog(const Fmi::DateTime& minTime)
     }
 
     itsRequestLog.erase(itsRequestLog.begin(), it);
+
+    if (flush)
+    {
+      flushLogNolock();
+    }
   }
   catch (...)
   {
@@ -294,16 +299,7 @@ void HandlerView::flushLog()
       return;
     }
 
-    auto flushIter = itsLastFlushedRequest;
-    ++flushIter;
-
-    for (; flushIter != itsRequestLog.end(); ++flushIter)
-    {
-      itsAccessLog->log(*flushIter);
-    }
-
-    // Return to the last flushed request (not past the end)
-    itsLastFlushedRequest = --flushIter;
+    flushLogNolock();
   }
   catch (...)
   {

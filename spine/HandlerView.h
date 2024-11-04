@@ -66,10 +66,10 @@ class HandlerView
   void setLogging(bool newStatus);
 
   // Get logging status
-  bool getLogging();
+  bool getLogging() const;
 
-  // Clean too old entries from the log list
-  void cleanLog(const Fmi::DateTime& minTime);
+  // Clean too old entries from the log list and optionally flash the log after cleaning
+  void cleanLog(const Fmi::DateTime& minTime, bool flash);
 
   // Flush pending requests to disk
   void flushLog();
@@ -92,29 +92,31 @@ class HandlerView
   const std::string& getResource() const;
 
  private:
+  void flushLogNolock();
+
   // The actual handler functor
-  ContentHandler itsHandler;
+  const ContentHandler itsHandler;
 
   // Any registered IP Filters
   std::shared_ptr<IPFilter::IPFilter> itsIpFilter;
 
   // Non-owning pointer to the plugin
-  SmartMetPlugin* itsPlugin = nullptr;
+  const SmartMetPlugin* itsPlugin = nullptr;
 
   // The base uri registered for this handler
-  std::string itsResource;
+  const std::string itsResource;
 
   // Flag to see if this is the fallthrough-handler
-  bool itsIsCatchNoMatch = false;
+  const bool itsIsCatchNoMatch = false;
 
   // Flag to specify that handler is private
-  bool itsPrivate = false;
+  const bool itsPrivate = false;
 
   // The request log for this handler
   LogListType itsRequestLog;
 
   // Mutex for logging operations
-  MutexType itsLoggingMutex;
+  mutable MutexType itsLoggingMutex;
 
   // Flag to see if logging is on
   bool isLogging = false;
