@@ -64,6 +64,28 @@ catch (...)
 ContentHandlerMap::~ContentHandlerMap()
 {
   itsAdminHandlerInfo.reset();
+
+  int count = 0;
+  for (const auto& handler : itsHandlers)
+  {
+    std::cout << "Remaining content handler: " << handler.first << std::endl;
+    count++;
+  }
+
+  for (const auto& item1 : itsAdminRequestHandlers)
+  {
+    for (const auto& item2 : item1.second)
+    {
+      std::cout << "Remaining admin request handler: ?what=" << item1.first
+        << " for " << targetName(item2.first) << std::endl;
+      count++;
+    }
+  }
+
+  if (count > 0)
+  {
+    std::cout << "INTERNAL ERROR: There were " << count << " remaining handlers" << std::endl;
+  }
 }
 
 namespace
@@ -166,23 +188,27 @@ try
   WriteLock lock(itsContentMutex);
 
   std::size_t count = 0;
-  // Check whether plugin address is provided as current target and remove all context handlers
-  // if provided by the plugin (thePlugin != nullptr)
-  const SmartMetPlugin* thePlugin = *std::get_if<SmartMetPlugin*>(&currentTarget);
-  if (thePlugin)
+  // We do not support content handlers for engines
+  if (!std::holds_alternative<SmartMetEngine*>(currentTarget))
   {
+    // For some reason std::get_if<> returned 1 for NoTarget, so we need to check it separately (c++20, clang++-18)
+    const bool no_target = std::holds_alternative<NoTarget>(currentTarget);
+    const SmartMetPlugin* thePlugin = no_target ? nullptr : std::get<SmartMetPlugin*>(currentTarget);
     for (auto it = itsHandlers.begin(); it != itsHandlers.end();)
     {
       auto curr = it++;
       if (curr->second and curr->second->usesPlugin(thePlugin))
       {
         const std::string uri = curr->first;
-        const std::string name = curr->second->getPluginName();
+        const std::string name = targetName(currentTarget);
+        const bool is_private = curr->second->isPrivate();
         itsHandlers.erase(curr);
         itsUriPrefixes.erase(uri);
         count++;
-        std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Removed URI " << uri
-                  << " handled by plugin " << name << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+        std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Removed "
+            << (no_target ? "builtin " : "") << (is_private ? "private " : "")
+            << "URI " << uri << (no_target ? ""s : " provided by " + name)
+            << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
       }
     }
   }
@@ -193,17 +219,18 @@ try
     int erased = 0;
     auto curr = it1++;
     const std::string what = curr->first;
-    for (auto it2 = curr->second.begin(); it2 == curr->second.end(); )
+    for (auto it2 = curr->second.begin(); it2 != curr->second.end(); )
     {
       auto item = it2++;
-      const HandlerTarget& target = item->first;
+      const HandlerTarget target = item->first;
       if (target == currentTarget)
       {
+        const bool is_builtin = std::holds_alternative<NoTarget>(target);
         curr->second.erase(item);
-        std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN
-                  << " Removed admin handler (what=')" << what
-                  << "' for " << targetName(target)
-                  << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+        std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_BLUE << " Removed "
+            << (is_builtin ? "builtin " : "") << "admin request " << what << " handler"
+            << (is_builtin ? ""s : " provided by " + targetName(currentTarget))
+            << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
         if (itsUniqueAdminRequests.count(what))
         {
           itsUniqueAdminRequests.erase(what);
