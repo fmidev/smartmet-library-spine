@@ -1173,13 +1173,8 @@ void Reactor::shutdown_impl()
     // Perform preliminary cleanup of base class ContentHandlerMap to avoid some objects
     // staying around after plugins and engines have been deleted.
     //
-    // At first clean all admin request handlers
-    cleanAdminRequests();
-    //
-    // Clean also admin request authentication callback
-    setAdminAuthenticationCallback(AuthenticationCallback{});
-    // Preliminary base class cleanup finished
-    //---------------------------------------------------------------------------------------------
+    // At first clean all generic (not associated by some plugin or engine) admin request handlers
+    removeContentHandlers(NoTarget{});
 
     // Requesting all plugins to shutdown. Notice that now the plugins know
     // how many requests they have received and how many responses they have sent.
@@ -1196,8 +1191,10 @@ void Reactor::shutdown_impl()
       std::cout << ANSI_FG_RED << "* Plugin [" << plugin->pluginname() << "] shutting down\n"
                 << ANSI_FG_DEFAULT;
       shutdownTasks.add("Plugin [" + plugin->pluginname() + "] shutdown",
-                        [&plugin]()
+                        [this, &plugin]()
                         {
+                          // Better be sure that all handlers are removed before plugin is shut down
+                          removeContentHandlers(plugin->getPlugin());
                           plugin->shutdownPlugin();
                           plugin.reset();
                         });
@@ -1219,8 +1216,10 @@ void Reactor::shutdown_impl()
       std::cout << tmp1.str() << std::flush;
       auto* engine = singleton.second;
       shutdownTasks.add("Engine [" + singleton.first + "] shutdown",
-                        [engine, singleton]()
+                        [this, engine, singleton]()
                         {
+                          // Better be sure that all handlers are removed before engine is shut down
+                          removeContentHandlers(engine);
                           engine->shutdownEngine();
                           std::ostringstream tmp2;
                           tmp2 << ANSI_FG_MAGENTA << "* Engine [" << singleton.first

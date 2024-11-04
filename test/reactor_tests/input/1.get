@@ -1,0 +1,3 @@
+GET /admin?what=setlogging&status=enable&user=foo&password=bar HTTP/1.0
+Authorization: Basic Zm9vOmJhcg==
+

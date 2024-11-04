@@ -24,6 +24,11 @@ namespace Spine
 
 class Reactor;
 
+namespace HTTP
+{
+    class Authentication;
+}
+
 using URIMap = std::map<std::string, std::string>;
 
 class ContentHandlerMap
@@ -37,14 +42,18 @@ public:
     using NoTarget = std::monostate;
 
     /**
-     * @brief Possible targets of admin requests
+     * @brief Possible targets of requests
+     *
+     * Content handler can be associated with a plugins only. The same type is
+     * however being used to simplify implementation also for cleaning up
+     * context handlers.
      *
      * Admin requests could be implemented by both plugins and engines
      * and also as stand-alone without any targets
      */
-    using AdminRequestTarget = std::variant<NoTarget,
-                                            SmartMetPlugin*,
-                                            SmartMetEngine*>;
+    using HandlerTarget = std::variant<NoTarget,
+                                       SmartMetPlugin*,
+                                       SmartMetEngine*>;
 
     using AdminBoolRequestHandler = std::function<bool(Reactor&, const HTTP::Request&)>;
     using AdminTableRequestHandler = std::function<std::unique_ptr<Table>(Reactor&, const HTTP::Request&)>;
@@ -144,7 +153,7 @@ public:
      * @param thePlugin Pointer to the plugin
      * @return Number of removed handlers
      */
-    std::size_t removeContentHandlers(SmartMetPlugin* thePlugin);
+    std::size_t removeContentHandlers(HandlerTarget thePlugin);
 
     /**
      * @brief Get the handler for the given URI
@@ -209,7 +218,7 @@ public:
      * @brief Add admin bool request handler
      */
     bool addAdminBoolRequestHandler(
-        AdminRequestTarget target,
+        HandlerTarget target,
         const std::string& what,
         bool requiresAuthentication,
         std::function<bool(Reactor&, const HTTP::Request&)> theHandler,
@@ -219,7 +228,7 @@ public:
      * @brief Add admin table request handler
      */
     bool addAdminTableRequestHandler(
-        AdminRequestTarget target,
+        HandlerTarget target,
         const std::string& what,
         bool requiresAuthentication,
         std::function<std::unique_ptr<Table>(Reactor&, const HTTP::Request&)> theHandler,
@@ -229,7 +238,7 @@ public:
      * @brief Add admin string request handler
      */
     bool addAdminStringRequestHandler(
-        AdminRequestTarget target,
+        HandlerTarget target,
         const std::string& what,
         bool requiresAuthentication,
         std::function<std::string(Reactor&, const HTTP::Request&)> theHandler,
@@ -239,7 +248,7 @@ public:
      * @brief Add admin custom request handler
      */
     bool addAdminCustomRequestHandler(
-        AdminRequestTarget target,
+        HandlerTarget target,
         const std::string& what,
         bool requiresAuthentication,
         std::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)> theHandler,
@@ -262,7 +271,7 @@ public:
      *    (std::bind result -> std::function -> std::variant)
      * Use wrapper function for each type to workaround this problem
      */
-    bool addAdminRequestHandlerImpl(AdminRequestTarget target,
+    bool addAdminRequestHandlerImpl(HandlerTarget target,
                                     const std::string& what,
                                     bool requiresAuthentication,
                                     AdminRequestHandler theHandler,
@@ -271,7 +280,7 @@ public:
     /**
      * @brief Remove admin request handler
      */
-    bool removeAdminRequestHandler(AdminRequestTarget target,
+    bool removeAdminRequestHandler(HandlerTarget target,
                                    const std::string& what);
 
     /**
@@ -284,15 +293,13 @@ public:
             HTTP::Response& theResponse,
             std::function<bool(const HTTP::Request&, HTTP::Response&)> authCallback);
 
-    void cleanAdminRequests();
-
     /**
      * @brief Set admin request authentication callback
      *
      * Only needed if some admin requests require authentication and these
      * requests are handled through this class (itsAdminUri is not empty)
      */
-    void setAdminAuthenticationCallback(AuthenticationCallback callback);
+    //void setAdminAuthenticationCallback(AuthenticationCallback callback);
 
     std::unique_ptr<Table> getAdminRequests() const;
 
@@ -302,7 +309,7 @@ private:
      */
     void cleanLog();
 
-    static std::string targetName(const AdminRequestTarget& target);
+    static std::string targetName(const HandlerTarget& target);
 
     void handleAdminRequest(
             const HTTP::Request& request,
@@ -354,7 +361,7 @@ private:
     struct AdminRequestInfo
     {
         std::string what;
-        AdminRequestTarget target;
+        HandlerTarget target;
         bool requiresAuthentication;
         AdminRequestHandler handler;
         std::string description;
@@ -398,6 +405,10 @@ private:
          */
         AuthenticationCallback itsAdminAuthenticationCallback;
 
+        std::unique_ptr<HTTP::Authentication> itsAuthenticator;
+
+        std::shared_ptr<IPFilter::IPFilter> itsIPFilter;
+
         AdminHandlerInfo(const Options& options);
     };
 
@@ -429,7 +440,7 @@ private:
         std::string,
         std::map
         <
-            AdminRequestTarget,
+            HandlerTarget,
             std::unique_ptr<AdminRequestInfo>
         >
     > itsAdminRequestHandlers;

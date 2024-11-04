@@ -32,8 +32,6 @@ namespace SmartMet
                             const Spine::HTTP::Request& theRequest,
             Spine::HTTP::Response& theResponse);
 
-        static bool authCallback(const Spine::HTTP::Request& theRequest, HTTP::Response&);
-
       private:
         std::string dump_params(const Spine::HTTP::Request& theRequest) const;
 

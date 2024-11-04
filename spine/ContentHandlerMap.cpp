@@ -9,6 +9,7 @@
 #include "Convenience.h"
 #include "HostInfo.h"
 #include "HTTP.h"
+#include "HTTPAuthentication.h"
 #include "Reactor.h"
 #include "TableFormatterFactory.h"
 #include "TableFormatterOptions.h"
@@ -60,14 +61,17 @@ catch (...)
 }
 
 
-ContentHandlerMap::~ContentHandlerMap() = default;
+ContentHandlerMap::~ContentHandlerMap()
+{
+  itsAdminHandlerInfo.reset();
+}
 
 namespace
 {
   std::string plugin_name(const SmartMetPlugin* plugin)
   {
     return plugin ? plugin->getPluginName() : "<builtin>";
-  } 
+  }
 }
 
 
@@ -107,17 +111,25 @@ try
 
   const std::string pluginName = plugin_name(thePlugin);
 
-  auto itsFilter = itsIPFilters.find(Fmi::ascii_tolower_copy(pluginName));
+  // Get IP filter for the content handler (if any)
   std::shared_ptr<IPFilter::IPFilter> filter;
-  if (itsFilter != itsIPFilters.end())
+  if (thePlugin)
   {
-    filter = itsFilter->second;
+    auto itsFilterIterator = itsIPFilters.find(Fmi::ascii_tolower_copy(pluginName));
+    if (itsFilterIterator != itsIPFilters.end())
+      filter = itsFilterIterator->second;
+
+    std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
+          << (isPrivate ? "private " : "") << "URI " << theUri << " for plugin "
+          << pluginName << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+  }
+  else
+  {
+    // We have built in admin request handler (no plugin). Use its IP filter if available.
+    filter = itsAdminHandlerInfo->itsIPFilter;
   }
 
-  std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
-            << (isPrivate ? "private " : "") << "URI " << theUri << " for plugin "
-            << pluginName << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
-
+  // Create a new handler and add it to the map
   std::unique_ptr<HandlerView> handler(new HandlerView(theHandler,
                                                        filter,
                                                        thePlugin,
@@ -148,27 +160,34 @@ catch (...)
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
 
-std::size_t ContentHandlerMap::removeContentHandlers(SmartMetPlugin* thePlugin)
+std::size_t ContentHandlerMap::removeContentHandlers(HandlerTarget currentTarget)
 try
 {
   WriteLock lock(itsContentMutex);
 
   std::size_t count = 0;
-  for (auto it = itsHandlers.begin(); it != itsHandlers.end();)
+  // Check whether plugin address is provided as current target and remove all context handlers
+  // if provided by the plugin (thePlugin != nullptr)
+  const SmartMetPlugin* thePlugin = *std::get_if<SmartMetPlugin*>(&currentTarget);
+  if (thePlugin)
   {
-    auto curr = it++;
-    if (curr->second and curr->second->usesPlugin(thePlugin))
+    for (auto it = itsHandlers.begin(); it != itsHandlers.end();)
     {
-      const std::string uri = curr->first;
-      const std::string name = curr->second->getPluginName();
-      itsHandlers.erase(curr);
-      itsUriPrefixes.erase(uri);
-      count++;
-      std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Removed URI " << uri
-                << " handled by plugin " << name << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+      auto curr = it++;
+      if (curr->second and curr->second->usesPlugin(thePlugin))
+      {
+        const std::string uri = curr->first;
+        const std::string name = curr->second->getPluginName();
+        itsHandlers.erase(curr);
+        itsUriPrefixes.erase(uri);
+        count++;
+        std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Removed URI " << uri
+                  << " handled by plugin " << name << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+      }
     }
   }
 
+  // Remove all admin request handlers provided by the target.
   for (auto it1 = itsAdminRequestHandlers.begin(); it1 != itsAdminRequestHandlers.end(); )
   {
     int erased = 0;
@@ -177,14 +196,13 @@ try
     for (auto it2 = curr->second.begin(); it2 == curr->second.end(); )
     {
       auto item = it2++;
-      const AdminRequestTarget& target = item->first;
-      const SmartMetPlugin* plugin = *std::get_if<SmartMetPlugin*>(&target);
-      if (plugin and plugin == thePlugin)
+      const HandlerTarget& target = item->first;
+      if (target == currentTarget)
       {
         curr->second.erase(item);
         std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN
                   << " Removed admin handler (what=')" << what
-                  << "' for plugin " << plugin_name(thePlugin)
+                  << "' for " << targetName(target)
                   << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
         if (itsUniqueAdminRequests.count(what))
         {
@@ -362,20 +380,24 @@ try
   if (itsLoggingEnabled == loggingEnabled)
     return;
 
+  const auto kill_cleaner_thread = [&]()
+  {
+    if (itsLogCleanerThread.get() != nullptr && itsLogCleanerThread->joinable())
+    {
+      itsLogCleanerThread->interrupt();
+      itsLogCleanerThread->join();
+    }
+  };
+
   itsLoggingEnabled = loggingEnabled;
 
   if (itsLoggingEnabled)
   {
     // See if cleaner thread is running for some reason
-    if (itsLogCleanerThread.get() != nullptr && itsLogCleanerThread->joinable())
-    {
-      // Kill any remaining thread
-      itsLogCleanerThread->interrupt();
-      itsLogCleanerThread->join();
-    }
+    kill_cleaner_thread();
 
     // Launch log cleaner thread
-    itsLogCleanerThread.reset(new boost::thread(boost::bind(&ContentHandlerMap::cleanLog, this)));
+    itsLogCleanerThread.reset(new boost::thread(std::bind(&ContentHandlerMap::cleanLog, this)));
 
     // Set log cleanup time
     itsLogLastCleaned = Fmi::SecondClock::local_time();
@@ -384,8 +406,7 @@ try
   {
     // Status set to false, make the transition true->false
     // Erase log, stop cleaning thread
-    itsLogCleanerThread->interrupt();
-    itsLogCleanerThread->join();
+    kill_cleaner_thread();
   }
 
   // Set logging status for ALL plugins
@@ -416,14 +437,13 @@ try
 
       auto firstValidTime = Fmi::SecondClock::local_time() - maxAge;
 
-      ReadLock lock(itsLoggingMutex);
+      ReadLock lock(itsContentMutex);
       for (auto& handlerPair : itsHandlers)
       {
         if (Reactor::isShuttingDown())
           return;
 
-        handlerPair.second->cleanLog(firstValidTime);
-        handlerPair.second->flushLog();
+        handlerPair.second->cleanLog(firstValidTime, true);
       }
 
       if (itsLogLastCleaned < firstValidTime)
@@ -470,7 +490,7 @@ catch (...)
 
 
 bool ContentHandlerMap::addAdminRequestHandlerImpl(
-    AdminRequestTarget target,
+    HandlerTarget target,
     const std::string& what,
     bool requiresAuthentication,
     AdminRequestHandler theHandler,
@@ -500,7 +520,7 @@ try
   // Try adding plugin entry for admin requests. It does not matter whether
   // plugin is already present as pos1.first is always valid is always valid
   const auto pos1 = itsAdminRequestHandlers.emplace(what,
-    std::map<AdminRequestTarget, std::unique_ptr<AdminRequestInfo>>());
+    std::map<HandlerTarget, std::unique_ptr<AdminRequestInfo>>());
 
   // Should be new entry if unique==true
   if (pos1.second)
@@ -552,7 +572,7 @@ catch (...)
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
 
-bool ContentHandlerMap::removeAdminRequestHandler(AdminRequestTarget target,
+bool ContentHandlerMap::removeAdminRequestHandler(HandlerTarget target,
                                                  const std::string& what)
 try
 {
@@ -586,11 +606,11 @@ catch (...)
 }
 
 
-void ContentHandlerMap::setAdminAuthenticationCallback(AuthenticationCallback callback)
-{
-  WriteLock lock(itsContentMutex);
-  itsAdminHandlerInfo->itsAdminAuthenticationCallback = callback;
-}
+//void ContentHandlerMap::setAdminAuthenticationCallback(AuthenticationCallback callback)
+//{
+//  WriteLock lock(itsContentMutex);
+//  itsAdminHandlerInfo->itsAdminAuthenticationCallback = callback;
+//}
 
 
 bool ContentHandlerMap::executeAdminRequest(
@@ -798,16 +818,9 @@ bool ContentHandlerMap::executeAdminRequest(
     if (firstMessage.size() > 300)
     firstMessage.resize(300);
     theResponse.setHeader("X-Admin-Error", firstMessage);
+    return false;
   }
 }
-
-void ContentHandlerMap::cleanAdminRequests()
-{
-  WriteLock lock(itsContentMutex);
-  itsAdminRequestHandlers.clear();
-  itsUniqueAdminRequests.clear();
-}
-
 
 std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequests() const
 {
@@ -838,7 +851,7 @@ std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequests() co
 
 
 std::string ContentHandlerMap::targetName(
-    const ContentHandlerMap::AdminRequestTarget& target)
+    const ContentHandlerMap::HandlerTarget& target)
 {
   if (std::holds_alternative<SmartMetPlugin *>(target))
   {
@@ -860,7 +873,7 @@ std::string ContentHandlerMap::targetName(
 
 
 bool ContentHandlerMap::addAdminBoolRequestHandler(
-    AdminRequestTarget target,
+    HandlerTarget target,
     const std::string& what,
     bool requiresAuthentication,
     std::function<bool(Reactor&, const HTTP::Request&)> theHandler,
@@ -893,7 +906,7 @@ catch (...)
 }
 
 bool ContentHandlerMap::addAdminTableRequestHandler(
-        AdminRequestTarget target,
+        HandlerTarget target,
         const std::string& what,
         bool requiresAuthentication,
         std::function<std::unique_ptr<Table>(Reactor&, const HTTP::Request&)> theHandler,
@@ -933,7 +946,7 @@ catch (...)
 
 
 bool ContentHandlerMap::addAdminStringRequestHandler(
-        AdminRequestTarget target,
+        HandlerTarget target,
         const std::string& what,
         bool requiresAuthentication,
         std::function<std::string(Reactor&, const HTTP::Request&)> theHandler,
@@ -966,7 +979,7 @@ catch (...)
 
 
 bool ContentHandlerMap::addAdminCustomRequestHandler(
-        AdminRequestTarget target,
+        HandlerTarget target,
         const std::string& what,
         bool requiresAuthentication,
         std::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)> theHandler,
@@ -1079,8 +1092,41 @@ try
 {
     std::string uri;
     options.itsConfig.lookupValue("admin.uri", uri);
-    if (uri != "") {
-        itsAdminUri = uri;
+
+    // Cannot handle admin requests here is no URI is provided
+    // One can do this howevere by registering content handler in some plugin
+    if (uri == "")
+      return;
+
+    itsAdminUri = uri;
+
+    if (!options.itsConfig.exists("admin.user") && !options.itsConfig.exists("admin.password"))
+    {
+      throw Fmi::Exception(BCP, "Config error in " + options.configfile
+        + ": Both admin.user and admin.password must be provided together with admin.uri");
+      return;
+    }
+
+    std::string user, password;
+    options.itsConfig.lookupValue("admin.user", user);
+    options.itsConfig.lookupValue("admin.password", password);
+
+    itsAuthenticator.reset(new HTTP::Authentication());
+    itsAuthenticator->addUser(user, password);
+
+    itsAdminAuthenticationCallback =
+      std::bind(
+        &HTTP::Authentication::authenticateRequest,
+        itsAuthenticator.get(),
+        p::_1,
+        p::_2);
+
+    // Find the ip filters
+    std::vector<std::string> filterTokens;
+    lookupHostStringSettings(options.itsConfig, filterTokens, "admin.ip_filters");
+    if (!filterTokens.empty())
+    {
+      itsIPFilter.reset(new IPFilter::IPFilter(filterTokens));
     }
 }
 catch (...)

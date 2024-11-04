@@ -307,6 +307,20 @@ void HandlerView::flushLog()
   }
 }
 
+void HandlerView::flushLogNolock()
+{
+  auto flushIter = itsLastFlushedRequest;
+  ++flushIter;
+
+  for (; flushIter != itsRequestLog.end(); ++flushIter)
+  {
+    itsAccessLog->log(*flushIter);
+  }
+
+  // Return to the last flushed request (not past the end)
+  itsLastFlushedRequest = --flushIter;
+}
+
 LogRange HandlerView::getLoggedRequests()
 {
   ReadLock lock(itsLoggingMutex);
