@@ -216,6 +216,15 @@ public:
 
     /**
      * @brief Add admin bool request handler
+     *
+     * Returns true or false. If the handler returns false, the response status
+     * is 500.
+     *
+     * There could be more than one handler of the same type for the same request
+     * and all will be executed (order is not guaranteed to be the same as
+     * registrated). Error code is 500 if at least one handler returns false.
+     *
+     * All formatting is done by the caller
      */
     bool addAdminBoolRequestHandler(
         HandlerTarget target,
@@ -226,6 +235,11 @@ public:
 
     /**
      * @brief Add admin table request handler
+     *
+     * Returns table with data (one should set also column names and optinally
+     * the title for the table). Formatting is done by the caller
+     *
+     * This request type is requires to be unique (only one handler per request name)
      */
     bool addAdminTableRequestHandler(
         HandlerTarget target,
@@ -236,6 +250,10 @@ public:
 
     /**
      * @brief Add admin string request handler
+     *
+     * Returns string. Formatting is done by the caller
+     *
+     * This request type is requires to be unique (only one handler per request name)
      */
     bool addAdminStringRequestHandler(
         HandlerTarget target,
@@ -246,6 +264,10 @@ public:
 
     /**
      * @brief Add admin custom request handler
+     *
+     * User is fully responsible for fillin in the response
+     *
+     * This request type is requires to be unique (only one handler per request name)
      */
     bool addAdminCustomRequestHandler(
         HandlerTarget target,
@@ -279,6 +301,10 @@ public:
 
     /**
      * @brief Remove admin request handler
+     *
+     * One should only use this method to remove handlers if that is required
+     * before the plugin is removed. Otherwise removeContentHandlers handles also
+     * removal of related admin request handlers
      */
     bool removeAdminRequestHandler(HandlerTarget target,
                                    const std::string& what);
@@ -308,8 +334,6 @@ private:
      * @brief Clean log od old entries
      */
     void cleanLog();
-
-    static std::string targetName(const HandlerTarget& target);
 
     void handleAdminRequest(
             const HTTP::Request& request,

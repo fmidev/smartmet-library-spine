@@ -24,6 +24,50 @@ using namespace std::string_literals;
 
 namespace p = std::placeholders;
 
+namespace
+{
+  using namespace SmartMet::Spine;
+
+  /**
+   * @brief Format request handler target name for use in messages
+   */
+  std::string targetName(
+    const ContentHandlerMap::HandlerTarget& target)
+  {
+    if (std::holds_alternative<SmartMetPlugin *>(target))
+    {
+      return std::get<SmartMetPlugin*>(target)->getPluginName() + " plugin";
+    }
+    else if (std::holds_alternative<SmartMetEngine *>(target))
+    {
+      return std::get<SmartMetEngine*>(target)->getEngineName() + " engine";
+    }
+    else if (std::holds_alternative<ContentHandlerMap::NoTarget>(target))
+    {
+      return "<builtin>";
+    }
+    else
+    {
+      throw Fmi::Exception(BCP, "INTERNAL ERROR: Unknown admin request target");
+    }
+  }
+
+  /**
+   * @brief Format string about admin request handler for use in log messages
+   */
+  std::string adminRequestName(ContentHandlerMap::HandlerTarget target, const std::string& what)
+  {
+    const bool is_builtin = std::holds_alternative<ContentHandlerMap::NoTarget>(target);
+    // Format string for use in log messages
+    std::ostringstream nm;
+    nm << (is_builtin ? "builtin " : "") << "admin request " << what << " handler";
+    if (not is_builtin)
+      nm << " for " << targetName(target);
+    return nm.str();
+  }
+}
+
+
 ContentHandlerMap::ContentHandlerMap(const Options& options)
 try
     : itsOptions(options)
@@ -228,8 +272,7 @@ try
         const bool is_builtin = std::holds_alternative<NoTarget>(target);
         curr->second.erase(item);
         std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_BLUE << " Removed "
-            << (is_builtin ? "builtin " : "") << "admin request " << what << " handler"
-            << (is_builtin ? ""s : " provided by " + targetName(currentTarget))
+            << adminRequestName(currentTarget, what)
             << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
         if (itsUniqueAdminRequests.count(what))
         {
@@ -530,13 +573,6 @@ try
 
   std::shared_ptr<IPFilter::IPFilter> filter;
 
-  // FIXME: get IP filter for admin requests
-
-  std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN
-            << " Registered admin request handler for " << targetName(target)
-            << ' ' << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << " (what='" << what << "')"
-            << std::endl;
-
   auto handler = std::make_unique<AdminRequestInfo>();
   handler->what = what;
   handler->target = target;
@@ -557,8 +593,7 @@ try
       // Already defined and some earlier request required to be unique : report error
       const std::string name = targetName(target);
       std::ostringstream err;
-      err << "Failed to add admin request (what='" << what << "') for " << name
-          << " (already defined and required to be unique)";
+      err << "Failed to add " << adminRequestName(target, what) << " (already defined and required to be unique)";
       throw Fmi::Exception(BCP, err.str());
     }
   }
@@ -569,8 +604,7 @@ try
       // Already defined and required to be unique : report error
       const std::string name = targetName(target);
       std::ostringstream err;
-      err << "Failed to add admin request (what='" << what << "') for plugin '"
-          << name << "' (already defined and required to be unique)";
+      err << "Failed to add " << adminRequestName(target, what) << " (already defined and required to be unique)";
       throw Fmi::Exception(BCP, err.str());
     }
   }
@@ -582,8 +616,7 @@ try
   {
     const std::string name = targetName(target);
     std::ostringstream err;
-    err << "Failed to add admin request (what='" << what << "') for plugin '"
-        << name << "' (already defined)";
+    err << "Failed to add " << adminRequestName(target, what) << " (already defined)";
     throw Fmi::Exception(BCP, err.str());
   }
 
@@ -591,6 +624,11 @@ try
   {
     itsUniqueAdminRequests.insert(what);
   }
+
+  std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_BLUE
+            << " Registered " << adminRequestName(target, what)
+            << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
+            << std::endl;
 
   return true;
 }
@@ -874,28 +912,6 @@ std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequests() co
     }
   }
   return result;
-}
-
-
-std::string ContentHandlerMap::targetName(
-    const ContentHandlerMap::HandlerTarget& target)
-{
-  if (std::holds_alternative<SmartMetPlugin *>(target))
-  {
-    return std::get<SmartMetPlugin*>(target)->getPluginName() + " plugin";
-  }
-  else if (std::holds_alternative<SmartMetEngine *>(target))
-  {
-    return std::get<SmartMetEngine*>(target)->getEngineName() + " engine";
-  }
-  else if (std::holds_alternative<NoTarget>(target))
-  {
-    return "<builtin>";
-  }
-  else
-  {
-    throw Fmi::Exception(BCP, "INTERNAL ERROR: Unknown admin request target");
-  }
 }
 
 
