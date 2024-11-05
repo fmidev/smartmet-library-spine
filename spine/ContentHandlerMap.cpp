@@ -956,7 +956,7 @@ bool ContentHandlerMap::addAdminTableRequestHandler(
         const std::string& description)
 {
   return addAdminRequestHandlerImpl(target, what, requiresAuthentication,
-  AdminRequestHandler(theHandler), description);
+      AdminRequestHandler(theHandler), description);
 }
 
 
@@ -1103,6 +1103,7 @@ std::unique_ptr<Table> ContentHandlerMap::serviceInfoRequest(
 try
 {
   std::unique_ptr<Table> result(new SmartMet::Spine::Table);
+  result->setTitle("Available services");
   result->setNames({"   URI   ", "   Is prefix   ", "   Provided by   "});
   ReadLock lock(itsContentMutex);
   int row = 0;

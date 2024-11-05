@@ -1444,6 +1444,7 @@ try
   result->setTitle(
     "Last requests of " + (pluginName == "all" ? "all plugins" : pluginName + " plugin")
     + " for last " + Fmi::to_string(minutes) + " minute" + (minutes == 1 ? "" : "s"));
+  result->setNames(headers);
 
   const auto currentRequests = getLoggedRequests(pluginName);
 
@@ -1535,6 +1536,7 @@ std::unique_ptr<Table> Reactor::requestActiveRequests(const HTTP::Request& theRe
                          "OriginHost",
                          "Apikey",
                          "RequestString"});
+    reqTable->setTitle("Active requests");
     return reqTable;
 }
 
@@ -1554,6 +1556,7 @@ std::unique_ptr<Table> Reactor::requestCacheStats(const HTTP::Request& theReques
                         "inserts/min",
                         "created",
                         "age"});
+  data_table->setTitle("Cache statistics");
 
   auto now = Fmi::MicrosecClock::universal_time();
   auto cache_stats = getCacheStats();
@@ -1609,6 +1612,7 @@ try
   const std::vector<std::string> headers{
         "Handler", "LastMinute", "LastHour", "Last24Hours", "AverageDuration"};
   std::unique_ptr<Table> statsTable = std::make_unique<Table>();
+  statsTable->setTitle("Service statistics");
   statsTable->setNames(headers);
 
 
