@@ -17,7 +17,7 @@ bool isNotOld(const Fmi::DateTime& target, const SmartMet::Spine::LoggedRequest&
 }
 }  // namespace
 
-using namespace std::placeholders;
+namespace p = std::placeholders;
 
 namespace SmartMet
 {
@@ -253,7 +253,7 @@ void HandlerView::cleanLog(const Fmi::DateTime& minTime, bool flush)
       return;
 
     auto it = std::find_if(
-        itsRequestLog.begin(), itsRequestLog.end(), boost::bind(isNotOld, minTime, _1));
+        itsRequestLog.begin(), itsRequestLog.end(), std::bind(isNotOld, minTime, p::_1));
 
     // Update disk flush iterator accordingly
 
