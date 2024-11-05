@@ -19,12 +19,12 @@ void SmartMetEngine::construct(const std::string& engineName, Reactor* reactor)
   try
   {
     itsReactor = reactor;
+    itsName = engineName;
 
     this->init();
 
     isReady = true;
     itsCond.notify_all();
-    itsName = engineName;
   }
   catch (...)
   {
