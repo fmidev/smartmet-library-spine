@@ -269,7 +269,6 @@ try
       const HandlerTarget target = item->first;
       if (target == currentTarget)
       {
-        const bool is_builtin = std::holds_alternative<NoTarget>(target);
         curr->second.erase(item);
         std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_BLUE << " Removed "
             << adminRequestName(currentTarget, what)
