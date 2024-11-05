@@ -478,8 +478,9 @@ try
     kill_cleaner_thread();
   }
 
-  // Set logging status for ALL plugins
-  WriteLock lock2(itsContentMutex);
+  // Set logging status for ALL plugins (read lock is needed to avoid adding/removing handler before
+  // operation is done)
+  ReadLock lock2(itsContentMutex);
   for (auto& handlerPair : itsHandlers)
   {
     handlerPair.second->setLogging(itsLoggingEnabled);
