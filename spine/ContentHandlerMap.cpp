@@ -478,9 +478,9 @@ try
     kill_cleaner_thread();
   }
 
-  // Set logging status for ALL plugins (read lock is needed to avoid adding/removing handler before
+  // Set logging status for ALL plugins (itsContentMutex is already locked in executeAdminRequest, so no
+  // additional locking is needed here. This is safe because no other operation can change itsHandlers while this
   // operation is done)
-  ReadLock lock2(itsContentMutex);
   for (auto& handlerPair : itsHandlers)
   {
     handlerPair.second->setLogging(itsLoggingEnabled);
