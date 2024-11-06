@@ -1,5 +1,6 @@
 <!DOCTYPE html><html><head><title>Debug mode output</title><style>table {border-collapse: collapse;}th, td {border-bottom: 1px solid black; padding: 3px 0.5em 3px 0.5em; text-align: center;}tr:nth-child(even) {background-color: #f2f2f2;}tr:hover {background-color: #e2e2e2;}</style>
 </head><body>
+<h1>Available services</h1>
 <table><tr><th>   URI   </th><th>   Is prefix   </th><th>   Provided by   </th></tr><tr>
 <td>/admin</td><td>no</td><td>&lt;builtin&gt;</td></tr><tr>
 <td>/test</td><td>no</td><td>Test plugin</td></tr><tr>

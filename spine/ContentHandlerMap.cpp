@@ -970,7 +970,7 @@ try
 {
   using namespace SmartMet::Spine;
   std::unique_ptr<Table> result = handler(reactor, request);
-  std::optional<std::string> fmt = request.getParameter("format");
+  std::optional<std::string> fmt = request.getParameter(result->getDefaultFormat());
   TableFormatterOptions opt;
   std::unique_ptr<TableFormatter> formatter(TableFormatterFactory::create(fmt ? *fmt : "debug"));
   const std::string formattedResult = formatter->format(*result, {}, request, opt);

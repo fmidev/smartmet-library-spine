@@ -55,6 +55,10 @@ class Table
     const std::vector<std::string>& overrideNames,
     bool checkSize = false) const;
 
+  void setDefaultFormat(const std::string& format);
+
+  const std::string getDefaultFormat() const;
+
  private:
   void build_array() const;
 
@@ -73,6 +77,11 @@ class Table
      * size when used.
      **/
     std::vector<std::string> names;
+
+    /**
+     *  @brief default table format for output (for TableFormatterFactory)
+     */
+    std::optional<std::string> format;
   };
 
   Metadata& getMutableMetadata();

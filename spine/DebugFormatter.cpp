@@ -45,7 +45,7 @@ std::string DebugFormatter::make_header(const Table& theTable) const
       "tr:hover {background-color: #e2e2e2;}"
       "</style>\n"
       "</head><body>\n";
-  const std::optional<std::string> title;
+  const std::optional<std::string> title = theTable.getTitle();
   if (title)
     out += "<h1>" + htmlescape(*title) + "</h1>\n";
   return out;

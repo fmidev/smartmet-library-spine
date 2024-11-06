@@ -352,6 +352,24 @@ const std::vector<std::string>& Table::getNames(
 
 // ----------------------------------------------------------------------
 /*!
+*/
+// ----------------------------------------------------------------------
+
+void Table::setDefaultFormat(const std::string& format)
+{
+  getMutableMetadata().format = format;
+}
+
+const std::string Table::getDefaultFormat() const
+{
+  if (!itsMetadata || !itsMetadata->format)
+    return "debug";
+
+  return *itsMetadata->format;
+}
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Get mutable metadata (create on first use)
  */
 // ----------------------------------------------------------------------
