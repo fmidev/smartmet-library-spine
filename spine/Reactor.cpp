@@ -1436,7 +1436,6 @@ try
   std::vector<std::string> headers = {"Time", "Duration", "RequestString"};
 
   // Get optional parameters from the request
-  const std::string format = optional_string(theRequest.getParameter("format"), "json");
   const std::string s_minutes = optional_string(theRequest.getParameter("minutes"), "1");
   const std::string pluginName = optional_string(theRequest.getParameter("plugin"), "all");
   const unsigned minutes = std::min(1440UL, std::min(1UL, Fmi::stoul(s_minutes)));
@@ -1445,6 +1444,10 @@ try
     "Last requests of " + (pluginName == "all" ? "all plugins" : pluginName + " plugin")
     + " for last " + Fmi::to_string(minutes) + " minute" + (minutes == 1 ? "" : "s"));
   result->setNames(headers);
+  // Alignment in default debug format for table admin request handlers is not very usable.
+  // Choose "html" instead for better readability. User may of course say otherwise, but that
+  // is not handled here.
+  result->setDefaultFormat("html");
 
   const auto currentRequests = getLoggedRequests(pluginName);
 

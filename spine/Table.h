@@ -80,6 +80,9 @@ class Table
 
     /**
      *  @brief default table format for output (for TableFormatterFactory)
+     *
+     *  This is not taken into account automatically, but user can use return value
+     *  of Table::getDefaultFormat() to choose the format.
      */
     std::optional<std::string> format;
   };
