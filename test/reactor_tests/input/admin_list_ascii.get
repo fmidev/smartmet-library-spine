@@ -1,0 +1,1 @@
+GET /admin?what=list&format=ascii HTTP/1.0

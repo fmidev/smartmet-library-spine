@@ -60,21 +60,23 @@ std::string XmlFormatter::format(const Table& theTable,
     std::string style;
     auto givenstyle = theReq.getParameter("xmlstyle");
 
+    const auto& names = theTable.getNames(theNames, false);
+
     if (!givenstyle)
       style = "attributes";
     else
       style = *givenstyle;
 
     if (style == "attributes")
-      out += format_attributes(theTable, theNames, tag, theReq);
+      out += format_attributes(theTable, names, tag, theReq);
     else if (style == "tags")
-      out += format_tags(theTable, theNames, tag, theReq);
+      out += format_tags(theTable, names, tag, theReq);
     else if (style == "mixed")
     {
       if (theReq.getParameter("attributes"))
-        out += format_mixed(theTable, theNames, tag, theReq);
+        out += format_mixed(theTable, names, tag, theReq);
       else
-        out += format_tags(theTable, theNames, tag, theReq);
+        out += format_tags(theTable, names, tag, theReq);
     }
     else
       throw Fmi::Exception(BCP, "Unknown xmlstyle '" + style + "'");

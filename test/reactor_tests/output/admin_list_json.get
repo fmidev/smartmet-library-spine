@@ -1,16 +1,1 @@
-<!DOCTYPE html><html><head><title>Debug mode output</title><style>table {border-collapse: collapse;}th, td {border-bottom: 1px solid black; padding: 3px 0.5em 3px 0.5em; text-align: center;}tr:nth-child(even) {background-color: #f2f2f2;}tr:hover {background-color: #e2e2e2;}</style>
-</head><body>
-<h1>Admin requests summary</h1>
-<table><tr><th>What</th><th>Target</th><th>Authentication</th><th>Unique</th><th>Description</th></tr><tr>
-<td>activerequests</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>Get active request info</td></tr><tr>
-<td>cachestats</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>Request cache stats</td></tr><tr>
-<td>getlogging</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>Get logging status</td></tr><tr>
-<td>lastrequests</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>Get last requests</td></tr><tr>
-<td>list</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>List all admin requests</td></tr><tr>
-<td>serviceinfo</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>Get info about available services</td></tr><tr>
-<td>servicestats</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>Request servics stats</td></tr><tr>
-<td>setlogging</td><td>&lt;builtin&gt;</td><td>yes</td><td>no</td><td>Set logging status</td></tr><tr>
-<td>testFail</td><td>Test plugin</td><td>no</td><td>no</td><td>Failing bool admin handler</td></tr><tr>
-<td>testFail</td><td>Test engine</td><td>no</td><td>no</td><td>Failing bool engine admin request</td></tr><tr>
-<td>testOK</td><td>Test plugin</td><td>no</td><td>no</td><td>Failing OK admin handler</td></tr><tr>
-<td>testOK</td><td>Test engine</td><td>no</td><td>no</td><td>Test engine admin handler with authentication</td></tr></table></body></html>
+[{"What":"activerequests","Target":"<builtin>","Authentication":"no","Unique":"yes","Description":"Get active request info"},{"What":"cachestats","Target":"<builtin>","Authentication":"no","Unique":"yes","Description":"Request cache stats"},{"What":"getlogging","Target":"<builtin>","Authentication":"no","Unique":"yes","Description":"Get logging status"},{"What":"lastrequests","Target":"<builtin>","Authentication":"no","Unique":"yes","Description":"Get last requests"},{"What":"list","Target":"<builtin>","Authentication":"no","Unique":"yes","Description":"List all admin requests"},{"What":"serviceinfo","Target":"<builtin>","Authentication":"no","Unique":"yes","Description":"Get info about available services"},{"What":"servicestats","Target":"<builtin>","Authentication":"no","Unique":"yes","Description":"Request servics stats"},{"What":"setlogging","Target":"<builtin>","Authentication":"yes","Unique":"no","Description":"Set logging status"},{"What":"testFail","Target":"Test plugin","Authentication":"no","Unique":"no","Description":"Failing bool admin handler"},{"What":"testFail","Target":"Test engine","Authentication":"no","Unique":"no","Description":"Failing bool engine admin request"},{"What":"testOK","Target":"Test plugin","Authentication":"no","Unique":"no","Description":"Failing OK admin handler"},{"What":"testOK","Target":"Test engine","Authentication":"no","Unique":"no","Description":"Test engine admin handler with authentication"}]

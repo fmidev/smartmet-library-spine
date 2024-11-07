@@ -1,0 +1,1 @@
+GET /admin?what=list&format=xml HTTP/1.0

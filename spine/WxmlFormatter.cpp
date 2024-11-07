@@ -374,6 +374,7 @@ std::string WxmlFormatter::format(const Table& theTable,
   {
     std::string version;
     auto givenversion = theReq.getParameter("version");
+    const auto& names = theTable.getNames(theNames, false);
 
     if (!givenversion)
       version = theConfig.defaultWxmlVersion();
@@ -381,9 +382,9 @@ std::string WxmlFormatter::format(const Table& theTable,
       version = *givenversion;
 
     if (version == "1.00")
-      return format_100(theTable, theNames, theReq, theConfig);
+      return format_100(theTable, names, theReq, theConfig);
     if (version == "2.00")
-      return format_200(theTable, theNames, theReq, theConfig);
+      return format_200(theTable, names, theReq, theConfig);
 
     throw Fmi::Exception(BCP, "Unsupported wxml version: " + version);
   }
