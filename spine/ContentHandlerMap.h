@@ -465,7 +465,7 @@ private:
         std::map
         <
             HandlerTarget,
-            std::unique_ptr<AdminRequestInfo>
+            std::shared_ptr<AdminRequestInfo>
         >
     > itsAdminRequestHandlers;
 

@@ -586,7 +586,7 @@ try
   // Try adding plugin entry for admin requests. It does not matter whether
   // plugin is already present as pos1.first is always valid is always valid
   const auto pos1 = itsAdminRequestHandlers.emplace(what,
-    std::map<HandlerTarget, std::unique_ptr<AdminRequestInfo>>());
+    std::map<HandlerTarget, std::shared_ptr<AdminRequestInfo>>());
 
   // Should be new entry if unique==true
   if (pos1.second)
@@ -755,21 +755,46 @@ bool ContentHandlerMap::executeAdminRequest(
       throw Fmi::Exception(BCP, "INTERNAL ERROR: Reactor not available");
     }
 
+    // Make a local copy before unlocking the mutex
     bool ok = true;
     bool haveBoolAdminRequests = false;
     bool haveNonBoolAdminRequests = false;
+    const std::map<HandlerTarget, std::shared_ptr<AdminRequestInfo>> handlers = it->second;
+    for (const auto& item : handlers)
+    {
+      // FIXME: what to do if one handler of several throws an exception?
+      const AdminRequestHandler& handler = item.second->handler;
+      const bool is_bool_handler = std::holds_alternative<AdminBoolRequestHandler>(handler);
+      haveBoolAdminRequests = haveBoolAdminRequests || is_bool_handler;
+      haveNonBoolAdminRequests = haveNonBoolAdminRequests || !is_bool_handler;
+    }
+
+    if (haveBoolAdminRequests && haveNonBoolAdminRequests)
+    {
+      // Should never happen due to earlier checks when adding them
+      throw Fmi::Exception(BCP, "INTERNAL ERROR: Mixed admin request handlers");
+    }
+
+    if (haveNonBoolAdminRequests && handlers.size() > 1)
+    {
+      // Should never happen due to earlier checks when adding them
+      throw Fmi::Exception(BCP, "INTERNAL ERROR: Multiple non-bool admin request handlers");
+    }
+
+    //============================  FIXME  ====================
+    // It is not thread safe to unlock theContentMutex here, but otherwise attempt to add
+    // or remove content or admin request handlers will cause deadlock.
+    //==========================================================
+    lock.unlock();
+
     std::ostringstream errors;
 
-    for (const auto& item : it->second)
+    for (const auto& item : handlers)
     {
       // FIXME: what to do if one handler of several throws an exception?
       const AdminRequestHandler& handler = item.second->handler;
       if (std::holds_alternative<AdminBoolRequestHandler>(handler))
       {
-        // Cannot be mixed with non bool handlers
-        if (haveNonBoolAdminRequests)
-          throw Fmi::Exception(BCP, "INTERNAL ERROR: Mixed admin request handlers");
-        haveBoolAdminRequests = true;
         const std::string id = "Handler: {" + targetName(item.second->target) + ":" + item.second->what
                + "} - " + item.second->description;
         try
@@ -790,11 +815,6 @@ bool ContentHandlerMap::executeAdminRequest(
       }
       else
       {
-        // Cannot be mixed with any other handlers
-        if (haveBoolAdminRequests or haveNonBoolAdminRequests)
-          throw Fmi::Exception(BCP, "INTERNAL ERROR: Mixed or dupplicate admin request handlers");
-        haveNonBoolAdminRequests = true;
-
         if (std::holds_alternative<AdminStringRequestHandler>(handler))
         {
           handleAdminStringRequest(
@@ -942,6 +962,7 @@ try
 }
 catch (const std::exception& err)
 {
+  // FIXME: use Fmi::Exception
   errors << "Exception: " << err.what() << std::endl;
   return false;
 }
