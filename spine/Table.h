@@ -7,6 +7,8 @@
 #pragma once
 
 #include <list>
+#include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -42,8 +44,50 @@ class Table
 
   void setPaging(std::size_t startRow, std::size_t maxResults);
 
+  void setTitle(const std::string& title);
+  std::optional<std::string> getTitle() const;
+
+  void setNames(const std::vector<std::string>& names);
+
+  const std::vector<std::string>& getNames() const;
+
+  const std::vector<std::string>& getNames(
+    const std::vector<std::string>& overrideNames,
+    bool checkSize = false) const;
+
+  void setDefaultFormat(const std::string& format);
+
+  const std::string getDefaultFormat() const;
+
  private:
   void build_array() const;
+
+  struct Metadata
+  {
+    /**
+     *  @brief Optional table title (used for formatting only)
+     **/
+    std::optional<std::string> title;
+
+    /**
+     * @brief Optional table column names (used for formatting only)
+     *
+     * Empty vector means that column names are not defined.
+     * User must ensure that column count corresponds to the actual table
+     * size when used.
+     **/
+    std::vector<std::string> names;
+
+    /**
+     *  @brief default table format for output (for TableFormatterFactory)
+     *
+     *  This is not taken into account automatically, but user can use return value
+     *  of Table::getDefaultFormat() to choose the format.
+     */
+    std::optional<std::string> format;
+  };
+
+  Metadata& getMutableMetadata();
 
   // Elements are stored like this into a list
   struct element
@@ -80,6 +124,8 @@ class Table
   // paging
   std::size_t itsStartRow = 0;    // 0 == first
   std::size_t itsMaxResults = 0;  // 0 == all
+
+  std::unique_ptr<Metadata> itsMetadata;
 };
 
 }  // namespace Spine

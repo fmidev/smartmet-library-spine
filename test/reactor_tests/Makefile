@@ -9,7 +9,6 @@ clean:	clean-test-engine clean-test-plugin
 # Run tests (ensure that freshly built libsmartmet-spine.so is being used)
 test:	all $(SMARTMET_PLUGIN_TEST)
 	pwd
-	ls -l ../..
 	LD_LIBRARY_PATH=../../ $(TEST_RUNNER) $(SMARTMET_PLUGIN_TEST) -c reactor.conf -H /test
 
 all-test-engine:

@@ -1,7 +1,13 @@
 #include "Plugin.h"
+#include "TableFormatterOptions.h"
+#include "TableFormatterFactory.h"
+#include <functional>
+#include <sstream>
 #include <json/json.h>
 
-SmartMet::Plugin::Test::Plugin::Plugin(SmartMet::Spine::Reactor *theReactor, const char *theConfig)
+using namespace SmartMet::Plugin::Test;
+
+Plugin::Plugin(SmartMet::Spine::Reactor *theReactor, const char *theConfig)
     : test_engine(nullptr)
 {
     if (theReactor->getRequiredAPIVersion() != SMARTMET_API_VERSION)
@@ -10,27 +16,27 @@ SmartMet::Plugin::Test::Plugin::Plugin(SmartMet::Spine::Reactor *theReactor, con
     itsReactor = theReactor;
 }
 
-SmartMet::Plugin::Test::Plugin::~Plugin()
+Plugin::~Plugin()
 {
 }
 
-const std::string& SmartMet::Plugin::Test::Plugin::getPluginName() const
+const std::string& Plugin::getPluginName() const
 {
-    static const std::string name = "Test plugin";
+    static const std::string name = "Test";
     return name;
 }
 
-int SmartMet::Plugin::Test::Plugin::getRequiredAPIVersion() const
+int Plugin::getRequiredAPIVersion() const
 {
     return SMARTMET_API_VERSION;
 }
 
-bool SmartMet::Plugin::Test::Plugin::queryIsFast(const HTTP::Request& theRequest) const
+bool Plugin::queryIsFast(const HTTP::Request& theRequest) const
 {
     return true;
 }
 
-void SmartMet::Plugin::Test::Plugin::init()
+void Plugin::init()
 {
     test_engine = itsReactor->getEngine<SmartMet::Engine::Test::Engine>("Test");
     if (std::abs(test_engine->testFunct(1.2) - std::sin(1.2)) > 1.0e-12) {
@@ -69,21 +75,34 @@ void SmartMet::Plugin::Test::Plugin::init()
                 HTTP::Response& theResponse)
             {
                 requestHandler2(theReactor, theRequest, theResponse);
-            },
-            true))
+            }))
     {
         throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
     }
+
+    if (!itsReactor->addAdminBoolRequestHandler(this, "testFail", false,
+        [](Reactor&, const HTTP::Request&) -> bool { return false; },
+        "Failing bool admin handler"))
+    {
+        throw Fmi::Exception(BCP, "Failed to register test content handler");
+    }
+
+    if (!itsReactor->addAdminBoolRequestHandler(this, "testOK", false,
+        [](Reactor&, const HTTP::Request&) -> bool { return true; }, "Failing OK admin handler"))
+    {
+        throw Fmi::Exception(BCP, "Failed to register test content handler");
+    }
+
 }
 
-void SmartMet::Plugin::Test::Plugin::shutdown()
+void Plugin::shutdown()
 {
     // Uncomment for checking reactor shutdown timeeot handling
     // Do NOT commit to GitHub uncommented
     //sleep(60);
 }
 
-void SmartMet::Plugin::Test::Plugin::requestHandler(
+void Plugin::requestHandler(
     Reactor& theReactor,
     const HTTP::Request& theRequest,
     HTTP::Response& theResponse)
@@ -96,7 +115,7 @@ void SmartMet::Plugin::Test::Plugin::requestHandler(
     theResponse.setContent(dump_params(theRequest));
 }
 
-void SmartMet::Plugin::Test::Plugin::requestHandler2(
+void Plugin::requestHandler2(
     Reactor& theReactor,
     const HTTP::Request& theRequest,
     HTTP::Response& theResponse)

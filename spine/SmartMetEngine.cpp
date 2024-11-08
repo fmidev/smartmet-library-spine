@@ -14,11 +14,12 @@ namespace Spine
 {
 SmartMetEngine::~SmartMetEngine() = default;
 
-void SmartMetEngine::construct(const std::string& /* engineName */, Reactor* reactor)
+void SmartMetEngine::construct(const std::string& engineName, Reactor* reactor)
 {
   try
   {
     itsReactor = reactor;
+    itsName = engineName;
 
     this->init();
 

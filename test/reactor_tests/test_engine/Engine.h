@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SmartMetEngine.h>
+#include <Reactor.h>
 
 namespace SmartMet
 {

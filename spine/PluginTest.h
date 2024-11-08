@@ -522,12 +522,15 @@ bool PluginTest::process_query(const fs::path& fn,
 
   // emacs keeps messing up the newlines, easier to make sure
   // the ending is correct this way, but do NOT touch POST queries
-
+  //
+  // NOTE: content after headers is not supported for GET and OPTIONS methods
+  //
   if (boost::algorithm::ends_with(inputfile.string(), ".get") or
       boost::algorithm::ends_with(inputfile.string(), ".options"))
   {
-    Fmi::trim(input);
-    input += "\r\n\r\n";
+    std::vector<std::string> lines;
+    ba::split(lines, input, ba::is_any_of("\r\n"), ba::token_compress_on);
+    input = ba::trim_copy(ba::join(lines, "\r\n")) + "\r\n\r\n";
   }
 
   auto query = SmartMet::Spine::HTTP::parseRequest(input);

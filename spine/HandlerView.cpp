@@ -3,7 +3,7 @@
 #include "FmiApiKey.h"
 #include "Reactor.h"
 #include <iostream>
-#include <boost/bind/bind.hpp>
+#include <functional>
 #include <filesystem>
 #include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
@@ -17,7 +17,7 @@ bool isNotOld(const Fmi::DateTime& target, const SmartMet::Spine::LoggedRequest&
 }
 }  // namespace
 
-using namespace boost::placeholders;
+namespace p = std::placeholders;
 
 namespace SmartMet
 {
@@ -195,7 +195,9 @@ bool HandlerView::queryIsFast(HTTP::Request& theRequest) const
 {
   try
   {
-    return itsPlugin->queryIsFast(theRequest);
+    // Assume that all requests with no plugin are fast queries
+    // Otherwise ask the plugin
+    return !itsPlugin || itsPlugin->queryIsFast(theRequest);
   }
   catch (...)
   {
@@ -207,7 +209,9 @@ bool HandlerView::isAdminQuery(HTTP::Request& theRequest) const
 {
   try
   {
-    return itsPlugin->isAdminQuery(theRequest);
+    // Assume that all requests with no plugin are admin queries
+    // Otherwise ask the plugin if it is an admin query
+    return !itsPlugin || itsPlugin->isAdminQuery(theRequest);
   }
   catch (...)
   {
@@ -219,7 +223,7 @@ std::string HandlerView::getPluginName() const
 {
   try
   {
-    return itsPlugin->getPluginName();
+    return itsPlugin ? itsPlugin->getPluginName() : "<builtin>";
   }
   catch (...)
   {
@@ -227,13 +231,13 @@ std::string HandlerView::getPluginName() const
   }
 }
 
-bool HandlerView::getLogging()
+bool HandlerView::getLogging() const
 {
   ReadLock lock(itsLoggingMutex);
   return isLogging;
 }
 
-void HandlerView::cleanLog(const Fmi::DateTime& minTime)
+void HandlerView::cleanLog(const Fmi::DateTime& minTime, bool flush)
 {
   try
   {
@@ -249,7 +253,7 @@ void HandlerView::cleanLog(const Fmi::DateTime& minTime)
       return;
 
     auto it = std::find_if(
-        itsRequestLog.begin(), itsRequestLog.end(), boost::bind(isNotOld, minTime, _1));
+        itsRequestLog.begin(), itsRequestLog.end(), std::bind(isNotOld, minTime, p::_1));
 
     // Update disk flush iterator accordingly
 
@@ -271,6 +275,11 @@ void HandlerView::cleanLog(const Fmi::DateTime& minTime)
     }
 
     itsRequestLog.erase(itsRequestLog.begin(), it);
+
+    if (flush)
+    {
+      flushLogNolock();
+    }
   }
   catch (...)
   {
@@ -290,21 +299,26 @@ void HandlerView::flushLog()
       return;
     }
 
-    auto flushIter = itsLastFlushedRequest;
-    ++flushIter;
-
-    for (; flushIter != itsRequestLog.end(); ++flushIter)
-    {
-      itsAccessLog->log(*flushIter);
-    }
-
-    // Return to the last flushed request (not past the end)
-    itsLastFlushedRequest = --flushIter;
+    flushLogNolock();
   }
   catch (...)
   {
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
+}
+
+void HandlerView::flushLogNolock()
+{
+  auto flushIter = itsLastFlushedRequest;
+  ++flushIter;
+
+  for (; flushIter != itsRequestLog.end(); ++flushIter)
+  {
+    itsAccessLog->log(*flushIter);
+  }
+
+  // Return to the last flushed request (not past the end)
+  itsLastFlushedRequest = --flushIter;
 }
 
 LogRange HandlerView::getLoggedRequests()

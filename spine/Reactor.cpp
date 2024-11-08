@@ -9,6 +9,7 @@
 #include "Convenience.h"
 #include "DynamicPlugin.h"
 #include "FmiApiKey.h"
+#include "HostInfo.h"
 #include "Names.h"
 #include "Options.h"
 #include "SmartMet.h"
@@ -34,6 +35,7 @@
 #include <macgyver/Exception.h>
 #include <macgyver/PostgreSQLConnection.h>
 #include <macgyver/StringConversion.h>
+#include <macgyver/TimeFormatter.h>
 
 #include <algorithm>
 #include <condition_variable>
@@ -51,6 +53,7 @@ extern "C"
 }
 
 using namespace boost::placeholders;
+using namespace std::string_literals;
 namespace fs = std::filesystem;
 
 namespace
@@ -135,7 +138,10 @@ Reactor::~Reactor()
  */
 // ----------------------------------------------------------------------
 
-Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::AsyncTaskGroup)
+Reactor::Reactor(Options& options)
+ : ContentHandlerMap(options)
+ , itsOptions(options)
+ , itsInitTasks(new Fmi::AsyncTaskGroup)
 {
   if (instance.exchange(this))
   {
@@ -208,6 +214,22 @@ Reactor::Reactor(Options& options) : itsOptions(options), itsInitTasks(new Fmi::
                       << std::endl;
           }
         });
+
+    addAdminTableRequestHandler(NoTarget{}, "lastrequests", false,
+      std::bind(&Reactor::requestLastRequests, this, std::placeholders::_2),
+      "Get last requests");
+
+    addAdminTableRequestHandler(NoTarget{}, "activerequests", false,
+      std::bind(&Reactor::requestActiveRequests, this, std::placeholders::_2),
+      "Get active request info");
+
+    addAdminTableRequestHandler(NoTarget{}, "cachestats", false,
+      std::bind(&Reactor::requestCacheStats, this, std::placeholders::_2),
+      "Request cache stats");
+
+    addAdminTableRequestHandler(NoTarget{}, "servicestats", false,
+      std::bind(&Reactor::requestServiceStats, this, std::placeholders::_2),
+      "Request servics stats");
   }
   catch (...)
   {
@@ -342,265 +364,13 @@ int Reactor::getRequiredAPIVersion() const
 
 // ----------------------------------------------------------------------
 /*!
- * \brief Method to register new public URI/CallBackFunction association.
- *
- * Handler added using this method is visible through getURIMap() method
- */
-// ----------------------------------------------------------------------
-
-bool Reactor::addContentHandler(SmartMetPlugin* thePlugin,
-                                const std::string& theDir,
-                                const ContentHandler& theCallBackFunction,
-                                bool handlesUriPrefix)
-{
-  return addContentHandlerImpl(false, thePlugin, theDir, theCallBackFunction, handlesUriPrefix);
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Method to register new private URI/CallBackFunction association.
- *
- * Handler added using this method is not visible through getURIMap() method
- */
-// ----------------------------------------------------------------------
-
-bool Reactor::addPrivateContentHandler(SmartMetPlugin* thePlugin,
-                                       const std::string& theDir,
-                                       const ContentHandler& theCallBackFunction,
-                                       bool handlesUriPrefix)
-{
-  return addContentHandlerImpl(true, thePlugin, theDir, theCallBackFunction, handlesUriPrefix);
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Implementation of registeration of new private URI/CallBackFunction association.
- *
- */
-// ----------------------------------------------------------------------
-
-bool Reactor::addContentHandlerImpl(bool isPrivate,
-                                    SmartMetPlugin* thePlugin,
-                                    const std::string& theUri,
-                                    const ContentHandler& theHandler,
-                                    bool handlesUriPrefix)
-{
-  try
-  {
-    if (isShuttingDown())
-      return true;
-
-    WriteLock lock(itsContentMutex);
-    WriteLock lock2(itsLoggingMutex);
-    std::string pluginName = thePlugin->getPluginName();
-
-    auto itsFilter = itsIPFilters.find(Fmi::ascii_tolower_copy(pluginName));
-    std::shared_ptr<IPFilter::IPFilter> filter;
-    if (itsFilter != itsIPFilters.end())
-    {
-      filter = itsFilter->second;
-    }
-
-    HandlerPtr theView(new HandlerView(theHandler,
-                                       filter,
-                                       thePlugin,
-                                       theUri,
-                                       itsLoggingEnabled,
-                                       isPrivate,
-                                       itsOptions.accesslogdir));
-
-    std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
-              << (isPrivate ? "private " : "") << "URI " << theUri << " for plugin "
-              << thePlugin->getPluginName() << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
-
-    // Set the handler and filter
-    bool inserted = itsHandlers.insert(Handlers::value_type(theUri, theView)).second;
-    if (inserted && handlesUriPrefix)
-    {
-      if (!uriPrefixes.insert(theUri).second)
-      {
-        throw Fmi::Exception(BCP, "Failed to insert URI remap handler for " + theUri);
-      }
-    }
-    return inserted;
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!").addParameter("URI", theUri);
-  }
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Set the handler for unrecognized requests
- */
-// ----------------------------------------------------------------------
-
-bool Reactor::setNoMatchHandler(const ContentHandler& theHandler)
-{
-  try
-  {
-    WriteLock lock(itsContentMutex);
-
-    // Catch everything that is specifically not added elsewhere.
-    if (theHandler != nullptr)
-    {
-      // Set the data members
-      HandlerPtr theView(new HandlerView(theHandler));
-      itsCatchNoMatchHandler = theView;
-      itsCatchNoMatch = true;
-    }
-    else
-    {
-      // If function pointer was 0, disable catching hook.
-      itsCatchNoMatch = false;
-    }
-
-    return itsCatchNoMatch;
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Removes all handlers that use specified plugin.
- */
-// ----------------------------------------------------------------------
-std::size_t Reactor::removeContentHandlers(SmartMetPlugin* thePlugin)
-{
-  std::size_t count = 0;
-  WriteLock lock(itsContentMutex);
-  for (auto it = itsHandlers.begin(); it != itsHandlers.end();)
-  {
-    auto curr = it++;
-    if (curr->second and curr->second->usesPlugin(thePlugin))
-    {
-      const std::string uri = curr->second->getResource();
-      const std::string name = curr->second->getPluginName();
-      itsHandlers.erase(curr);
-      uriPrefixes.erase(uri);
-      count++;
-      WriteLock lock2(itsLoggingMutex);
-      std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Removed URI " << uri
-                << " handled by plugin " << name << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
-    }
-  }
-  return count;
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Obtain the Handler view corresponding to the given request
- *
- * Returns pointer to handler or nullptr when not found
- */
-// ----------------------------------------------------------------------
-
-HandlerView* Reactor::getHandlerView(const HTTP::Request& theRequest)
-{
-  try
-  {
-    ReadLock lock(itsContentMutex);
-
-    bool remapped = false;
-    std::string resource = theRequest.getResource();
-
-    for (const auto& item : uriPrefixes)
-    {
-      std::size_t len = item.length();
-      if (resource.substr(0, len) == item && (resource.length() == len || resource[len] == '/'))
-      {
-        remapped = true;
-        resource = item;
-        break;
-      }
-    }
-
-    // Try to find a content handler
-    auto it = itsHandlers.find(resource);
-    if (it == itsHandlers.end())
-    {
-      if (remapped)
-      {
-        // Should never happen
-        throw Fmi::Exception(BCP,
-                             "[INTERNAL ERROR] URI remapping defined, but"
-                             " handler not found for " +
-                                 resource);
-      }
-      // No specific match found, decide what we should do
-      if (itsCatchNoMatch)
-      {
-        // Return with true, as this was catched by external handler
-        return &*itsCatchNoMatchHandler;
-      }
-
-      // No match found -- return with failure
-      return nullptr;
-    }
-
-    return &*it->second;
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Getting logging mode
- */
-// ----------------------------------------------------------------------
-
-bool Reactor::getLogging() const
-{
-  return itsLoggingEnabled;
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Getting logging mode
+ * \brief Getting lazy linking mode
  */
 // ----------------------------------------------------------------------
 
 bool Reactor::lazyLinking() const
 {
   return itsOptions.lazylinking;
-}
-// ----------------------------------------------------------------------
-/*!
- * \brief Get copy of the log
- */
-// ----------------------------------------------------------------------
-
-AccessLogStruct Reactor::getLoggedRequests(const std::string& thePlugin) const
-{
-  try
-  {
-    if (itsLoggingEnabled)
-    {
-      std::string pluginNameInLowerCase = Fmi::ascii_tolower_copy(thePlugin);
-      LoggedRequests requests;
-      ReadLock lock(itsContentMutex);
-      for (const auto& handler : itsHandlers)
-      {
-        if (pluginNameInLowerCase == "all" ||
-            pluginNameInLowerCase == Fmi::ascii_tolower_copy(handler.second->getPluginName()))
-          requests.insert(std::make_pair(handler.first, handler.second->getLoggedRequests()));
-      }
-      return std::make_tuple(true, requests, itsLogLastCleaned);
-    }
-
-    return std::make_tuple(false, LoggedRequests(), Fmi::DateTime());
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
 }
 
 // ----------------------------------------------------------------------
@@ -849,171 +619,6 @@ ActiveBackends::Status Reactor::getBackendRequestStatus() const
 
 // ----------------------------------------------------------------------
 /*!
- * \brief Get registered URIs
- */
-// ----------------------------------------------------------------------
-
-URIMap Reactor::getURIMap() const
-{
-  try
-  {
-    ReadLock lock(itsContentMutex);
-    URIMap theMap;
-
-    for (const auto& handlerPair : itsHandlers)
-    {
-      // Getting plugin names during shutdown may throw due to a call to a pure virtual method.
-      // This mitigates the problem, but does not solve it. The shutdown flag should be
-      // locked for the duration of this loop.
-      if (isShuttingDown())
-        return {};
-
-      if (not handlerPair.second->isPrivate())
-      {
-        theMap.insert(std::make_pair(handlerPair.first, handlerPair.second->getPluginName()));
-      }
-    }
-
-    return theMap;
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Check whether provided value is available in URI list (including private ones)
- */
-// ----------------------------------------------------------------------
-
-std::optional<std::string> Reactor::getPluginName(const std::string& uri) const
-{
-  ReadLock lock(itsContentMutex);
-  auto it = itsHandlers.find(uri);
-  if (it != itsHandlers.end())
-    return it->second->getPluginName();
-  return std::nullopt;
-}
-
-void Reactor::dumpURIs(std::ostream& output) const
-{
-  ReadLock lock(itsContentMutex);
-  for (const auto& item : itsHandlers)
-  {
-      output << item.first << " --> " << item.second->getPluginName() << std::endl;
-  }
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Check whether provided value should be considered as URI prefix
- */
-// ----------------------------------------------------------------------
-
-bool Reactor::isURIPrefix(const std::string& uri) const
-{
-  return uriPrefixes.count(uri) > 0;
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Clean the log of old entries
- */
-// ----------------------------------------------------------------------
-
-/* [[noreturn]] */ void Reactor::cleanLog()
-{
-  try
-  {
-    // This function must be called as an argument to the cleaner thread
-
-    auto maxAge = Fmi::Hours(24);  // Here we give the maximum log time span, 24 Fmi::SecondClock
-
-    while (!isShuttingDown())
-    {
-      // Sleep for some time
-      boost::this_thread::sleep_for(boost::chrono::seconds(5));
-
-      auto firstValidTime = Fmi::SecondClock::local_time() - maxAge;
-      for (auto& handlerPair : itsHandlers)
-      {
-        if (isShuttingDown())
-          return;
-
-        handlerPair.second->cleanLog(firstValidTime);
-        handlerPair.second->flushLog();
-      }
-
-      if (itsLogLastCleaned < firstValidTime)
-      {
-        itsLogLastCleaned = firstValidTime;
-      }
-    }
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "cleanLog operation failed!");
-  }
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Set request logging activity on or off. Only call after the handlers are registered
- */
-// ----------------------------------------------------------------------
-
-void Reactor::setLogging(bool loggingEnabled)
-{
-  try
-  {
-    WriteLock lock(itsLoggingMutex);
-
-    // Check for no change in status
-    if (itsLoggingEnabled == loggingEnabled)
-      return;
-
-    itsLoggingEnabled = loggingEnabled;
-
-    if (itsLoggingEnabled)
-    {
-      // See if cleaner thread is running for some reason
-      if (itsLogCleanerThread.get() != nullptr && itsLogCleanerThread->joinable())
-      {
-        // Kill any remaining thread
-        itsLogCleanerThread->interrupt();
-        itsLogCleanerThread->join();
-      }
-
-      // Launch log cleaner thread
-      itsLogCleanerThread.reset(new boost::thread(boost::bind(&Reactor::cleanLog, this)));
-
-      // Set log cleanup time
-      itsLogLastCleaned = Fmi::SecondClock::local_time();
-    }
-    else
-    {
-      // Status set to false, make the transition true->false
-      // Erase log, stop cleaning thread
-      itsLogCleanerThread->interrupt();
-      itsLogCleanerThread->join();
-    }
-
-    // Set logging status for ALL plugins
-    for (auto& handlerPair : itsHandlers)
-    {
-      handlerPair.second->setLogging(itsLoggingEnabled);
-    }
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
-}
-
-// ----------------------------------------------------------------------
-/*!
  * \brief List the names of the loaded plugins
  */
 // ----------------------------------------------------------------------
@@ -1079,21 +684,13 @@ bool Reactor::loadPlugin(const std::string& sectionName,
 
       try
       {
-        theFilter.reset(new IPFilter::IPFilter(filterTokens));
+        addIPFilters(pluginname, filterTokens);
         std::cout << "IP Filter registered for plugin: " << pluginname << std::endl;
       }
       catch (std::runtime_error& err)
       {
         // No IP filter for this plugin
         std::cout << "No IP filter for plugin: " << pluginname << ". Reason: " << err.what()
-                  << std::endl;
-      }
-
-      auto inserted = itsIPFilters.insert(std::make_pair(pluginname, theFilter));
-      if (!inserted.second)
-      {
-        // Plugin name is not unique
-        std::cout << "No IP filter for plugin: " << pluginname << ". Reason: plugin name not unique"
                   << std::endl;
       }
     }
@@ -1572,6 +1169,13 @@ void Reactor::shutdown_impl()
     // We are no more interested about init task errors when shutdown has been requested
     itsInitTasks->stop_on_error(false);
 
+    //---------------------------------------------------------------------------------------------
+    // Perform preliminary cleanup of base class ContentHandlerMap to avoid some objects
+    // staying around after plugins and engines have been deleted.
+    //
+    // At first clean all generic (not associated by some plugin or engine) admin request handlers
+    removeContentHandlers(NoTarget{});
+
     // Requesting all plugins to shutdown. Notice that now the plugins know
     // how many requests they have received and how many responses they have sent.
     // In the other words, the plugins wait until the number of responses equals to
@@ -1587,8 +1191,10 @@ void Reactor::shutdown_impl()
       std::cout << ANSI_FG_RED << "* Plugin [" << plugin->pluginname() << "] shutting down\n"
                 << ANSI_FG_DEFAULT;
       shutdownTasks.add("Plugin [" + plugin->pluginname() + "] shutdown",
-                        [&plugin]()
+                        [this, &plugin]()
                         {
+                          // Better be sure that all handlers are removed before plugin is shut down
+                          removeContentHandlers(plugin->getPlugin());
                           plugin->shutdownPlugin();
                           plugin.reset();
                         });
@@ -1610,8 +1216,10 @@ void Reactor::shutdown_impl()
       std::cout << tmp1.str() << std::flush;
       auto* engine = singleton.second;
       shutdownTasks.add("Engine [" + singleton.first + "] shutdown",
-                        [engine, singleton]()
+                        [this, engine, singleton]()
                         {
+                          // Better be sure that all handlers are removed before engine is shut down
+                          removeContentHandlers(engine);
                           engine->shutdownEngine();
                           std::ostringstream tmp2;
                           tmp2 << ANSI_FG_MAGENTA << "* Engine [" << singleton.first
@@ -1794,6 +1402,313 @@ void Reactor::notifyShutdownComplete()
   std::unique_lock<std::mutex> lock(shutdownFinishedMutex);
   gShutdownComplete = true;
   shutdownFinishedCond.notify_all();
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+// Admin requests handled by Reactor
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+namespace
+{
+std::string average_and_format(long total_microsecs, unsigned long requests)
+{
+  try
+  {
+    // Average global request time
+    double average_time = total_microsecs / (1000.0 * requests);
+    if (std::isnan(average_time))
+      return "Not available";
+
+    std::stringstream ss;
+    ss << std::setprecision(4) << average_time;
+    return ss.str();
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+}  // namespace
+
+std::unique_ptr<Table> Reactor::requestLastRequests(const HTTP::Request& theRequest) const
+try
+{
+  std::unique_ptr<Table> result = std::make_unique<Table>();
+  std::vector<std::string> headers = {"Time", "Duration", "RequestString"};
+
+  // Get optional parameters from the request
+  const std::string s_minutes = optional_string(theRequest.getParameter("minutes"), "1");
+  const std::string pluginName = optional_string(theRequest.getParameter("plugin"), "all");
+  const unsigned minutes = std::min(1440UL, std::max(1UL, Fmi::stoul(s_minutes)));
+
+  result->setTitle(
+    "Last requests of " + (pluginName == "all" ? "all plugins" : pluginName + " plugin")
+    + " for last " + Fmi::to_string(minutes) + " minute" + (minutes == 1 ? "" : "s"));
+  result->setNames(headers);
+  // Alignment in default debug format for table admin request handlers is not very usable.
+  // Choose "html" instead for better readability. User may of course say otherwise, but that
+  // is not handled here.
+  result->setDefaultFormat("html");
+
+  const auto currentRequests = getLoggedRequests(pluginName);
+
+  std::size_t row = 0;
+  auto firstValidTime = Fmi::SecondClock::local_time() - Fmi::Minutes(minutes);
+
+  for (const auto& req : std::get<1>(currentRequests))
+  {
+    auto firstConsidered = std::find_if(req.second.begin(),
+                                        req.second.end(),
+                                        [&firstValidTime](const Spine::LoggedRequest &compare)
+                                        { return compare.getRequestEndTime() > firstValidTime; });
+
+    for (auto reqIt = firstConsidered; reqIt != req.second.end();
+         ++reqIt)  // NOLINT(modernize-loop-convert)
+    {
+      std::size_t column = 0;
+      std::string endtime = Fmi::to_iso_extended_string(reqIt->getRequestEndTime().time_of_day());
+      std::string msec_duration = average_and_format(
+          reqIt->getAccessDuration().total_microseconds(), 1);  // just format the single duration
+      std::string requestString = reqIt->getRequestString();
+      result->set(column++, row, endtime);
+      result->set(column++, row, msec_duration);
+      result->set(column++, row, HTTP::urldecode(reqIt->getRequestString()));
+      ++row;
+    }
+  }
+
+  return result;
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
+std::unique_ptr<Table> Reactor::requestActiveRequests(const HTTP::Request& theRequest) const
+{
+    std::unique_ptr<Table> reqTable = std::make_unique<Table>();
+
+    // Obtain logging information
+    auto requests = getActiveRequests();
+
+    auto now = Fmi::MicrosecClock::universal_time();
+
+    std::size_t row = 0;
+    for (const auto &id_info : requests)
+    {
+      const auto id = id_info.first;
+      const auto &time = id_info.second.time;
+      const auto &req = id_info.second.request;
+
+      const auto ip = req.getClientIP();
+      const auto hostname = Spine::HostInfo::getHostName(ip);
+
+      auto duration = now - time;
+
+      const bool check_access_token = true;
+      auto apikey = Spine::FmiApiKey::getFmiApiKey(req, check_access_token);
+
+      auto originIP = req.getHeader("X-Forwarded-For");
+      auto originhostname = ""s;
+      if (originIP)
+      {
+        auto loc = originIP->find(',');
+        if (loc == std::string::npos)
+          originhostname = Spine::HostInfo::getHostName(*originIP);
+        else
+          originhostname = Spine::HostInfo::getHostName(originIP->substr(0, loc));
+      }
+
+      std::size_t column = 0;
+      reqTable->set(column++, row, Fmi::to_string(id));
+      reqTable->set(column++, row, Fmi::to_iso_extended_string(time.time_of_day()));
+      reqTable->set(column++, row, Fmi::to_string(duration.total_milliseconds() / 1000.0));
+      reqTable->set(column++, row, ip);
+      reqTable->set(column++, row, hostname);
+      reqTable->set(column++, row, (originIP ? *originIP : ""s));
+      reqTable->set(column++, row, originhostname);
+      reqTable->set(column++, row, apikey ? *apikey : "-");
+      reqTable->set(column++, row, HTTP::urldecode(req.getURI()));
+      ++row;
+    }
+
+    reqTable->setNames({ "Id",
+                         "Time",
+                         "Duration",
+                         "ClientIP",
+                         "ClientHost",
+                         "OriginIP",
+                         "OriginHost",
+                         "Apikey",
+                         "RequestString"});
+    reqTable->setTitle("Active requests");
+    return reqTable;
+}
+
+std::unique_ptr<Table> Reactor::requestCacheStats(const HTTP::Request& theRequest) const
+{
+  std::unique_ptr<Table> data_table = std::make_unique<Table>();
+  data_table->setTitle("CacheStatistics");
+  data_table->setNames({"#",
+                        "cache_name",
+                        "maxsize",
+                        "size",
+                        "inserts",
+                        "hits",
+                        "misses",
+                        "hitrate",
+                        "hits/min",
+                        "inserts/min",
+                        "created",
+                        "age"});
+  data_table->setTitle("Cache statistics");
+
+  auto now = Fmi::MicrosecClock::universal_time();
+  auto cache_stats = getCacheStats();
+
+  auto timeFormat = Spine::optional_string(theRequest.getParameter("timeformat"), "sql");
+  std::unique_ptr<Fmi::TimeFormatter> timeFormatter(Fmi::TimeFormatter::create(timeFormat));
+
+  size_t row = 1;
+  for (const auto &item : cache_stats)
+  {
+    const auto &name = item.first;
+    const auto &stat = item.second;
+
+    data_table->set(0, row, Fmi::to_string(row));
+    data_table->set(1, row, name);
+    data_table->set(2, row, Fmi::to_string(stat.maxsize));
+    data_table->set(3, row, Fmi::to_string(stat.size));
+    data_table->set(4, row, Fmi::to_string(stat.inserts));
+    data_table->set(5, row, Fmi::to_string(stat.hits));
+    data_table->set(6, row, Fmi::to_string(stat.misses));
+
+    try
+    {
+      auto duration = (now - stat.starttime).total_seconds();
+      auto n = stat.hits + stat.misses;
+      auto hit_rate = (n == 0 ? 0.0 : stat.hits * 100.0 / n);
+      auto hits_per_min = (duration == 0 ? 0.0 : 60.0 * stat.hits / duration);
+      auto inserts_per_min = (duration == 0 ? 0.0 : 60.0 * stat.inserts / duration);
+
+      data_table->set(7, row, Fmi::to_string("%.1f", hit_rate));
+      data_table->set(8, row, Fmi::to_string("%.1f", hits_per_min));
+      data_table->set(9, row, Fmi::to_string("%.1f", inserts_per_min));
+      data_table->set(10, row, timeFormatter->format(stat.starttime));
+      data_table->set(11, row, Fmi::to_simple_string(now - stat.starttime));
+    }
+    catch (...)
+    {
+      data_table->set(7, row, "?");
+      data_table->set(8, row, "?");
+      data_table->set(9, row, "?");
+      data_table->set(10, row, "?");
+      data_table->set(11, row, "?");
+    }
+    row++;
+  }
+  return data_table;
+}
+
+
+std::unique_ptr<Table> Reactor::requestServiceStats(const HTTP::Request& theRequest) const
+try
+{
+  const std::vector<std::string> headers{
+        "Handler", "LastMinute", "LastHour", "Last24Hours", "AverageDuration"};
+  std::unique_ptr<Table> statsTable = std::make_unique<Table>();
+  statsTable->setTitle("Service statistics");
+  statsTable->setNames(headers);
+
+
+  std::string pluginName = Spine::optional_string(theRequest.getParameter("plugin"), "all");
+  auto currentRequests = getLoggedRequests(pluginName);  // This is type tuple<bool,LogRange,DateTime>
+
+  auto currentTime = Fmi::MicrosecClock::local_time();
+
+  std::size_t row = 0;
+  unsigned long total_minute = 0;
+  unsigned long total_hour = 0;
+  unsigned long total_day = 0;
+  long global_microsecs = 0;
+
+  for (const auto &reqpair : std::get<1>(currentRequests))
+  {
+    // Lets calculate how many hits we have in minute,hour and day and since start
+    unsigned long inMinute = 0;
+    unsigned long inHour = 0;
+    unsigned long inDay = 0;
+    long total_microsecs = 0;
+    // We go from newest to oldest
+
+    for (const auto &item : reqpair.second)
+    {
+      auto sinceDuration = currentTime - item.getRequestEndTime();
+      auto accessDuration = item.getAccessDuration();
+
+      total_microsecs += accessDuration.total_microseconds();
+
+      global_microsecs += accessDuration.total_microseconds();
+
+      if (sinceDuration < Fmi::Hours(24))
+      {
+        ++inDay;
+        ++total_day;
+        if (sinceDuration < Fmi::Hours(1))
+        {
+          ++inHour;
+          ++total_hour;
+          if (sinceDuration < Fmi::Minutes(1))
+          {
+            ++inMinute;
+            ++total_minute;
+          }
+        }
+      }
+    }
+
+    std::size_t column = 0;
+
+    statsTable->set(column, row, reqpair.first);
+    ++column;
+
+    statsTable->set(column, row, Fmi::to_string(inMinute));
+    ++column;
+
+    statsTable->set(column, row, Fmi::to_string(inHour));
+    ++column;
+
+    statsTable->set(column, row, Fmi::to_string(inDay));
+    ++column;
+
+    std::string msecs = average_and_format(total_microsecs, inDay);
+    statsTable->set(column, row, msecs);
+
+    ++row;
+  }
+
+  // Finally insert totals
+  std::size_t column = 0;
+
+  statsTable->set(column, row, "Total requests");
+  ++column;
+
+  statsTable->set(column, row, Fmi::to_string(total_minute));
+  ++column;
+
+  statsTable->set(column, row, Fmi::to_string(total_hour));
+  ++column;
+
+  statsTable->set(column, row, Fmi::to_string(total_day));
+  ++column;
+
+  std::string msecs = average_and_format(global_microsecs, total_day);
+  statsTable->set(column, row, msecs);
+
+  return statsTable;
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
 
 }  // namespace Spine

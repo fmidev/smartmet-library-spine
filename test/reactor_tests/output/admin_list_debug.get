@@ -1,0 +1,16 @@
+<!DOCTYPE html><html><head><title>Debug mode output</title><style>table {border-collapse: collapse;}th, td {border-bottom: 1px solid black; padding: 3px 0.5em 3px 0.5em; text-align: center;}tr:nth-child(even) {background-color: #f2f2f2;}tr:hover {background-color: #e2e2e2;}</style>
+</head><body>
+<h1>Admin requests summary</h1>
+<table><tr><th>What</th><th>Target</th><th>Authentication</th><th>Unique</th><th>Description</th></tr><tr>
+<td>activerequests</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>Get active request info</td></tr><tr>
+<td>cachestats</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>Request cache stats</td></tr><tr>
+<td>getlogging</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>Get logging status</td></tr><tr>
+<td>lastrequests</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>Get last requests</td></tr><tr>
+<td>list</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>List all admin requests</td></tr><tr>
+<td>serviceinfo</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>Get info about available services</td></tr><tr>
+<td>servicestats</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>Request servics stats</td></tr><tr>
+<td>setlogging</td><td>&lt;builtin&gt;</td><td>yes</td><td>no</td><td>Set logging status</td></tr><tr>
+<td>testFail</td><td>Test plugin</td><td>no</td><td>no</td><td>Failing bool admin handler</td></tr><tr>
+<td>testFail</td><td>Test engine</td><td>no</td><td>no</td><td>Failing bool engine admin request</td></tr><tr>
+<td>testOK</td><td>Test plugin</td><td>no</td><td>no</td><td>Failing OK admin handler</td></tr><tr>
+<td>testOK</td><td>Test engine</td><td>no</td><td>no</td><td>Test engine admin handler with authentication</td></tr></table></body></html>

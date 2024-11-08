@@ -1,0 +1,2 @@
+ERROR  Handler: {Test plugin:testFail} - Failing bool admin handler
+ERROR  Handler: {Test engine:testFail} - Failing bool engine admin request

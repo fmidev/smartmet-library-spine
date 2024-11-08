@@ -61,6 +61,72 @@ void basic()
   TEST_PASSED();
 }
 
+void basic_names_from_table()
+{
+  SmartMet::Spine::Table tab;
+  SmartMet::Spine::TableFormatter::Names names;
+  names.push_back("col0");
+  names.push_back("col1");
+  names.push_back("col2");
+  names.push_back("col3");
+  tab.setNames(names);
+
+  for (int i = 0; i < 4; i++)
+    for (int j = 0; j < 4; j++)
+      tab.set(i, j, tostr(10 * i + j));
+
+  const char* res =
+      "<!DOCTYPE html><html><head><title>Debug mode output</title><style>table {border-collapse: "
+      "collapse;}th, td {border-bottom: 1px solid black; padding: 3px 0.5em 3px 0.5em; text-align: "
+      "center;}tr:nth-child(even) {background-color: #f2f2f2;}tr:hover {background-color: "
+      "#e2e2e2;}</style>\n</head><body>\n<table><tr><th>col0</th><th>col1</th><th>col2</"
+      "th><th>col3</th></tr><tr>\n<td>0</td><td>10</td><td>20</td><td>30</td></tr><tr>\n<td>1</"
+      "td><td>11</td><td>21</td><td>31</td></tr><tr>\n<td>2</td><td>12</td><td>22</td><td>32</td></"
+      "tr><tr>\n<td>3</td><td>13</td><td>23</td><td>33</td></tr></table></body></html>";
+
+  SmartMet::Spine::HTTP::Request req;
+
+  SmartMet::Spine::DebugFormatter fmt;
+  auto out = fmt.format(tab, {}, req, config);
+
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "\nexpected:\n" + res);
+
+  TEST_PASSED();
+}
+
+void basic_incomplete_names_from_table()
+{
+  SmartMet::Spine::Table tab;
+  SmartMet::Spine::TableFormatter::Names names;
+  names.push_back("col0");
+  names.push_back("col1");
+  tab.setNames(names);
+
+  for (int i = 0; i < 4; i++)
+    for (int j = 0; j < 4; j++)
+      tab.set(i, j, tostr(10 * i + j));
+
+  const char* res =
+      "<!DOCTYPE html><html><head><title>Debug mode output</title><style>table {border-collapse: "
+      "collapse;}th, td {border-bottom: 1px solid black; padding: 3px 0.5em 3px 0.5em; text-align: "
+      "center;}tr:nth-child(even) {background-color: #f2f2f2;}tr:hover {background-color: "
+      "#e2e2e2;}</style>\n</head><body>\n<table><tr><th>col0</th><th>col1</th><th></"
+      "th><th></th></tr><tr>\n<td>0</td><td>10</td><td>20</td><td>30</td></tr><tr>\n<td>1</"
+      "td><td>11</td><td>21</td><td>31</td></tr><tr>\n<td>2</td><td>12</td><td>22</td><td>32</td></"
+      "tr><tr>\n<td>3</td><td>13</td><td>23</td><td>33</td></tr></table></body></html>";
+
+  SmartMet::Spine::HTTP::Request req;
+
+  SmartMet::Spine::DebugFormatter fmt;
+  auto out = fmt.format(tab, {}, req, config);
+
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "\nexpected:\n" + res);
+
+  TEST_PASSED();
+}
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Test formatting an empty table
@@ -98,6 +164,8 @@ class tests : public tframe::tests
   void test(void)
   {
     TEST(basic);
+    TEST(basic_names_from_table);
+    TEST(basic_incomplete_names_from_table);
     TEST(empty);
   }
 };

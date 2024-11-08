@@ -30,7 +30,7 @@ std::string DebugFormatter::missing_value(const HTTP::Request& theReq) const
   return miss;
 }
 
-std::string DebugFormatter::make_header() const
+std::string DebugFormatter::make_header(const Table& theTable) const
 {
   std::string out;
   out.reserve(TableFormatter::default_minimum_size);
@@ -45,6 +45,9 @@ std::string DebugFormatter::make_header() const
       "tr:hover {background-color: #e2e2e2;}"
       "</style>\n"
       "</head><body>\n";
+  const std::optional<std::string> title = theTable.getTitle();
+  if (title)
+    out += "<h1>" + htmlescape(*title) + "</h1>\n";
   return out;
 }
 
@@ -91,14 +94,17 @@ std::string DebugFormatter::format(const Table& theTable,
 {
   try
   {
-    auto out = make_header();
+    auto out = make_header(theTable);
 
     // Append headers
 
     out += "<table><tr>";
+
+    const auto& names = theTable.getNames(theNames, false);
+
     for (const auto& nam : theTable.columns())
     {
-      const std::string& name = theNames[nam];
+      const std::string& name = nam >= names.size() ? "" : names[nam];
       out += "<th>";
       out += htmlescape(name);
       out += "</th>";

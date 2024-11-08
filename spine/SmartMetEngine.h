@@ -48,6 +48,8 @@ class SmartMetEngine
 
   bool ready() const { return isReady; }
 
+  inline const std::string& getEngineName() const { return itsName; }
+
  protected:
   /// This function contains the engine construction
   virtual void init() = 0;
