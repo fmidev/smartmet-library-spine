@@ -1438,7 +1438,7 @@ try
   // Get optional parameters from the request
   const std::string s_minutes = optional_string(theRequest.getParameter("minutes"), "1");
   const std::string pluginName = optional_string(theRequest.getParameter("plugin"), "all");
-  const unsigned minutes = std::min(1440UL, std::min(1UL, Fmi::stoul(s_minutes)));
+  const unsigned minutes = std::min(1440UL, std::max(1UL, Fmi::stoul(s_minutes)));
 
   result->setTitle(
     "Last requests of " + (pluginName == "all" ? "all plugins" : pluginName + " plugin")
