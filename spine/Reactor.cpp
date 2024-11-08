@@ -1468,9 +1468,10 @@ try
       std::string endtime = Fmi::to_iso_extended_string(reqIt->getRequestEndTime().time_of_day());
       std::string msec_duration = average_and_format(
           reqIt->getAccessDuration().total_microseconds(), 1);  // just format the single duration
+      std::string requestString = reqIt->getRequestString();
       result->set(column++, row, endtime);
       result->set(column++, row, msec_duration);
-      result->set(column++, row, reqIt->getRequestString());
+      result->set(column++, row, HTTP::urldecode(reqIt->getRequestString()));
       ++row;
     }
   }
@@ -1526,7 +1527,7 @@ std::unique_ptr<Table> Reactor::requestActiveRequests(const HTTP::Request& theRe
       reqTable->set(column++, row, (originIP ? *originIP : ""s));
       reqTable->set(column++, row, originhostname);
       reqTable->set(column++, row, apikey ? *apikey : "-");
-      reqTable->set(column++, row, req.getURI());
+      reqTable->set(column++, row, HTTP::urldecode(req.getURI()));
       ++row;
     }
 
