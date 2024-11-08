@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 24.11.1
+Version: 24.11.8
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -152,6 +152,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Nov  8 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.11.8-1.fmi
+- Add admin request support. Split Reactor class into base class ContentHandlerMap and derived class Reactor
+
 * Fri Nov  1 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.11.1-1.fmi
 - Added SmartMet admin request support
 
