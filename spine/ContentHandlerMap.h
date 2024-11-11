@@ -319,14 +319,6 @@ public:
             HTTP::Response& theResponse,
             std::function<bool(const HTTP::Request&, HTTP::Response&)> authCallback);
 
-    /**
-     * @brief Set admin request authentication callback
-     *
-     * Only needed if some admin requests require authentication and these
-     * requests are handled through this class (itsAdminUri is not empty)
-     */
-    //void setAdminAuthenticationCallback(AuthenticationCallback callback);
-
     std::unique_ptr<Table> getAdminRequests() const;
 
 private:

@@ -674,13 +674,6 @@ catch (...)
 }
 
 
-//void ContentHandlerMap::setAdminAuthenticationCallback(AuthenticationCallback callback)
-//{
-//  WriteLock lock(itsContentMutex);
-//  itsAdminHandlerInfo->itsAdminAuthenticationCallback = callback;
-//}
-
-
 bool ContentHandlerMap::executeAdminRequest(
     const HTTP::Request& theRequest,
     HTTP::Response& theResponse,
