@@ -681,6 +681,9 @@ bool ContentHandlerMap::executeAdminRequest(
 {
   try
   {
+    // Force stack trace to be generated in case of an exception
+    Fmi::Exception::ForceStackTrace force_stack_trace;
+
     ReadLock lock(itsContentMutex);
 
     const auto what = theRequest.getParameter("what");
