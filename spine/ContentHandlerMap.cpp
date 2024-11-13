@@ -339,6 +339,25 @@ catch (...)
 }
 
 
+bool ContentHandlerMap::hasHandlerView(const std::string& resource_) const
+{
+  std::string resource = resource_;
+  ReadLock lock(itsContentMutex);
+  for (const auto& item : itsUriPrefixes)
+  {
+    std::size_t len = item.length();
+    if (resource.substr(0, len) == item && (resource.length() == len || resource[len] == '/'))
+    {
+      resource = item;
+      break;
+    }
+  }
+
+  // Try to find a content handler
+  return itsHandlers.find(resource) != itsHandlers.end();
+}
+
+
 void ContentHandlerMap::addIPFilters(const std::string& pluginName, const std::vector<std::string>& filterTokens)
 try
 {

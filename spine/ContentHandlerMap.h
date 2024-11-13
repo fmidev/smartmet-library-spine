@@ -160,6 +160,8 @@ public:
      */
     HandlerView* getHandlerView(const HTTP::Request& theRequest);
 
+    bool hasHandlerView(const std::string& resource) const;
+
     /**
      * @brief Add IP filters to the handler
      */
