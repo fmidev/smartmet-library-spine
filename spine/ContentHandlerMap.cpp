@@ -75,10 +75,6 @@ try
 {
   // Register some admin request handlers
 
-  AdminTableRequestHandler getAdminRequests = std::bind(&ContentHandlerMap::getAdminRequests, this);
-  AdminTableRequestHandler getLoggingRequest = std::bind(&ContentHandlerMap::getLoggingRequest, this, p::_1, p::_2);
-  AdminBoolRequestHandler setLoggingRequest = std::bind(&ContentHandlerMap::setLoggingRequest, this, p::_1, p::_2);
-
   // FIXME: get value of itsAdminUri from options
   // FIXME: setup IP access rules for admin requests from configuration
   if (itsAdminHandlerInfo->itsAdminUri)
@@ -849,7 +845,7 @@ bool ContentHandlerMap::executeAdminRequest(
 
       // Adding response headers
 
-    const int expires_seconds = 1;
+    const int expires_seconds = 60;
     Fmi::DateTime t_now = Fmi::SecondClock::universal_time();
     Fmi::DateTime t_expires = t_now + Fmi::Seconds(expires_seconds);
     std::shared_ptr<Fmi::TimeFormatter> tformat(Fmi::TimeFormatter::create("http"));
@@ -860,6 +856,9 @@ bool ContentHandlerMap::executeAdminRequest(
     theResponse.setHeader("Cache-Control", cachecontrol);
     theResponse.setHeader("Expires", expiration);
     theResponse.setHeader("Last-Modified", modification);
+
+    // We allow JSON requests, hence we should enable CORS
+    theResponse.setHeader("Access-Control-Allow-Origin", "*");
 
     /* This will need some thought
              if(response.first.size() == 0)
@@ -885,6 +884,9 @@ bool ContentHandlerMap::executeAdminRequest(
   }
   catch (...)
   {
+    const std::string format = Spine::optional_string(theRequest.getParameter("format"), "debug");
+    const bool isdebug = (format == "debug");
+
     // Catching all exceptions
 
     Fmi::Exception exception(BCP, "Request processing exception!", nullptr);
@@ -893,7 +895,17 @@ bool ContentHandlerMap::executeAdminRequest(
     exception.addParameter("HostName", Spine::HostInfo::getHostName(theRequest.getClientIP()));
     exception.printError();
 
-    theResponse.setStatus(Spine::HTTP::Status::bad_request);
+    if (isdebug)
+    {
+      // Delivering the exception information as HTTP content
+      std::string fullMessage = exception.getHtmlStackTrace();
+      theResponse.setContent(fullMessage);
+      theResponse.setStatus(Spine::HTTP::Status::ok);
+    }
+    else
+    {
+      theResponse.setStatus(Spine::HTTP::Status::bad_request);
+    }
 
     // Adding the first exception information into the response header
 
@@ -908,6 +920,18 @@ bool ContentHandlerMap::executeAdminRequest(
 
 std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequests() const
 {
+  return getAdminRequestsImpl(std::nullopt);
+}
+
+std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getTargetAdminRequests(HandlerTarget target) const
+{
+  return getAdminRequestsImpl(target);
+}
+
+
+std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequestsImpl(
+      std::optional<HandlerTarget> target) const
+{
   int y = 0;
   auto result = std::make_unique<SmartMet::Spine::Table>();
   result->setTitle("Admin requests summary");
@@ -918,6 +942,9 @@ std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequests() co
     const std::string& what = item1.first;
     for (const auto& item2 : item1.second)
     {
+      if (target && item2.first != *target)
+        continue;
+
       const std::string& plugin_name = targetName(item2.second->target);
       const std::string& description = item2.second->description;
       const std::string authInfo = item2.second->requiresAuthentication ? "yes" : "no";

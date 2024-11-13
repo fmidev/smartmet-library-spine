@@ -319,13 +319,25 @@ public:
             HTTP::Response& theResponse,
             std::function<bool(const HTTP::Request&, HTTP::Response&)> authCallback);
 
+    /**
+     * @brief Get all admin requests as a table
+     */
     std::unique_ptr<Table> getAdminRequests() const;
+
+    /**
+     * @brief Get all admin requests for the given target (plugin, engine, build-in ones) as a table
+     *
+     * Huom: not using overloading to avoid problems when used with std::bind
+     */
+    std::unique_ptr<Table> getTargetAdminRequests(HandlerTarget target) const;
 
 private:
     /**
      * @brief Clean log od old entries
      */
     void cleanLog();
+
+    std::unique_ptr<Table> getAdminRequestsImpl(std::optional<HandlerTarget> target) const;
 
     void handleAdminRequest(
             const HTTP::Request& request,
