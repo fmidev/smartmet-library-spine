@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 24.11.11
+Version: 24.11.13
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -152,6 +152,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Nov 13 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.11.13-1.fmi
+- New method ContentHandlerView::hasHandlerView(const std::string&)
+
 * Mon Nov 11 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.11.11-1.fmi
 - Force full stack trace from admin requests
 
