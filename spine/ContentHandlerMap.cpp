@@ -188,7 +188,7 @@ try
   else
   {
     std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
-          << "private " << (isPrivate ? "private " : "") << " request handler for URI "
+          << (isPrivate ? "private " : "") << " request handler for URI "
           << theUri << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
     // We have built in admin request handler (no plugin). Use its IP filter if available.
     filter = itsAdminHandlerInfo->itsIPFilter;
