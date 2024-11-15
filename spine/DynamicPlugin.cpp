@@ -48,7 +48,10 @@ DynamicPlugin::DynamicPlugin(std::string theFilename, std::string theConfig, Rea
   }
   catch (...)
   {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+    auto error = Fmi::Exception::Trace(BCP, "Operation failed!");
+    error.addParameter("Filename", itsFilename);
+    error.addParameter("Config", itsConfigFile);
+    throw error;
   }
 }
 
@@ -61,7 +64,10 @@ void DynamicPlugin::initializePlugin()
   }
   catch (...)
   {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+    auto error = Fmi::Exception::Trace(BCP, "Operation failed!");
+    error.addParameter("Filename", itsFilename);
+    error.addParameter("Config", itsConfigFile);
+    throw error;
   }
 }
 
