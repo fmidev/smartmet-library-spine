@@ -915,7 +915,13 @@ bool Reactor::loadEngine(const std::string& sectionName,
   }
   catch (...)
   {
-    reportFailure("Failed to load or init engine");
+    auto error = Fmi::Exception::Trace(BCP, "Operation failed!");
+    error.addParameter("Section", sectionName);
+    error.addParameter("Engine", theFilename);
+    std::ostringstream msg;
+    msg << "*** Failed to load or init engine:\n";
+    msg << error;
+    reportFailure(msg.str());
     return false;
   }
 }
