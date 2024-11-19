@@ -1,0 +1,1 @@
+GET /admin?what=list&format=serial HTTP/1.0
