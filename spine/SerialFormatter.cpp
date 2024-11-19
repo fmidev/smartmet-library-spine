@@ -97,6 +97,8 @@ std::string SerialFormatter::format_plain(const Table& theTable,
     else
       miss = *missing;
 
+    const auto& names = theTable.getNames(theNames, false);
+
     out += "a:";
     appendNumber(out, theRows.size());
     out += ":{";
@@ -112,7 +114,7 @@ std::string SerialFormatter::format_plain(const Table& theTable,
 
       for (std::size_t i : theCols)
       {
-        const std::string& name = theNames[i];
+        const std::string& name = names[i];
         const std::string& value = theTable.get(i, j);
 
         out += "s:";
