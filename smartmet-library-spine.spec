@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 24.11.19
+Version: 24.11.27
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -152,6 +152,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Nov 27 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.11.27-1.fmi
+- Repackage due to smartmet-library-macgyver changes
+
 * Tue Nov 19 2024 Andris Pavēnis <andris.pavenis@fmi.fi> 24.11.19-1.fmi
 - Fix crash in SerialFormatter
 
