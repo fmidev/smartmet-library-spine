@@ -28,6 +28,12 @@ LIBS +=	\
 
 PROGS = smartmet-plugin-test cfgvalidate
 
+PLUGIN_TEST_SRCS = SmartmetPluginTest.cpp PluginTest.cpp
+PLUGIN_TEST_OBJS = $(patsubst %.cpp, obj/%.o, $(PLUGIN_TEST_SRCS))
+
+CFGVALIDATE_SRCS = cfgvalidate.cpp
+CFGVALIDATE_OBJS = $(patsubst %.cpp, obj/%.o, $(CFGVALIDATE_SRCS))
+
 # Compilation directories
 
 vpath %.h $(SUBNAME)
@@ -44,11 +50,11 @@ debug: all
 release: all
 profile: all
 
-smartmet-plugin-test: obj/SmartmetPluginTest.o ../libsmartmet-spine.so
-	$(CXX) $(CFLAGS) -o $@ obj/SmartmetPluginTest.o -L .. -lsmartmet-spine -lfmt -lfontconfig $(LIBS)
+smartmet-plugin-test: $(PLUGIN_TEST_OBJS) ../libsmartmet-spine.so
+	$(CXX) $(CFLAGS) -o $@ $(PLUGIN_TEST_OBJS) -L .. -lsmartmet-spine -lfmt -lfontconfig $(LIBS)
 
-cfgvalidate: obj/cfgvalidate.o ../libsmartmet-spine.so
-	$(CXX) $(CFLAGS) -o $@ obj/cfgvalidate.o -L .. -lsmartmet-spine $(LIBS)
+cfgvalidate: $(CFGVALIDATE_OBJS) ../libsmartmet-spine.so
+	$(CXX) $(CFLAGS) -o $@ $(CFGVALIDATE_OBJS) -L .. -lsmartmet-spine $(LIBS)
 
 clean:
 	rm -f obj/*.o obj/*.d $(PROGS)
