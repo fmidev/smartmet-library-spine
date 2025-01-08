@@ -87,8 +87,6 @@ int main(int argc, char* argv[])
 
   Fmi::Database::PostgreSQLConnection::disableReconnect();
 
-  (void)printRequest;
-
   try
   {
     namespace po = boost::program_options;
