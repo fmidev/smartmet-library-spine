@@ -1,0 +1,1 @@
+GET /info?what=testTable&format=debug HTTP/1.0

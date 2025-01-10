@@ -83,8 +83,21 @@ try
       std::bind(&ContentHandlerMap::handleAdminRequest, this, p::_2, p::_3));
   }
 
+  if (itsAdminHandlerInfo->itsInfoUri)
+  {
+    addContentHandler(nullptr, *itsAdminHandlerInfo->itsInfoUri,
+      std::bind(&ContentHandlerMap::handleAdminRequest, this, p::_2, p::_3));
+  }
+
+  // Register request to list available requests
   addAdminTableRequestHandler(NoTarget{}, "list", false,
-    std::bind(&ContentHandlerMap::getAdminRequests, this), "List all admin requests");
+    [this](Reactor&, const HTTP::Request& request) -> std::unique_ptr<Table>
+    {
+      const std::string resource = request.getResource();
+      const bool isInfo = itsAdminHandlerInfo->itsInfoUri && resource == *itsAdminHandlerInfo->itsInfoUri;
+      return getAdminRequestsImpl(std::nullopt, isInfo);
+    },
+    "List all admin requests");
 
   addAdminTableRequestHandler(NoTarget{}, "getlogging", false,
     std::bind(&ContentHandlerMap::getLoggingRequest, this, p::_1, p::_2), "Get logging status");
@@ -581,6 +594,7 @@ bool ContentHandlerMap::addAdminRequestHandlerImpl(
     HandlerTarget target,
     const std::string& what,
     bool requiresAuthentication,
+    bool isPublic,
     AdminRequestHandler theHandler,
     const std::string& description)
 try
@@ -595,6 +609,7 @@ try
   handler->what = what;
   handler->target = target;
   handler->requiresAuthentication = requiresAuthentication;
+  handler->isPublic = isPublic && !requiresAuthentication;
   handler->handler = theHandler;
   handler->description = description;
 
@@ -701,6 +716,9 @@ bool ContentHandlerMap::executeAdminRequest(
 
     ReadLock lock(itsContentMutex);
 
+    const std::string resource = theRequest.getResource();
+    const bool isInfo = itsAdminHandlerInfo->itsInfoUri && resource == *itsAdminHandlerInfo->itsInfoUri;
+
     const auto what = theRequest.getParameter("what");
     if (not what)
     {
@@ -709,12 +727,34 @@ bool ContentHandlerMap::executeAdminRequest(
       return false;
     }
 
+    // Look for the handler
     const auto it = itsAdminRequestHandlers.find(*what);
     if (it == itsAdminRequestHandlers.end())
     {
       theResponse.setStatus(HTTP::Status::not_found);
       theResponse.setContent("Unknown admin request: " + *what);
       return false;
+    }
+
+    // Only accept public handlers for info requests
+    if (isInfo)
+    {
+      bool isPublic = false;
+      for (const auto& item : it->second)
+      {
+        if (item.second->isPublic)
+        {
+          isPublic = true;
+          break;
+        }
+      }
+
+      if (not isPublic)
+      {
+        theResponse.setStatus(HTTP::Status::forbidden);
+        theResponse.setContent("Admin request not available through /info URI");
+        return false;
+      }
     }
 
     // Check whether any of the handlers require authentication
@@ -804,6 +844,12 @@ bool ContentHandlerMap::executeAdminRequest(
     {
       // FIXME: what to do if one handler of several throws an exception?
       const AdminRequestHandler& handler = item.second->handler;
+      if (isInfo && !item.second->isPublic)
+      {
+        // Skip non-public handlers when /info URI is used
+        continue;
+      }
+
       if (std::holds_alternative<AdminBoolRequestHandler>(handler))
       {
         const std::string id = "Handler: {" + targetName(item.second->target) + ":" + item.second->what
@@ -939,40 +985,45 @@ bool ContentHandlerMap::executeAdminRequest(
 
 std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequests() const
 {
-  return getAdminRequestsImpl(std::nullopt);
+  return getAdminRequestsImpl(std::nullopt, false);
 }
 
 std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getTargetAdminRequests(HandlerTarget target) const
 {
-  return getAdminRequestsImpl(target);
+  return getAdminRequestsImpl(target, false);
 }
 
-
 std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequestsImpl(
-      std::optional<HandlerTarget> target) const
+      std::optional<HandlerTarget> target,
+      bool publicOnly) const
 {
   int y = 0;
   auto result = std::make_unique<SmartMet::Spine::Table>();
   result->setTitle("Admin requests summary");
-  result->setNames({"What", "Target", "Authentication", "Unique", "Description"});
+  result->setNames({"What", "Target", "Authentication", "Public", "Unique", "Description"});
   ReadLock lock(itsContentMutex);
   for (const auto& item1 : itsAdminRequestHandlers)
   {
     const std::string& what = item1.first;
     for (const auto& item2 : item1.second)
     {
+      if (publicOnly && !item2.second->isPublic)
+        continue;
+
       if (target && item2.first != *target)
         continue;
 
       const std::string& plugin_name = targetName(item2.second->target);
       const std::string& description = item2.second->description;
       const std::string authInfo = item2.second->requiresAuthentication ? "yes" : "no";
+      const std::string isPublic = item2.second->isPublic ? "yes" : "no";
       const std::string unique = itsUniqueAdminRequests.count(what) ? "yes" : "no";
       result->set(0, y, what);
       result->set(1, y, plugin_name);
       result->set(2, y, authInfo);
-      result->set(3, y, unique);
-      result->set(4, y, description);
+      result->set(3, y, isPublic);
+      result->set(4, y, unique);
+      result->set(5, y, description);
       y++;
     }
   }
@@ -987,7 +1038,8 @@ bool ContentHandlerMap::addAdminBoolRequestHandler(
     std::function<bool(Reactor&, const HTTP::Request&)> theHandler,
     const std::string& description)
 {
-  return addAdminRequestHandlerImpl(target, what, requiresAuthentication,
+  // FIXME: separate parameter for specifying whether request is public
+  return addAdminRequestHandlerImpl(target, what, requiresAuthentication, !requiresAuthentication,
     AdminRequestHandler(theHandler), description);
 }
 
@@ -1021,7 +1073,8 @@ bool ContentHandlerMap::addAdminTableRequestHandler(
         std::function<std::unique_ptr<Table>(Reactor&, const HTTP::Request&)> theHandler,
         const std::string& description)
 {
-  return addAdminRequestHandlerImpl(target, what, requiresAuthentication,
+  // FIXME: separate parameter for specifying whether request is public
+  return addAdminRequestHandlerImpl(target, what, requiresAuthentication, !requiresAuthentication,
       AdminRequestHandler(theHandler), description);
 }
 
@@ -1061,7 +1114,8 @@ bool ContentHandlerMap::addAdminStringRequestHandler(
         std::function<std::string(Reactor&, const HTTP::Request&)> theHandler,
         const std::string& description)
 {
-  return addAdminRequestHandlerImpl(target, what, requiresAuthentication,
+  // FIXME: separate parameter for specifying whether request is public
+  return addAdminRequestHandlerImpl(target, what, requiresAuthentication, !requiresAuthentication,
     AdminRequestHandler(theHandler), description);
 }
 
@@ -1094,7 +1148,8 @@ bool ContentHandlerMap::addAdminCustomRequestHandler(
         std::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)> theHandler,
         const std::string& description)
 {
-  return addAdminRequestHandlerImpl(target, what, requiresAuthentication,
+  // FIXME: separate parameter for specifying whether request is public
+  return addAdminRequestHandlerImpl(target, what, requiresAuthentication, !requiresAuthentication,
     AdminRequestHandler(theHandler), description);
 }
 
@@ -1196,8 +1251,19 @@ Reactor* ContentHandlerMap::getReactor()
   return dynamic_cast<Reactor*>(this);
 }
 
-
 ContentHandlerMap::AdminHandlerInfo::AdminHandlerInfo(const Options& options)
+try
+  : itsInfoUri("/info")  // FIXME: get from configuration instead
+{
+  maybe_setup_admin_handler(options);
+  maybe_setup_info_handler(options);
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
+void ContentHandlerMap::AdminHandlerInfo::maybe_setup_admin_handler(const Options& options)
 try
 {
     std::string uri;
@@ -1238,6 +1304,17 @@ try
     {
       itsIPFilter.reset(new IPFilter::IPFilter(filterTokens));
     }
+}
+catch (...)
+{
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
+void ContentHandlerMap::AdminHandlerInfo::maybe_setup_info_handler(const Options& options)
+try
+{
+  (void) options;
+  // FIXME: get the URI from the configuration and possibly other settings from configiration
 }
 catch (...)
 {

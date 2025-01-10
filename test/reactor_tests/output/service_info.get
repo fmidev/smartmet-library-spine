@@ -3,6 +3,7 @@
 <h1>Available services</h1>
 <table><tr><th>   URI   </th><th>   Is prefix   </th><th>   Provided by   </th></tr><tr>
 <td>/admin</td><td>no</td><td>&lt;builtin&gt;</td></tr><tr>
+<td>/info</td><td>no</td><td>&lt;builtin&gt;</td></tr><tr>
 <td>/test</td><td>no</td><td>Test plugin</td></tr><tr>
 <td>/test_prefix</td><td>yes</td><td>Test plugin</td></tr><tr>
 <td>/uri-map</td><td>no</td><td>Test plugin</td></tr></table></body></html>
