@@ -1,10 +1,5 @@
-activerequests <builtin> no yes yes Get active request info
-cachestats <builtin> no yes yes Request cache stats
 getlogging <builtin> no yes yes Get logging status
-lastrequests <builtin> no yes yes Get last requests
 list <builtin> no yes yes List all admin requests
-serviceinfo <builtin> no yes yes Get info about available services
-servicestats <builtin> no yes yes Request servics stats
 testFail Test plugin no yes no Failing bool admin handler
 testFail Test engine no yes no Failing bool engine admin request
 testOK Test plugin no yes no Failing OK admin handler

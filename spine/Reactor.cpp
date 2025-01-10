@@ -215,19 +215,19 @@ Reactor::Reactor(Options& options)
           }
         });
 
-    addAdminTableRequestHandler(NoTarget{}, "lastrequests", false,
+    addAdminTableRequestHandler(NoTarget{}, "lastrequests", AdminRequestAccess::Private,
       std::bind(&Reactor::requestLastRequests, this, std::placeholders::_2),
       "Get last requests");
 
-    addAdminTableRequestHandler(NoTarget{}, "activerequests", false,
+    addAdminTableRequestHandler(NoTarget{}, "activerequests", AdminRequestAccess::Private,
       std::bind(&Reactor::requestActiveRequests, this, std::placeholders::_2),
       "Get active request info");
 
-    addAdminTableRequestHandler(NoTarget{}, "cachestats", false,
+    addAdminTableRequestHandler(NoTarget{}, "cachestats", AdminRequestAccess::Private,
       std::bind(&Reactor::requestCacheStats, this, std::placeholders::_2),
       "Request cache stats");
 
-    addAdminTableRequestHandler(NoTarget{}, "servicestats", false,
+    addAdminTableRequestHandler(NoTarget{}, "servicestats", AdminRequestAccess::Private,
       std::bind(&Reactor::requestServiceStats, this, std::placeholders::_2),
       "Request servics stats");
   }

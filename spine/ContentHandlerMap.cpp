@@ -90,7 +90,10 @@ try
   }
 
   // Register request to list available requests
-  addAdminTableRequestHandler(NoTarget{}, "list", false,
+  addAdminTableRequestHandler(
+    NoTarget{},
+    "list",
+    AdminRequestAccess::Public,
     [this](Reactor&, const HTTP::Request& request) -> std::unique_ptr<Table>
     {
       const std::string resource = request.getResource();
@@ -99,13 +102,23 @@ try
     },
     "List all admin requests");
 
-  addAdminTableRequestHandler(NoTarget{}, "getlogging", false,
-    std::bind(&ContentHandlerMap::getLoggingRequest, this, p::_1, p::_2), "Get logging status");
+  addAdminTableRequestHandler(
+    NoTarget{},
+    "getlogging",
+    AdminRequestAccess::Public,
+    std::bind(&ContentHandlerMap::getLoggingRequest, this, p::_1, p::_2),
+    "Get logging status");
 
-  addAdminBoolRequestHandler(NoTarget{}, "setlogging", true,
+  addAdminBoolRequestHandler(
+    NoTarget{},
+    "setlogging",
+    AdminRequestAccess::RequiresAuthentication,
     std::bind(&ContentHandlerMap::setLoggingRequest, this, p::_1, p::_2), "Set logging status");
 
-  addAdminTableRequestHandler(NoTarget{}, "serviceinfo", false,
+  addAdminTableRequestHandler(
+    NoTarget{},
+    "serviceinfo",
+    AdminRequestAccess::Private,
     std::bind(&ContentHandlerMap::serviceInfoRequest, this, p::_1, p::_2), "Get info about available services");
 }
 catch (...)
@@ -593,8 +606,7 @@ catch (...)
 bool ContentHandlerMap::addAdminRequestHandlerImpl(
     HandlerTarget target,
     const std::string& what,
-    bool requiresAuthentication,
-    bool isPublic,
+    AdminRequestAccess access,
     AdminRequestHandler theHandler,
     const std::string& description)
 try
@@ -608,8 +620,8 @@ try
   auto handler = std::make_unique<AdminRequestInfo>();
   handler->what = what;
   handler->target = target;
-  handler->requiresAuthentication = requiresAuthentication;
-  handler->isPublic = isPublic && !requiresAuthentication;
+  handler->requiresAuthentication = access == AdminRequestAccess::RequiresAuthentication;
+  handler->isPublic = access == AdminRequestAccess::Public;
   handler->handler = theHandler;
   handler->description = description;
 
@@ -1034,12 +1046,12 @@ std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequestsImpl(
 bool ContentHandlerMap::addAdminBoolRequestHandler(
     HandlerTarget target,
     const std::string& what,
-    bool requiresAuthentication,
+    AdminRequestAccess access,
     std::function<bool(Reactor&, const HTTP::Request&)> theHandler,
     const std::string& description)
 {
   // FIXME: separate parameter for specifying whether request is public
-  return addAdminRequestHandlerImpl(target, what, requiresAuthentication, !requiresAuthentication,
+  return addAdminRequestHandlerImpl(target, what, access,
     AdminRequestHandler(theHandler), description);
 }
 
@@ -1069,12 +1081,12 @@ catch (...)
 bool ContentHandlerMap::addAdminTableRequestHandler(
         HandlerTarget target,
         const std::string& what,
-        bool requiresAuthentication,
+        AdminRequestAccess access,
         std::function<std::unique_ptr<Table>(Reactor&, const HTTP::Request&)> theHandler,
         const std::string& description)
 {
   // FIXME: separate parameter for specifying whether request is public
-  return addAdminRequestHandlerImpl(target, what, requiresAuthentication, !requiresAuthentication,
+  return addAdminRequestHandlerImpl(target, what, access,
       AdminRequestHandler(theHandler), description);
 }
 
@@ -1110,12 +1122,12 @@ catch (...)
 bool ContentHandlerMap::addAdminStringRequestHandler(
         HandlerTarget target,
         const std::string& what,
-        bool requiresAuthentication,
+        AdminRequestAccess access,
         std::function<std::string(Reactor&, const HTTP::Request&)> theHandler,
         const std::string& description)
 {
   // FIXME: separate parameter for specifying whether request is public
-  return addAdminRequestHandlerImpl(target, what, requiresAuthentication, !requiresAuthentication,
+  return addAdminRequestHandlerImpl(target, what, access,
     AdminRequestHandler(theHandler), description);
 }
 
@@ -1144,12 +1156,12 @@ catch (...)
 bool ContentHandlerMap::addAdminCustomRequestHandler(
         HandlerTarget target,
         const std::string& what,
-        bool requiresAuthentication,
+        AdminRequestAccess access,
         std::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)> theHandler,
         const std::string& description)
 {
   // FIXME: separate parameter for specifying whether request is public
-  return addAdminRequestHandlerImpl(target, what, requiresAuthentication, !requiresAuthentication,
+  return addAdminRequestHandlerImpl(target, what, access,
     AdminRequestHandler(theHandler), description);
 }
 

@@ -25,17 +25,17 @@ void SmartMet::Engine::Test::Engine::init()
   Reactor* reactor = Reactor::instance;
 
   reactor->addAdminBoolRequestHandler(
-        this, "testFail", false,
+        this, "testFail", Reactor::AdminRequestAccess::Public,
         [](Reactor&, const HTTP::Request&) -> bool { return false; },
         "Failing bool engine admin request");
 
   reactor->addAdminBoolRequestHandler(
-        this, "testOK", true,
+        this, "testOK", Reactor::AdminRequestAccess::RequiresAuthentication,
         [](Reactor&, const HTTP::Request&) -> bool { return true; },
         "Test engine admin handler with authentication");
 
   reactor->addAdminTableRequestHandler(
-        this, "testTable", false,
+        this, "testTable", Reactor::AdminRequestAccess::Public,
         [](Reactor&, const HTTP::Request&) -> std::unique_ptr<Table>
         {
           std::unique_ptr<Table> result(new Table);

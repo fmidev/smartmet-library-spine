@@ -80,14 +80,20 @@ void Plugin::init()
         throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
     }
 
-    if (!itsReactor->addAdminBoolRequestHandler(this, "testFail", false,
+    if (!itsReactor->addAdminBoolRequestHandler(
+        this,
+        "testFail",
+        Reactor::AdminRequestAccess::Public,
         [](Reactor&, const HTTP::Request&) -> bool { return false; },
         "Failing bool admin handler"))
     {
         throw Fmi::Exception(BCP, "Failed to register test content handler");
     }
 
-    if (!itsReactor->addAdminBoolRequestHandler(this, "testOK", false,
+    if (!itsReactor->addAdminBoolRequestHandler(
+        this,
+        "testOK",
+        Reactor::AdminRequestAccess::Public,
         [](Reactor&, const HTTP::Request&) -> bool { return true; }, "Failing OK admin handler"))
     {
         throw Fmi::Exception(BCP, "Failed to register test content handler");
