@@ -726,6 +726,16 @@ bool ContentHandlerMap::executeAdminRequest(
     // Force stack trace to be generated in case of an exception
     Fmi::Exception::ForceStackTrace force_stack_trace;
 
+    const auto unknown_request =
+      [&theResponse](bool isInfo, const std::string& what)
+      {
+        theResponse.setStatus(HTTP::Status::not_found);
+        theResponse.setContent("Unknown "s
+          + (isInfo ? "info" : "admin")
+          + " request: "
+          + what);
+      };
+
     ReadLock lock(itsContentMutex);
 
     const std::string resource = theRequest.getResource();
@@ -743,8 +753,7 @@ bool ContentHandlerMap::executeAdminRequest(
     const auto it = itsAdminRequestHandlers.find(*what);
     if (it == itsAdminRequestHandlers.end())
     {
-      theResponse.setStatus(HTTP::Status::not_found);
-      theResponse.setContent("Unknown admin request: " + *what);
+      unknown_request(isInfo, *what);
       return false;
     }
 
@@ -763,8 +772,7 @@ bool ContentHandlerMap::executeAdminRequest(
 
       if (not isPublic)
       {
-        theResponse.setStatus(HTTP::Status::forbidden);
-        theResponse.setContent("Admin request not available through /info URI");
+        unknown_request(isInfo, *what);
         return false;
       }
     }
