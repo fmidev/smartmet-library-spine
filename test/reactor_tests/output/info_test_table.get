@@ -1,0 +1,5 @@
+<!DOCTYPE html><html><head><title>Debug mode output</title><style>table {border-collapse: collapse;}th, td {border-bottom: 1px solid black; padding: 3px 0.5em 3px 0.5em; text-align: center;}tr:nth-child(even) {background-color: #f2f2f2;}tr:hover {background-color: #e2e2e2;}</style>
+</head><body>
+<table><tr><th>Value1</th><th>Value2</th></tr><tr>
+<td>12</td><td>21</td></tr><tr>
+<td>14</td><td>26</td></tr></table></body></html>

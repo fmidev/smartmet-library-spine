@@ -204,6 +204,11 @@ public:
     void setAdminUri(const std::string& uri);
 
     /**
+     * @brief Set info request URI
+     */
+    void setInfoUri(const std::string& uri);
+
+    /**
      * @brief Get current logging status
      */
     inline bool getLogging() const
@@ -284,6 +289,7 @@ public:
      * @param target Pointer to the plugin or engine that provides the handler
      * @param what Contents of 'what' field for this request
      * @param requiresAuthentication If true, the request requires authentication
+     * @param isPublic If true, the request is public and accessible through /info URI
      * @param theHandler Handler function
      * @param description Description of the request
      * @retval true Handler added successfully
@@ -298,6 +304,7 @@ public:
     bool addAdminRequestHandlerImpl(HandlerTarget target,
                                     const std::string& what,
                                     bool requiresAuthentication,
+                                    bool isPublic,
                                     AdminRequestHandler theHandler,
                                     const std::string& description);
 
@@ -339,7 +346,9 @@ private:
      */
     void cleanLog();
 
-    std::unique_ptr<Table> getAdminRequestsImpl(std::optional<HandlerTarget> target) const;
+    std::unique_ptr<Table> getAdminRequestsImpl(
+        std::optional<HandlerTarget> target,
+        bool publicOnly) const;
 
     void handleAdminRequest(
             const HTTP::Request& request,
@@ -393,6 +402,7 @@ private:
         std::string what;
         HandlerTarget target;
         bool requiresAuthentication;
+        bool isPublic;
         AdminRequestHandler handler;
         std::string description;
 
@@ -428,6 +438,11 @@ private:
         std::optional<std::string> itsAdminUri;
 
         /**
+         * @brief Info request URI.
+         */
+        std::optional<std::string> itsInfoUri;
+
+        /**
          * @brief Admin request authentication callback
          *
          * Admin requests thet require authentication is blocked if not set
@@ -440,6 +455,10 @@ private:
         std::shared_ptr<IPFilter::IPFilter> itsIPFilter;
 
         AdminHandlerInfo(const Options& options);
+
+    private:
+        void maybe_setup_admin_handler(const Options& options);
+        void maybe_setup_info_handler(const Options& options);
     };
 
     const Options& itsOptions;
