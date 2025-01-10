@@ -79,6 +79,13 @@ public:
      */
     using AuthenticationCallback = std::function<bool(const HTTP::Request&, HTTP::Response&)>;
 
+    enum class AdminRequestAccess
+    {
+        Public,         // No authentication required, visible also through /info
+        Private,        // No authentication required, not visible through /info
+        RequiresAuthentication // Authentication required, not visible through /info
+    };
+
 public:
     ContentHandlerMap(const Options& options);
 
@@ -204,6 +211,11 @@ public:
     void setAdminUri(const std::string& uri);
 
     /**
+     * @brief Set info request URI
+     */
+    void setInfoUri(const std::string& uri);
+
+    /**
      * @brief Get current logging status
      */
     inline bool getLogging() const
@@ -231,7 +243,7 @@ public:
     bool addAdminBoolRequestHandler(
         HandlerTarget target,
         const std::string& what,
-        bool requiresAuthentication,
+        AdminRequestAccess access,
         std::function<bool(Reactor&, const HTTP::Request&)> theHandler,
         const std::string& description);
 
@@ -246,7 +258,7 @@ public:
     bool addAdminTableRequestHandler(
         HandlerTarget target,
         const std::string& what,
-        bool requiresAuthentication,
+        AdminRequestAccess access,
         std::function<std::unique_ptr<Table>(Reactor&, const HTTP::Request&)> theHandler,
         const std::string& description);
 
@@ -260,7 +272,7 @@ public:
     bool addAdminStringRequestHandler(
         HandlerTarget target,
         const std::string& what,
-        bool requiresAuthentication,
+        AdminRequestAccess access,
         std::function<std::string(Reactor&, const HTTP::Request&)> theHandler,
         const std::string& description);
 
@@ -274,7 +286,7 @@ public:
     bool addAdminCustomRequestHandler(
         HandlerTarget target,
         const std::string& what,
-        bool requiresAuthentication,
+        AdminRequestAccess access,
         std::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)> theHandler,
         const std::string& description);
 
@@ -283,7 +295,8 @@ public:
      *
      * @param target Pointer to the plugin or engine that provides the handler
      * @param what Contents of 'what' field for this request
-     * @param requiresAuthentication If true, the request requires authentication
+     * @param access access type for the request
+     * @param isPublic If true, the request is public and accessible through /info URI
      * @param theHandler Handler function
      * @param description Description of the request
      * @retval true Handler added successfully
@@ -297,7 +310,7 @@ public:
      */
     bool addAdminRequestHandlerImpl(HandlerTarget target,
                                     const std::string& what,
-                                    bool requiresAuthentication,
+                                    AdminRequestAccess access,
                                     AdminRequestHandler theHandler,
                                     const std::string& description);
 
@@ -339,7 +352,9 @@ private:
      */
     void cleanLog();
 
-    std::unique_ptr<Table> getAdminRequestsImpl(std::optional<HandlerTarget> target) const;
+    std::unique_ptr<Table> getAdminRequestsImpl(
+        std::optional<HandlerTarget> target,
+        bool publicOnly) const;
 
     void handleAdminRequest(
             const HTTP::Request& request,
@@ -393,6 +408,7 @@ private:
         std::string what;
         HandlerTarget target;
         bool requiresAuthentication;
+        bool isPublic;
         AdminRequestHandler handler;
         std::string description;
 
@@ -428,6 +444,11 @@ private:
         std::optional<std::string> itsAdminUri;
 
         /**
+         * @brief Info request URI.
+         */
+        std::optional<std::string> itsInfoUri;
+
+        /**
          * @brief Admin request authentication callback
          *
          * Admin requests thet require authentication is blocked if not set
@@ -440,6 +461,10 @@ private:
         std::shared_ptr<IPFilter::IPFilter> itsIPFilter;
 
         AdminHandlerInfo(const Options& options);
+
+    private:
+        void maybe_setup_admin_handler(const Options& options);
+        void maybe_setup_info_handler(const Options& options);
     };
 
     const Options& itsOptions;
