@@ -105,7 +105,7 @@ try
   addAdminTableRequestHandler(
     NoTarget{},
     "getlogging",
-    AdminRequestAccess::Public,
+    AdminRequestAccess::Private,
     std::bind(&ContentHandlerMap::getLoggingRequest, this, p::_1, p::_2),
     "Get logging status");
 
