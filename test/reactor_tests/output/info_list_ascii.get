@@ -1,4 +1,3 @@
-getlogging <builtin> no yes yes Get logging status
 list <builtin> no yes yes List all admin requests
 testFail Test plugin no yes no Failing bool admin handler
 testFail Test engine no yes no Failing bool engine admin request

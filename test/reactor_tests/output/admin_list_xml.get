@@ -2,7 +2,7 @@
 <result>
 <row What="activerequests" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Get active request info"/>
 <row What="cachestats" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Request cache stats"/>
-<row What="getlogging" Target="<builtin>" Authentication="no" Public="yes" Unique="yes" Description="Get logging status"/>
+<row What="getlogging" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Get logging status"/>
 <row What="lastrequests" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Get last requests"/>
 <row What="list" Target="<builtin>" Authentication="no" Public="yes" Unique="yes" Description="List all admin requests"/>
 <row What="serviceinfo" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Get info about available services"/>

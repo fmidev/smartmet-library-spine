@@ -1,7 +1,7 @@
 "What","Target","Authentication","Public","Unique","Description"
 "activerequests","<builtin>","no","no","yes","Get active request info"
 "cachestats","<builtin>","no","no","yes","Request cache stats"
-"getlogging","<builtin>","no","yes","yes","Get logging status"
+"getlogging","<builtin>","no","no","yes","Get logging status"
 "lastrequests","<builtin>","no","no","yes","Get last requests"
 "list","<builtin>","no","yes","yes","List all admin requests"
 "serviceinfo","<builtin>","no","no","yes","Get info about available services"

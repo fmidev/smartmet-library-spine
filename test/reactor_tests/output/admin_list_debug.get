@@ -4,7 +4,7 @@
 <table><tr><th>What</th><th>Target</th><th>Authentication</th><th>Public</th><th>Unique</th><th>Description</th></tr><tr>
 <td>activerequests</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Get active request info</td></tr><tr>
 <td>cachestats</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Request cache stats</td></tr><tr>
-<td>getlogging</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>yes</td><td>Get logging status</td></tr><tr>
+<td>getlogging</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Get logging status</td></tr><tr>
 <td>lastrequests</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Get last requests</td></tr><tr>
 <td>list</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>yes</td><td>List all admin requests</td></tr><tr>
 <td>serviceinfo</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Get info about available services</td></tr><tr>
