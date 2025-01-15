@@ -118,7 +118,7 @@ try
   addAdminTableRequestHandler(
     NoTarget{},
     "serviceinfo",
-    AdminRequestAccess::Private,
+    AdminRequestAccess::Public,
     std::bind(&ContentHandlerMap::serviceInfoRequest, this, p::_1, p::_2), "Get info about available services");
 }
 catch (...)
