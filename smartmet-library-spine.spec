@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 25.1.14
+Version: 25.1.15
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -152,6 +152,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Jan 15 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.1.15-1.fmi
+- Small admin/info request update
+
 * Tue Jan 14 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.1.14-1.fmi
 - Only URLdecode URI for response of lastRequests and activeRequests
 
