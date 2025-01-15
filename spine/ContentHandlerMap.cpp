@@ -1019,7 +1019,7 @@ std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequestsImpl(
 {
   int y = 0;
   auto result = std::make_unique<SmartMet::Spine::Table>();
-  result->setTitle("Admin requests summary");
+  result->setTitle(publicOnly ? "Info"s : "Admin"s + " requests summary");
   result->setNames({"What", "Target", "Authentication", "Public", "Unique", "Description"});
   ReadLock lock(itsContentMutex);
   for (const auto& item1 : itsAdminRequestHandlers)
