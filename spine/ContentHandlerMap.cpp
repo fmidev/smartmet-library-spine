@@ -1029,8 +1029,18 @@ std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequestsImpl(
 {
   int y = 0;
   auto result = std::make_unique<SmartMet::Spine::Table>();
-  result->setTitle(publicOnly ? "Info"s : "Admin"s + " requests summary");
-  result->setNames({"What", "Target", "Authentication", "Public", "Unique", "Description"});
+
+  if (publicOnly)
+  {
+    result->setTitle("Info requests summary");
+    result->setNames({"What", "Target", "Description"});
+  }
+  else
+  {
+    result->setTitle("Admin requests summary");
+    result->setNames({"What", "Target", "Authentication", "Public", "Unique", "Description"});
+  }
+
   ReadLock lock(itsContentMutex);
   for (const auto& item1 : itsAdminRequestHandlers)
   {
@@ -1048,12 +1058,16 @@ std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequestsImpl(
       const std::string authInfo = item2.second->requiresAuthentication ? "yes" : "no";
       const std::string isPublic = item2.second->isPublic ? "yes" : "no";
       const std::string unique = itsUniqueAdminRequests.count(what) ? "yes" : "no";
-      result->set(0, y, what);
-      result->set(1, y, plugin_name);
-      result->set(2, y, authInfo);
-      result->set(3, y, isPublic);
-      result->set(4, y, unique);
-      result->set(5, y, description);
+      int col = 0;
+      result->set(col++, y, what);
+      result->set(col++, y, plugin_name);
+      if (!publicOnly)
+      {
+        result->set(col++, y, authInfo);
+        result->set(col++, y, isPublic);
+        result->set(col++, y, unique);
+      }
+      result->set(col++, y, description);
       y++;
     }
   }
