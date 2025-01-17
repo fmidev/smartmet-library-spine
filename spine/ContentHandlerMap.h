@@ -3,6 +3,7 @@
 #include <atomic>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <type_traits>
@@ -345,6 +346,16 @@ public:
      * Huom: not using overloading to avoid problems when used with std::bind
      */
     std::unique_ptr<Table> getTargetAdminRequests(HandlerTarget target) const;
+
+    /**
+     * @brief Get URI for admin requests
+     */
+    std::optional<std::string> getAdminUri() const;
+
+    /**
+     * @brief Get URI for info requests
+     */
+    std::optional<std::string> getInfoUri() const;
 
 private:
     /**

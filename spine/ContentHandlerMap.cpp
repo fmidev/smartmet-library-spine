@@ -1003,6 +1003,16 @@ bool ContentHandlerMap::executeAdminRequest(
   }
 }
 
+std::optional<std::string> ContentHandlerMap::getAdminUri() const
+{
+  return itsAdminHandlerInfo->itsAdminUri;
+}
+
+std::optional<std::string> ContentHandlerMap::getInfoUri() const
+{
+  return itsAdminHandlerInfo->itsInfoUri;
+}
+
 std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequests() const
 {
   return getAdminRequestsImpl(std::nullopt, false);
