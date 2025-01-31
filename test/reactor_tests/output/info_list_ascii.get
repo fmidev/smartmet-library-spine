@@ -1,5 +1,6 @@
-list <builtin> no yes yes List all admin requests
-testFail Test plugin no yes no Failing bool admin handler
-testFail Test engine no yes no Failing bool engine admin request
-testOK Test plugin no yes no Failing OK admin handler
-testTable Test engine no yes yes Test engine admin table handler
+list <builtin> List all admin requests
+serviceinfo <builtin> Get info about available services
+testFail Test plugin Failing bool admin handler
+testFail Test engine Failing bool engine admin request
+testOK Test plugin Failing OK admin handler
+testTable Test engine Test engine admin table handler

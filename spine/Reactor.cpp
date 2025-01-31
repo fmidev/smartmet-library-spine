@@ -1446,6 +1446,9 @@ try
   const std::string pluginName = optional_string(theRequest.getParameter("plugin"), "all");
   const unsigned minutes = std::min(1440UL, std::max(1UL, Fmi::stoul(s_minutes)));
 
+  const std::string format = optional_string(theRequest.getParameter("format"), "");
+  const bool decode_request = (format == "debug" || format == "html");
+
   result->setTitle(
     "Last requests of " + (pluginName == "all" ? "all plugins" : pluginName + " plugin")
     + " for last " + Fmi::to_string(minutes) + " minute" + (minutes == 1 ? "" : "s"));
@@ -1470,6 +1473,7 @@ try
     for (auto reqIt = firstConsidered; reqIt != req.second.end();
          ++reqIt)  // NOLINT(modernize-loop-convert)
     {
+      const std::string uri = reqIt->getRequestString();
       std::size_t column = 0;
       std::string endtime = Fmi::to_iso_extended_string(reqIt->getRequestEndTime().time_of_day());
       std::string msec_duration = average_and_format(
@@ -1477,7 +1481,7 @@ try
       std::string requestString = reqIt->getRequestString();
       result->set(column++, row, endtime);
       result->set(column++, row, msec_duration);
-      result->set(column++, row, HTTP::urldecode(reqIt->getRequestString()));
+      result->set(column++, row, decode_request ? HTTP::urldecode(uri) : uri);
       ++row;
     }
   }
@@ -1497,6 +1501,9 @@ std::unique_ptr<Table> Reactor::requestActiveRequests(const HTTP::Request& theRe
     auto requests = getActiveRequests();
 
     auto now = Fmi::MicrosecClock::universal_time();
+
+    const std::string format = optional_string(theRequest.getParameter("format"), "");
+    const bool decode_request = (format == "debug" || format == "html");
 
     std::size_t row = 0;
     for (const auto &id_info : requests)
@@ -1524,6 +1531,8 @@ std::unique_ptr<Table> Reactor::requestActiveRequests(const HTTP::Request& theRe
           originhostname = Spine::HostInfo::getHostName(originIP->substr(0, loc));
       }
 
+      const std::string uri = req.getURI();
+
       std::size_t column = 0;
       reqTable->set(column++, row, Fmi::to_string(id));
       reqTable->set(column++, row, Fmi::to_iso_extended_string(time.time_of_day()));
@@ -1533,7 +1542,7 @@ std::unique_ptr<Table> Reactor::requestActiveRequests(const HTTP::Request& theRe
       reqTable->set(column++, row, (originIP ? *originIP : ""s));
       reqTable->set(column++, row, originhostname);
       reqTable->set(column++, row, apikey ? *apikey : "-");
-      reqTable->set(column++, row, HTTP::urldecode(req.getURI()));
+      reqTable->set(column++, row, decode_request ? HTTP::urldecode(uri) : uri);
       ++row;
     }
 

@@ -4,7 +4,7 @@
 "getlogging","<builtin>","no","no","yes","Get logging status"
 "lastrequests","<builtin>","no","no","yes","Get last requests"
 "list","<builtin>","no","yes","yes","List all admin requests"
-"serviceinfo","<builtin>","no","no","yes","Get info about available services"
+"serviceinfo","<builtin>","no","yes","yes","Get info about available services"
 "servicestats","<builtin>","no","no","yes","Request servics stats"
 "setlogging","<builtin>","yes","no","no","Set logging status"
 "testFail","Test plugin","no","yes","no","Failing bool admin handler"

@@ -5,7 +5,7 @@
 <row What="getlogging" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Get logging status"/>
 <row What="lastrequests" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Get last requests"/>
 <row What="list" Target="<builtin>" Authentication="no" Public="yes" Unique="yes" Description="List all admin requests"/>
-<row What="serviceinfo" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Get info about available services"/>
+<row What="serviceinfo" Target="<builtin>" Authentication="no" Public="yes" Unique="yes" Description="Get info about available services"/>
 <row What="servicestats" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Request servics stats"/>
 <row What="setlogging" Target="<builtin>" Authentication="yes" Public="no" Unique="no" Description="Set logging status"/>
 <row What="testFail" Target="Test plugin" Authentication="no" Public="yes" Unique="no" Description="Failing bool admin handler"/>

@@ -7,7 +7,7 @@
 <td>getlogging</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Get logging status</td></tr><tr>
 <td>lastrequests</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Get last requests</td></tr><tr>
 <td>list</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>yes</td><td>List all admin requests</td></tr><tr>
-<td>serviceinfo</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Get info about available services</td></tr><tr>
+<td>serviceinfo</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>yes</td><td>Get info about available services</td></tr><tr>
 <td>servicestats</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Request servics stats</td></tr><tr>
 <td>setlogging</td><td>&lt;builtin&gt;</td><td>yes</td><td>no</td><td>no</td><td>Set logging status</td></tr><tr>
 <td>testFail</td><td>Test plugin</td><td>no</td><td>yes</td><td>no</td><td>Failing bool admin handler</td></tr><tr>
