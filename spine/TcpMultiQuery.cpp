@@ -52,14 +52,14 @@ struct TcpMultiQuery::Impl
   {
   }
 
-  boost::asio::io_service io_service;
+  boost::asio::io_context io_service;
   boost::asio::basic_waitable_timer<std::chrono::steady_clock> timeout;
 };
 
 TcpMultiQuery::TcpMultiQuery(int timeout_sec)
    : impl(new Impl)
 {
-  impl->timeout.expires_from_now(std::chrono::seconds(timeout_sec));
+  impl->timeout.expires_after(std::chrono::seconds(timeout_sec));
 
   impl->timeout.async_wait(
       [this](boost::system::error_code error_code)
