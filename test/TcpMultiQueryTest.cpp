@@ -85,7 +85,7 @@ class server
     {
       if (sleep_ms > 0)
       {
-        timer.expires_from_now(std::chrono::milliseconds(sleep_ms));
+        timer.expires_after(std::chrono::milliseconds(sleep_ms));
         timer.async_wait(
             [this](boost::system::error_code e)
             {
