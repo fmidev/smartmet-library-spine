@@ -1314,7 +1314,7 @@ try
     options.itsConfig.lookupValue("admin.uri", uri);
 
     // Cannot handle admin requests here is no URI is provided
-    // One can do this howevere by registering content handler in some plugin
+    // One can do this however by registering content handler in some plugin
     if (uri == "")
       return;
 
