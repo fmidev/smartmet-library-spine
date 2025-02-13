@@ -625,6 +625,15 @@ try
   handler->handler = theHandler;
   handler->description = description;
 
+  if (handler->requiresAuthentication && !itsAdminHandlerInfo->itsAdminAuthenticationCallback)
+  {
+    std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
+              << " Admin request '" << what << "' registration ignored - "
+              << "no authentication available"
+              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+    return false;
+  }
+
   // Try adding plugin entry for admin requests. It does not matter whether
   // plugin is already present as pos1.first is always valid is always valid
   const auto pos1 = itsAdminRequestHandlers.emplace(what,
@@ -1314,32 +1323,41 @@ try
     options.itsConfig.lookupValue("admin.uri", uri);
 
     // Cannot handle admin requests here is no URI is provided
-    // One can do this howevere by registering content handler in some plugin
+    // One can do this however by registering content handler in some plugin
     if (uri == "")
       return;
 
     itsAdminUri = uri;
 
-    if (!options.itsConfig.exists("admin.user") && !options.itsConfig.exists("admin.password"))
+    if (options.itsConfig.exists("admin.user") ^ options.itsConfig.exists("admin.password"))
     {
       throw Fmi::Exception(BCP, "Config error in " + options.configfile
-        + ": Both admin.user and admin.password must be provided together with admin.uri");
+        + ": Both admin.user and admin.password or none of them must be provided together with admin.uri");
       return;
     }
 
-    std::string user, password;
-    options.itsConfig.lookupValue("admin.user", user);
-    options.itsConfig.lookupValue("admin.password", password);
+    if (options.itsConfig.exists("admin.user") && options.itsConfig.exists("admin.password"))
+    {
+      std::string user, password;
+      options.itsConfig.lookupValue("admin.user", user);
+      options.itsConfig.lookupValue("admin.password", password);
 
-    itsAuthenticator.reset(new HTTP::Authentication());
-    itsAuthenticator->addUser(user, password);
+      itsAuthenticator.reset(new HTTP::Authentication());
+      itsAuthenticator->addUser(user, password);
 
-    itsAdminAuthenticationCallback =
-      std::bind(
-        &HTTP::Authentication::authenticateRequest,
-        itsAuthenticator.get(),
-        p::_1,
-        p::_2);
+      itsAdminAuthenticationCallback =
+        std::bind(
+          &HTTP::Authentication::authenticateRequest,
+          itsAuthenticator.get(),
+          p::_1,
+          p::_2);
+    }
+    else
+    {
+      std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
+                << " WARNING: No authentication for admin requests provided." << '\n'
+                << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+    }
 
     // Find the ip filters
     std::vector<std::string> filterTokens;
