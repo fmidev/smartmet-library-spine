@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 25.1.17
+Version: 25.2.18
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -152,6 +152,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Feb 18 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.2.18-1.fmi
+- Update to gdal-3.10, geos-3.13 and proj-9.5
+
 * Fri Jan 17 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.1.17-1.fmi
 - Admin/info request update:
 - 2 new methods in ContentHandlerMap (getAdminURI and getInfoURI)
