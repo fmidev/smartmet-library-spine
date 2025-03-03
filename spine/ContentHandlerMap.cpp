@@ -631,7 +631,8 @@ try
               << " Admin request '" << what << "' registration ignored - "
               << "no authentication available"
               << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
-    return false;
+    // No authentication callback available, ignore the request (do not report failure)
+    return true;
   }
 
   // Try adding plugin entry for admin requests. It does not matter whether
