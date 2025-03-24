@@ -229,7 +229,7 @@ Reactor::Reactor(Options& options)
 
     addAdminTableRequestHandler(NoTarget{}, "servicestats", AdminRequestAccess::Private,
       std::bind(&Reactor::requestServiceStats, this, std::placeholders::_2),
-      "Request servics stats");
+      "Request service stats");
   }
   catch (...)
   {
