@@ -30,6 +30,7 @@
 #include <boost/process/child.hpp>
 #include <boost/regex.hpp>
 #include <boost/timer/timer.hpp>
+#include <boost/stacktrace.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/DebugTools.h>
 #include <macgyver/Exception.h>
@@ -121,6 +122,7 @@ Reactor::~Reactor()
     {
       shutdownWatchThread.join();
     }
+    maybeRemoveTerminateHandler();
   }
   catch (...)
   {
@@ -167,7 +169,9 @@ Reactor::Reactor(Options& options)
     if (itsOptions.verbose)
       itsOptions.report();
 
-    // Initial limit for simultaneous active requests
+    installTerminateHandler();
+
+      // Initial limit for simultaneous active requests
     itsActiveRequestsLimit = itsOptions.throttle.start_limit;
 
     // This has to be done before threading starts
@@ -1725,6 +1729,102 @@ catch (...)
 {
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
+
+
+namespace
+{
+  // This is a static variable to hold the original terminate handler
+  std::atomic<Reactor*> g_reactor = nullptr;
+  void (*original_terminate_handler)() = nullptr;
+  std::atomic<bool> itsTerminateHandlerInstalled{false};
+
+  [[noreturn]] void handleTerminate()
+  {
+    using namespace SmartMet::Spine;
+
+    // Restore the original terminate handler at first (we do not want recursion)
+    std::set_terminate(original_terminate_handler);
+
+    std::cout << std::endl;
+    std::cout << log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
+              << " std::terminate called" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+    std::cout << std::endl;
+    std::cout << "Backtrace: " << boost::stacktrace::stacktrace() << std::endl;
+    // Check whether there is an active exception
+    std::exception_ptr eptr = std::current_exception();
+    if (eptr)
+    {
+      std::cout << log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
+              " Uncaught exception found"
+              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+      Fmi::Exception::ForceStackTrace forceStackTrace;
+      try
+      {
+        std::rethrow_exception(eptr);
+      }
+      catch(Fmi::Exception& e)
+      {
+        std::cout << Fmi::Exception::Trace(BCP, "Uncaught exception") << std::endl;
+      }
+      catch(...)
+      {
+        std::cout << Fmi::Exception::Trace(BCP, "Uncaught exception") << std::endl;
+      }
+    }
+
+    const ActiveRequests::Requests requests = g_reactor.load()->getActiveRequests();
+    std::cout <<  requests << std::endl;
+
+    abort();
+  }
+}
+
+bool Reactor::installTerminateHandler()
+{
+  try
+  {
+    if (itsTerminateHandlerInstalled.exchange(true))
+      return false;
+
+    // Save the original terminate handler
+    original_terminate_handler = std::set_terminate(handleTerminate);
+
+    // Set the reactor pointer for use in termiante handler
+    g_reactor = this;
+
+    std::cout << log_time_str() << "Installing our terminate handler" << std::endl;
+    return true;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+
+
+}
+
+void Reactor::maybeRemoveTerminateHandler()
+{
+  try
+  {
+    const Reactor* tmp = g_reactor.load();
+    if (tmp == nullptr)
+      return;
+
+    // Currently Reactor object is singleton. Play however safe if that is going to change
+    if (tmp != this)
+      return;
+
+    std::cout << log_time_str() << "Restoring original termiante handler" << std::endl;
+    std::set_terminate(original_terminate_handler);
+    g_reactor = nullptr;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
 
 }  // namespace Spine
 }  // namespace SmartMet

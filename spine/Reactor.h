@@ -200,6 +200,24 @@ class Reactor final : public ContentHandlerMap
 
   std::unique_ptr<Table> requestServiceStats(const HTTP::Request& theRequest) const;
 
+  /**
+   * @brief Install handler for cases when std::terminate is called
+   *
+   * Actions on std::terminate:
+   * - log that std::terminate is called
+   * - check whether there is an active exception and log information about it if
+   *   found (may happen when some thread procedure ends with unhandled exception or
+   *   when std::terminate is called from nothrow method due to unhandled exception)
+   * - try to log all active requests
+   * - call original std::terminate
+   *
+   * @retval true Handler installed successfully
+   * @retval false Handler already installed
+   **/
+  bool installTerminateHandler();
+
+  void maybeRemoveTerminateHandler();
+
   Fmi::AsyncTaskGroup shutdownTasks;
 
   unsigned int shutdownTimeoutSec;
