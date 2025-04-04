@@ -50,5 +50,8 @@ class ActiveRequests
   std::atomic<std::size_t> itsFinishedCounter{0};  // number of completed requests
   Requests itsRequests;
 };
+
+std::ostream& operator << (std::ostream& os, const ActiveRequests::Requests& requests);
+
 }  // namespace Spine
 }  // namespace SmartMet
