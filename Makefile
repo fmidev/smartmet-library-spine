@@ -27,6 +27,7 @@ LIBS +=	-lsmartmet-newbase \
 	-lctpp2 \
 	$(REQUIRED_LIBS) \
 	$(PREFIX_LDFLAGS) \
+	-lbacktrace \
 	-ldl \
 	-lrt
 
