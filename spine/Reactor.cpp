@@ -14,6 +14,7 @@
 #include "Options.h"
 #include "SmartMet.h"
 #include "SmartMetEngine.h"
+#include "Backtrace.h"
 
 // sleep?t=n queries only in debug mode
 #ifndef NDEBUG
@@ -1749,7 +1750,18 @@ namespace
     std::cout << log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
               << " std::terminate called" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
     std::cout << std::endl;
-    std::cout << "Backtrace: " << boost::stacktrace::stacktrace() << std::endl;
+
+    const std::string backtrace = Backtrace::make_backtrace();
+    if (backtrace != "")
+    {
+      std::cout << log_time_str()
+                << ANSI_BOLD_ON << ANSI_FG_RED
+                << " Backtrace\n"
+                << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
+                << backtrace << '\n'
+                << std::endl;
+    }
+
     // Check whether there is an active exception
     std::exception_ptr eptr = std::current_exception();
     if (eptr)
@@ -1773,6 +1785,9 @@ namespace
     }
 
     const ActiveRequests::Requests requests = g_reactor.load()->getActiveRequests();
+    std::cout << log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
+              << " Active requests at the time of termination" << ANSI_BOLD_OFF
+              << ANSI_FG_DEFAULT << std::endl;
     std::cout <<  requests << std::endl;
 
     abort();
