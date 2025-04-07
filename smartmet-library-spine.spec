@@ -42,6 +42,7 @@ BuildRequires: libconfig17 >= 1.7.3
 BuildRequires: libconfig17-devel >= 1.7.3
 BuildRequires: double-conversion-devel
 BuildRequires: libicu-devel
+BuildRequires: libbacktrace-devel
 BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
@@ -81,6 +82,7 @@ Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
+Requires: libbacktrace
 Requires: double-conversion
 Requires: smartmet-library-gis >= 25.2.18
 Requires: smartmet-library-macgyver >= 25.2.18
