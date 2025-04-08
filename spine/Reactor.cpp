@@ -1849,7 +1849,7 @@ void Reactor::maybeRemoveTerminateHandler()
     if (tmp != this)
       return;
 
-    std::cout << log_time_str() << "Restoring original termiante handler" << std::endl;
+    std::cout << log_time_str() << "Restoring original terminate handler" << std::endl;
     std::set_terminate(original_terminate_handler);
     g_reactor = nullptr;
   }
