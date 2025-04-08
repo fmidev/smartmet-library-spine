@@ -24,7 +24,7 @@ Backtrace::Backtrace()
 
 Backtrace::~Backtrace() = default;
 
-std::string Backtrace::make_backtrace()
+std::string Backtrace::make_backtrace()  noexcept
 {
     try
     {
@@ -45,10 +45,15 @@ std::string Backtrace::make_backtrace()
     return Backtrace::data.out.str();
 }
 
-void Backtrace::backtrace_error_callback(void* data, const char* msg, int errnum)
+void Backtrace::backtrace_error_callback(void* data, const char* msg, int errnum) noexcept
+try
 {
     Backtrace::data.out << "Backtrace error: " << msg << " (" << errnum << ")";
     Backtrace::data.out << std::endl;
+}
+catch (...)
+{
+    // Ignore errors in the error callback
 }
 
 int Backtrace::backtrace_full_callback(
@@ -56,7 +61,8 @@ int Backtrace::backtrace_full_callback(
     std::uintptr_t pc,
     const char* filename,
     int lineno,
-    const char* function)
+    const char* function) noexcept
+try
 {
     std::size_t level = ++Backtrace::data.level;
     std::ostringstream& oss = Backtrace::data.out;
@@ -89,4 +95,9 @@ int Backtrace::backtrace_full_callback(
     free(demangled);
 
     return 0;  // Continue backtracing
+}
+catch (...)
+{
+    // Ignore errors in the backtrace callback
+    return 0;
 }

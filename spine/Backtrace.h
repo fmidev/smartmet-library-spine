@@ -20,18 +20,18 @@ public:
     Backtrace(Backtrace&&) = delete;
     Backtrace& operator=(Backtrace&&) = delete;
 
-    static std::string make_backtrace();
+    static std::string make_backtrace() noexcept;
 private:
     static Backtrace instance;
 
-    static void backtrace_error_callback(void* data, const char* msg, int errnum);
+    static void backtrace_error_callback(void* data, const char* msg, int errnum) noexcept;
 
     static int backtrace_full_callback(
         void* data,
         std::uintptr_t pc,
         const char* filename,
         int lineno,
-        const char* function);
+        const char* function) noexcept;
 
     void *bt_state;
 
