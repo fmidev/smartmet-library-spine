@@ -1739,7 +1739,8 @@ namespace
   void (*original_terminate_handler)() = nullptr;
   std::atomic<bool> itsTerminateHandlerInstalled{false};
 
-  [[noreturn]] void handleTerminate()
+  [[noreturn]] void handleTerminate() noexcept
+  try
   {
     using namespace SmartMet::Spine;
 
@@ -1792,7 +1793,25 @@ namespace
 
     abort();
   }
-}
+  catch (...)
+  {
+    // If we get here, something went wrong in the terminate handler itself
+
+    // Restore the original terminate handler at first (we do not want recursion)
+    std::set_terminate(original_terminate_handler);
+    try
+    {
+      std::cerr << Fmi::Exception(BCP, "Exception thrown in terminate handler")
+                << std::endl;
+   }
+    catch (...)
+    {
+    }
+
+    std::abort();
+  }
+
+}  // namespace
 
 bool Reactor::installTerminateHandler()
 {
