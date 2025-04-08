@@ -110,7 +110,7 @@ std::ostream& operator << (std::ostream& os, const ActiveRequests::Requests& req
     os << " request[" << ++row << "]: " << '\n';
     os << "    id             : " << id << '\n';
     os << "    time           : " << Fmi::to_iso_extended_string(time.time_of_day()) << '\n';
-    os << "    duration       : " << Fmi::to_string(duration.total_milliseconds() / 1000.0) << "seconds\n";
+    os << "    duration       : " << Fmi::to_string(duration.total_milliseconds() / 1000.0) << " seconds\n";
     os << "    URL            : " << url << '\n';
     if (decoded_url != url)
       os << "    decoded URL    : " << decoded_url << '\n';
