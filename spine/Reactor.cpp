@@ -1751,17 +1751,6 @@ namespace
               << " std::terminate called" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
     std::cout << std::endl;
 
-    const std::string backtrace = Backtrace::make_backtrace();
-    if (backtrace != "")
-    {
-      std::cout << log_time_str()
-                << ANSI_BOLD_ON << ANSI_FG_RED
-                << " Backtrace\n"
-                << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
-                << backtrace << '\n'
-                << std::endl;
-    }
-
     // Check whether there is an active exception
     std::exception_ptr eptr = std::current_exception();
     if (eptr)
@@ -1789,6 +1778,17 @@ namespace
               << " Active requests at the time of termination" << ANSI_BOLD_OFF
               << ANSI_FG_DEFAULT << std::endl;
     std::cout <<  requests << std::endl;
+
+    const std::string backtrace = Backtrace::make_backtrace();
+    if (backtrace != "")
+    {
+      std::cout << log_time_str()
+                << ANSI_BOLD_ON << ANSI_FG_RED
+                << " Backtrace\n"
+                << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
+                << backtrace << '\n'
+                << std::endl;
+    }
 
     abort();
   }
