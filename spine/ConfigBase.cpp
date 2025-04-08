@@ -3,10 +3,10 @@
 #include <boost/algorithm/string.hpp>
 #include <filesystem>
 #include <boost/lambda/lambda.hpp>
-#include <boost/numeric/conversion/cast.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <fmt/format.h>
 #include <macgyver/Exception.h>
+#include <macgyver/NumericCast.h>
 #include <cassert>
 #include <iostream>
 #include <vector>
@@ -507,7 +507,7 @@ std::size_t ConfigBase::get_setting_value<std::size_t>(const libconfig::Setting&
   try
   {
     // libconfig API does not support std::size_t explicitly, hence fetch via int
-    return boost::numeric_cast<std::size_t>(static_cast<int>(setting));
+    return Fmi::numeric_cast<std::size_t>(static_cast<int>(setting));
   }
   catch (...)
   {
