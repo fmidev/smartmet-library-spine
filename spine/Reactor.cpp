@@ -1740,6 +1740,7 @@ namespace
   std::atomic<bool> itsTerminateHandlerInstalled{false};
   std::atomic<int> terminateCnt = 0;
   std::mutex terminateHandlerMutex;
+  bool lastRequestsLogged = false;
 
   [[noreturn]] void handleTerminate() noexcept
   try
@@ -1780,11 +1781,16 @@ namespace
       }
     }
 
-    const ActiveRequests::Requests requests = g_reactor.load()->getActiveRequests();
-    std::cout << log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
-              << " Active requests at the time of termination" << ANSI_BOLD_OFF
-              << ANSI_FG_DEFAULT << std::endl;
-    std::cout <<  requests << std::endl;
+    if (!lastRequestsLogged)
+    {
+      // Print out the active requests (only once in case of multiple terminate calls)
+      const ActiveRequests::Requests requests = g_reactor.load()->getActiveRequests();
+      std::cout << log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
+                << " Active requests at the time of termination" << ANSI_BOLD_OFF
+                << ANSI_FG_DEFAULT << std::endl;
+      std::cout <<  requests << std::endl;
+      lastRequestsLogged = true;
+    }
 
     const std::string backtrace = Backtrace::make_backtrace();
     if (backtrace != "")
