@@ -1738,14 +1738,18 @@ namespace
   std::atomic<Reactor*> g_reactor = nullptr;
   void (*original_terminate_handler)() = nullptr;
   std::atomic<bool> itsTerminateHandlerInstalled{false};
+  std::atomic<int> terminateCnt = 0;
+  std::mutex terminateHandlerMutex;
 
   [[noreturn]] void handleTerminate() noexcept
   try
   {
     using namespace SmartMet::Spine;
 
+    terminateCnt += 1;
+    std::unique_lock<std::mutex> lock(terminateHandlerMutex);
+
     // Restore the original terminate handler at first (we do not want recursion)
-    std::set_terminate(original_terminate_handler);
 
     std::cout << std::endl;
     std::cout << log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
@@ -1791,7 +1795,23 @@ namespace
                 << std::endl;
     }
 
-    abort();
+    const int prev_count = terminateCnt.fetch_sub(1);
+    lock.unlock();
+
+    if (prev_count > 1 && prev_count > 10)
+    {
+      // We have another pending terminate call, so put the thread to sleep for a while,
+      // to get messages also from than one.
+      //
+      // Do not however accept to many either (10 seconds should be enough)
+      std::this_thread::sleep_for(std::chrono::seconds(10));
+      std::abort();
+    }
+    else
+    {
+      std::set_terminate(original_terminate_handler);
+      abort();
+    }
   }
   catch (...)
   {
@@ -1803,7 +1823,7 @@ namespace
     {
       std::cerr << Fmi::Exception(BCP, "Exception thrown in terminate handler")
                 << std::endl;
-   }
+    }
     catch (...)
     {
     }
