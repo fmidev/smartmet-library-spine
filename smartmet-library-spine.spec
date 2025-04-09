@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 25.4.8
+Version: 25.4.9
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -154,6 +154,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Apr  9 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.4.9-1.fmi
+- Update std::terminate handler to support concurrent use
+
 * Tue Apr  8 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.4.8-1.fmi
 - Add std::terminate handler for outputting diagnostic information
 
