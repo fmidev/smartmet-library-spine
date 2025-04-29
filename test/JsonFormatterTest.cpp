@@ -254,6 +254,95 @@ void escaping()
   TEST_PASSED();
 }
 
+void no_names_1()
+{
+  SmartMet::Spine::Table tab;
+  tab.set(0, 0, "abc\ndef");
+  tab.set(1, 0, "\x01\x02\x03...\x1e\x1f\x20\x21\x22\x23\x24\x25\x25\x27");
+  tab.set(2, 0, "\"\"\"");
+  tab.set(3, 0, "\\\\\\");
+  SmartMet::Spine::JsonFormatter fmt;
+  SmartMet::Spine::HTTP::Request req;
+  try
+  {
+    fmt.format(tab, {}, req, config);
+    TEST_FAILED("Expected exception not thrown");
+  }
+  catch(const std::exception& e)
+  {
+    TEST_PASSED();
+  }
+}
+
+void no_names_2()
+{
+  SmartMet::Spine::Table tab;
+  SmartMet::Spine::TableFormatter::Names names;
+  tab.set(0, 0, "abc\ndef");
+  tab.set(1, 0, "\x01\x02\x03...\x1e\x1f\x20\x21\x22\x23\x24\x25\x25\x27");
+  tab.set(2, 0, "\"\"\"");
+  tab.set(3, 0, "\\\\\\");
+  SmartMet::Spine::JsonFormatter fmt;
+  SmartMet::Spine::HTTP::Request req;
+  req.setParameter("attributes", "foo,bar");
+  try
+  {
+    fmt.format(tab, {}, req, config);
+    TEST_FAILED("Expected exception not thrown");
+  }
+  catch(const std::exception& e)
+  {
+    TEST_PASSED();
+  }
+}
+
+void not_enough_names_1()
+{
+  SmartMet::Spine::Table tab;
+  SmartMet::Spine::TableFormatter::Names names = {"foo", "bar"};
+  tab.setNames(names);
+
+  tab.set(0, 0, "abc\ndef");
+  tab.set(1, 0, "\x01\x02\x03...\x1e\x1f\x20\x21\x22\x23\x24\x25\x25\x27");
+  tab.set(2, 0, "\"\"\"");
+  tab.set(3, 0, "\\\\\\");
+  SmartMet::Spine::JsonFormatter fmt;
+  SmartMet::Spine::HTTP::Request req;
+  try
+  {
+    fmt.format(tab, {}, req, config);
+    TEST_FAILED("Expected exception not thrown");
+  }
+  catch(const std::exception& e)
+  {
+    TEST_PASSED();
+  }
+}
+
+void not_enough_names_2()
+{
+  SmartMet::Spine::Table tab;
+  SmartMet::Spine::TableFormatter::Names names = {"foo", "bar"};
+  tab.setNames(names);
+
+  tab.set(0, 0, "abc\ndef");
+  tab.set(1, 0, "\x01\x02\x03...\x1e\x1f\x20\x21\x22\x23\x24\x25\x25\x27");
+  tab.set(2, 0, "\"\"\"");
+  tab.set(3, 0, "\\\\\\");
+  SmartMet::Spine::JsonFormatter fmt;
+  SmartMet::Spine::HTTP::Request req;
+  req.setParameter("attributes", "foo,bar");
+  try
+  {
+    fmt.format(tab, {}, req, config);
+    TEST_FAILED("Expected exception not thrown");
+  }
+  catch(const std::exception& e)
+  {
+    TEST_PASSED();
+  }
+}
+
 // ----------------------------------------------------------------------
 /*!
  * The actual test suite
@@ -270,6 +359,9 @@ class tests : public tframe::tests
     TEST(twoattributes);
     TEST(empty);
     TEST(escaping);
+    TEST(no_names_1);
+    TEST(no_names_2);
+    TEST(not_enough_names_1);
     // TEST(missingtext);
   }
 };
