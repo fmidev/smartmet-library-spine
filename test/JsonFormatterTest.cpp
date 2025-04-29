@@ -296,6 +296,25 @@ void no_names_2()
   }
 }
 
+void no_names_3()
+{
+  // Variant when there is only colunn 0 in the table and name vector is empty
+  // requires special check - therefore test here
+  SmartMet::Spine::Table tab;
+  tab.set(0, 0, "abc\ndef");
+  SmartMet::Spine::JsonFormatter fmt;
+  SmartMet::Spine::HTTP::Request req;
+  try
+  {
+    fmt.format(tab, {}, req, config);
+    TEST_FAILED("Expected exception not thrown");
+  }
+  catch(const std::exception& e)
+  {
+    TEST_PASSED();
+  }
+}
+
 void not_enough_names_1()
 {
   SmartMet::Spine::Table tab;

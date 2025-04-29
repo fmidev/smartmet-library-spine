@@ -339,7 +339,7 @@ const std::vector<std::string>& Table::getNames(
     names = &getNames();
   }
 
-  if (checkSize && names->size() < maxi())
+  if (checkSize && not empty() && names->size() < maxi() + 1)
   {
     std::ostringstream msg;
     msg << "Table has " << maxi() << " columns, but only " << names->size()
