@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 25.4.9
+Version: 25.4.29
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -154,6 +154,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Apr 29 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.4.29-1.fmi
+- Table::getNames(): fix check whether there is enough column names
+
 * Wed Apr  9 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.4.9-1.fmi
 - Update std::terminate handler to support concurrent use
 
