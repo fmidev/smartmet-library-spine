@@ -143,6 +143,8 @@ std::string format_recursively(const Table& theTable,
     std::string out;
     out.reserve(TableFormatter::default_minimum_size);
 
+    const auto& names = theTable.getNames(theNames, true);
+
     const std::string miss = "null";
     if (theAttributes.empty())
     {
@@ -162,7 +164,7 @@ std::string format_recursively(const Table& theTable,
           if (col++ > 0)
             out += ',';
 
-          const std::string& name = theNames[i];
+          const std::string& name = names[i];
           out += '"';
           out += name;
           out += '"';
@@ -189,7 +191,7 @@ std::string format_recursively(const Table& theTable,
       // Find the ordinal of the attribute
       std::string attribute = theAttributes.front();
       theAttributes.pop_front();
-      std::size_t nam = find_name(attribute, theNames);
+      std::size_t nam = find_name(attribute, names);
 
       // Collect unique values in the attribute column
 
