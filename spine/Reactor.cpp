@@ -1567,7 +1567,6 @@ std::unique_ptr<Table> Reactor::requestActiveRequests(const HTTP::Request& theRe
 std::unique_ptr<Table> Reactor::requestCacheStats(const HTTP::Request& theRequest) const
 {
   std::unique_ptr<Table> data_table = std::make_unique<Table>();
-  data_table->setTitle("CacheStatistics");
   data_table->setNames({"#",
                         "cache_name",
                         "maxsize",
