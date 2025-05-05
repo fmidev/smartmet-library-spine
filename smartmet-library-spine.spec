@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 25.4.29
+Version: 25.5.5
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -154,6 +154,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon May  5 2025 Mika Heiskanen <mika.heiskanen@fmi.fi> - 25.5.5-1.fmi
+- Removed alertscript property which was much less useful than anticipated
+
 * Tue Apr 29 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.4.29-1.fmi
 - Table::getNames(): fix check whether there is enough column names
 
