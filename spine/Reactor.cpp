@@ -5,6 +5,7 @@
 // ======================================================================
 
 #include "Reactor.h"
+#include "Backtrace.h"
 #include "ConfigTools.h"
 #include "Convenience.h"
 #include "DynamicPlugin.h"
@@ -14,7 +15,6 @@
 #include "Options.h"
 #include "SmartMet.h"
 #include "SmartMetEngine.h"
-#include "Backtrace.h"
 
 // sleep?t=n queries only in debug mode
 #ifndef NDEBUG
@@ -24,20 +24,19 @@
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/bind/bind.hpp>
 #include <boost/core/demangle.hpp>
-#include <macgyver/DateTime.h>
-#include <filesystem>
 #include <boost/locale.hpp>
 #include <boost/make_shared.hpp>
-#include <boost/process/child.hpp>
 #include <boost/regex.hpp>
-#include <boost/timer/timer.hpp>
 #include <boost/stacktrace.hpp>
+#include <boost/timer/timer.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
+#include <macgyver/DateTime.h>
 #include <macgyver/DebugTools.h>
 #include <macgyver/Exception.h>
 #include <macgyver/PostgreSQLConnection.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TimeFormatter.h>
+#include <filesystem>
 
 #include <algorithm>
 #include <condition_variable>
@@ -142,9 +141,7 @@ Reactor::~Reactor()
 // ----------------------------------------------------------------------
 
 Reactor::Reactor(Options& options)
- : ContentHandlerMap(options)
- , itsOptions(options)
- , itsInitTasks(new Fmi::AsyncTaskGroup)
+    : ContentHandlerMap(options), itsOptions(options), itsInitTasks(new Fmi::AsyncTaskGroup)
 {
   if (instance.exchange(this))
   {
@@ -172,7 +169,7 @@ Reactor::Reactor(Options& options)
 
     installTerminateHandler();
 
-      // Initial limit for simultaneous active requests
+    // Initial limit for simultaneous active requests
     itsActiveRequestsLimit = itsOptions.throttle.start_limit;
 
     // This has to be done before threading starts
@@ -220,21 +217,32 @@ Reactor::Reactor(Options& options)
           }
         });
 
-    addAdminTableRequestHandler(NoTarget{}, "lastrequests", AdminRequestAccess::Private,
-      std::bind(&Reactor::requestLastRequests, this, std::placeholders::_2),
-      "Get last requests");
+    addAdminTableRequestHandler(
+        NoTarget{},
+        "lastrequests",
+        AdminRequestAccess::Private,
+        std::bind(&Reactor::requestLastRequests, this, std::placeholders::_2),
+        "Get last requests");
 
-    addAdminTableRequestHandler(NoTarget{}, "activerequests", AdminRequestAccess::Private,
-      std::bind(&Reactor::requestActiveRequests, this, std::placeholders::_2),
-      "Get active request info");
+    addAdminTableRequestHandler(
+        NoTarget{},
+        "activerequests",
+        AdminRequestAccess::Private,
+        std::bind(&Reactor::requestActiveRequests, this, std::placeholders::_2),
+        "Get active request info");
 
-    addAdminTableRequestHandler(NoTarget{}, "cachestats", AdminRequestAccess::Private,
-      std::bind(&Reactor::requestCacheStats, this, std::placeholders::_2),
-      "Request cache stats");
+    addAdminTableRequestHandler(NoTarget{},
+                                "cachestats",
+                                AdminRequestAccess::Private,
+                                std::bind(&Reactor::requestCacheStats, this, std::placeholders::_2),
+                                "Request cache stats");
 
-    addAdminTableRequestHandler(NoTarget{}, "servicestats", AdminRequestAccess::Private,
-      std::bind(&Reactor::requestServiceStats, this, std::placeholders::_2),
-      "Request service stats");
+    addAdminTableRequestHandler(
+        NoTarget{},
+        "servicestats",
+        AdminRequestAccess::Private,
+        std::bind(&Reactor::requestServiceStats, this, std::placeholders::_2),
+        "Request service stats");
   }
   catch (...)
   {
@@ -450,57 +458,9 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
 {
   auto key = itsActiveRequests.insert(theRequest);
 
-  auto n = itsActiveRequests.size();
-
-  // Run alert script if needed
-
-  if (n >= itsOptions.throttle.alert_limit && !itsOptions.throttle.alert_script.empty())
-  {
-    if (itsActiveRequestsLimit < itsOptions.throttle.limit || itsRunningAlertScript)
-    {
-      // Do nothing when ramping up or already running the script
-    }
-    else
-    {
-      itsRunningAlertScript = true;
-
-      // First print the active requests since the alert script may be slow
-      if (itsOptions.verbose)
-        print_requests(getActiveRequests());
-
-      if (!std::filesystem::exists(itsOptions.throttle.alert_script))
-      {
-        std::cerr << Spine::log_time_str() << " Configured alert script  "
-                  << itsOptions.throttle.alert_script << " does not exist" << std::endl;
-      }
-      else
-      {
-        // Run the alert script in a separate thread not to delay the user response too much
-        if (itsOptions.verbose)
-          std::cerr << Spine::log_time_str() << " Running alert script "
-                    << itsOptions.throttle.alert_script << std::endl;
-
-        std::thread thr(
-            [this]
-            {
-              try
-              {
-                boost::process::child cld(itsOptions.throttle.alert_script);
-                cld.wait();
-              }
-              catch (...)
-              {
-                std::cerr << Spine::log_time_str() << " Running alert script "
-                          << itsOptions.throttle.alert_script << " failed!" << std::endl;
-              }
-              itsRunningAlertScript = false;
-            });
-        thr.detach();
-      }
-    }
-  }
-
   // Check if we should report high load
+
+  auto n = itsActiveRequests.size();
 
   if (n < itsActiveRequestsLimit)
   {
@@ -1454,9 +1414,9 @@ try
   const std::string format = optional_string(theRequest.getParameter("format"), "");
   const bool decode_request = (format == "debug" || format == "html");
 
-  result->setTitle(
-    "Last requests of " + (pluginName == "all" ? "all plugins" : pluginName + " plugin")
-    + " for last " + Fmi::to_string(minutes) + " minute" + (minutes == 1 ? "" : "s"));
+  result->setTitle("Last requests of " +
+                   (pluginName == "all" ? "all plugins" : pluginName + " plugin") + " for last " +
+                   Fmi::to_string(minutes) + " minute" + (minutes == 1 ? "" : "s"));
   result->setNames(headers);
   // Alignment in default debug format for table admin request handlers is not very usable.
   // Choose "html" instead for better readability. User may of course say otherwise, but that
@@ -1472,7 +1432,7 @@ try
   {
     auto firstConsidered = std::find_if(req.second.begin(),
                                         req.second.end(),
-                                        [&firstValidTime](const Spine::LoggedRequest &compare)
+                                        [&firstValidTime](const Spine::LoggedRequest& compare)
                                         { return compare.getRequestEndTime() > firstValidTime; });
 
     for (auto reqIt = firstConsidered; reqIt != req.second.end();
@@ -1500,68 +1460,68 @@ catch (...)
 
 std::unique_ptr<Table> Reactor::requestActiveRequests(const HTTP::Request& theRequest) const
 {
-    std::unique_ptr<Table> reqTable = std::make_unique<Table>();
+  std::unique_ptr<Table> reqTable = std::make_unique<Table>();
 
-    // Obtain logging information
-    auto requests = getActiveRequests();
+  // Obtain logging information
+  auto requests = getActiveRequests();
 
-    auto now = Fmi::MicrosecClock::universal_time();
+  auto now = Fmi::MicrosecClock::universal_time();
 
-    const std::string format = optional_string(theRequest.getParameter("format"), "");
-    const bool decode_request = (format == "debug" || format == "html");
+  const std::string format = optional_string(theRequest.getParameter("format"), "");
+  const bool decode_request = (format == "debug" || format == "html");
 
-    std::size_t row = 0;
-    for (const auto &id_info : requests)
+  std::size_t row = 0;
+  for (const auto& id_info : requests)
+  {
+    const auto id = id_info.first;
+    const auto& time = id_info.second.time;
+    const auto& req = id_info.second.request;
+
+    const auto ip = req.getClientIP();
+    const auto hostname = Spine::HostInfo::getHostName(ip);
+
+    auto duration = now - time;
+
+    const bool check_access_token = true;
+    auto apikey = Spine::FmiApiKey::getFmiApiKey(req, check_access_token);
+
+    auto originIP = req.getHeader("X-Forwarded-For");
+    auto originhostname = ""s;
+    if (originIP)
     {
-      const auto id = id_info.first;
-      const auto &time = id_info.second.time;
-      const auto &req = id_info.second.request;
-
-      const auto ip = req.getClientIP();
-      const auto hostname = Spine::HostInfo::getHostName(ip);
-
-      auto duration = now - time;
-
-      const bool check_access_token = true;
-      auto apikey = Spine::FmiApiKey::getFmiApiKey(req, check_access_token);
-
-      auto originIP = req.getHeader("X-Forwarded-For");
-      auto originhostname = ""s;
-      if (originIP)
-      {
-        auto loc = originIP->find(',');
-        if (loc == std::string::npos)
-          originhostname = Spine::HostInfo::getHostName(*originIP);
-        else
-          originhostname = Spine::HostInfo::getHostName(originIP->substr(0, loc));
-      }
-
-      const std::string uri = req.getURI();
-
-      std::size_t column = 0;
-      reqTable->set(column++, row, Fmi::to_string(id));
-      reqTable->set(column++, row, Fmi::to_iso_extended_string(time.time_of_day()));
-      reqTable->set(column++, row, Fmi::to_string(duration.total_milliseconds() / 1000.0));
-      reqTable->set(column++, row, ip);
-      reqTable->set(column++, row, hostname);
-      reqTable->set(column++, row, (originIP ? *originIP : ""s));
-      reqTable->set(column++, row, originhostname);
-      reqTable->set(column++, row, apikey ? *apikey : "-");
-      reqTable->set(column++, row, decode_request ? HTTP::urldecode(uri) : uri);
-      ++row;
+      auto loc = originIP->find(',');
+      if (loc == std::string::npos)
+        originhostname = Spine::HostInfo::getHostName(*originIP);
+      else
+        originhostname = Spine::HostInfo::getHostName(originIP->substr(0, loc));
     }
 
-    reqTable->setNames({ "Id",
-                         "Time",
-                         "Duration",
-                         "ClientIP",
-                         "ClientHost",
-                         "OriginIP",
-                         "OriginHost",
-                         "Apikey",
-                         "RequestString"});
-    reqTable->setTitle("Active requests");
-    return reqTable;
+    const std::string uri = req.getURI();
+
+    std::size_t column = 0;
+    reqTable->set(column++, row, Fmi::to_string(id));
+    reqTable->set(column++, row, Fmi::to_iso_extended_string(time.time_of_day()));
+    reqTable->set(column++, row, Fmi::to_string(duration.total_milliseconds() / 1000.0));
+    reqTable->set(column++, row, ip);
+    reqTable->set(column++, row, hostname);
+    reqTable->set(column++, row, (originIP ? *originIP : ""s));
+    reqTable->set(column++, row, originhostname);
+    reqTable->set(column++, row, apikey ? *apikey : "-");
+    reqTable->set(column++, row, decode_request ? HTTP::urldecode(uri) : uri);
+    ++row;
+  }
+
+  reqTable->setNames({"Id",
+                      "Time",
+                      "Duration",
+                      "ClientIP",
+                      "ClientHost",
+                      "OriginIP",
+                      "OriginHost",
+                      "Apikey",
+                      "RequestString"});
+  reqTable->setTitle("Active requests");
+  return reqTable;
 }
 
 std::unique_ptr<Table> Reactor::requestCacheStats(const HTTP::Request& theRequest) const
@@ -1588,10 +1548,10 @@ std::unique_ptr<Table> Reactor::requestCacheStats(const HTTP::Request& theReques
   std::unique_ptr<Fmi::TimeFormatter> timeFormatter(Fmi::TimeFormatter::create(timeFormat));
 
   size_t row = 1;
-  for (const auto &item : cache_stats)
+  for (const auto& item : cache_stats)
   {
-    const auto &name = item.first;
-    const auto &stat = item.second;
+    const auto& name = item.first;
+    const auto& stat = item.second;
 
     data_table->set(0, row, Fmi::to_string(row));
     data_table->set(1, row, name);
@@ -1628,19 +1588,18 @@ std::unique_ptr<Table> Reactor::requestCacheStats(const HTTP::Request& theReques
   return data_table;
 }
 
-
 std::unique_ptr<Table> Reactor::requestServiceStats(const HTTP::Request& theRequest) const
 try
 {
   const std::vector<std::string> headers{
-        "Handler", "LastMinute", "LastHour", "Last24Hours", "AverageDuration"};
+      "Handler", "LastMinute", "LastHour", "Last24Hours", "AverageDuration"};
   std::unique_ptr<Table> statsTable = std::make_unique<Table>();
   statsTable->setTitle("Service statistics");
   statsTable->setNames(headers);
 
-
   std::string pluginName = Spine::optional_string(theRequest.getParameter("plugin"), "all");
-  auto currentRequests = getLoggedRequests(pluginName);  // This is type tuple<bool,LogRange,DateTime>
+  auto currentRequests =
+      getLoggedRequests(pluginName);  // This is type tuple<bool,LogRange,DateTime>
 
   auto currentTime = Fmi::MicrosecClock::local_time();
 
@@ -1650,7 +1609,7 @@ try
   unsigned long total_day = 0;
   long global_microsecs = 0;
 
-  for (const auto &reqpair : std::get<1>(currentRequests))
+  for (const auto& reqpair : std::get<1>(currentRequests))
   {
     // Lets calculate how many hits we have in minute,hour and day and since start
     unsigned long inMinute = 0;
@@ -1659,7 +1618,7 @@ try
     long total_microsecs = 0;
     // We go from newest to oldest
 
-    for (const auto &item : reqpair.second)
+    for (const auto& item : reqpair.second)
     {
       auto sinceDuration = currentTime - item.getRequestEndTime();
       auto accessDuration = item.getAccessDuration();
@@ -1730,113 +1689,107 @@ catch (...)
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
 
-
 namespace
 {
-  // This is a static variable to hold the original terminate handler
-  std::atomic<Reactor*> g_reactor = nullptr;
-  void (*original_terminate_handler)() = nullptr;
-  std::atomic<bool> itsTerminateHandlerInstalled{false};
-  std::atomic<int> terminateCnt = 0;
-  std::mutex terminateHandlerMutex;
-  bool lastRequestsLogged = false;
+// This is a static variable to hold the original terminate handler
+std::atomic<Reactor*> g_reactor = nullptr;
+void (*original_terminate_handler)() = nullptr;
+std::atomic<bool> itsTerminateHandlerInstalled{false};
+std::atomic<int> terminateCnt = 0;
+std::mutex terminateHandlerMutex;
+bool lastRequestsLogged = false;
 
-  [[noreturn]] void handleTerminate() noexcept
-  try
+[[noreturn]] void handleTerminate() noexcept
+try
+{
+  using namespace SmartMet::Spine;
+
+  terminateCnt += 1;
+  std::unique_lock<std::mutex> lock(terminateHandlerMutex);
+
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+
+  // Restore the original terminate handler at first (we do not want recursion)
+
+  std::cout << std::endl;
+  std::cout << log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED << " std::terminate called"
+            << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+  std::cout << std::endl;
+
+  // Check whether there is an active exception
+  std::exception_ptr eptr = std::current_exception();
+  if (eptr)
   {
-    using namespace SmartMet::Spine;
-
-    terminateCnt += 1;
-    std::unique_lock<std::mutex> lock(terminateHandlerMutex);
-
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-
-    // Restore the original terminate handler at first (we do not want recursion)
-
-    std::cout << std::endl;
-    std::cout << log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
-              << " std::terminate called" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
-    std::cout << std::endl;
-
-    // Check whether there is an active exception
-    std::exception_ptr eptr = std::current_exception();
-    if (eptr)
-    {
-      std::cout << log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
-              " Uncaught exception found"
+    std::cout << log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED " Uncaught exception found"
               << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
-      Fmi::Exception::ForceStackTrace forceStackTrace;
-      try
-      {
-        std::rethrow_exception(eptr);
-      }
-      catch(Fmi::Exception& e)
-      {
-        std::cout << Fmi::Exception::Trace(BCP, "Uncaught exception") << std::endl;
-      }
-      catch(...)
-      {
-        std::cout << Fmi::Exception::Trace(BCP, "Uncaught exception") << std::endl;
-      }
-    }
-
-    if (!lastRequestsLogged)
-    {
-      // Print out the active requests (only once in case of multiple terminate calls)
-      const ActiveRequests::Requests requests = g_reactor.load()->getActiveRequests();
-      std::cout << log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
-                << " Active requests at the time of termination" << ANSI_BOLD_OFF
-                << ANSI_FG_DEFAULT << std::endl;
-      std::cout <<  requests << std::endl;
-      lastRequestsLogged = true;
-    }
-
-    const std::string backtrace = Backtrace::make_backtrace();
-    if (backtrace != "")
-    {
-      std::cout << log_time_str()
-                << ANSI_BOLD_ON << ANSI_FG_RED
-                << " Backtrace\n"
-                << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
-                << backtrace << '\n'
-                << std::endl;
-    }
-
-    const int prev_count = terminateCnt.fetch_sub(1);
-    lock.unlock();
-
-    if (prev_count > 1 && prev_count < 10)
-    {
-      // We have another pending terminate call, so put the thread to sleep for a while,
-      // to get messages also from than one.
-      //
-      // Do not however accept to many either (10 seconds should be enough)
-      std::this_thread::sleep_for(std::chrono::seconds(10));
-      std::abort();
-    }
-    else
-    {
-      std::set_terminate(original_terminate_handler);
-      abort();
-    }
-  }
-  catch (...)
-  {
-    // If we get here, something went wrong in the terminate handler itself
-
-    // Restore the original terminate handler at first (we do not want recursion)
-    std::set_terminate(original_terminate_handler);
+    Fmi::Exception::ForceStackTrace forceStackTrace;
     try
     {
-      std::cerr << Fmi::Exception(BCP, "Exception thrown in terminate handler")
-                << std::endl;
+      std::rethrow_exception(eptr);
+    }
+    catch (Fmi::Exception& e)
+    {
+      std::cout << Fmi::Exception::Trace(BCP, "Uncaught exception") << std::endl;
     }
     catch (...)
     {
+      std::cout << Fmi::Exception::Trace(BCP, "Uncaught exception") << std::endl;
     }
+  }
 
+  if (!lastRequestsLogged)
+  {
+    // Print out the active requests (only once in case of multiple terminate calls)
+    const ActiveRequests::Requests requests = g_reactor.load()->getActiveRequests();
+    std::cout << log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
+              << " Active requests at the time of termination" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
+              << std::endl;
+    std::cout << requests << std::endl;
+    lastRequestsLogged = true;
+  }
+
+  const std::string backtrace = Backtrace::make_backtrace();
+  if (backtrace != "")
+  {
+    std::cout << log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED << " Backtrace\n"
+              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << backtrace << '\n'
+              << std::endl;
+  }
+
+  const int prev_count = terminateCnt.fetch_sub(1);
+  lock.unlock();
+
+  if (prev_count > 1 && prev_count < 10)
+  {
+    // We have another pending terminate call, so put the thread to sleep for a while,
+    // to get messages also from than one.
+    //
+    // Do not however accept to many either (10 seconds should be enough)
+    std::this_thread::sleep_for(std::chrono::seconds(10));
     std::abort();
   }
+  else
+  {
+    std::set_terminate(original_terminate_handler);
+    abort();
+  }
+}
+catch (...)
+{
+  // If we get here, something went wrong in the terminate handler itself
+
+  // Restore the original terminate handler at first (we do not want recursion)
+  std::set_terminate(original_terminate_handler);
+  try
+  {
+    std::cerr << Fmi::Exception(BCP, "Exception thrown in terminate handler") << std::endl;
+  }
+  catch (...)
+  {
+  }
+
+  std::abort();
+}
 
 }  // namespace
 
@@ -1860,8 +1813,6 @@ bool Reactor::installTerminateHandler()
   {
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
-
-
 }
 
 void Reactor::maybeRemoveTerminateHandler()
@@ -1885,7 +1836,6 @@ void Reactor::maybeRemoveTerminateHandler()
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
-
 
 }  // namespace Spine
 }  // namespace SmartMet

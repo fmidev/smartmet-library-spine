@@ -161,9 +161,6 @@ bool Options::parseOptions(int argc, char* argv[])
 
     const char* msgmaxrequestsize = "set the maximum allowed size for requests";
 
-    const char* msgalertlimit = "active requests limit for running the alert script";
-    const char* msgalertscript = "command to run the active requests limit is broken";
-
     const char* msgcoredump = "coredump mask";
 
     std::string adminthreads_str;  // --> adminpool.minsize
@@ -182,8 +179,6 @@ bool Options::parseOptions(int argc, char* argv[])
         "maxactiverequests", po::value(&throttle.limit)->default_value(throttle.limit), msgmaxactiverequests)(
         "maxactiverestartrequests", po::value(&throttle.restart_limit)->default_value(throttle.restart_limit), msgmaxactiverestartrequests)(
         "requestlimitrate", po::value(&throttle.increase_rate)->default_value(throttle.increase_rate), msgactiverequestrate)(
-        "alertlimit", po::value(&throttle.alert_limit)->default_value(throttle.alert_limit), msgalertlimit)(
-        "alertscript", po::value(&throttle.alert_script)->default_value(throttle.alert_script), msgalertscript)(
         "maxrequestsize", po::value(&maxrequestsize)->default_value(maxrequestsize), msgmaxrequestsize)(
         "debug,d", po::bool_switch(&debug)->default_value(debug), msgdebug)(
         "verbose,v", po::bool_switch(&verbose)->default_value(verbose), msgverbose)(
@@ -253,11 +248,6 @@ bool Options::parseOptions(int argc, char* argv[])
 
     if (compresslimit < 100)
       throw Fmi::Exception(BCP, "Compression size limit below 100 makes no sense!");
-
-    if (throttle.alert_limit > throttle.limit)
-      throw Fmi::Exception(BCP, "Alert limit > limit makes no sense")
-          .addParameter("Alert limit", Fmi::to_string(throttle.alert_limit))
-          .addParameter("Limit", Fmi::to_string(throttle.limit));
 
     if (throttle.start_limit == 0 || throttle.limit == 0 || throttle.increase_rate == 0)
       throw Fmi::Exception(BCP, "Active request settings must be > 0")
@@ -345,12 +335,6 @@ void Options::parseConfig()
       throttle.restart_limit = throttle.start_limit;
       lookupHostSetting(itsConfig, throttle.restart_limit, "activerequests.restart_limit");
 
-      // Default alert limit is the limit itself, this setting may reduce it
-      throttle.alert_limit = throttle.limit;
-      lookupHostSetting(itsConfig, throttle.alert_limit, "activerequests.alert_limit");
-
-      lookupHostSetting(itsConfig, throttle.alert_script, "activerequests.alert_script");
-
       auto adminpool_minsize = parse_threads(itsConfig, "adminpool.maxthreads");
       if (adminpool_minsize)
         adminpool.minsize = *adminpool_minsize;
@@ -425,7 +409,6 @@ void Options::report() const
               << "- at start\t\t\t= " << throttle.start_limit << "\n"
               << "- at slowdown\t\t\t= " << throttle.restart_limit << "\n"
               << "- increase rate\t\t\t= " << throttle.increase_rate << "\n"
-              << "- alert script\t\t\t= " << throttle.alert_script << "\n"
               << "Port\t\t\t\t= " << port << "\n"
               << "Timeout\t\t\t\t= " << timeout << "\n"
               << "Access log directory\t\t= " << accesslogdir << "\n"
