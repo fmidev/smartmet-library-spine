@@ -217,7 +217,8 @@ try
           << (isPrivate ? "private " : "") << " request handler for URI "
           << theUri << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
     // We have built in admin request handler (no plugin). Use its IP filter if available.
-    filter = itsAdminHandlerInfo->itsIPFilter;
+    if (theUri == *itsAdminHandlerInfo->itsAdminUri)
+      filter = itsAdminHandlerInfo->itsIPFilter;
   }
 
   // Create a new handler and add it to the map
