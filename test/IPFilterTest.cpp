@@ -20,6 +20,7 @@ class TestConfig : public libconfig::Config
     ep1v.add(Setting::TypeString) = "192.168.10.10";
     ep1v.add(Setting::TypeString) = "192.169.*.*";
     ep1v.add(Setting::TypeString) = "192.170.10.5-10";
+    ep1v.add(Setting::TypeString) = "192.171.8-15.*";
   }
 };
 
@@ -88,6 +89,12 @@ BOOST_AUTO_TEST_CASE(range_filter)
   BOOST_CHECK_EQUAL(theFilter.match("192.170.10.10"), true);
 
   BOOST_CHECK_EQUAL(theFilter.match("192.170.10.11"), false);
+
+  BOOST_CHECK_EQUAL(theFilter.match("192.171.8.1"), true);
+
+  BOOST_CHECK_EQUAL(theFilter.match("192.171.15.45"), true);
+
+  BOOST_CHECK_EQUAL(theFilter.match("192.171.16.1"), false);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
