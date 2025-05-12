@@ -211,13 +211,12 @@ try
           << (isPrivate ? "private " : "") << "URI " << theUri << " for plugin "
           << pluginName << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
   }
-  else
+  else if (theUri == *itsAdminHandlerInfo->itsAdminUri)
   {
-    std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
-          << (isPrivate ? "private " : "") << " request handler for URI "
-          << theUri << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
     // We have built in admin request handler (no plugin). Use its IP filter if available.
-    filter = itsAdminHandlerInfo->itsIPFilter;
+    std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
+          << (isPrivate ? "private " : "") << "admin request handler for URI "
+          << theUri << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
   }
 
   // Create a new handler and add it to the map
