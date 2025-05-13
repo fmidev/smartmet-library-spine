@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 25.5.12
+Version: 25.5.13
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -154,6 +154,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue May 13 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.5.13-1.fmi
+- Fix access to /info requests when restricting access to /info requests using IPFilter (attempt 2)
+
 * Mon May 12 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.5.12-1.fmi
 - Fix access to /info requests when restricting access to /info requests using IPFilter
 
