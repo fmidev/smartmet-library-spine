@@ -25,15 +25,22 @@ Requires: mariadb-libs
 %define smartmet_boost boost
 %endif
 
-%define smartmet_fmt_min 11.0.0
+%if 0%{?rhel} && 0%{rhel} <= 9
+%define smartmet_fmt_min 11.0.1
 %define smartmet_fmt_max 12.0.0
+%define smartmet_fmt fmt-libs >= %{smartmet_fmt_min}, fmt-libs < %{smartmet_fmt_max}
+%define smartmet_fmt_devel fmt-devel >= %{smartmet_fmt_min}, fmt-devel < %{smartmet_fmt_max}
+%else
+%define smartmet_fmt fmt
+%define smartmet_fmt_devel fmt-devel
+%endif
 
 BuildRequires: %{smartmet_boost}-chrono
 BuildRequires: %{smartmet_boost}-devel
 BuildRequires: %{smartmet_boost}-timer
 BuildRequires: ctpp2-devel
 BuildRequires: dtl
-BuildRequires: fmt-devel >= %{smartmet_fmt_min}, fmt-devel < %{smartmet_fmt_max}
+BuildRequires: %{smartmet_fmt_devel}
 BuildRequires: gcc-c++
 BuildRequires: gdal310-devel
 BuildRequires: glibc-devel
@@ -53,18 +60,24 @@ BuildRequires: smartmet-library-newbase-devel >= 25.3.20
 BuildRequires: smartmet-utils-devel >= 25.2.18
 
 %if 0%{?rhel} && 0%{rhel} == 8
-Requires: libpqxx >= 1:7.7.0 libpqxx < 1:7.8.0
+Requires: libpqxx >= 1:7.7.0, libpqxx < 1:7.8.0
 BuildRequires: libpqxx-devel >= 1:7.7.0, libpqxx-devel < 1:7.8.0
 #TestRequires: libpqxx-devel >= 1:7.7.0, libpqxx-devel < 1:7.8.0
 %else
-%if 0%{?rhel} && 0%{rhel} >= 8
+%if 0%{?rhel} && 0%{rhel} == 9
 Requires: libpqxx >= 1:7.9.0, libpqxx < 1:7.10.0
 BuildRequires: libpqxx-devel >= 1:7.9.0, libpqxx-devel < 1:7.10.0
 #TestRequires: libpqxx-devel >= 1:7.9.0, libpqxx-devel < 1:7.10.0
 %else
+%if 0%{?rhel} && 0%{rhel} >= 10
+Requires: libpqxx >= 1:7.10.0, libpqxx < 1:7.11.0
+BuildRequires: libpqxx-devel >= 1:7.10.0, libpqxx-devel < 1:7.11.0
+#TestRequires: libpqxx-devel >= 1:7.10.0, libpqxx-devel < 1:7.11.0
+%else
 Requires: libpqxx
 BuildRequires: libpqxx-devel
 #TestRequires: libpqxx-devel
+%endif
 %endif
 %endif
 
@@ -76,7 +89,7 @@ Requires: %{smartmet_boost}-system
 Requires: %{smartmet_boost}-thread
 Requires: %{smartmet_boost}-timer
 Requires: ctpp2
-Requires: fmt-libs >= %{smartmet_fmt_min}, fmt-libs < %{smartmet_fmt_max}
+Requires: %{smartmet_fmt}
 Requires: gdal310-libs
 Requires: hdf5
 Requires: jsoncpp >= 1.8.4
