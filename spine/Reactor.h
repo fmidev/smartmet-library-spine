@@ -182,6 +182,14 @@ class Reactor final : public ContentHandlerMap
   static bool isShutdownFinished();
 
  private:
+
+  /**
+   *  @brief Method called when initialization is done
+   *
+   *  Convenient place where to put breakpoint when debugging
+   */
+  static void initDone();
+
   /**
    *  @brief Actual reactor shutdown implementation
    */

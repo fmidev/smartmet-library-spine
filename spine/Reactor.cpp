@@ -304,12 +304,21 @@ void Reactor::init()
     setLogging(itsOptions.defaultlogging);
 
     itsInitializing = false;
+
+    initDone();
   }
   catch (...)
   {
     reportFailure("SmartMet::Spine::Reactor initialization failed");
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
+}
+
+void Reactor::initDone()
+{
+  std::cout << SmartMet::Spine::log_time_str() << ' '
+            << ANSI_FG_GREEN << "* SmartMet::Spine::Reactor: initialization done\n"
+            << ANSI_FG_DEFAULT;
 }
 
 // ----------------------------------------------------------------------
