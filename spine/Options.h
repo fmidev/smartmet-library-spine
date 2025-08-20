@@ -56,7 +56,6 @@ struct Options
   bool logrequests = false;
   bool compress = false;
   unsigned int compresslimit = 1000;
-  std::optional<unsigned int> coredump_filter;  // Linux default is 0x33
   bool defaultlogging = true;
   bool lazylinking = true;
   bool stacktrace = false;
