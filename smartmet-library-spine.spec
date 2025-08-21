@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 25.8.21
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -167,7 +167,7 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
-* Thu Aug 21 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.8.21-1.fmi
+* Thu Aug 21 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.8.21-2.fmi
 - Reactor: add possibility to specify action when shutown lasts for too long
 
 * Wed Aug 20 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.8.20-1.fmi
