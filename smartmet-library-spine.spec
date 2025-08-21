@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 25.8.20
+Version: 25.8.21
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -167,6 +167,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Thu Aug 21 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.8.21-1.fmi
+- Reactor: add possibility to specify action when shutown lasts for too long
+
 * Wed Aug 20 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.8.20-1.fmi
 - Options: remove support of coredump_filter
 
