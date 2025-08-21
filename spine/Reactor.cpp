@@ -1366,7 +1366,20 @@ void Reactor::waitForShutdownComplete()
             std::cout << "         " << name << std::endl;
           }
         }
-        abort();
+
+        if (shutdownTimedOutCallback)
+        {
+          try
+          {
+            shutdownTimedOutCallback();
+          }
+          catch(const std::exception& e)
+          {
+            std::cerr << Fmi::Exception::Trace(BCP, "Unexpected exception in shutdown timeout callback")
+                      << std::endl;
+          }
+          abort();
+        }
       }
     }
   }

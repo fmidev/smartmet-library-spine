@@ -181,6 +181,17 @@ class Reactor final : public ContentHandlerMap
 
   static bool isShutdownFinished();
 
+  /**
+   * @brief Set callback for shutdown timeout
+   *
+   * Default (empty std::function) will cause abort() to be called on timeout
+   * abort() will also be called if provided callback throws an exception or exits.
+   */
+  inline void onShutdownTimedOut(std::function<void()> callback)
+  {
+    shutdownTimedOutCallback = callback;
+  }
+
  private:
 
   /**
@@ -310,6 +321,8 @@ class Reactor final : public ContentHandlerMap
   std::atomic_bool initFailed{false};
 
   /* [[noreturn]] */ void cleanLog();
+
+  std::function<void()> shutdownTimedOutCallback;
 };
 
 template <typename EngineType>
