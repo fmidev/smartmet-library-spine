@@ -50,10 +50,11 @@ HandlerView::HandlerView(ContentHandler theHandler,
       itsAccessLog->start();
 
     // Insert supported POST contexts
-    itsSupportedPostContexts.insert("application/x-www-form-urlencoded"s);
-    itsSupportedPostContexts.insert(supportedPostContexts.begin(), supportedPostContexts.end());
+    itsSupportedPostContents.insert("application/x-www-form-urlencoded"s);
+    for (const auto& content : supportedPostContexts)
+      itsSupportedPostContents.insert(Fmi::ascii_tolower_copy(content));
 
-    itsSupportedPostContextsString = Fmi::join(itsSupportedPostContexts, ", ");
+    itsSupportedPostContentsString = Fmi::join(itsSupportedPostContents, ", ");
   }
   catch (...)
   {
@@ -105,7 +106,8 @@ bool HandlerView::handle(Reactor& theReactor,
     }
     else
     {
-      if (theRequest.getMethod() == HTTP::RequestMethod::OPTIONS)
+      const auto method = theRequest.getMethod();
+      if (method == HTTP::RequestMethod::OPTIONS)
       {
         theResponse = HTTP::Response::stockOptionsResponse({"GET", "POST", "OPTIONS"});
 
@@ -137,29 +139,35 @@ bool HandlerView::handle(Reactor& theReactor,
         return true;
       }
 
-      if (theRequest.getMethod() == HTTP::RequestMethod::POST)
+      if (method == HTTP::RequestMethod::POST)
       {
         // Check that content type is supported
-        auto content_type = theRequest.getHeader("Content-Type");
-        if (!content_type)
+        auto opt_content_type = theRequest.getHeader("Content-Type");
+        if (!opt_content_type)
         {
           // No content type, reject the request
           theResponse.setStatus(HTTP::bad_request);
           theResponse.setContent("Content-Type header is required for POST requests.\n"
-            "Allowed: " + itsSupportedPostContextsString);
+            "Allowed: " + itsSupportedPostContentsString);
           return true;
         }
 
-        if (itsSupportedPostContexts.find(*content_type) == itsSupportedPostContexts.end())
+        // Normalize content type (remove parameters)
+        std::string content_type = Fmi::ascii_tolower_copy(*opt_content_type);
+        const std::size_t sep = content_type.find(';');
+        if (sep != std::string::npos)
+          content_type = content_type.substr(0, sep);
+
+        if (itsSupportedPostContents.find(content_type) == itsSupportedPostContents.end())
         {
           // Unsupported content type
           theResponse.setStatus(HTTP::not_implemented);
-          theResponse.setContent("Unsupported Content-Type '" + *content_type + "',\n"
-            "Allowed: " + itsSupportedPostContextsString + "\n");
+          theResponse.setContent("Unsupported Content-Type '" + content_type + "',\n"
+            "Allowed: " + itsSupportedPostContentsString + "\n");
           return true;
         }
       }
-      else if (theRequest.getMethod() != HTTP::RequestMethod::GET)
+      else if (method != HTTP::RequestMethod::GET)
       {
         // Unsupported method
         theResponse.setStatus(HTTP::not_implemented);

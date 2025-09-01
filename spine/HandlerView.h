@@ -134,10 +134,10 @@ class HandlerView
 
   // Supported POST content types
   // application/x-www-form-urlencoded is always supported
-  std::set<std::string> itsSupportedPostContexts;
+  std::set<std::string> itsSupportedPostContents;
 
   // Supported POST content types as a comma-separated string for error responses
-  std::string itsSupportedPostContextsString;
+  std::string itsSupportedPostContentsString;
 };
 
 }  // namespace Spine
