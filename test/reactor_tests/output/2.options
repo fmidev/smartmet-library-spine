@@ -1,5 +1,0 @@
-HTTP/1.0 204 No Content
-Allow: GET, OPTIONS
-Cache-Control: max-age=86400
-Server: SmartMet Server
-

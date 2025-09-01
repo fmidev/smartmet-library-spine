@@ -5,9 +5,13 @@
 #include <iostream>
 #include <functional>
 #include <filesystem>
+#include <string>
 #include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
+#include <macgyver/Join.h>
 #include <macgyver/StringConversion.h>
+
+using namespace std::literals;
 
 namespace
 {
@@ -29,6 +33,7 @@ HandlerView::HandlerView(ContentHandler theHandler,
                          const std::string& theResource,
                          bool loggingStatus,
                          bool isprivate,
+                         const std::set<std::string>& supportedPostContexts,
                          const std::string& accessLogDir)
     : itsHandler(std::move(theHandler)),
       itsIpFilter(std::move(theIpFilter)),
@@ -43,6 +48,12 @@ HandlerView::HandlerView(ContentHandler theHandler,
   {
     if (isLogging)
       itsAccessLog->start();
+
+    // Insert supported POST contexts
+    itsSupportedPostContexts.insert("application/x-www-form-urlencoded"s);
+    itsSupportedPostContexts.insert(supportedPostContexts.begin(), supportedPostContexts.end());
+
+    itsSupportedPostContextsString = Fmi::join(itsSupportedPostContexts, ", ");
   }
   catch (...)
   {
@@ -94,6 +105,68 @@ bool HandlerView::handle(Reactor& theReactor,
     }
     else
     {
+      if (theRequest.getMethod() == HTTP::RequestMethod::OPTIONS)
+      {
+        theResponse = HTTP::Response::stockOptionsResponse({"GET", "POST", "OPTIONS"});
+
+        // Checking for CORS preflight headers
+        // https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
+        if (theRequest.getHeader("Access-Control-Request-Method"))
+        {
+          // Clone header 'Allow' to 'Access-Control-Allow-Methods' for CORS
+          auto h1 = theResponse.getHeader("Allow");
+          assert(bool(h1));  // HTTP::Response::stockOptionsResponse should have set this header
+          theResponse.setHeader("Access-Control-Allow-Methods", *h1);
+
+          auto opt_origin = theRequest.getHeader("Origin");
+          if (opt_origin)
+          {
+            theResponse.setHeader("Access-Control-Allow-Origin", *opt_origin);
+          }
+
+          auto opt_req_headers = theRequest.getHeader("Access-Control-Request-Headers");
+          if (opt_req_headers)
+          {
+            // FIXME: Should be use actually supported headers here.
+            //        Let us copy requested headers to the response for now
+            theResponse.setHeader("Access-Control-Allow-Headers", *opt_req_headers);
+          }
+
+          theResponse.setHeader("Access-Control-Max-Age", "86400");
+        }
+        return true;
+      }
+
+      if (theRequest.getMethod() == HTTP::RequestMethod::POST)
+      {
+        // Check that content type is supported
+        auto content_type = theRequest.getHeader("Content-Type");
+        if (!content_type)
+        {
+          // No content type, reject the request
+          theResponse.setStatus(HTTP::bad_request);
+          theResponse.setContent("Content-Type header is required for POST requests.\n"
+            "Allowed: " + itsSupportedPostContextsString);
+          return true;
+        }
+
+        if (itsSupportedPostContexts.find(*content_type) == itsSupportedPostContexts.end())
+        {
+          // Unsupported content type
+          theResponse.setStatus(HTTP::not_implemented);
+          theResponse.setContent("Unsupported Content-Type '" + *content_type + "',\n"
+            "Allowed: " + itsSupportedPostContextsString + "\n");
+          return true;
+        }
+      }
+      else if (theRequest.getMethod() != HTTP::RequestMethod::GET)
+      {
+        // Unsupported method
+        theResponse.setStatus(HTTP::not_implemented);
+        theResponse.setHeader("Allow", "GET, POST, OPTIONS");
+        return true;
+      }
+
       auto key = theReactor.insertActiveRequest(theRequest);
       auto before = Fmi::MicrosecClock::universal_time();
 

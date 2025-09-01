@@ -79,14 +79,20 @@ try
   // FIXME: setup IP access rules for admin requests from configuration
   if (itsAdminHandlerInfo->itsAdminUri)
   {
-    addPrivateContentHandler(nullptr, *itsAdminHandlerInfo->itsAdminUri,
-      std::bind(&ContentHandlerMap::handleAdminRequest, this, p::_2, p::_3));
+    addPrivateContentHandler(
+      nullptr,
+      *itsAdminHandlerInfo->itsAdminUri,
+      std::bind(&ContentHandlerMap::handleAdminRequest, this, p::_2, p::_3)
+    );
   }
 
   if (itsAdminHandlerInfo->itsInfoUri)
   {
-    addContentHandler(nullptr, *itsAdminHandlerInfo->itsInfoUri,
-      std::bind(&ContentHandlerMap::handleAdminRequest, this, p::_2, p::_3));
+    addContentHandler(
+      nullptr,
+      *itsAdminHandlerInfo->itsInfoUri,
+      std::bind(&ContentHandlerMap::handleAdminRequest, this, p::_2, p::_3)
+    );
   }
 
   // Register request to list available requests
@@ -187,11 +193,12 @@ void ContentHandlerMap::setAdminUri(const std::string& theUri)
   itsAdminHandlerInfo->itsAdminUri = theUri;
 }
 
-bool ContentHandlerMap::addContentHandler(SmartMetPlugin* thePlugin,
-                                          const std::string& theUri,
-                                          const ContentHandler& theHandler,
-                                          bool handlesUriPrefix,
-                                          bool isPrivate)
+bool ContentHandlerMap::addContentHandlerImpl(SmartMetPlugin* thePlugin,
+                                              const std::string& theUri,
+                                              const ContentHandler& theHandler,
+                                              const std::set<std::string>& supportedPostContentTypes,
+                                              bool handlesUriPrefix,
+                                              bool isPrivate)
 try
 {
   WriteLock lock(itsContentMutex);
@@ -228,6 +235,7 @@ try
                                                        theUri,
                                                        itsLoggingEnabled,
                                                        isPrivate,
+                                                       supportedPostContentTypes,
                                                        itsOptions.accesslogdir));
 
   if (handlesUriPrefix)

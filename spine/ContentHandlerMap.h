@@ -107,6 +107,9 @@ public:
      * @param thePlugin Pointer to the plugin that provides the handler
      * @param theUri URI to be handled
      * @param theHandler Handler function
+     * @param supportedPostContentTypes Set of supported Content-Types for POST requests.
+     *            Note that x-www-form-urlencoded is always supported and there is no
+     *            need to include it in the set.
      * @param handlesUriPrefix If true, the handler is used for all URIs starting with theUri
      * @retval true Handler added successfully
      *
@@ -115,9 +118,16 @@ public:
     inline bool addContentHandler(SmartMetPlugin* thePlugin,
                                   const std::string& theUri,
                                   const ContentHandler& theHandler,
+                                  const std::set<std::string>& supportedPostContentTypes = {},
                                   bool handlesUriPrefix = false)
     {
-        return addContentHandler(thePlugin, theUri, theHandler, handlesUriPrefix, false);
+        return addContentHandlerImpl(
+            thePlugin,
+            theUri,
+            theHandler,
+            supportedPostContentTypes,
+            handlesUriPrefix,
+            false);
     }
 
     /**
@@ -126,6 +136,9 @@ public:
      * @param thePlugin Pointer to the plugin that provides the handler
      * @param theUri URI to be handled
      * @param theHandler Handler function
+     * @param supportedPostContentTypes Set of supported Content-Types for POST requests.
+     *            Note that x-www-form-urlencoded is always supported and there is no
+     *            need to include it in the set.
      * @param handlesUriPrefix If true, the handler is used for all URIs starting with theUri
      * @retval true Handler added successfully
      *
@@ -135,9 +148,16 @@ public:
     inline bool addPrivateContentHandler(SmartMetPlugin* thePlugin,
                                          const std::string& theUri,
                                          const ContentHandler& theHandler,
+                                         const std::set<std::string>& supportedPostContentTypes = {},
                                          bool handlesUriPrefix = false)
     {
-        return addContentHandler(thePlugin, theUri, theHandler, handlesUriPrefix, true);
+        return addContentHandlerImpl(
+            thePlugin,
+            theUri,
+            theHandler,
+            supportedPostContentTypes,
+            handlesUriPrefix,
+            true);
     }
 
     /**
@@ -146,12 +166,16 @@ public:
      * @param thePlugin Pointer to the plugin that provides the handler
      * @param theUri URI to be handled
      * @param theHandler Handler function
+     * @param supportedPostContentTypes Set of supported Content-Types for POST requests.
+     *            Note that x-www-form-urlencoded is always supported and there is no
+     *            need to include it in the set.
      * @param handlesUriPrefix If true, the handler is used for all URIs starting with theUri
      * @param isPrivate If true, the handler is not visible in the URIMap
      */
-    bool addContentHandler(SmartMetPlugin* thePlugin,
+    bool addContentHandlerImpl(SmartMetPlugin* thePlugin,
                            const std::string& theUri,
                            const ContentHandler& theHandler,
+                           const std::set<std::string>& supportedPostContentTypes,
                            bool handlesUriPrefix,
                            bool isPrivate);
 

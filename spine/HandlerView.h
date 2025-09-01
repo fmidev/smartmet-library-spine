@@ -8,6 +8,7 @@
 #include "Thread.h"
 #include <functional>
 #include <memory>
+#include <set>
 #include <string>
 
 namespace SmartMet
@@ -31,6 +32,7 @@ class HandlerView
               const std::string& theResource,
               bool loggingStatus,
               bool isprivate,
+              const std::set<std::string>& supportedPostContexts,
               const std::string& accessLogDir);
 
   // CatchNoMatch handler
@@ -129,6 +131,13 @@ class HandlerView
 
   // Handle for access log file
   std::unique_ptr<AccessLogger> itsAccessLog;
+
+  // Supported POST content types
+  // application/x-www-form-urlencoded is always supported
+  std::set<std::string> itsSupportedPostContexts;
+
+  // Supported POST content types as a comma-separated string for error responses
+  std::string itsSupportedPostContextsString;
 };
 
 }  // namespace Spine

@@ -63,6 +63,7 @@ void Plugin::init()
             {
                 requestHandler(theReactor, theRequest, theResponse);
             },
+            {},  // No special content types except the default application/x-www-form-urlencoded
             true))
     {
         throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
@@ -114,10 +115,6 @@ void Plugin::requestHandler(
     HTTP::Response& theResponse)
 {
     (void) theReactor;
-    bool supportsPost = theRequest.getResource() == "/test";
-    if (checkRequest(theRequest, theResponse, supportsPost)) {
-        return;
-    }
     theResponse.setContent(dump_params(theRequest));
 }
 
@@ -127,10 +124,6 @@ void Plugin::requestHandler2(
     HTTP::Response& theResponse)
 {
     (void) theReactor;
-    bool supportsPost = false;
-    if (checkRequest(theRequest, theResponse, supportsPost)) {
-        return;
-    }
     std::ostringstream content;
     const auto uri_map = theReactor.getURIMap();
     for (const auto& item : uri_map) {
