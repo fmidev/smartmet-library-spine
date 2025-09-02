@@ -1,6 +1,7 @@
 #include "HTTP.h"
 #include "HTTPParsers.h"
 #include <boost/algorithm/string.hpp>
+#include <boost/regex.hpp>
 #include <boost/shared_array.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
@@ -1285,7 +1286,9 @@ std::pair<ParsingStatus, std::unique_ptr<Request>> parseRequest(const std::strin
       auto formHeader = headerMap.find("Content-Type");
       if (formHeader != headerMap.end())
       {
-        if (formHeader->second.find("application/x-www-form-urlencoded") != std::string::npos)
+        static const boost::regex formHeaderRegex("application/x-www-form-urlencoded(;.*)?",
+                                           boost::regex::icase);
+        if (boost::regex_match(formHeader->second, formHeaderRegex))
         {
           // Content is x-www-form-urlencoded
           ::parseTokens(theParameters, target.body, "&", true);

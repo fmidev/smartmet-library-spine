@@ -1,0 +1,10 @@
+{
+	"URI" : "/test?a=42&foo=bar",
+	"content" : "a=42&foo=bar",
+	"method" : "GET",
+	"params" : 
+	{
+		"a" : "42",
+		"foo" : "bar"
+	}
+}
