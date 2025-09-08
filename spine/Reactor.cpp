@@ -155,7 +155,7 @@ Reactor::Reactor(Options& options)
     if (!itsOptions.quiet)
     {
       std::cout << ANSI_ITALIC_ON << "+ SmartMet Server "
-                << "(compiled on " __DATE__ " " __TIME__ ")" << std::endl
+                << "(compiled on " __DATE__ " " __TIME__ ", PID=" << getpid() << ")" << std::endl
                 << "  Copyright (c) Finnish Meteorological Institute" << ANSI_ITALIC_OFF
                 << std::endl
                 << std::endl;
