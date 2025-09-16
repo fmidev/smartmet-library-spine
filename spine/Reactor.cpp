@@ -1333,8 +1333,9 @@ void Reactor::waitForShutdownComplete()
       // and we want to see the full leak report)
       std::cout << "Leak sanitizer detected. Disabled shutdown timeout." << std::endl;
       shutdownFinishedCond.wait(lock, complete);
+      // Commented out to allow other ASAN checks to run at program termination in case of memory leaks
       // Run leak check now when shutdown is complete
-      leakCheck();
+      // leakCheck();
       done = true;
     }
     else if (shutdownTimeoutSec <= 0)
