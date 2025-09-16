@@ -1309,6 +1309,9 @@ void Reactor::waitForShutdownStart()
 
 void Reactor::waitForShutdownComplete()
 {
+  // Check if leak sanitizer is loaded and get pointer to its leak check function
+  int (*leakCheck)() = reinterpret_cast<int (*)()>(dlsym(RTLD_DEFAULT, "__lsan_leak_check"));
+
   const auto complete = []() -> bool { return gShutdownComplete; };
 
   bool timeoutAlways = false;
@@ -1321,6 +1324,24 @@ void Reactor::waitForShutdownComplete()
       // Debugger attached
       std::cout << "Debugging detected (tracerPid=" << tracerPid << "). Disabled shutdown timeout."
                 << std::endl;
+      shutdownFinishedCond.wait(lock, complete);
+      done = true;
+    }
+    else if (leakCheck != nullptr)
+    {
+      // Leak sanitizer is running, disable timeout (it may make shutdown very slow
+      // and we want to see the full leak report)
+      std::cout << "Leak sanitizer detected. Disabled shutdown timeout." << std::endl;
+      shutdownFinishedCond.wait(lock, complete);
+      // Run leak check now when shutdown is complete
+      leakCheck();
+      done = true;
+    }
+    else if (shutdownTimeoutSec <= 0)
+    {
+      // No timeout
+      std::cout << "No shutdown timeout configured (shutdownTimeoutSec=" << shutdownTimeoutSec
+                <<  "). Waiting indefinitely." << std::endl;
       shutdownFinishedCond.wait(lock, complete);
       done = true;
     }
