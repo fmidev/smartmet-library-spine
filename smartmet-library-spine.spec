@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 25.9.2
+Version: 25.9.16
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -167,6 +167,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Sep 16 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.9.16-1.fmi
+- Reactor: log plugins and engines shutdown and destruction times
+
 * Tue Sep  2 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.9.2-1.fmi
 - Update Content-Type handling for POST requests
 
