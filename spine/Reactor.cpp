@@ -1310,7 +1310,7 @@ void Reactor::waitForShutdownStart()
 void Reactor::waitForShutdownComplete()
 {
   // Check if leak sanitizer is loaded and get pointer to its leak check function
-  int (*leakCheck)() = reinterpret_cast<int (*)()>(dlsym(RTLD_DEFAULT, "__lsan_leak_check"));
+  int (*leakCheck)() = reinterpret_cast<int (*)()>(dlsym(RTLD_DEFAULT, "__lsan_do_leak_check"));
 
   const auto complete = []() -> bool { return gShutdownComplete; };
 
