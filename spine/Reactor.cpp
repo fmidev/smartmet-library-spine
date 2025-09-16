@@ -47,6 +47,7 @@
 #include <mysql.h>
 #include <stdexcept>
 #include <string>
+#include <fmt/format.h>
 
 extern "C"
 {
@@ -1174,9 +1175,19 @@ void Reactor::shutdown_impl()
                         [this, &plugin]()
                         {
                           // Better be sure that all handlers are removed before plugin is shut down
+                          const auto name = plugin->pluginname();
+                          const auto begin = Fmi::MicrosecClock::universal_time();
                           removeContentHandlers(plugin->getPlugin());
                           plugin->shutdownPlugin();
                           plugin.reset();
+                          const auto end = Fmi::MicrosecClock::universal_time();
+                          const double duration = (end - begin).total_milliseconds() / 1000.0;
+                          std::ostringstream tmp;
+                          tmp << ANSI_FG_MAGENTA
+                              << "* Plugin [" << name << "] shutdown complete"
+                              << " (duration: " << fmt::format("{:.3f}", duration) << " seconds)"
+                              << ANSI_FG_DEFAULT << '\n';
+                          std::cout << tmp.str() << std::flush;
                         });
     }
 
@@ -1199,11 +1210,16 @@ void Reactor::shutdown_impl()
                         [this, engine, singleton]()
                         {
                           // Better be sure that all handlers are removed before engine is shut down
+                          const auto begin = Fmi::MicrosecClock::universal_time();
                           removeContentHandlers(engine);
                           engine->shutdownEngine();
+                          const auto end = Fmi::MicrosecClock::universal_time();
+                          const double duration = (end - begin).total_milliseconds() / 1000.0;
                           std::ostringstream tmp2;
-                          tmp2 << ANSI_FG_MAGENTA << "* Engine [" << singleton.first
-                               << "] shutdown complete" << ANSI_FG_DEFAULT << '\n';
+                          tmp2 << ANSI_FG_MAGENTA
+                               << "* Engine [" << singleton.first << "] shutdown complete"
+                               << " (duration: " << fmt::format("{:.3f}", duration) << " seconds)"
+                               << ANSI_FG_DEFAULT << '\n';
                           std::cout << tmp2.str() << std::flush;
                         });
     }
@@ -1225,8 +1241,20 @@ void Reactor::shutdown_impl()
       std::cout << ANSI_FG_RED << "* Deleting engine [" << singleton.first << "]" << ANSI_FG_DEFAULT
                 << std::endl;
       auto* engine = singleton.second;
-      boost::this_thread::disable_interruption do_not_disturb;
-      delete engine;
+      const auto name = singleton.first;
+      const auto begin = Fmi::MicrosecClock::universal_time();
+      do {
+        boost::this_thread::disable_interruption do_not_disturb;
+        delete engine;
+      } while (false);
+      const auto end = Fmi::MicrosecClock::universal_time();
+      const double duration = (end - begin).total_milliseconds() / 1000.0;
+      std::ostringstream tmp;
+      tmp << ANSI_FG_MAGENTA
+          << "* Engine [" << name << "] deletion complete"
+          << " (duration: " << fmt::format("{:.3f}", duration) << " seconds)"
+          << ANSI_FG_DEFAULT << '\n';
+      std::cout << tmp.str() << std::flush;
     }
     itsPlugins.clear();
     itsSingletons.clear();
