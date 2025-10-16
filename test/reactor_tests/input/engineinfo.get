@@ -1,0 +1,1 @@
+GET /admin?what=engineinfo&format=debug HTTP/1.0

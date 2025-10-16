@@ -1,8 +1,10 @@
 activerequests <builtin> no no yes Get active request info
 cachestats <builtin> no no yes Request cache stats
+engineinfo <builtin> no no yes Request engine info
 getlogging <builtin> no no yes Get logging status
 lastrequests <builtin> no no yes Get last requests
 list <builtin> no yes yes List all admin requests
+plugininfo <builtin> no no yes Request plugin info
 serviceinfo <builtin> no yes yes Get info about available services
 servicestats <builtin> no no yes Request service stats
 setlogging <builtin> yes no no Set logging status

@@ -244,6 +244,20 @@ Reactor::Reactor(Options& options)
         AdminRequestAccess::Private,
         std::bind(&Reactor::requestServiceStats, this, std::placeholders::_2),
         "Request service stats");
+
+    addAdminTableRequestHandler(
+        NoTarget{},
+        "engineinfo",
+        AdminRequestAccess::Private,
+        std::bind(&Reactor::requestEngineInfo, this, std::placeholders::_2),
+        "Request engine info");
+
+    addAdminTableRequestHandler(
+        NoTarget{},
+        "plugininfo",
+        AdminRequestAccess::Private,
+        std::bind(&Reactor::requestPluginInfo, this, std::placeholders::_2),
+        "Request plugin info");
   }
   catch (...)
   {
@@ -1755,6 +1769,71 @@ try
   statsTable->set(column, row, msecs);
 
   return statsTable;
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
+
+std::unique_ptr<Table> Reactor::requestEngineInfo(const HTTP::Request& theRequest) const
+try
+{
+  const std::vector<std::string> headers{"Engine", "Ready", "Class name"};
+  std::unique_ptr<Table> table = std::make_unique<Table>();
+  table->setTitle("SmartMet Engine information");
+  table->setNames(headers);
+
+  std::size_t row = 0;
+  for (const auto& item : itsSingletons)
+  {
+    const std::string name = item.first;
+    const bool ready = item.second->ready();
+    const std::string className = Fmi::demangle_cpp_type_name(typeid(*item.second).name());
+    std::size_t column = 0;
+    table->set(column++, row, name);
+    table->set(column++, row, ready ? "yes" : "no");
+    table->set(column++, row, className);
+    ++row;
+  }
+
+  return table;
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
+
+std::unique_ptr<Table> Reactor::requestPluginInfo(const HTTP::Request& theRequest) const
+try
+{
+  const std::vector<std::string> headers{"Plugin", "Ready", "Class name", "File name", "Config file"};
+  std::unique_ptr<Table> table = std::make_unique<Table>();
+  table->setTitle("SmartMet Plugin information");
+  table->setNames(headers);
+
+  std::size_t row = 0;
+  for (const auto& item : itsPlugins)
+  {
+    const SmartMetPlugin* plugin = item->getPlugin();
+
+    const std::string name = plugin->getPluginName();
+    const bool ready = not plugin->isInitActive();
+    const std::string className = Fmi::demangle_cpp_type_name(typeid(*plugin).name());
+    const std::string fileName = item->filename();
+    const std::string configFile = item->configfile();
+
+    std::size_t column = 0;
+    table->set(column++, row, name);
+    table->set(column++, row, ready ? "yes" : "no");
+    table->set(column++, row, className);
+    table->set(column++, row, fileName);
+    table->set(column++, row, configFile);
+    ++row;
+  }
+
+  return table;
 }
 catch (...)
 {

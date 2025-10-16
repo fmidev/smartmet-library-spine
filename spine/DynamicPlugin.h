@@ -32,6 +32,9 @@ class DynamicPlugin
   const std::string& filename() const { return itsFilename; }
   // Get the name of the plugin
   const std::string& pluginname() const { return itsPlugin->getPluginName(); }
+  // Get name of config file
+  const std::string& configfile() const { return itsConfigFile; }
+
   // Get the API version
   int apiversion() const { return itsPlugin->getRequiredAPIVersion(); }
   // Method to reload the dynamic library plugin

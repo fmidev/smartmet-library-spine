@@ -1,0 +1,5 @@
+<!DOCTYPE html><html><head><title>Debug mode output</title><style>table {border-collapse: collapse;}th, td {border-bottom: 1px solid black; padding: 3px 0.5em 3px 0.5em; text-align: center;}tr:nth-child(even) {background-color: #f2f2f2;}tr:hover {background-color: #e2e2e2;}</style>
+</head><body>
+<h1>SmartMet Plugin information</h1>
+<table><tr><th>Plugin</th><th>Ready</th><th>Class name</th><th>File name</th><th>Config file</th></tr><tr>
+<td>Test</td><td>yes</td><td>SmartMet::Plugin::Test::Plugin</td><td>test_plugin/test_plugin.so</td><td>/dev/null</td></tr></table></body></html>
