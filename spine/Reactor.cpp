@@ -1309,9 +1309,9 @@ void Reactor::destroy_engines()
       if (it1->second.use_count() > 1)
       {
         std::ostringstream tmp;
-        tmp << ANSI_FG_YELLOW
-            << "* WARNING: Engine [" << it1->first << "] use_count = " << it1->second.use_count()
-            << " before deletion, postponing for references to clear..."
+        tmp << ANSI_FG_RED
+            << "* WARNING: Engine [" << it1->first << "] is still in use. Postponing destruction"
+            << " (use_count = " << it1->second.use_count() << ")"
             << ANSI_FG_DEFAULT << '\n';
         std::cout << tmp.str() << std::flush;
       }
