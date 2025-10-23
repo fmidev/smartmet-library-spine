@@ -203,6 +203,12 @@ class Reactor final : public ContentHandlerMap
    */
   void shutdown_impl();
 
+  void shutdown_plugins();
+
+  void shutdown_engines();
+
+  void destroy_engines();
+
   void waitForShutdownStart();
 
   void notifyShutdownComplete();
