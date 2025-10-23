@@ -1338,7 +1338,7 @@ void Reactor::destroy_engines()
       it1 = it2;
     }
 
-    if (num_deleted == 0)
+    if (!itsSingletons.empty() && num_deleted == 0)
     {
       std::ostringstream tmp;
       tmp << ANSI_FG_RED
