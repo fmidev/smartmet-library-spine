@@ -33,6 +33,7 @@
 #include <macgyver/DateTime.h>
 #include <macgyver/DebugTools.h>
 #include <macgyver/Exception.h>
+#include <macgyver/Join.h>
 #include <macgyver/PostgreSQLConnection.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TimeFormatter.h>
@@ -1156,7 +1157,10 @@ Reactor::getEnginePtr(const std::string& theClassName, void* user_data)
   if (ptr)
     return ptr;
 
-  throw Fmi::Exception::Trace(BCP, "No " + theClassName + " engine available");
+  Fmi::Exception error(BCP, "No " + theClassName + " engine available");
+  error.addParameter("Available (case sensitive)", Fmi::join(
+    itsSingletons, [](const auto& pair) { return pair.first; }, ", "));
+  throw error;
 }
 
 bool Reactor::isShuttingDown()
