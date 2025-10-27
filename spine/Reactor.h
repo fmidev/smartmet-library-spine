@@ -71,11 +71,7 @@ class Reactor final : public ContentHandlerMap
   using ClientConnectionFinishedHook =
       boost::function<void(const std::string&, const boost::system::error_code&)>;
 
-  // Typedef for new instance of requested class.
-  // Must be casted with reinterpret_cast<> to correct type in users code!
-  using EngineInstance = void*;
-
-  // Logging
+    // Logging
 
   bool lazyLinking() const;
 
@@ -125,11 +121,12 @@ class Reactor final : public ContentHandlerMap
 
   bool loadEngine(const std::string& sectionName, const std::string& theFilename, bool verbose);
   void listEngines() const;
-  EngineInstance newInstance(const std::string& theClassName, void* user_data);
-  SmartMetEngine* getSingleton(const std::string& theClassName, void* user_data);
+  std::shared_ptr<SmartMetEngine> newInstance(const std::string& theClassName, void* user_data);
+  std::shared_ptr<SmartMetEngine> getSingleton(const std::string& theClassName, void* user_data);
 
   template <typename EngineType>
-  EngineType* getEngine(const std::string& theClassName, void* user_data = nullptr);
+  typename std::enable_if<std::is_base_of<SmartMetEngine, EngineType>::value, std::shared_ptr<EngineType>>::type
+  getEngine(const std::string& theClassName, void* user_data = nullptr);
 
   // Server communication
 
@@ -206,6 +203,12 @@ class Reactor final : public ContentHandlerMap
    */
   void shutdown_impl();
 
+  void shutdown_plugins();
+
+  void shutdown_engines();
+
+  void destroy_engines();
+
   void waitForShutdownStart();
 
   void notifyShutdownComplete();
@@ -260,7 +263,7 @@ class Reactor final : public ContentHandlerMap
    */
   std::vector<std::pair<std::string, std::string> > findLibraries(const std::string& theName) const;
 
-  SmartMetEngine* getEnginePtr(const std::string& theClassName, void* user_data);
+  std::shared_ptr<SmartMetEngine> getEnginePtr(const std::string& theClassName, void* user_data);
 
   // SmartMet API Version
   int APIVersion = SMARTMET_API_VERSION;
@@ -279,8 +282,7 @@ class Reactor final : public ContentHandlerMap
   std::map<std::string, ClientConnectionFinishedHook> itsClientConnectionFinishedHooks;
 
   mutable MutexType itsHookMutex;
-
-  // Plugins
+  mutable boost::mutex itsInitMutex;
 
   using PluginList = std::list<std::shared_ptr<DynamicPlugin> >;
   PluginList itsPlugins;
@@ -296,7 +298,7 @@ class Reactor final : public ContentHandlerMap
   using EngineList = std::map<std::string, EngineInstanceCreator>;
   EngineList itsEngines;
 
-  using SingletonList = std::map<std::string, SmartMetEngine*>;
+  using SingletonList = std::map<std::string, std::shared_ptr<SmartMetEngine>>;
   SingletonList itsSingletons;
 
   using ConfigList = std::map<std::string, std::string>;
@@ -330,11 +332,17 @@ class Reactor final : public ContentHandlerMap
 };
 
 template <typename EngineType>
-EngineType* Reactor::getEngine(const std::string& theClassName, void* user_data)
+typename std::enable_if<std::is_base_of<SmartMetEngine, EngineType>::value, std::shared_ptr<EngineType>>::type
+Reactor::getEngine(const std::string& theClassName, void* user_data)
 {
-  static_assert(std::is_base_of<SmartMetEngine, EngineType>::value,
-                "Engine class not derived from SmartMet::Spine::SmartMetEngine");
-  return reinterpret_cast<EngineType*>(getEnginePtr(theClassName, user_data));
+  std::shared_ptr<EngineType> engine = std::dynamic_pointer_cast<EngineType>(getEnginePtr(theClassName, user_data));
+  if (!engine)
+  {
+    Fmi::Exception err(BCP, "Dynamic engine type cast failed");
+    err.addParameter("Requested engine class name", theClassName);
+    throw err;
+  }
+  return engine;
 }
 
 }  // namespace Spine

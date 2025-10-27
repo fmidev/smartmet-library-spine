@@ -36,7 +36,7 @@ namespace SmartMet
         std::string dump_params(const Spine::HTTP::Request& theRequest) const;
 
       private:
-        ::SmartMet::Engine::Test::Engine* test_engine;
+        std::shared_ptr<SmartMet::Engine::Test::Engine> test_engine;
         Reactor* itsReactor = nullptr;
       };
     }

@@ -33,6 +33,7 @@
 #include <macgyver/DateTime.h>
 #include <macgyver/DebugTools.h>
 #include <macgyver/Exception.h>
+#include <macgyver/Join.h>
 #include <macgyver/PostgreSQLConnection.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TimeFormatter.h>
@@ -264,6 +265,7 @@ Reactor::Reactor(Options& options)
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
+
 
 void Reactor::init()
 {
@@ -713,7 +715,8 @@ bool Reactor::loadPlugin(const std::string& sectionName,
  */
 // ----------------------------------------------------------------------
 
-void* Reactor::newInstance(const std::string& theClassName, void* user_data)
+std::shared_ptr<SmartMetEngine>
+Reactor::newInstance(const std::string& theClassName, void* user_data)
 {
   try
   {
@@ -744,15 +747,21 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
 
     // Construct the new engine instance
     void* engineInstance = it->second(configfile.c_str(), user_data);
-
-    auto* theEngine = reinterpret_cast<SmartMetEngine*>(engineInstance);
+    std::shared_ptr<SmartMetEngine> theEngine(reinterpret_cast<SmartMetEngine*>(engineInstance));
+    if (!theEngine)
+    {
+      std::cerr << ANSI_FG_RED << "Unable to create a new instance of engine class '"
+                << theClassName << "'" << std::endl
+                << "The class creator returned a null pointer or reinterpret_cast failed" << ANSI_FG_DEFAULT << std::endl;
+      return nullptr;
+    }
 
     // Fire the initialization thread
     itsInitTasks->add("New engine instance[" + theClassName + "]",
                       [this, theEngine, theClassName]()
-                      { initializeEngine(theEngine, theClassName); });
+                      { initializeEngine(theEngine.get(), theClassName); });
 
-    return engineInstance;
+    return theEngine;
   }
   catch (...)
   {
@@ -766,7 +775,8 @@ void* Reactor::newInstance(const std::string& theClassName, void* user_data)
  */
 // ----------------------------------------------------------------------
 
-SmartMetEngine* Reactor::getSingleton(const std::string& theClassName, void* /* user_data */)
+std::shared_ptr<SmartMetEngine>
+Reactor::getSingleton(const std::string& theClassName, void* user_data)
 {
   try
   {
@@ -779,10 +789,20 @@ SmartMetEngine* Reactor::getSingleton(const std::string& theClassName, void* /* 
       throw Fmi::Exception(BCP, "Shutdown active!").disableStackTrace();
     }
 
-    // Search for the singleton in
-    auto it = itsSingletons.find(theClassName);
+    const auto get_engine_ptr = [this, &theClassName, user_data]() -> std::shared_ptr<SmartMetEngine>
+    {
+      (void)user_data;  // suppress unused warning
+      boost::unique_lock<boost::mutex> lock(itsInitMutex);
+      auto it = itsSingletons.find(theClassName);
+      if (it != itsSingletons.end())
+        return it->second;
+      return nullptr;
+    };
 
-    if (it == itsSingletons.end())
+    // Search for the singleton in
+    auto engine = get_engine_ptr();
+
+    if (!engine)
     {
       // Log error and return with zero
       std::cout << ANSI_FG_RED << "No engine '" << theClassName << "' was found loaded in memory."
@@ -791,13 +811,11 @@ SmartMetEngine* Reactor::getSingleton(const std::string& theClassName, void* /* 
       return nullptr;
     }
 
-    // Found it, return the already-created instance of class.
-    auto* engine = it->second;
-
     // Engines must be wait() - ed before use, do it here so plugins don't have worry about it
 
     engine->wait();
 
+    // Shutdown check after wait: if shutdown started while waiting, return nullptr
     return isShuttingDown() ? nullptr : engine;
   }
   catch (...)
@@ -885,10 +903,10 @@ bool Reactor::loadEngine(const std::string& sectionName,
       return false;
 
     // Begin constructing the engine
-    auto* singleton = newInstance(itsNamePointer(), nullptr);
+    std::shared_ptr<SmartMetEngine> engine = newInstance(itsNamePointer(), nullptr);
 
     // Check whether the preliminary creation succeeded
-    if (singleton == nullptr)
+    if (!engine)
     {
       // Log error and return with zero
       std::cout << ANSI_FG_RED << "No engine '" << itsNamePointer()
@@ -897,7 +915,7 @@ bool Reactor::loadEngine(const std::string& sectionName,
       return false;
     }
 
-    auto* engine = reinterpret_cast<SmartMetEngine*>(singleton);
+    boost::unique_lock<boost::mutex> lock(itsInitMutex);
     itsSingletons.insert(SingletonList::value_type(itsNamePointer(), engine));
 
     return true;
@@ -1125,12 +1143,9 @@ void Reactor::callClientConnectionFinishedHooks(const std::string& theClientIP,
   }
 }
 
-SmartMetEngine* Reactor::getEnginePtr(const std::string& theClassName, void* user_data)
+std::shared_ptr<SmartMetEngine>
+Reactor::getEnginePtr(const std::string& theClassName, void* user_data)
 {
-  auto* ptr = getSingleton(theClassName, user_data);
-  if (ptr != nullptr)
-    return ptr;
-
   if (isShuttingDown())
   {
     throw Fmi::Exception::Trace(
@@ -1138,7 +1153,14 @@ SmartMetEngine* Reactor::getEnginePtr(const std::string& theClassName, void* use
         .disableStackTrace();
   }
 
-  throw Fmi::Exception::Trace(BCP, "No " + theClassName + " engine available");
+  std::shared_ptr<SmartMetEngine> ptr = getSingleton(theClassName, user_data);
+  if (ptr)
+    return ptr;
+
+  Fmi::Exception error(BCP, "No " + theClassName + " engine available");
+  error.addParameter("Available (case sensitive)", Fmi::join(
+    itsSingletons, [](const auto& pair) { return pair.first; }, ", "));
+  throw error;
 }
 
 bool Reactor::isShuttingDown()
@@ -1164,6 +1186,10 @@ void Reactor::shutdown_impl()
     // We are no more interested about init task errors when shutdown has been requested
     itsInitTasks->stop_on_error(false);
 
+    itsInitTasks->stop();
+    // All init task should also be ended before we begin to destroy objects
+    itsInitTasks->wait();
+
     //---------------------------------------------------------------------------------------------
     // Perform preliminary cleanup of base class ContentHandlerMap to avoid some objects
     // staying around after plugins and engines have been deleted.
@@ -1171,24 +1197,43 @@ void Reactor::shutdown_impl()
     // At first clean all generic (not associated by some plugin or engine) admin request handlers
     removeContentHandlers(NoTarget{});
 
-    // Requesting all plugins to shutdown. Notice that now the plugins know
-    // how many requests they have received and how many responses they have sent.
-    // In the other words, the plugins wait until the number of responses equals to
-    // the number of the requests. This was implemented on the top level, because
-    // this way we can relatively safely shutdown all plugins even if the do not
-    // implement their own shutdown() method.
+    shutdown_plugins();
 
-    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown plugins" << ANSI_BOLD_OFF
-              << ANSI_FG_DEFAULT << std::endl;
+    shutdown_engines();
 
-    for (auto& plugin : itsPlugins)
-    {
-      std::cout << ANSI_FG_RED << "* Plugin [" << plugin->pluginname() << "] shutting down\n"
-                << ANSI_FG_DEFAULT;
-      shutdownTasks.add("Plugin [" + plugin->pluginname() + "] shutdown",
-                        [this, &plugin]()
-                        {
-                          // Better be sure that all handlers are removed before plugin is shut down
+    destroy_engines();
+
+    std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: shutdown complete" << ANSI_FG_DEFAULT
+              << std::endl;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Shutdown operation failed!");
+  }
+}
+
+
+
+void Reactor::shutdown_plugins()
+{
+  // Requesting all plugins to shutdown. Notice that now the plugins know
+  // how many requests they have received and how many responses they have sent.
+  // In the other words, the plugins wait until the number of responses equals to
+  // the number of the requests. This was implemented on the top level, because
+  // this way we can relatively safely shutdown all plugins even if the do not
+  // implement their own shutdown() method.
+
+  std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown plugins" << ANSI_BOLD_OFF
+            << ANSI_FG_DEFAULT << std::endl;
+
+  for (auto& plugin : itsPlugins)
+  {
+    std::cout << ANSI_FG_RED << "* Plugin [" << plugin->pluginname() << "] shutting down\n"
+              << ANSI_FG_DEFAULT;
+    shutdownTasks.add("Plugin [" + plugin->pluginname() + "] shutdown",
+                     [this, &plugin]()
+                      {
+                        // Better be sure that all handlers are removed before plugin is shut down
                           const auto name = plugin->pluginname();
                           const auto begin = Fmi::MicrosecClock::universal_time();
                           removeContentHandlers(plugin->getPlugin());
@@ -1203,94 +1248,130 @@ void Reactor::shutdown_impl()
                               << ANSI_FG_DEFAULT << '\n';
                           std::cout << tmp.str() << std::flush;
                         });
+  }
+
+  shutdownTasks.wait();
+  itsPlugins.clear();
+  std::cout << ANSI_FG_RED << "* Plugin shutdown completed" << ANSI_FG_DEFAULT << std::endl;
+}
+
+
+void Reactor::shutdown_engines()
+{
+  // STEP 4: Requesting all engines to shutdown.
+
+  std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown engines" << ANSI_BOLD_OFF
+            << ANSI_FG_DEFAULT << std::endl;
+
+  boost::unique_lock<boost::mutex> lock(itsInitMutex);
+  for (const auto& singleton : itsSingletons)
+  {
+    std::ostringstream tmp1;
+    tmp1 << ANSI_FG_RED << "* Engine [" << singleton.first << "] shutting down" << ANSI_FG_DEFAULT
+         << '\n';
+    std::cout << tmp1.str() << std::flush;
+    std::shared_ptr<SmartMetEngine> engine = singleton.second;
+    shutdownTasks.add("Engine [" + singleton.first + "] shutdown",
+                      [this, engine, singleton]()
+                      {
+                        // Better be sure that all handlers are removed before engine is shut down
+                        const auto begin = Fmi::MicrosecClock::universal_time();
+                        removeContentHandlers(engine.get());
+                        engine->shutdownEngine();
+                        const auto end = Fmi::MicrosecClock::universal_time();
+                        const double duration = (end - begin).total_milliseconds() / 1000.0;
+                        std::ostringstream tmp2;
+                        tmp2 << ANSI_FG_MAGENTA
+                             << "* Engine [" << singleton.first << "] shutdown complete"
+                             << " (duration: " << fmt::format("{:.3f}", duration) << " seconds)"
+                             << ANSI_FG_DEFAULT << '\n';
+                        std::cout << tmp2.str() << std::flush;
+                      });
+  }
+
+  shutdownTasks.wait();
+  std::cout << ANSI_FG_RED << "* Engine shutdown completed" << ANSI_FG_DEFAULT << std::endl;
+}
+
+
+void Reactor::destroy_engines()
+{
+  // STEP 5: Deleting engines. We should not delete engines before they are all shutted down
+  //         because they might use other engines (for example, obsengine => geoengine).
+
+  std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nDeleting engines and plugins" << ANSI_BOLD_OFF
+            << ANSI_FG_DEFAULT << std::endl;
+
+  for (int cnt = 0; cnt < 20; cnt++)
+  {
+    unsigned num_deleted = 0;
+    decltype(itsSingletons)::iterator it1 = itsSingletons.begin(), it2;
+    while (it1 != itsSingletons.end())
+    {
+      it2 = it1;
+      ++it2;
+      if (it1->second.use_count() > 1)
+      {
+        std::ostringstream tmp;
+        tmp << ANSI_FG_RED
+            << "* WARNING: Engine [" << it1->first << "] is still in use. Postponing destruction"
+            << " (use_count = " << it1->second.use_count() << ")"
+            << ANSI_FG_DEFAULT << '\n';
+        std::cout << tmp.str() << std::flush;
+      }
+      else
+      {
+        std::cout << ANSI_FG_RED << "* Deleting engine [" << it1->first << "]" << ANSI_FG_DEFAULT
+                  << std::endl;
+        const auto name = it1->first;
+        const auto begin = Fmi::MicrosecClock::universal_time();
+        do {
+          boost::this_thread::disable_interruption do_not_disturb;
+          itsSingletons.erase(it1);
+        } while (false);
+        const auto end = Fmi::MicrosecClock::universal_time();
+        const double duration = (end - begin).total_milliseconds() / 1000.0;
+        std::ostringstream tmp;
+        tmp << ANSI_FG_MAGENTA
+            << "* Engine [" << name << "] deletion complete"
+            << " (duration: " << fmt::format("{:.3f}", duration) << " seconds)"
+            << ANSI_FG_DEFAULT << '\n';
+        std::cout << tmp.str() << std::flush;
+        num_deleted++;
+      }
+      it1 = it2;
     }
 
-    shutdownTasks.wait();
-    std::cout << ANSI_FG_RED << "* Plugin shutdown completed" << ANSI_FG_DEFAULT << std::endl;
-
-    // STEP 4: Requesting all engines to shutdown.
-
-    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nShutdown engines" << ANSI_BOLD_OFF
-              << ANSI_FG_DEFAULT << std::endl;
-
-    for (const auto& singleton : itsSingletons)
+    if (!itsSingletons.empty() && num_deleted == 0)
     {
-      std::ostringstream tmp1;
-      tmp1 << ANSI_FG_RED << "* Engine [" << singleton.first << "] shutting down" << ANSI_FG_DEFAULT
-           << '\n';
-      std::cout << tmp1.str() << std::flush;
-      auto* engine = singleton.second;
-      shutdownTasks.add("Engine [" + singleton.first + "] shutdown",
-                        [this, engine, singleton]()
-                        {
-                          // Better be sure that all handlers are removed before engine is shut down
-                          const auto begin = Fmi::MicrosecClock::universal_time();
-                          removeContentHandlers(engine);
-                          engine->shutdownEngine();
-                          const auto end = Fmi::MicrosecClock::universal_time();
-                          const double duration = (end - begin).total_milliseconds() / 1000.0;
-                          std::ostringstream tmp2;
-                          tmp2 << ANSI_FG_MAGENTA
-                               << "* Engine [" << singleton.first << "] shutdown complete"
-                               << " (duration: " << fmt::format("{:.3f}", duration) << " seconds)"
-                               << ANSI_FG_DEFAULT << '\n';
-                          std::cout << tmp2.str() << std::flush;
-                        });
-    }
-
-    shutdownTasks.wait();
-
-    // All init task should also be ended before we begin to destroy objects
-    itsInitTasks->stop();
-    itsInitTasks->wait();
-
-    // STEP 5: Deleting engines. We should not delete engines before they are all shutted down
-    //         because they might use other engines (for example, obsengine => geoengine).
-
-    std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nDeleting engines" << ANSI_BOLD_OFF
-              << ANSI_FG_DEFAULT << std::endl;
-
-    for (const auto& singleton : itsSingletons)
-    {
-      std::cout << ANSI_FG_RED << "* Deleting engine [" << singleton.first << "]" << ANSI_FG_DEFAULT
-                << std::endl;
-      auto* engine = singleton.second;
-      const auto name = singleton.first;
-      const auto begin = Fmi::MicrosecClock::universal_time();
-      do {
-        boost::this_thread::disable_interruption do_not_disturb;
-        delete engine;
-      } while (false);
-      const auto end = Fmi::MicrosecClock::universal_time();
-      const double duration = (end - begin).total_milliseconds() / 1000.0;
       std::ostringstream tmp;
-      tmp << ANSI_FG_MAGENTA
-          << "* Engine [" << name << "] deletion complete"
-          << " (duration: " << fmt::format("{:.3f}", duration) << " seconds)"
+      tmp << ANSI_FG_RED
+          << "* ERROR: No engines could be deleted in pass " << (cnt + 1)
+          << ", giving up..."
           << ANSI_FG_DEFAULT << '\n';
       std::cout << tmp.str() << std::flush;
+      break;
     }
-    itsPlugins.clear();
-    itsSingletons.clear();
+  }
 
-    std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: shutdown complete" << ANSI_FG_DEFAULT
-              << std::endl;
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Shutdown operation failed!");
-  }
+  itsSingletons.clear();
 }
+
 
 Fmi::Cache::CacheStatistics Reactor::getCacheStats() const
 {
   Fmi::Cache::CacheStatistics ret;
 
   // Engines
-
-  for (const auto& engine_item : itsSingletons)
+  const auto get_all_engines = [this]() -> SingletonList
   {
-    auto* engine = engine_item.second;
+    boost::unique_lock<boost::mutex> lock(itsInitMutex);
+    return itsSingletons;
+  };
+
+  for (const auto& engine_item : get_all_engines())
+  {
+    auto engine = engine_item.second;
     if (engine && engine->ready())
     {
       Fmi::Cache::CacheStatistics engine_stats = engine->getCacheStats();
