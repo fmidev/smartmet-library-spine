@@ -15,7 +15,6 @@ LIBS +=	\
 	-lsmartmet-newbase \
 	-lboost_thread \
 	-lboost_program_options \
-	-lboost_system \
 	-lboost_locale \
 	-lctpp2 \
 	$(REQUIRED_LIBS) \
