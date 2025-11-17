@@ -1195,12 +1195,26 @@ void Reactor::shutdown_impl()
     // staying around after plugins and engines have been deleted.
     //
     // At first clean all generic (not associated by some plugin or engine) admin request handlers
+    //
+    // Also reset the no-match handler to avoid calls to deleted objects later on (it is most likely
+    // associated with some plugin, but it is not known here. As result it must be reset before any
+    // plugin is deleted.
+    //---------------------------------------------------------------------------------------------
+    setNoMatchHandler(ContentHandler(), std::nullopt);
     removeContentHandlers(NoTarget{});
 
+    //---------------------------------------------------------------------------------------------
+    // Now we can safely shutdown and delete all plugins.
+    // Perform plugin shutdown in parallel.
+    //---------------------------------------------------------------------------------------------
     shutdown_plugins();
 
+    //---------------------------------------------------------------------------------------------
+    // Now we can safely shutdown and delete all engines.
+    // Perform engine shutdown in parallel, but postpone specific engine deletions to later phase
+    // if shared_ptr reference count is more than one.
+    //---------------------------------------------------------------------------------------------
     shutdown_engines();
-
     destroy_engines();
 
     std::cout << ANSI_FG_RED << "* SmartMet::Spine::Reactor: shutdown complete" << ANSI_FG_DEFAULT
