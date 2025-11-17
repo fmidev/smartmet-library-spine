@@ -383,7 +383,7 @@ public:
 
 private:
     /**
-     * @brief Clean log od old entries
+     * @brief Clean log of old entries
      */
     void cleanLog();
 
