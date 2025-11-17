@@ -1200,7 +1200,7 @@ void Reactor::shutdown_impl()
     // associated with some plugin, but it is not known here. As result it must be reset before any
     // plugin is deleted.
     //---------------------------------------------------------------------------------------------
-    setNoMatchHandler(ContentHandler(), std::nullopt);
+    setNoMatchHandler(ContentHandler());
     removeContentHandlers(NoTarget{});
 
     //---------------------------------------------------------------------------------------------
