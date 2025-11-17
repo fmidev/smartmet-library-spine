@@ -2,6 +2,7 @@
 #include "Convenience.h"
 #include <iostream>
 #include <filesystem>
+#include <fmt/format.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 
@@ -144,14 +145,34 @@ void AccessLogger::log(const LoggedRequest& theRequest)
       return;
     }
 
-    *itsFileHandle << theRequest.getIP() << " - - ["
-                   << Fmi::to_iso_extended_string(theRequest.getRequestEndTime()) << "] \""
-                   << theRequest.getMethod() << ' ' << theRequest.getRequestString() << " HTTP/"
-                   << theRequest.getVersion() << "\" " << theRequest.getStatus() << " ["
-                   << Fmi::to_iso_extended_string(theRequest.getRequestStartTime()) << "] "
-                   << theRequest.getAccessDuration().total_milliseconds() << ' '
-                   << theRequest.getContentLength() << ' ' << theRequest.getETag() << ' '
-                   << theRequest.getApiKey() << '\n';
+    const std::string msg =
+      fmt::format("{} - - [{}] \"{} {} HTTP/{}\" {} [{}] {} {} {} {}\n",
+                  theRequest.getIP(),
+                  Fmi::to_iso_extended_string(theRequest.getRequestEndTime()),
+                  theRequest.getMethod(),
+                  theRequest.getRequestString(),
+                  theRequest.getVersion(),
+                  theRequest.getStatus(),
+                  Fmi::to_iso_extended_string(theRequest.getRequestStartTime()),
+                  theRequest.getAccessDuration().total_milliseconds(),
+                  theRequest.getContentLength(),
+                  theRequest.getETag(),
+                  theRequest.getApiKey());
+
+    *itsFileHandle << msg;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+void AccessLogger::flush()
+{
+  try
+  {
+    if (itsFileHandle)
+      itsFileHandle->flush();
   }
   catch (...)
   {

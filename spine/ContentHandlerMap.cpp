@@ -169,13 +169,19 @@ namespace
 }
 
 
-void ContentHandlerMap::setNoMatchHandler(ContentHandler theHandler)
+void ContentHandlerMap::setNoMatchHandler(
+  ContentHandler theHandler,
+  const std::optional<std::string>& accessLogName)
 try
 {
   WriteLock lock(itsContentMutex);
   if (theHandler)
   {
-    itsCatchNoMatchHandler.reset(new HandlerView(theHandler));
+    itsCatchNoMatchHandler.reset(
+      new HandlerView(
+        theHandler,
+        itsOptions.accesslogdir,
+        accessLogName));
   }
   else
   {
@@ -538,6 +544,14 @@ try
   {
     handlerPair.second->setLogging(itsLoggingEnabled);
   }
+
+  // Additionally set logging status for no-match handler (if any).
+  // HandlerView::setLogging will ignore the call if no access log is defined
+  // for the no-match handler.
+  if (itsCatchNoMatchHandler)
+  {
+    itsCatchNoMatchHandler->setLogging(itsLoggingEnabled);
+  }
 }
 catch (...)
 {
@@ -561,6 +575,10 @@ try
       auto firstValidTime = Fmi::SecondClock::local_time() - maxAge;
 
       ReadLock lock(itsContentMutex);
+
+      if (itsCatchNoMatchHandler)
+        itsCatchNoMatchHandler->cleanLog(firstValidTime, true);
+
       for (auto& handlerPair : itsHandlers)
       {
         if (Reactor::isShuttingDown())

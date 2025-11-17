@@ -98,8 +98,13 @@ public:
      * Empty handler (default) means, that there is no special handler for no match cases.
      *
      * @param theHandler Handler function
-     */
-    void setNoMatchHandler(ContentHandler theHandler);
+     * @param accessLogName Optional name for access log file (enables logging to this file)
+     *       if not given, no logging is done.
+     *       Example:
+     *          specify std::string("frontend") to get log file named "frontend-access-log"
+     **/
+    void setNoMatchHandler(ContentHandler theHandler,
+        const std::optional<std::string>& accessLogName = std::nullopt);
 
     /**
      * @brief Add a new public handler to the map

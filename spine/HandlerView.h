@@ -8,6 +8,7 @@
 #include "Thread.h"
 #include <functional>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -36,7 +37,9 @@ class HandlerView
               const std::string& accessLogDir);
 
   // CatchNoMatch handler
-  explicit HandlerView(ContentHandler theHandler);
+  explicit HandlerView(ContentHandler theHandler,
+              const std::string& accessLogDir,
+              const std::optional<std::string>& accessLogName);
 
   // Destructor
   ~HandlerView();

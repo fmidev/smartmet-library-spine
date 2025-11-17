@@ -62,14 +62,27 @@ HandlerView::HandlerView(ContentHandler theHandler,
   }
 }
 
-HandlerView::HandlerView(ContentHandler theHandler)
+HandlerView::HandlerView(
+    ContentHandler theHandler,
+    const std::string& accessLogDir,
+    const std::optional<std::string>& name)
+
     : itsHandler(std::move(theHandler)),
       itsIsCatchNoMatch(true),
+      isLogging(name.has_value()),
       itsLastFlushedRequest(itsRequestLog.begin())
 {
+  if (name)
+  {
+    itsAccessLog = std::make_unique<AccessLogger>(*name, accessLogDir);
+    itsAccessLog->start();
+  }
 }
 
-HandlerView::~HandlerView() = default;
+HandlerView::~HandlerView()
+{
+  flushLog();
+}
 
 bool HandlerView::handle(Reactor& theReactor,
                          const HTTP::Request& theRequest,
@@ -89,7 +102,7 @@ bool HandlerView::handle(Reactor& theReactor,
       }
     }
 
-    if (itsIsCatchNoMatch || !isLogging)
+    if (!isLogging || !itsAccessLog)
     {
       // Frontends do not log finished requests
       auto key = theReactor.insertActiveRequest(theRequest);
@@ -227,14 +240,15 @@ void HandlerView::setLogging(bool newStatus)
 {
   try
   {
-    WriteLock lock(itsLoggingMutex);
-
-    // Disable logging-related stuff for frontend behaviour
-    // Access log pointer is empty and will segfault if we proceed
-    if (itsIsCatchNoMatch)
+    // NoMatchHandler may be configured with both logging enabled and disabled.
+    // Do nothing if access log pointer is empty. No need to lock mutex either
+    // as logger pointer is not changed after construction.
+    if (!itsAccessLog)
     {
       return;
     }
+
+    WriteLock lock(itsLoggingMutex);
 
     bool previousStatus = isLogging;  // Save previous status to detect changes
     isLogging = newStatus;
@@ -324,10 +338,6 @@ void HandlerView::cleanLog(const Fmi::DateTime& minTime, bool flush)
   {
     WriteLock lock(itsLoggingMutex);
 
-    // Disable logging-related things for frontend behaviour
-    if (itsIsCatchNoMatch)
-      return;
-
     // Ignore cleaning operation if someone is reading the log right now
 
     if (itsLogReaderCount != 0)
@@ -373,13 +383,6 @@ void HandlerView::flushLog()
   try
   {
     WriteLock lock(itsLoggingMutex);
-
-    // Disable logging-related things for frontend behaviour
-    if (itsIsCatchNoMatch)
-    {
-      return;
-    }
-
     flushLogNolock();
   }
   catch (...)
@@ -390,13 +393,18 @@ void HandlerView::flushLog()
 
 void HandlerView::flushLogNolock()
 {
+  if (itsAccessLog == nullptr)
+    return;
+
   auto flushIter = itsLastFlushedRequest;
   ++flushIter;
 
   for (; flushIter != itsRequestLog.end(); ++flushIter)
   {
-    itsAccessLog->log(*flushIter);
+      itsAccessLog->log(*flushIter);
   }
+
+  itsAccessLog->flush();
 
   // Return to the last flushed request (not past the end)
   itsLastFlushedRequest = --flushIter;

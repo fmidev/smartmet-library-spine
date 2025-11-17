@@ -6,6 +6,7 @@
 #include <json/json.h>
 
 using namespace SmartMet::Plugin::Test;
+namespace p = std::placeholders;
 
 Plugin::Plugin(SmartMet::Spine::Reactor *theReactor, const char *theConfig)
     : test_engine(nullptr)
@@ -54,6 +55,10 @@ void Plugin::init()
     {
         throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
     }
+
+    itsReactor->setNoMatchHandler(
+        std::bind(&Plugin::nomatchHandler, this, p::_1, p::_2, p::_3),
+        "nomatch");
 
     if (!itsReactor->addContentHandler(this,
             "/test_prefix",
@@ -130,6 +135,15 @@ void Plugin::requestHandler2(
         content << item.first << " --> " << item.second << std::endl;
     }
     theResponse.setContent(content.str());
+}
+
+void Plugin::nomatchHandler(
+    Reactor&,
+    const HTTP::Request&,
+    HTTP::Response& theResponse)
+{
+    theResponse.setContent("No match handler called\n");
+    theResponse.setStatus(HTTP::Status::accepted);
 }
 
 std::string SmartMet::Plugin::Test::Plugin::dump_params(const HTTP::Request& theRequest) const

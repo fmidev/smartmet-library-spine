@@ -22,6 +22,8 @@ class AccessLogger
 
   void stop();
 
+  void flush();
+
  private:
   std::string itsResource;
 
