@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 25.10.27
+Version: 25.11.18
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -167,6 +167,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Nov 18 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.11.18-1.fmi
+- Support request loggin in no-match handler
+
 * Mon Oct 27 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.10.27-1.fmi
 - Reactor: use std::shared_ptr<> with SmartMetEngine
 
