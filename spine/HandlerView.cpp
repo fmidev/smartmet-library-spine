@@ -263,7 +263,8 @@ void HandlerView::setLogging(bool newStatus)
     {
       // Status set to false, make the transition true->false
 
-      // Empty whatever we may have
+      // Flush queued entries whatever we may have and stop logging
+      flushLogNolock();
       itsRequestLog.clear();
       itsLastFlushedRequest = itsRequestLog.begin();
       itsAccessLog->stop();
