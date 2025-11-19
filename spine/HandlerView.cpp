@@ -196,6 +196,11 @@ bool HandlerView::handle(Reactor& theReactor,
       {
         itsHandler(theReactor, theRequest, theResponse);
       }
+      catch (boost::thread_interrupted&)
+      {
+        // Let thread interruption exceptions pass through
+        throw;
+      }
       catch (...)
       {
         error = std::current_exception();
