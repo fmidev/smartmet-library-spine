@@ -48,10 +48,14 @@ void SmartMetPlugin::initPlugin()
     }
     catch (...)
     {
-      Fmi::Exception exception(BCP, "Init call failed!", nullptr);
+      // Fmi::Exception constructor will throw when thread is interrupted.
+      // Therefore we require to clear itsInitActive before it.
+      //
+      // We are also not re-throwing the exception in case of shutdown.
+      itsInitActive = false;
+      Fmi::Exception exception = Fmi::Exception::Trace(BCP, "Init call failed!");
       if (!SmartMet::Spine::Reactor::isShuttingDown())
       {
-        itsInitActive = false;
         throw exception;
       }
       // else
@@ -64,7 +68,7 @@ void SmartMetPlugin::initPlugin()
   {
     using SmartMet::Spine::Reactor;
     Reactor::reportFailure("Plugin initialization failed!");
-    Fmi::Exception exception(BCP, "Plugin initialization failed!", nullptr);
+    auto exception = Fmi::Exception::Trace(BCP, "Plugin initialization failed!");
 
     // Will terminate the program
     throw exception;
