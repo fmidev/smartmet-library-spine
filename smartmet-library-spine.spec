@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 25.11.18
+Version: 25.11.19
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -167,6 +167,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Nov 19 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.11.19-1.fmi
+- Thread interruption related bugfix and flush request log before stopping logging
+
 * Tue Nov 18 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.11.18-1.fmi
 - Support request loggin in no-match handler
 
