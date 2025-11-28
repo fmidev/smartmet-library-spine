@@ -210,6 +210,13 @@ try
   WriteLock lock(itsContentMutex);
   WriteLock lock2(itsLoggingMutex);
 
+  if (!theHandler)
+    throw Fmi::Exception(BCP, "Cannot add null content handler for URI " + theUri);
+
+  if (Reactor::isShuttingDown())
+    throw Fmi::Exception(BCP, "Cannot add content handler for URI " + theUri +
+                                   " - shutdown in progress");
+
   const std::string pluginName = plugin_name(thePlugin);
 
   // Get IP filter for the content handler (if any)
@@ -639,6 +646,10 @@ bool ContentHandlerMap::addAdminRequestHandlerImpl(
 try
 {
   bool unique = not std::holds_alternative<AdminBoolRequestHandler>(theHandler);
+
+  if (Reactor::isShuttingDown())
+    throw Fmi::Exception(BCP, "Cannot add admin request handler for " + what +
+                                   " - shutdown in progress");
 
   WriteLock lock(itsContentMutex);
 
