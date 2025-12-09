@@ -1042,6 +1042,81 @@ void post_urlencoded_tostring()
   }
 }
 
+void response_decoded_content_no_encoding()
+{
+  // Test getDecodedContent() when there's no Content-Encoding header
+  SmartMet::Spine::HTTP::Response response;
+  std::string content = "Hello, World!";
+  response.setContent(content);
+  response.setStatus(SmartMet::Spine::HTTP::Status::ok);
+
+  std::string decoded = response.getDecodedContent();
+
+  if (decoded == content)
+  {
+    TEST_PASSED();
+  }
+  else
+  {
+    TEST_FAILED("Decoded content doesn't match original: expected \"" + content + 
+                "\", got \"" + decoded + "\"");
+  }
+}
+
+void response_decoded_content_identity()
+{
+  // Test getDecodedContent() when Content-Encoding is identity
+  SmartMet::Spine::HTTP::Response response;
+  std::string content = "Hello, World!";
+  response.setContent(content);
+  response.setHeader("Content-Encoding", "identity");
+  response.setStatus(SmartMet::Spine::HTTP::Status::ok);
+
+  std::string decoded = response.getDecodedContent();
+
+  if (decoded == content)
+  {
+    TEST_PASSED();
+  }
+  else
+  {
+    TEST_FAILED("Decoded content doesn't match original: expected \"" + content + 
+                "\", got \"" + decoded + "\"");
+  }
+}
+
+void response_decoded_content_gzip()
+{
+  // Test getDecodedContent() with gzip encoding
+  // This is actual gzip-compressed data for "Hello, World!"
+  // Generated with: echo -n "Hello, World!" | gzip | xxd -i
+  unsigned char gzip_data[] = {
+    0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xf3, 0x48,
+    0xcd, 0xc9, 0xc9, 0xd7, 0x51, 0x08, 0xcf, 0x2f, 0xca, 0x49, 0x51, 0x04,
+    0x00, 0xd0, 0xc3, 0x4a, 0xec, 0x0d, 0x00, 0x00, 0x00
+  };
+  unsigned int gzip_len = 33;
+
+  SmartMet::Spine::HTTP::Response response;
+  std::string compressedContent(reinterpret_cast<char*>(gzip_data), gzip_len);
+  response.setContent(compressedContent);
+  response.setHeader("Content-Encoding", "gzip");
+  response.setStatus(SmartMet::Spine::HTTP::Status::ok);
+
+  std::string decoded = response.getDecodedContent();
+  std::string expected = "Hello, World!";
+
+  if (decoded == expected)
+  {
+    TEST_PASSED();
+  }
+  else
+  {
+    TEST_FAILED("Gzip decoded content doesn't match expected: expected \"" + expected + 
+                "\", got \"" + decoded + "\"");
+  }
+}
+
 class tests : public tframe::tests
 {
   virtual const char* error_message_prefix() const { return "\n\t"; }
@@ -1076,6 +1151,9 @@ class tests : public tframe::tests
     TEST(root_options_request);
     TEST(resource_options_request);
     TEST(post_urlencoded_tostring);
+    TEST(response_decoded_content_no_encoding);
+    TEST(response_decoded_content_identity);
+    TEST(response_decoded_content_gzip);
   }
 };
 }  // namespace HTTPTest

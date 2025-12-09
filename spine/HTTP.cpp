@@ -1,6 +1,12 @@
 #include "HTTP.h"
 #include "HTTPParsers.h"
 #include <boost/algorithm/string.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filter/lzma.hpp>
+#include <boost/iostreams/filter/zlib.hpp>
+#include <boost/iostreams/filter/zstd.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/regex.hpp>
 #include <boost/shared_array.hpp>
 #include <macgyver/Exception.h>
@@ -921,6 +927,70 @@ Response::Response(HeaderMap headerMap,
 std::string Response::getContent()
 {
   return itsContent.getString();
+}
+
+std::string Response::getDecodedContent()
+{
+  try
+  {
+    // Get the raw content
+    std::string rawContent = itsContent.getString();
+
+    // Check for Content-Encoding header
+    auto encodingHeader = getHeader("Content-Encoding");
+    if (!encodingHeader || encodingHeader->empty())
+    {
+      // No encoding, return as is
+      return rawContent;
+    }
+
+    std::string encoding = *encodingHeader;
+    boost::algorithm::to_lower(encoding);
+    boost::algorithm::trim(encoding);
+
+    // Handle identity encoding (no compression)
+    if (encoding == "identity")
+    {
+      return rawContent;
+    }
+
+    // Decompress based on encoding type
+    std::istringstream input(rawContent);
+    boost::iostreams::filtering_streambuf<boost::iostreams::input> filterBuf;
+
+    if (encoding == "gzip")
+    {
+      filterBuf.push(boost::iostreams::gzip_decompressor());
+    }
+    else if (encoding == "deflate" || encoding == "compress")
+    {
+      filterBuf.push(boost::iostreams::zlib_decompressor());
+    }
+    else if (encoding == "zstd")
+    {
+      filterBuf.push(boost::iostreams::zstd_decompressor());
+    }
+    else if (encoding == "xz" || encoding == "lzma")
+    {
+      filterBuf.push(boost::iostreams::lzma_decompressor());
+    }
+    else
+    {
+      // Unsupported encoding, return raw content
+      return rawContent;
+    }
+    
+    filterBuf.push(input);
+    
+    std::ostringstream output;
+    boost::iostreams::copy(filterBuf, output);
+    
+    return output.str();
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to decode response content!");
+  }
 }
 
 std::size_t Response::getContentLength() const
