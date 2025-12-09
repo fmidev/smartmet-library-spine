@@ -556,10 +556,48 @@ std::string Request::toString() const
 
         case RequestMethod::POST:
         {
-          // In case POST-message, parameters are ignored and the body
-          // content must be placed explicitly
+          // Check if Content-Type is application/x-www-form-urlencoded
+          auto contentTypeIt = itsHeaders.find("Content-Type");
+          bool isFormUrlEncoded = false;
 
-          body = itsContent;
+          if (contentTypeIt != itsHeaders.end())
+          {
+            static const boost::regex formHeaderRegex("application/x-www-form-urlencoded(;.*)?",
+                                                       boost::regex::icase);
+            if (boost::regex_match(contentTypeIt->second, formHeaderRegex))
+            {
+              isFormUrlEncoded = true;
+            }
+          }
+
+          if (isFormUrlEncoded)
+          {
+            // Serialize parameters as URL-encoded form data
+            auto nextToLast = itsParameters.end();
+            std::advance(nextToLast, -1);
+
+            for (auto it = itsParameters.begin(); it != nextToLast; ++it)
+            {
+              paramValue = it->second;
+              paramValue = urlencode(paramValue);
+              body += it->first;
+              body += '=';
+              body += paramValue;
+              body += '&';
+            }
+
+            paramValue = nextToLast->second;
+            paramValue = urlencode(paramValue);
+            body += nextToLast->first;
+            body += '=';
+            body += paramValue;
+          }
+          else
+          {
+            // In case POST-message without form encoding, parameters are ignored
+            // and the body content must be placed explicitly
+            body = itsContent;
+          }
 
           break;
         }

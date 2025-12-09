@@ -983,6 +983,65 @@ void resource_options_request()
   }
 }
 
+void post_urlencoded_tostring()
+{
+  // Test that toString() properly serializes POST parameters when Content-Type is application/x-www-form-urlencoded
+  // Parse a POST request with form-urlencoded content type
+  std::string request =
+      "POST /test/server HTTP/1.0\r\nContent-Length: 52\r\nContent-Type: "
+      "application/x-www-form-urlencoded\r\nFrom: tuomo.lauri@fmi.fi\r\nUser-Agent: "
+      "FakeBrowser\r\n\r\nName=John+Doe&Age=28&Formula=a+%2B+b+%3D%3D+13%25%21";
+
+  auto req = SmartMet::Spine::HTTP::parseRequest(request);
+
+  if (req.first == SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+  {
+    // Verify that toString() recreates the request with properly encoded parameters in body
+    std::string result = req.second->toString();
+
+    // Verify that the result has POST method and proper structure
+    if (result.find("POST /test/server HTTP/1.0") == std::string::npos)
+    {
+      TEST_FAILED("Result doesn't contain correct request line");
+    }
+
+    // Verify parameters are in the body (after the blank line separator)
+    auto body_start = result.find("\r\n\r\n");
+    if (body_start == std::string::npos)
+    {
+      TEST_FAILED("Result doesn't contain header-body separator");
+    }
+
+    std::string body = result.substr(body_start + 4);
+
+    // Check that all three parameters are present in the body with proper encoding
+    if (body.find("Name=John%20Doe") == std::string::npos)
+    {
+      TEST_FAILED("Parameter Name not found or incorrectly encoded in body: " + body);
+    }
+    if (body.find("Age=28") == std::string::npos)
+    {
+      TEST_FAILED("Parameter Age not found in body: " + body);
+    }
+    if (body.find("Formula=a%20%2B%20b%20%3D%3D%2013%25%21") == std::string::npos)
+    {
+      TEST_FAILED("Parameter Formula not found or incorrectly encoded in body: " + body);
+    }
+
+    // Verify Content-Type header is preserved
+    if (result.find("Content-Type: application/x-www-form-urlencoded") == std::string::npos)
+    {
+      TEST_FAILED("Content-Type header not found or incorrect");
+    }
+
+    TEST_PASSED();
+  }
+  else
+  {
+    TEST_FAILED("Parse failed on request: " + request);
+  }
+}
+
 class tests : public tframe::tests
 {
   virtual const char* error_message_prefix() const { return "\n\t"; }
@@ -1016,6 +1075,7 @@ class tests : public tframe::tests
     TEST(flagparam);
     TEST(root_options_request);
     TEST(resource_options_request);
+    TEST(post_urlencoded_tostring);
   }
 };
 }  // namespace HTTPTest
