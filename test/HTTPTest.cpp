@@ -1117,6 +1117,80 @@ void response_decoded_content_gzip()
   }
 }
 
+void response_parse_full()
+{
+  // Test parseResponseFull with body content
+  std::string raw_response =
+      "HTTP/1.0 200 OK\r\nContent-Length: 13\r\nContent-Type: text/plain\r\n\r\nHello, World!";
+
+  auto result = SmartMet::Spine::HTTP::parseResponseFull(raw_response);
+
+  if (result.first == SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+  {
+    auto& response = result.second;
+
+    auto contentLength = response->getHeader("Content-Length");
+    if (!contentLength || *contentLength != "13")
+    {
+      TEST_FAILED("Content-Length header not found or incorrect");
+    }
+
+    std::string content = response->getContent();
+    if (content != "Hello, World!")
+    {
+      TEST_FAILED("Body content doesn't match expected: got \"" + content + "\"");
+    }
+
+    if (response->getStatus() != SmartMet::Spine::HTTP::Status::ok)
+    {
+      TEST_FAILED("Incorrect response status");
+    }
+
+    TEST_PASSED();
+  }
+  else
+  {
+    TEST_FAILED("Parse failed on response: " + raw_response);
+  }
+}
+
+void response_parse_full_with_null_bytes()
+{
+  // Test parseResponseFull with binary content containing null bytes
+  std::string raw_response = "HTTP/1.0 200 OK\r\nContent-Length: 10\r\nContent-Type: application/octet-stream\r\n\r\n";
+  
+  // Add binary data with null bytes: "AB\0CD\0EF\0GH"
+  raw_response += std::string("AB\0CD\0EF\0GH", 10);
+
+  auto result = SmartMet::Spine::HTTP::parseResponseFull(raw_response);
+
+  if (result.first == SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+  {
+    auto& response = result.second;
+
+    std::string content = response->getContent();
+    
+    // Verify the content length is correct (not truncated at null bytes)
+    if (content.size() != 10)
+    {
+      TEST_FAILED("Content size incorrect: expected 10, got " + std::to_string(content.size()));
+    }
+    
+    // Verify the actual content with null bytes
+    std::string expected("AB\0CD\0EF\0GH", 10);
+    if (content != expected)
+    {
+      TEST_FAILED("Binary content with null bytes doesn't match expected");
+    }
+
+    TEST_PASSED();
+  }
+  else
+  {
+    TEST_FAILED("Parse failed on response with binary content");
+  }
+}
+
 class tests : public tframe::tests
 {
   virtual const char* error_message_prefix() const { return "\n\t"; }
@@ -1154,6 +1228,8 @@ class tests : public tframe::tests
     TEST(response_decoded_content_no_encoding);
     TEST(response_decoded_content_identity);
     TEST(response_decoded_content_gzip);
+    TEST(response_parse_full);
+    TEST(response_parse_full_with_null_bytes);
   }
 };
 }  // namespace HTTPTest

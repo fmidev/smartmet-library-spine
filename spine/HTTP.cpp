@@ -1507,6 +1507,84 @@ std::tuple<ParsingStatus, std::unique_ptr<Response>, std::string::const_iterator
   }
 }
 
+std::pair<ParsingStatus, std::unique_ptr<Response>> parseResponseFull(
+    const std::string& message)
+{
+  try
+  {
+    HeaderMap headerMap;
+
+    ResponseParser<std::string::const_iterator> parser;
+    RawResponse target;
+
+    auto startIt = message.begin();
+    auto stopIt = message.end();
+
+    bool success = qi::parse(startIt, stopIt, parser, target);
+
+    if (success)  // Parse was successful
+    {
+      // Build header map
+      for (const auto& pair : target.headers)
+      {
+        headerMap.insert(pair);
+      }
+
+      Status responseStatus;
+      try
+      {
+        responseStatus =
+            stringToStatusCode(std::to_string(static_cast<unsigned long long>(target.code)));
+      }
+      catch (std::runtime_error&)
+      {
+        // Unrecognized status code
+        // Default to 502 Bad Gateway
+        responseStatus = Status::bad_gateway;
+      }
+
+      // Make version string
+      std::string os =
+          Fmi::to_string(target.version.first) + "." + Fmi::to_string(target.version.second);
+
+      // Extract body content after headers
+      // Calculate body size from remaining bytes (handles binary data with null bytes)
+      std::size_t bodySize = std::distance(startIt, stopIt);
+      
+      // Create Response object
+      auto response = std::unique_ptr<Response>(new Response(
+          headerMap, "", os, responseStatus, target.reason, false, false));
+      
+      // Store body content if present, using vector to handle binary data with null bytes
+      if (bodySize > 0)
+      {
+        auto bodyContent = std::make_shared<std::vector<char>>(startIt, stopIt);
+        response->setContent(bodyContent);
+      }
+
+      return std::make_pair(ParsingStatus::COMPLETE, std::move(response));
+    }
+
+    // Failed or incomplete parse
+    // See if header-body delimiter has come through
+    auto iterRange = boost::make_iterator_range(startIt, stopIt);
+    auto result = boost::algorithm::find_first(iterRange, "\r\n\r\n");
+
+    if (!result)
+    {
+      // Delimiter not found, headers are still on the way
+      return std::make_pair(ParsingStatus::INCOMPLETE, std::unique_ptr<Response>());
+    }
+
+    // Delimiter is found but failed parse. Message is garbled.
+    return std::make_pair(ParsingStatus::FAILED, std::unique_ptr<Response>());
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
 // Empty constructor means empty string content
 MessageContent::MessageContent() : contentSize(0), itsType(content_type::stringType) {}
 

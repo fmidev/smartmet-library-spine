@@ -800,6 +800,15 @@ std::pair<ParsingStatus, std::unique_ptr<Request>> parseRequest(const std::strin
 std::tuple<ParsingStatus, std::unique_ptr<Response>, std::string::const_iterator> parseResponse(
     const std::string& message);
 
+// ----------------------------------------------------------------------
+/*!
+ * Parse HTTP response including body. Handles binary content with null bytes.
+ * The body is stored in the Response object as a vector of chars.
+ */
+// ----------------------------------------------------------------------
+std::pair<ParsingStatus, std::unique_ptr<Response>> parseResponseFull(
+    const std::string& message);
+
 }  // namespace HTTP
 }  // namespace Spine
 }  // namespace SmartMet
