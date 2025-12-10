@@ -1,6 +1,12 @@
 #include "HTTP.h"
 #include "HTTPParsers.h"
 #include <boost/algorithm/string.hpp>
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filter/lzma.hpp>
+#include <boost/iostreams/filter/zlib.hpp>
+#include <boost/iostreams/filter/zstd.hpp>
+#include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/regex.hpp>
 #include <boost/shared_array.hpp>
 #include <macgyver/Exception.h>
@@ -556,10 +562,49 @@ std::string Request::toString() const
 
         case RequestMethod::POST:
         {
-          // In case POST-message, parameters are ignored and the body
-          // content must be placed explicitly
+          // Check if Content-Type is application/x-www-form-urlencoded
+          auto contentTypeIt = itsHeaders.find("Content-Type");
+          bool isFormUrlEncoded = false;
 
-          body = itsContent;
+          if (contentTypeIt != itsHeaders.end())
+          {
+            static const boost::regex formHeaderRegex("application/x-www-form-urlencoded(;.*)?",
+                                                       boost::regex::icase);
+            if (boost::regex_match(contentTypeIt->second, formHeaderRegex))
+            {
+              isFormUrlEncoded = true;
+            }
+          }
+
+          // Generate body content if form encoded and content not explicitly given
+          if (isFormUrlEncoded && !itsContent.empty())
+          {
+            // Serialize parameters as URL-encoded form data
+            auto nextToLast = itsParameters.end();
+            std::advance(nextToLast, -1);
+
+            for (auto it = itsParameters.begin(); it != nextToLast; ++it)
+            {
+              paramValue = it->second;
+              paramValue = urlencode(paramValue);
+              body += it->first;
+              body += '=';
+              body += paramValue;
+              body += '&';
+            }
+
+            paramValue = nextToLast->second;
+            paramValue = urlencode(paramValue);
+            body += nextToLast->first;
+            body += '=';
+            body += paramValue;
+          }
+          else
+          {
+            // In case POST-message without form encoding, parameters are ignored
+            // and the body content must be placed explicitly
+            body = itsContent;
+          }
 
           break;
         }
@@ -883,6 +928,70 @@ Response::Response(HeaderMap headerMap,
 std::string Response::getContent()
 {
   return itsContent.getString();
+}
+
+std::string Response::getDecodedContent()
+{
+  try
+  {
+    // Get the raw content
+    std::string rawContent = itsContent.getString();
+
+    // Check for Content-Encoding header
+    auto encodingHeader = getHeader("Content-Encoding");
+    if (!encodingHeader || encodingHeader->empty())
+    {
+      // No encoding, return as is
+      return rawContent;
+    }
+
+    std::string encoding = *encodingHeader;
+    boost::algorithm::to_lower(encoding);
+    boost::algorithm::trim(encoding);
+
+    // Handle identity encoding (no compression)
+    if (encoding == "identity")
+    {
+      return rawContent;
+    }
+
+    // Decompress based on encoding type
+    std::istringstream input(rawContent);
+    boost::iostreams::filtering_streambuf<boost::iostreams::input> filterBuf;
+
+    if (encoding == "gzip")
+    {
+      filterBuf.push(boost::iostreams::gzip_decompressor());
+    }
+    else if (encoding == "deflate" || encoding == "compress")
+    {
+      filterBuf.push(boost::iostreams::zlib_decompressor());
+    }
+    else if (encoding == "zstd")
+    {
+      filterBuf.push(boost::iostreams::zstd_decompressor());
+    }
+    else if (encoding == "xz" || encoding == "lzma")
+    {
+      filterBuf.push(boost::iostreams::lzma_decompressor());
+    }
+    else
+    {
+      // Unsupported encoding, return raw content
+      return rawContent;
+    }
+    
+    filterBuf.push(input);
+    
+    std::ostringstream output;
+    boost::iostreams::copy(filterBuf, output);
+    
+    return output.str();
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to decode response content!");
+  }
 }
 
 std::size_t Response::getContentLength() const
@@ -1392,6 +1501,84 @@ std::tuple<ParsingStatus, std::unique_ptr<Response>, std::string::const_iterator
 
     // Delimiter is found but failed parse. Message is garbled.
     return std::make_tuple(ParsingStatus::FAILED, std::unique_ptr<Response>(), message.end());
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+std::pair<ParsingStatus, std::unique_ptr<Response>> parseResponseFull(
+    const std::string& message)
+{
+  try
+  {
+    HeaderMap headerMap;
+
+    ResponseParser<std::string::const_iterator> parser;
+    RawResponse target;
+
+    auto startIt = message.begin();
+    auto stopIt = message.end();
+
+    bool success = qi::parse(startIt, stopIt, parser, target);
+
+    if (success)  // Parse was successful
+    {
+      // Build header map
+      for (const auto& pair : target.headers)
+      {
+        headerMap.insert(pair);
+      }
+
+      Status responseStatus;
+      try
+      {
+        responseStatus =
+            stringToStatusCode(std::to_string(static_cast<unsigned long long>(target.code)));
+      }
+      catch (std::runtime_error&)
+      {
+        // Unrecognized status code
+        // Default to 502 Bad Gateway
+        responseStatus = Status::bad_gateway;
+      }
+
+      // Make version string
+      std::string os =
+          Fmi::to_string(target.version.first) + "." + Fmi::to_string(target.version.second);
+
+      // Extract body content after headers
+      // Calculate body size from remaining bytes (handles binary data with null bytes)
+      std::size_t bodySize = std::distance(startIt, stopIt);
+      
+      // Create Response object
+      auto response = std::unique_ptr<Response>(new Response(
+          headerMap, "", os, responseStatus, target.reason, false, false));
+      
+      // Store body content if present, using vector to handle binary data with null bytes
+      if (bodySize > 0)
+      {
+        auto bodyContent = std::make_shared<std::vector<char>>(startIt, stopIt);
+        response->setContent(bodyContent);
+      }
+
+      return std::make_pair(ParsingStatus::COMPLETE, std::move(response));
+    }
+
+    // Failed or incomplete parse
+    // See if header-body delimiter has come through
+    auto iterRange = boost::make_iterator_range(startIt, stopIt);
+    auto result = boost::algorithm::find_first(iterRange, "\r\n\r\n");
+
+    if (!result)
+    {
+      // Delimiter not found, headers are still on the way
+      return std::make_pair(ParsingStatus::INCOMPLETE, std::unique_ptr<Response>());
+    }
+
+    // Delimiter is found but failed parse. Message is garbled.
+    return std::make_pair(ParsingStatus::FAILED, std::unique_ptr<Response>());
   }
   catch (...)
   {

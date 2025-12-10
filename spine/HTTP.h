@@ -565,6 +565,15 @@ class Response : public Message
 
   // ----------------------------------------------------------------------
   /*!
+   * \brief Get decoded response content based on Content-Encoding header
+   * Supports: gzip, compress, deflate, zstd, xz, and lzma encodings
+   * Returns the original content if no Content-Encoding or unsupported encoding
+   */
+  // ----------------------------------------------------------------------
+  std::string getDecodedContent();
+
+  // ----------------------------------------------------------------------
+  /*!
    * \brief Get content length
    * This returns numeric_limits<size_t>::max() if message type is stream
    * with unknown size
@@ -789,6 +798,15 @@ std::pair<ParsingStatus, std::unique_ptr<Request>> parseRequest(const std::strin
  */
 // ----------------------------------------------------------------------
 std::tuple<ParsingStatus, std::unique_ptr<Response>, std::string::const_iterator> parseResponse(
+    const std::string& message);
+
+// ----------------------------------------------------------------------
+/*!
+ * Parse HTTP response including body. Handles binary content with null bytes.
+ * The body is stored in the Response object as a vector of chars.
+ */
+// ----------------------------------------------------------------------
+std::pair<ParsingStatus, std::unique_ptr<Response>> parseResponseFull(
     const std::string& message);
 
 }  // namespace HTTP

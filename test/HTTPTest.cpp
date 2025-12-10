@@ -983,6 +983,214 @@ void resource_options_request()
   }
 }
 
+void post_urlencoded_tostring()
+{
+  // Test that toString() properly serializes POST parameters when Content-Type is application/x-www-form-urlencoded
+  // Parse a POST request with form-urlencoded content type
+  std::string request =
+      "POST /test/server HTTP/1.0\r\nContent-Length: 52\r\nContent-Type: "
+      "application/x-www-form-urlencoded\r\nFrom: tuomo.lauri@fmi.fi\r\nUser-Agent: "
+      "FakeBrowser\r\n\r\nName=John+Doe&Age=28&Formula=a+%2B+b+%3D%3D+13%25%21";
+
+  auto req = SmartMet::Spine::HTTP::parseRequest(request);
+
+  if (req.first == SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+  {
+    // Verify that toString() recreates the request with properly encoded parameters in body
+    std::string result = req.second->toString();
+
+    // Verify that the result has POST method and proper structure
+    if (result.find("POST /test/server HTTP/1.0") == std::string::npos)
+    {
+      TEST_FAILED("Result doesn't contain correct request line");
+    }
+
+    // Verify parameters are in the body (after the blank line separator)
+    auto body_start = result.find("\r\n\r\n");
+    if (body_start == std::string::npos)
+    {
+      TEST_FAILED("Result doesn't contain header-body separator");
+    }
+
+    std::string body = result.substr(body_start + 4);
+
+    // Check that all three parameters are present in the body with proper encoding
+    if (body.find("Name=John%20Doe") == std::string::npos)
+    {
+      TEST_FAILED("Parameter Name not found or incorrectly encoded in body: " + body);
+    }
+    if (body.find("Age=28") == std::string::npos)
+    {
+      TEST_FAILED("Parameter Age not found in body: " + body);
+    }
+    if (body.find("Formula=a%20%2B%20b%20%3D%3D%2013%25%21") == std::string::npos)
+    {
+      TEST_FAILED("Parameter Formula not found or incorrectly encoded in body: " + body);
+    }
+
+    // Verify Content-Type header is preserved
+    if (result.find("Content-Type: application/x-www-form-urlencoded") == std::string::npos)
+    {
+      TEST_FAILED("Content-Type header not found or incorrect");
+    }
+
+    TEST_PASSED();
+  }
+  else
+  {
+    TEST_FAILED("Parse failed on request: " + request);
+  }
+}
+
+void response_decoded_content_no_encoding()
+{
+  // Test getDecodedContent() when there's no Content-Encoding header
+  SmartMet::Spine::HTTP::Response response;
+  std::string content = "Hello, World!";
+  response.setContent(content);
+  response.setStatus(SmartMet::Spine::HTTP::Status::ok);
+
+  std::string decoded = response.getDecodedContent();
+
+  if (decoded == content)
+  {
+    TEST_PASSED();
+  }
+  else
+  {
+    TEST_FAILED("Decoded content doesn't match original: expected \"" + content + 
+                "\", got \"" + decoded + "\"");
+  }
+}
+
+void response_decoded_content_identity()
+{
+  // Test getDecodedContent() when Content-Encoding is identity
+  SmartMet::Spine::HTTP::Response response;
+  std::string content = "Hello, World!";
+  response.setContent(content);
+  response.setHeader("Content-Encoding", "identity");
+  response.setStatus(SmartMet::Spine::HTTP::Status::ok);
+
+  std::string decoded = response.getDecodedContent();
+
+  if (decoded == content)
+  {
+    TEST_PASSED();
+  }
+  else
+  {
+    TEST_FAILED("Decoded content doesn't match original: expected \"" + content + 
+                "\", got \"" + decoded + "\"");
+  }
+}
+
+void response_decoded_content_gzip()
+{
+  // Test getDecodedContent() with gzip encoding
+  // This is actual gzip-compressed data for "Hello, World!"
+  // Generated with: echo -n "Hello, World!" | gzip | xxd -i
+  unsigned char gzip_data[] = {
+    0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xf3, 0x48,
+    0xcd, 0xc9, 0xc9, 0xd7, 0x51, 0x08, 0xcf, 0x2f, 0xca, 0x49, 0x51, 0x04,
+    0x00, 0xd0, 0xc3, 0x4a, 0xec, 0x0d, 0x00, 0x00, 0x00
+  };
+  unsigned int gzip_len = 33;
+
+  SmartMet::Spine::HTTP::Response response;
+  std::string compressedContent(reinterpret_cast<char*>(gzip_data), gzip_len);
+  response.setContent(compressedContent);
+  response.setHeader("Content-Encoding", "gzip");
+  response.setStatus(SmartMet::Spine::HTTP::Status::ok);
+
+  std::string decoded = response.getDecodedContent();
+  std::string expected = "Hello, World!";
+
+  if (decoded == expected)
+  {
+    TEST_PASSED();
+  }
+  else
+  {
+    TEST_FAILED("Gzip decoded content doesn't match expected: expected \"" + expected + 
+                "\", got \"" + decoded + "\"");
+  }
+}
+
+void response_parse_full()
+{
+  // Test parseResponseFull with body content
+  std::string raw_response =
+      "HTTP/1.0 200 OK\r\nContent-Length: 13\r\nContent-Type: text/plain\r\n\r\nHello, World!";
+
+  auto result = SmartMet::Spine::HTTP::parseResponseFull(raw_response);
+
+  if (result.first == SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+  {
+    auto& response = result.second;
+
+    auto contentLength = response->getHeader("Content-Length");
+    if (!contentLength || *contentLength != "13")
+    {
+      TEST_FAILED("Content-Length header not found or incorrect");
+    }
+
+    std::string content = response->getContent();
+    if (content != "Hello, World!")
+    {
+      TEST_FAILED("Body content doesn't match expected: got \"" + content + "\"");
+    }
+
+    if (response->getStatus() != SmartMet::Spine::HTTP::Status::ok)
+    {
+      TEST_FAILED("Incorrect response status");
+    }
+
+    TEST_PASSED();
+  }
+  else
+  {
+    TEST_FAILED("Parse failed on response: " + raw_response);
+  }
+}
+
+void response_parse_full_with_null_bytes()
+{
+  // Test parseResponseFull with binary content containing null bytes
+  std::string raw_response = "HTTP/1.0 200 OK\r\nContent-Length: 10\r\nContent-Type: application/octet-stream\r\n\r\n";
+  
+  // Add binary data with null bytes: "AB\0CD\0EF\0GH"
+  raw_response += std::string("AB\0CD\0EF\0GH", 10);
+
+  auto result = SmartMet::Spine::HTTP::parseResponseFull(raw_response);
+
+  if (result.first == SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+  {
+    auto& response = result.second;
+
+    std::string content = response->getContent();
+    
+    // Verify the content length is correct (not truncated at null bytes)
+    if (content.size() != 10)
+    {
+      TEST_FAILED("Content size incorrect: expected 10, got " + std::to_string(content.size()));
+    }
+    
+    // Verify the actual content with null bytes
+    std::string expected("AB\0CD\0EF\0GH", 10);
+    if (content != expected)
+    {
+      TEST_FAILED("Binary content with null bytes doesn't match expected");
+    }
+
+    TEST_PASSED();
+  }
+  else
+  {
+    TEST_FAILED("Parse failed on response with binary content");
+  }
+}
+
 class tests : public tframe::tests
 {
   virtual const char* error_message_prefix() const { return "\n\t"; }
@@ -1016,6 +1224,12 @@ class tests : public tframe::tests
     TEST(flagparam);
     TEST(root_options_request);
     TEST(resource_options_request);
+    TEST(post_urlencoded_tostring);
+    TEST(response_decoded_content_no_encoding);
+    TEST(response_decoded_content_identity);
+    TEST(response_decoded_content_gzip);
+    TEST(response_parse_full);
+    TEST(response_parse_full_with_null_bytes);
   }
 };
 }  // namespace HTTPTest
