@@ -576,7 +576,8 @@ std::string Request::toString() const
             }
           }
 
-          if (isFormUrlEncoded)
+          // Generate body content if form encoded and content not explicitly given
+          if (isFormUrlEncoded && !itsContent.empty())
           {
             // Serialize parameters as URL-encoded form data
             auto nextToLast = itsParameters.end();
