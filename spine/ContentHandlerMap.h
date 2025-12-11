@@ -67,6 +67,20 @@ public:
                                              AdminCustomRequestHandler>;
 
     /**
+     *  @brief Handler for unrecognized admin/info requests
+     *
+     *  This handler is called when an admin or info request does not match any registered handler.
+     *  The handler can inspect the request (including the 'what' parameter) and generate an
+     *  appropriate response. This is useful in frontend/backend configurations where backends
+     *  may have different info requests that should be forwarded without explicit registration.
+     *
+     *  @param theReactor Reactor instance
+     *  @param theRequest Request to be handled
+     *  @param theResponse Response to be filled
+     */
+    using NoMatchAdminRequestHandler = std::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)>;
+
+    /**
      *  @brief Handler for authentication
      *
      *  @param theRequest Request to be authenticated
@@ -355,6 +369,16 @@ public:
                                    const std::string& what);
 
     /**
+     *  @brief Set handler for unrecognized admin/info requests
+     *
+     *  @param theHandler Handler function to be called when no matching admin/info request is found.
+     *                    If not set (default), the standard error handling is used.
+     *
+     *  This handler is reset when removeContentHandlers is called with NoTarget (during shutdown).
+     */
+    void addNoMatchAdminRequestHandler(NoMatchAdminRequestHandler theHandler);
+
+    /**
      *  @brief Execute admin request and return the result.
      *
      *  Performs authentication if required for request using authentication callback.
@@ -503,6 +527,14 @@ private:
         std::unique_ptr<HTTP::Authentication> itsAuthenticator;
 
         std::shared_ptr<IPFilter::IPFilter> itsIPFilter;
+
+        /**
+         * @brief Handler for unrecognized admin/info requests
+         *
+         * If set, this handler is called when no matching admin/info request is found.
+         * If not set (default), standard error handling is used.
+         */
+        NoMatchAdminRequestHandler itsNoMatchAdminRequestHandler;
 
         AdminHandlerInfo(const Options& options);
 

@@ -284,6 +284,12 @@ try
   {
     // For some reason std::get_if<> returned 1 for NoTarget, so we need to check it separately (c++20, clang++-18)
     const bool no_target = std::holds_alternative<NoTarget>(currentTarget);
+
+    // Reset no-match admin request handler when removing builtin handlers
+    if (no_target && itsAdminHandlerInfo)
+    {
+      itsAdminHandlerInfo->itsNoMatchAdminRequestHandler = NoMatchAdminRequestHandler();
+    }
     const SmartMetPlugin* thePlugin = no_target ? nullptr : std::get<SmartMetPlugin*>(currentTarget);
     for (auto it = itsHandlers.begin(); it != itsHandlers.end();)
     {
@@ -764,6 +770,22 @@ catch (...)
 }
 
 
+void ContentHandlerMap::addNoMatchAdminRequestHandler(NoMatchAdminRequestHandler theHandler)
+{
+  try
+  {
+    WriteLock lock(itsContentMutex);
+    if (itsAdminHandlerInfo)
+    {
+      itsAdminHandlerInfo->itsNoMatchAdminRequestHandler = std::move(theHandler);
+    }
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
 bool ContentHandlerMap::executeAdminRequest(
     const HTTP::Request& theRequest,
     HTTP::Response& theResponse,
@@ -784,6 +806,12 @@ bool ContentHandlerMap::executeAdminRequest(
           + what);
       };
 
+    Reactor* reactor = getReactor();
+    if (!reactor)
+    {
+      throw Fmi::Exception(BCP, "INTERNAL ERROR: Reactor not available");
+    }
+
     ReadLock lock(itsContentMutex);
 
     const std::string resource = theRequest.getResource();
@@ -801,7 +829,15 @@ bool ContentHandlerMap::executeAdminRequest(
     const auto it = itsAdminRequestHandlers.find(*what);
     if (it == itsAdminRequestHandlers.end())
     {
-      unknown_request(isInfo, *what);
+      // Check if there's a custom no-match handler
+      if (itsAdminHandlerInfo->itsNoMatchAdminRequestHandler)
+      {
+        itsAdminHandlerInfo->itsNoMatchAdminRequestHandler(*reactor, theRequest, theResponse);
+      }
+      else
+      {
+        unknown_request(isInfo, *what);
+      }
       return false;
     }
 
@@ -820,7 +856,15 @@ bool ContentHandlerMap::executeAdminRequest(
 
       if (not isPublic)
       {
-        unknown_request(isInfo, *what);
+        // Check if there's a custom no-match handler
+        if (itsAdminHandlerInfo->itsNoMatchAdminRequestHandler)
+        {
+          itsAdminHandlerInfo->itsNoMatchAdminRequestHandler(*reactor, theRequest, theResponse);
+        }
+        else
+        {
+          unknown_request(isInfo, *what);
+        }
         return false;
       }
     }
@@ -866,12 +910,6 @@ bool ContentHandlerMap::executeAdminRequest(
         theResponse.setContent("Authentication required but callback not provided");
         return false;
       }
-    }
-
-    Reactor* reactor = getReactor();
-    if (!reactor)
-    {
-      throw Fmi::Exception(BCP, "INTERNAL ERROR: Reactor not available");
     }
 
     // Make a local copy before unlocking the mutex

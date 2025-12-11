@@ -105,6 +105,10 @@ void Plugin::init()
         throw Fmi::Exception(BCP, "Failed to register test content handler");
     }
 
+    // Add custom no-match admin handler
+    itsReactor->addNoMatchAdminRequestHandler(
+        std::bind(&Plugin::adminNoMatchHandler, this, p::_1, p::_2, p::_3));
+
 }
 
 void Plugin::shutdown()
@@ -144,6 +148,36 @@ void Plugin::nomatchHandler(
 {
     theResponse.setContent("No match handler called\n");
     theResponse.setStatus(HTTP::Status::accepted);
+}
+
+void Plugin::adminNoMatchHandler(
+    Reactor&,
+    const HTTP::Request& theRequest,
+    HTTP::Response& theResponse)
+{
+    // Build response showing the 'what' parameter and other parameters
+    std::ostringstream content;
+    content << "Custom admin handler: ";
+
+    const auto what = theRequest.getParameter("what");
+    if (what)
+    {
+        content << "what=" << *what;
+    }
+
+    // Add other parameters
+    const auto params = theRequest.getParameterMap();
+    for (const auto& param : params)
+    {
+        if (param.first != "what")
+        {
+            content << ", " << param.first << "=" << param.second;
+        }
+    }
+    content << "\n";
+
+    theResponse.setContent(content.str());
+    theResponse.setStatus(HTTP::Status::ok);
 }
 
 std::string SmartMet::Plugin::Test::Plugin::dump_params(const HTTP::Request& theRequest) const
