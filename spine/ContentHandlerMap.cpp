@@ -1061,6 +1061,32 @@ std::optional<std::string> ContentHandlerMap::getInfoUri() const
   return itsAdminHandlerInfo->itsInfoUri;
 }
 
+std::set<std::string> ContentHandlerMap::getAdminRequestNames(
+  bool includeBuiltin,
+  bool includeNonPublic) const
+{
+  std::set<std::string> result;
+  ReadLock lock(itsContentMutex);
+  for (const auto& item1 : itsAdminRequestHandlers)
+  {
+    const std::string& what = item1.first;
+    for (const auto& item2 : item1.second)
+    {
+      const HandlerTarget& target = item2.first;
+      const std::shared_ptr<AdminRequestInfo>& info = item2.second;
+      if (includeNonPublic || info->isPublic)
+      {
+        const bool is_builtin = std::holds_alternative<NoTarget>(target);
+        if ((includeBuiltin || !is_builtin))
+        {
+          result.insert(adminRequestName(target, what));
+        }
+      }
+    }
+  }
+  return result;
+}
+
 std::unique_ptr<SmartMet::Spine::Table> ContentHandlerMap::getAdminRequests() const
 {
   return getAdminRequestsImpl(std::nullopt, false);

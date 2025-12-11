@@ -364,6 +364,10 @@ public:
             HTTP::Response& theResponse,
             std::function<bool(const HTTP::Request&, HTTP::Response&)> authCallback);
 
+    std::set<std::string> getAdminRequestNames(
+        bool includeBuiltin = false,
+        bool includeNonPublic = false) const;
+
     /**
      * @brief Get all admin requests as a table
      */
