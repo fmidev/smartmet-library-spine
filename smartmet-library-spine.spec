@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 25.12.10
+Version: 25.12.12
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -167,6 +167,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Dec 12 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.12.12-1.fmi
+- ContentHandlerMap: support no-match admin/info quey handler
+
 * Wed Dec 10 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.12.10-1.fmi
 - SmartMet::Spine::HTTP improvements (https://github.com/fmidev/smartmet-library-spine/pull/43)
 
