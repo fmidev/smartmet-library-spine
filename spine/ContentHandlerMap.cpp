@@ -1117,7 +1117,7 @@ std::set<std::string> ContentHandlerMap::getAdminRequestNames(
         const bool is_builtin = std::holds_alternative<NoTarget>(target);
         if ((includeBuiltin || !is_builtin))
         {
-          result.insert(adminRequestName(target, what));
+          result.insert(what);
         }
       }
     }
