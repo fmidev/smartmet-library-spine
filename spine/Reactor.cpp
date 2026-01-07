@@ -1036,11 +1036,11 @@ void Reactor::listEngines() const
 
     for (const auto& engine : itsEngines)
     {
-      std::cout << "  " << engine.first << std::endl;
+      std::cout << "  " << engine.first << '\n';
     }
 
     // Number of engines
-    std::cout << itsEngines.size() << " engines(s) loaded in memory." << std::endl << std::endl;
+    std::cout << itsEngines.size() << " engines(s) loaded in memory." << '\n' << '\n' << std::flush;
   }
   catch (...)
   {
