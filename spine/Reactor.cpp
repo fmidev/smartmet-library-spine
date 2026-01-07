@@ -335,7 +335,8 @@ void Reactor::initDone()
 {
   std::cout << SmartMet::Spine::log_time_str() << ' '
             << ANSI_FG_GREEN << "* SmartMet::Spine::Reactor: initialization done\n"
-            << ANSI_FG_DEFAULT;
+            << ANSI_FG_DEFAULT
+            << std::flush;
 }
 
 // ----------------------------------------------------------------------
@@ -503,7 +504,7 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
   if (itsOptions.verbose)
     std::cerr << Spine::log_time_str() << " " << itsActiveRequests.size()
               << " active requests, limit is " << itsActiveRequestsLimit << "/"
-              << itsOptions.throttle.limit << std::endl;
+              << itsOptions.throttle.limit << '\n';
 
   // Reduce the limit back down unless already smaller due to being just started
   if (itsActiveRequestsLimit > itsOptions.throttle.restart_limit)
@@ -512,7 +513,7 @@ std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
     if (itsOptions.verbose)
       std::cerr << Spine::log_time_str() << " dropping active requests limit to "
                 << itsOptions.throttle.restart_limit << "/" << itsOptions.throttle.limit
-                << std::endl;
+                << '\n';
   }
 
   return key;
@@ -548,7 +549,7 @@ void Reactor::removeActiveRequest(std::size_t theKey, HTTP::Status theStatusCode
 
       if (itsOptions.verbose)
         std::cerr << Spine::log_time_str() << " increased active requests limit to " << new_limit
-                  << "/" << itsOptions.throttle.limit << std::endl;
+                  << "/" << itsOptions.throttle.limit << '\n';
     }
   }
 }
@@ -625,11 +626,12 @@ void Reactor::listPlugins() const
     for (const auto& plugin : itsPlugins)
     {
       std::cout << "  " << plugin->filename() << '\t' << plugin->pluginname() << '\t'
-                << plugin->apiversion() << std::endl;
+                << plugin->apiversion() << '\n';
     }
 
     // Number of plugins
-    std::cout << itsPlugins.size() << " plugin(s) loaded in memory." << std::endl << std::endl;
+    std::cout << itsPlugins.size() << " plugin(s) loaded in memory." << '\n' << '\n'
+              << std::flush;
   }
   catch (...)
   {
@@ -728,7 +730,7 @@ Reactor::newInstance(const std::string& theClassName, void* user_data)
       std::cerr << ANSI_FG_RED << "Unable to create a new instance of engine class '"
                 << theClassName << "'" << std::endl
                 << "No such class was found loaded in the EngineHood" << ANSI_FG_DEFAULT
-                << std::endl;
+                << '\n';
       return nullptr;
     }
 
@@ -752,7 +754,8 @@ Reactor::newInstance(const std::string& theClassName, void* user_data)
     {
       std::cerr << ANSI_FG_RED << "Unable to create a new instance of engine class '"
                 << theClassName << "'" << std::endl
-                << "The class creator returned a null pointer or reinterpret_cast failed" << ANSI_FG_DEFAULT << std::endl;
+                << "The class creator returned a null pointer or reinterpret_cast failed" << ANSI_FG_DEFAULT
+                << '\n';
       return nullptr;
     }
 
@@ -1002,13 +1005,14 @@ void Reactor::initializePlugin(DynamicPlugin* thePlugin, const std::string& theN
          "] initialized in %t sec CPU, %w sec real (" + std::to_string(now_initialized) + "/" +
          std::to_string(itsPluginCount) + ")" + ANSI_FG_DEFAULT);
 
-    std::cout << Spine::log_time_str() << " " << timer.format(2, report) << std::endl;
+    std::cout << Spine::log_time_str() << " " << timer.format(2, report) << '\n';
 
     if (now_initialized == itsPluginCount)
       std::cout << log_time_str()
                 << std::string(ANSI_FG_GREEN) + std::string(" *** All ") +
                        std::to_string(itsPluginCount) + " plugins initialized" + ANSI_FG_DEFAULT
-                << std::endl;
+                << '\n';
+    std::cout << std::flush;
   }
   catch (...)
   {
