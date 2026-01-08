@@ -42,7 +42,8 @@ HandlerView::HandlerView(ContentHandler theHandler,
       itsPrivate(isprivate),
       isLogging(loggingStatus),
       itsLastFlushedRequest(itsRequestLog.begin()),
-      itsAccessLog(new AccessLogger(theResource, accessLogDir))
+      itsAccessLog(new AccessLogger(theResource, accessLogDir)),
+      checkPostContentType(true)
 {
   try
   {
@@ -70,7 +71,8 @@ HandlerView::HandlerView(
     : itsHandler(std::move(theHandler)),
       itsIsCatchNoMatch(true),
       isLogging(name.has_value()),
-      itsLastFlushedRequest(itsRequestLog.begin())
+      itsLastFlushedRequest(itsRequestLog.begin()),
+      checkPostContentType(false)
 {
   if (name)
   {
@@ -171,7 +173,8 @@ bool HandlerView::handle(Reactor& theReactor,
         if (sep != std::string::npos)
           content_type = content_type.substr(0, sep);
 
-        if (itsSupportedPostContents.find(content_type) == itsSupportedPostContents.end())
+        if (checkPostContentType
+           && itsSupportedPostContents.find(content_type) == itsSupportedPostContents.end())
         {
           // Unsupported content type
           theResponse.setStatus(HTTP::not_implemented);

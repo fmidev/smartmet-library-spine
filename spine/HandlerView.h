@@ -141,6 +141,8 @@ class HandlerView
 
   // Supported POST content types as a comma-separated string for error responses
   std::string itsSupportedPostContentsString;
+
+  bool checkPostContentType;
 };
 
 }  // namespace Spine
