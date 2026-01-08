@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 25.12.12
+Version: 26.1.8
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -167,6 +167,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Thu Jan  8 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.1.8-1.fmi
+- Avoid incorrect POPST request content type check
+
 * Fri Dec 12 2025 Andris Pavēnis <andris.pavenis@fmi.fi> 25.12.12-1.fmi
 - ContentHandlerMap: support no-match admin/info quey handler
 
