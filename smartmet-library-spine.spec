@@ -42,7 +42,7 @@ BuildRequires: ctpp2-devel
 BuildRequires: dtl
 BuildRequires: %{smartmet_fmt_devel}
 BuildRequires: gcc-c++
-BuildRequires: gdal310-devel
+BuildRequires: gdal312-devel
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel >= 1.8.4
 BuildRequires: libconfig17 >= 1.7.3
@@ -90,7 +90,7 @@ Requires: %{smartmet_boost}-thread
 Requires: %{smartmet_boost}-timer
 Requires: ctpp2
 Requires: %{smartmet_fmt}
-Requires: gdal310-libs
+Requires: gdal312-libs
 Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
@@ -103,7 +103,7 @@ Requires: smartmet-library-newbase >= 25.3.20
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
-#TestRequires: gdal310-devel
+#TestRequires: gdal312-devel
 #TestRequires: jsoncpp-devel >= 1.8.4
 #TestRequires: make
 #TestRequires: smartmet-library-regression
