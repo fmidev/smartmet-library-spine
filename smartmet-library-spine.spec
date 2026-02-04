@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.1.8
+Version: 26.2.4
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -162,6 +162,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Feb  4 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.2.4-1.fmi
+- Update to proj-9.7, gdal-3.12, fmt-12
+
 * Thu Jan  8 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.1.8-1.fmi
 - Avoid incorrect POPST request content type check
 
