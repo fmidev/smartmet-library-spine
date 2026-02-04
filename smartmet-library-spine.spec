@@ -25,15 +25,10 @@ Requires: mariadb-libs
 %define smartmet_boost boost
 %endif
 
-%if 0%{?rhel} && 0%{rhel} <= 9
-%define smartmet_fmt_min 11.0.1
-%define smartmet_fmt_max 12.0.0
+%define smartmet_fmt_min 12.0.0
+%define smartmet_fmt_max 13.0.0
 %define smartmet_fmt fmt-libs >= %{smartmet_fmt_min}, fmt-libs < %{smartmet_fmt_max}
 %define smartmet_fmt_devel fmt-devel >= %{smartmet_fmt_min}, fmt-devel < %{smartmet_fmt_max}
-%else
-%define smartmet_fmt fmt
-%define smartmet_fmt_devel fmt-devel
-%endif
 
 BuildRequires: %{smartmet_boost}-chrono
 BuildRequires: %{smartmet_boost}-devel
@@ -42,7 +37,7 @@ BuildRequires: ctpp2-devel
 BuildRequires: dtl
 BuildRequires: %{smartmet_fmt_devel}
 BuildRequires: gcc-c++
-BuildRequires: gdal310-devel
+BuildRequires: gdal312-devel
 BuildRequires: glibc-devel
 BuildRequires: jsoncpp-devel >= 1.8.4
 BuildRequires: libconfig17 >= 1.7.3
@@ -54,10 +49,10 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 25.2.18
-BuildRequires: smartmet-library-macgyver-devel >= 25.2.18
-BuildRequires: smartmet-library-newbase-devel >= 25.3.20
-BuildRequires: smartmet-utils-devel >= 25.2.18
+BuildRequires: smartmet-library-gis-devel >= 26.2.4
+BuildRequires: smartmet-library-macgyver-devel >= 26.2.4
+BuildRequires: smartmet-library-newbase-devel >= 26.2.4
+BuildRequires: smartmet-utils-devel >= 26.2.4
 
 %if 0%{?rhel} && 0%{rhel} == 8
 Requires: libpqxx >= 1:7.7.0, libpqxx < 1:7.8.0
@@ -90,26 +85,26 @@ Requires: %{smartmet_boost}-thread
 Requires: %{smartmet_boost}-timer
 Requires: ctpp2
 Requires: %{smartmet_fmt}
-Requires: gdal310-libs
+Requires: gdal312-libs
 Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: libbacktrace
 Requires: double-conversion
-Requires: smartmet-library-gis >= 25.2.18
-Requires: smartmet-library-macgyver >= 25.2.18
-Requires: smartmet-library-newbase >= 25.3.20
+Requires: smartmet-library-gis >= 26.2.4
+Requires: smartmet-library-macgyver >= 26.2.4
+Requires: smartmet-library-newbase >= 26.2.4
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
-#TestRequires: gdal310-devel
+#TestRequires: gdal312-devel
 #TestRequires: jsoncpp-devel >= 1.8.4
 #TestRequires: make
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 25.2.18
+#TestRequires: smartmet-library-macgyver-devel >= 26.2.4
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -121,9 +116,9 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 25.2.18
-Requires: smartmet-library-gis-devel >= 25.2.18
-Requires: smartmet-library-newbase-devel >= 25.3.20
+Requires: smartmet-library-macgyver-devel >= 26.2.4
+Requires: smartmet-library-gis-devel >= 26.2.4
+Requires: smartmet-library-newbase-devel >= 26.2.4
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
