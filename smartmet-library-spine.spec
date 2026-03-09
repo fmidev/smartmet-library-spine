@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.2.4
+Version: 26.3.9
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -162,6 +162,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Mar  9 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.3.9-1.fmi
+- Added method Reactor::getConfig
+
 * Wed Feb  4 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.2.4-1.fmi
 - Update to proj-9.7, gdal-3.12, fmt-12
 
