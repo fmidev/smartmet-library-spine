@@ -107,6 +107,8 @@ class Reactor final : public ContentHandlerMap
 
   int getRequiredAPIVersion() const;
 
+  const Options& getOptions() const { return itsOptions; }
+
     /**
    *   @brief Static method for reporting failure which requires Reactor shutdown
    */
