@@ -1,5 +1,6 @@
 #include "HTTP.h"
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include <regression/tframe.h>
@@ -795,6 +796,143 @@ void responseparse()
   }
 }
 
+void custom_status_serialization()
+{
+  SmartMet::Spine::HTTP::Response response;
+  response.setStatus(SmartMet::Spine::HTTP::Status::high_load);
+
+  const std::string headers = response.headersToString();
+
+  if (headers.find("HTTP/1.0 503 High Load in Backend Server\r\n") == std::string::npos)
+  {
+    TEST_FAILED("Status line does not use 503 for high_load");
+  }
+
+  if (headers.find("X-SmartNet-Error: 1234\r\n") == std::string::npos)
+  {
+    TEST_FAILED("Missing X-SmartNet-Error header for high_load");
+  }
+
+  TEST_PASSED();
+}
+
+void custom_status_recovery_parse_response()
+{
+  std::string raw_response =
+      "HTTP/1.0 503 High Load in Backend Server\r\nX-SmartNet-Error: "
+      "1234\r\nContent-Length: 0\r\n\r\n";
+
+  auto req = SmartMet::Spine::HTTP::parseResponse(raw_response);
+
+  if (std::get<0>(req) != SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+  {
+    TEST_FAILED("Parse failed on response: " + raw_response);
+  }
+
+  auto& response = std::get<1>(req);
+
+  if (response->getStatus() != SmartMet::Spine::HTTP::Status::high_load)
+  {
+    TEST_FAILED("Custom high_load status was not recovered from 503 response");
+  }
+
+  if (response->getReasonPhrase() != "High Load in Backend Server")
+  {
+    TEST_FAILED("Incorrect response reason phrase for recovered high_load status");
+  }
+
+  TEST_PASSED();
+}
+
+void custom_status_recovery_parse_response_full()
+{
+  std::string raw_response =
+      "HTTP/1.0 503 Shutdown in progress\r\nX-SmartNet-Error: "
+      "3210\r\nContent-Length: 4\r\n\r\nBusy";
+
+  auto result = SmartMet::Spine::HTTP::parseResponseFull(raw_response);
+
+  if (result.first != SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+  {
+    TEST_FAILED("Parse failed on response: " + raw_response);
+  }
+
+  auto& response = result.second;
+
+  if (response->getStatus() != SmartMet::Spine::HTTP::Status::shutdown)
+  {
+    TEST_FAILED("Custom shutdown status was not recovered from 503 response");
+  }
+
+  if (response->getContent() != "Busy")
+  {
+    TEST_FAILED("Incorrect response content in parseResponseFull");
+  }
+
+  TEST_PASSED();
+}
+
+void custom_status_no_header_stays_service_unavailable()
+{
+  std::string raw_response =
+      "HTTP/1.0 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n";
+
+  auto req = SmartMet::Spine::HTTP::parseResponse(raw_response);
+
+  if (std::get<0>(req) != SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+  {
+    TEST_FAILED("Parse failed on response: " + raw_response);
+  }
+
+  auto& response = std::get<1>(req);
+
+  if (response->getStatus() != SmartMet::Spine::HTTP::Status::service_unavailable)
+  {
+    TEST_FAILED("503 without X-SmartNet-Error must stay service_unavailable");
+  }
+
+  if (response->getReasonPhrase() != "Service Unavailable")
+  {
+    TEST_FAILED("Reason phrase changed unexpectedly for plain 503 response");
+  }
+
+  TEST_PASSED();
+}
+
+void custom_status_unknown_header_value_ignored_with_warning()
+{
+  std::string raw_response =
+      "HTTP/1.0 503 Service Unavailable\r\nX-SmartNet-Error: 9999\r\nContent-Length: 0\r\n\r\n";
+
+  std::ostringstream capturedErr;
+  std::streambuf* originalErrBuf = std::cerr.rdbuf(capturedErr.rdbuf());
+
+  auto req = SmartMet::Spine::HTTP::parseResponse(raw_response);
+
+  std::cerr.rdbuf(originalErrBuf);
+
+  if (std::get<0>(req) != SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+  {
+    TEST_FAILED("Parse failed on response: " + raw_response);
+  }
+
+  auto& response = std::get<1>(req);
+
+  if (response->getStatus() != SmartMet::Spine::HTTP::Status::service_unavailable)
+  {
+    TEST_FAILED("Unknown X-SmartNet-Error value must keep status as service_unavailable");
+  }
+
+  const std::string warning = capturedErr.str();
+  if (warning.find("Warning: Ignoring unknown X-SmartNet-Error value '9999'") ==
+      std::string::npos)
+  {
+    TEST_FAILED("Expected warning for unknown X-SmartNet-Error value not found");
+  }
+
+  TEST_PASSED();
+}
+
 void hexresponseparse()
 {
   std::string raw_response =
@@ -1216,6 +1354,11 @@ class tests : public tframe::tests
     TEST(multipleget);
     TEST(complexurlencoded);
     TEST(responseparse);
+    TEST(custom_status_serialization);
+    TEST(custom_status_recovery_parse_response);
+    TEST(custom_status_recovery_parse_response_full);
+    TEST(custom_status_no_header_stays_service_unavailable);
+    TEST(custom_status_unknown_header_value_ignored_with_warning);
     TEST(hexresponseparse);
     TEST(extendedresponseparse);
     TEST(caseinsensitiveheaders);

@@ -24,6 +24,60 @@
 
 namespace
 {
+const std::string x_smartnet_error_header = "X-SmartNet-Error";
+
+int getStatusCodeForStatusLine(SmartMet::Spine::HTTP::Status status)
+{
+  if (status == SmartMet::Spine::HTTP::Status::high_load ||
+      status == SmartMet::Spine::HTTP::Status::shutdown)
+  {
+    return static_cast<int>(SmartMet::Spine::HTTP::Status::service_unavailable);
+  }
+
+  return static_cast<int>(status);
+}
+
+std::optional<SmartMet::Spine::HTTP::Status> getCustomStatusForHeaderValue(
+    const std::string& headerValue)
+{
+  const auto value = boost::algorithm::to_lower_copy(boost::algorithm::trim_copy(headerValue));
+
+  if (value == "1234" || value == "high_load")
+    return SmartMet::Spine::HTTP::Status::high_load;
+
+  if (value == "3210" || value == "shutdown")
+    return SmartMet::Spine::HTTP::Status::shutdown;
+
+  return {};
+}
+
+SmartMet::Spine::HTTP::Status recoverCustomStatusCode(
+    SmartMet::Spine::HTTP::Status responseStatus,
+    const SmartMet::Spine::HTTP::HeaderMap& headers)
+{
+  if (responseStatus != SmartMet::Spine::HTTP::Status::service_unavailable)
+  {
+    return responseStatus;
+  }
+
+  const auto iter = headers.find(x_smartnet_error_header);
+  if (iter == headers.end())
+  {
+    return responseStatus;
+  }
+
+  const auto customStatus = getCustomStatusForHeaderValue(iter->second);
+  if (customStatus)
+  {
+    return *customStatus;
+  }
+
+  std::cerr << "Warning: Ignoring unknown X-SmartNet-Error value '" << iter->second
+            << "' in HTTP 503 response" << std::endl;
+
+  return responseStatus;
+}
+
 void parseTokens(SmartMet::Spine::HTTP::ParamMap& outputMap,
                  const std::string& inputString,
                  const std::string& delimiter,
@@ -1228,8 +1282,17 @@ std::string Response::headersToString() const
     }
 
     // Use a string instead of a stringstream to avoid global locale locks!
-    std::string out = "HTTP/" + itsVersion + " " + Fmi::to_string(static_cast<int>(itsStatus)) +
+    std::string out = "HTTP/" + itsVersion + " " + Fmi::to_string(getStatusCodeForStatusLine(itsStatus)) +
                       " " + itsReasonPhrase + "\r\n";
+
+    if (itsStatus == Status::high_load || itsStatus == Status::shutdown)
+    {
+      out += x_smartnet_error_header;
+      out += ": ";
+      out += Fmi::to_string(static_cast<int>(itsStatus));
+      out += "\r\n";
+    }
+
     for (const auto& name_value : itsHeaders)
     {
       out += name_value.first;
@@ -1477,6 +1540,8 @@ std::tuple<ParsingStatus, std::unique_ptr<Response>, std::string::const_iterator
         responseStatus = Status::bad_gateway;
       }
 
+      responseStatus = recoverCustomStatusCode(responseStatus, headerMap);
+
       // Make version string
       std::string os =
           Fmi::to_string(target.version.first) + "." + Fmi::to_string(target.version.second);
@@ -1543,6 +1608,8 @@ std::pair<ParsingStatus, std::unique_ptr<Response>> parseResponseFull(
         // Default to 502 Bad Gateway
         responseStatus = Status::bad_gateway;
       }
+
+      responseStatus = recoverCustomStatusCode(responseStatus, headerMap);
 
       // Make version string
       std::string os =
