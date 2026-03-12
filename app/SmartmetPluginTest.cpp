@@ -4,6 +4,7 @@
 #include <macgyver/PostgreSQLConnection.h>
 #include <macgyver/StaticCleanup.h>
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <thread>
 #include <csignal>
@@ -11,28 +12,70 @@
 
 using namespace std;
 
-void prelude(const SmartMet::Spine::Reactor& reactor, const std::string& handler_path)
+void prelude(
+  SmartMet::Spine::Reactor& reactor,
+  const std::optional<std::string>& handler_path)
 {
   try
   {
-    // Wait for qengine to finish
-    int timeout = 300;
-    while (!reactor.getPluginName(handler_path) && (--timeout >= 0))
+    if (handler_path)
     {
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
+      // Wait for plugin to be available
+      int timeout = 300;
+      while (!reactor.getPluginName(*handler_path) && (--timeout >= 0))
+      {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+      }
 
-    if (timeout < 0)
+      if (timeout < 0)
+      {
+        std::cout << "### Available handlers" << std::endl;
+        reactor.dumpURIs(std::cout);
+        std::cout << "### Expected: " << *handler_path << std::endl;
+        throw Fmi::Exception::Trace(BCP, "Timed out waiting for plugin to start");
+      }
+
+      cout << endl
+           << "Testing " << *reactor.getPluginName(*handler_path) << "  plugin" << std::endl
+           << "============================" << std::endl;
+    }
+    else
     {
-      std::cout << "### Available handlers" << std::endl;
-      reactor.dumpURIs(std::cout);
-      std::cout << "### Expected: " << handler_path << std::endl;
-      throw Fmi::Exception::Trace(BCP, "Timed out waiting for plugin to start");
-    }
+      using namespace SmartMet::Spine;
+      // FIXME: get actual admin handler path from config instead of hardcoding it here
+      const std::string& request = "GET /admin?what=waitforready HTTP/1.0\r\n\r\n";
+      auto [status, req] = HTTP::parseRequest(request);
+      if (status != HTTP::ParsingStatus::COMPLETE)
+      {
+        throw Fmi::Exception::Trace(BCP, "Failed to parse request: " + request);
+      }
+      std::cout << "Wait for Reactor initialization to be done"
+      //  << " by sending request " << request
+        << std::endl;
+      auto *handlerView = reactor.getHandlerView(*req);
+      if (!handlerView)
+      {
+        std::cout << "### Available handlers" << std::endl;
+        reactor.dumpURIs(std::cout);
+        std::cout << "### Expected: /admin?what=waitforready" << std::endl;
+        throw Fmi::Exception::Trace(BCP, "Failed to find handler for request: " + request);
+      }
+      HTTP::Response response;
+      handlerView->handle(reactor, *req, response);
+      if (response.getStatus() != HTTP::Status::ok)
+      {
+        std::cout << "### Response status: " << response.getStatus() << std::endl;
+        std::cout << "### Response content: " << response.getContent() << std::endl;
+        throw Fmi::Exception::Trace(BCP, "Failed to wait for Reactor initialization: " + response.getContent());
+      }
 
-    cout << endl
-         << "Testing " << *reactor.getPluginName(handler_path) << "  plugin" << std::endl
-         << "============================" << std::endl;
+
+      if (response.getContent().substr(0, 9) != "ready in ")
+      {
+        std::cout << "### Response content: " << response.getContent() << std::endl;
+        throw Fmi::Exception::Trace(BCP, "Failed to wait for Reactor initialization: " + response.getContent());
+      }
+    }
   }
   catch (...)
   {
@@ -186,16 +229,17 @@ int main(int argc, char* argv[])
         for (const auto& fn : ignore_lists)
           tester.addIgnoreList(fn);
       }
+
+      std::optional<std::string> handler_path;
       if (opt.count(nm_handler))
       {
-        const std::string handler_path = opt[nm_handler].as<std::string>();
-        prelude_funct = [handler_path](const SmartMet::Spine::Reactor& reactor)
-        { prelude(reactor, handler_path); };
+        handler_path = opt[nm_handler].as<std::string>();
       }
-      else
-      {
-        throw Fmi::Exception::Trace(BCP, "Mandatory command line option --handler (-H) missing");
-      }
+
+      prelude_funct = [handler_path](SmartMet::Spine::Reactor& reactor)
+                      {
+                        prelude(reactor, handler_path);
+                      };
 
       return tester.run(options, prelude_funct);
     }
