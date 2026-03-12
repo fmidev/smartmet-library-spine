@@ -228,6 +228,8 @@ class Reactor final : public ContentHandlerMap
 
   std::unique_ptr<Table> requestPluginInfo(const HTTP::Request& theRequest) const;
 
+  std::string waitForReady(const HTTP::Request& theRequest);
+
   /**
    * @brief Install handler for cases when std::terminate is called
    *

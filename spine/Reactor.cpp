@@ -26,6 +26,8 @@
 #include <boost/core/demangle.hpp>
 #include <boost/locale.hpp>
 #include <boost/make_shared.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/condition_variable.hpp>
 #include <boost/regex.hpp>
 #include <boost/stacktrace.hpp>
 #include <boost/timer/timer.hpp>
@@ -61,13 +63,16 @@ namespace fs = std::filesystem;
 
 namespace
 {
+std::atomic_bool gInitDone{false};
 std::atomic_bool gIsShuttingDown{false};
 std::atomic_bool gShutdownComplete{false};
 
-std::mutex shutdownRequestedMutex;
-std::mutex shutdownFinishedMutex;
-std::condition_variable shutdownRequestedCond;
-std::condition_variable shutdownFinishedCond;
+boost::mutex shutdownRequestedMutex;
+boost::mutex shutdownFinishedMutex;
+boost::mutex initDoneMutex;
+boost::condition_variable shutdownRequestedCond;
+boost::condition_variable shutdownFinishedCond;
+boost::condition_variable initDoneCond;
 
 void absolutize_path(std::string& file_name)
 {
@@ -259,6 +264,13 @@ Reactor::Reactor(Options& options)
         AdminRequestAccess::Private,
         std::bind(&Reactor::requestPluginInfo, this, std::placeholders::_2),
         "Request plugin info");
+
+    addAdminStringRequestHandler(
+        NoTarget{},
+        "waitforready",
+        AdminRequestAccess::Private,
+        std::bind(&Reactor::waitForReady, this, std::placeholders::_2),
+        "Wait until initialization is done (parameters timeout in seconds, default 60)");
   }
   catch (...)
   {
@@ -337,6 +349,9 @@ void Reactor::initDone()
             << ANSI_FG_GREEN << "* SmartMet::Spine::Reactor: initialization done\n"
             << ANSI_FG_DEFAULT
             << std::flush;
+  gInitDone = true;
+  boost::lock_guard<boost::mutex> lock(initDoneMutex);
+  initDoneCond.notify_all();
 }
 
 // ----------------------------------------------------------------------
@@ -1431,7 +1446,12 @@ void Reactor::reportFailure(const std::string& message)
 
 bool Reactor::requestShutdown()
 {
-  std::unique_lock<std::mutex> lock(shutdownRequestedMutex);
+  {
+    boost::unique_lock<boost::mutex> lock(initDoneMutex);
+    initDoneCond.notify_all();
+  }
+
+  boost::unique_lock<boost::mutex> lock(shutdownRequestedMutex);
   // Ignore call if shutdown was already requested
   bool alreadyRequested = gIsShuttingDown.exchange(true);
   if (!alreadyRequested)
@@ -1444,7 +1464,7 @@ bool Reactor::requestShutdown()
 
 void Reactor::waitForShutdownStart()
 {
-  std::unique_lock<std::mutex> lock(shutdownRequestedMutex);
+  boost::unique_lock<boost::mutex> lock(shutdownRequestedMutex);
   shutdownRequestedCond.wait(lock, []() -> bool { return gIsShuttingDown; });
 }
 
@@ -1456,7 +1476,7 @@ void Reactor::waitForShutdownComplete()
   const auto complete = []() -> bool { return gShutdownComplete; };
 
   bool timeoutAlways = false;
-  std::unique_lock<std::mutex> lock(shutdownFinishedMutex);
+  boost::unique_lock<boost::mutex> lock(shutdownFinishedMutex);
   for (bool done = false; not done;)
   {
     int tracerPid = Fmi::tracerPid();
@@ -1493,7 +1513,7 @@ void Reactor::waitForShutdownComplete()
       waitForShutdownStart();
 
       // Now one can initiate shutdown timeout countdown
-      if (shutdownFinishedCond.wait_for(lock, std::chrono::seconds(shutdownTimeoutSec), complete))
+      if (shutdownFinishedCond.wait_for(lock, boost::chrono::seconds(shutdownTimeoutSec), complete))
       {
         done = true;
       }
@@ -1555,7 +1575,7 @@ bool Reactor::isShutdownFinished()
 
 void Reactor::notifyShutdownComplete()
 {
-  std::unique_lock<std::mutex> lock(shutdownFinishedMutex);
+  boost::unique_lock<boost::mutex> lock(shutdownFinishedMutex);
   gShutdownComplete = true;
   shutdownFinishedCond.notify_all();
 }
@@ -1933,6 +1953,51 @@ try
   }
 
   return table;
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
+
+std::string Reactor::waitForReady(const HTTP::Request& request)
+try
+{
+  // Restrict number of concurrent waitForReady calls to avoid DoS attack.
+  // This is not a perfect solution, but it is better than nothing.
+  static std::atomic<int> nUses{0};
+
+  if (nUses.fetch_add(1) >= 10)
+  {
+    nUses.fetch_sub(1);
+    return "Too many concurrent waitForReady calls, try again later\r\n";
+  }
+
+  const std::string format = Spine::optional_string(request.getParameter("timeout"), "60");
+  const int timeout = std::min(0, std::max(300, Fmi::stoi(format)));
+  auto start = Fmi::SecondClock::universal_time();
+
+  boost::unique_lock<boost::mutex> lock(initDoneMutex);
+  bool done = initDoneCond.wait_for(
+    lock,
+    boost::chrono::seconds(timeout),
+    [] { return gInitDone.load() && !gIsShuttingDown.load(); });
+
+  const bool initDone = gInitDone.load();
+  const bool shuttingDown = gIsShuttingDown.load();
+  lock.unlock();
+
+  if (!done)
+    return "timeout in " + std::to_string(timeout) + " seconds\r\n";
+
+  auto end = Fmi::SecondClock::universal_time();
+  if (initDone)
+  {
+    if (shuttingDown)
+      return "interrupted (shutting down)\r\n";
+
+    return "ready in " + (end - start).to_iso_string() + " seconds\r\n";
+  }
 }
 catch (...)
 {

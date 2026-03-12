@@ -15,4 +15,5 @@
 <row What="testOK" Target="Test plugin" Authentication="no" Public="yes" Unique="no" Description="Failing OK admin handler"/>
 <row What="testOK" Target="Test engine" Authentication="yes" Public="no" Unique="no" Description="Test engine admin handler with authentication"/>
 <row What="testTable" Target="Test engine" Authentication="no" Public="yes" Unique="yes" Description="Test engine admin table handler"/>
+<row What="waitforready" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Wait until initialization is done (parameters timeout in seconds, default 60)"/>
 </result>

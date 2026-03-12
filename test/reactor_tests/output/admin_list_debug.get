@@ -16,4 +16,5 @@
 <td>testFail</td><td>Test engine</td><td>no</td><td>yes</td><td>no</td><td>Failing bool engine admin request</td></tr><tr>
 <td>testOK</td><td>Test plugin</td><td>no</td><td>yes</td><td>no</td><td>Failing OK admin handler</td></tr><tr>
 <td>testOK</td><td>Test engine</td><td>yes</td><td>no</td><td>no</td><td>Test engine admin handler with authentication</td></tr><tr>
-<td>testTable</td><td>Test engine</td><td>no</td><td>yes</td><td>yes</td><td>Test engine admin table handler</td></tr></table></body></html>
+<td>testTable</td><td>Test engine</td><td>no</td><td>yes</td><td>yes</td><td>Test engine admin table handler</td></tr><tr>
+<td>waitforready</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Wait until initialization is done (parameters timeout in seconds, default 60)</td></tr></table></body></html>

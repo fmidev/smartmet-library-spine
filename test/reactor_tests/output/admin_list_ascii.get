@@ -13,3 +13,4 @@ testFail Test engine no yes no Failing bool engine admin request
 testOK Test plugin no yes no Failing OK admin handler
 testOK Test engine yes no no Test engine admin handler with authentication
 testTable Test engine no yes yes Test engine admin table handler
+waitforready <builtin> no no yes Wait until initialization is done (parameters timeout in seconds, default 60)
