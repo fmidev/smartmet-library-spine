@@ -11,7 +11,7 @@ clean:	clean-test-engine clean-test-plugin
 run-test:	all $(SMARTMET_PLUGIN_TEST)
 	if [ -d log ] ; then rm -f log/* ; fi
 	mkdir -p log
-	LD_LIBRARY_PATH=../../ $(TEST_RUNNER) $(SMARTMET_PLUGIN_TEST) -c reactor.conf -H /test
+	LD_LIBRARY_PATH=../../ $(TEST_RUNNER) $(SMARTMET_PLUGIN_TEST) -c reactor.conf
 
 test:	run-test
 	@if [ -f log/nomatch-access-log ] ; then \
