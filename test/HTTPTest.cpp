@@ -808,9 +808,9 @@ void custom_status_serialization()
     TEST_FAILED("Status line does not use 503 for high_load");
   }
 
-  if (headers.find("X-SmartNet-Error: 1234\r\n") == std::string::npos)
+  if (headers.find("X-SmartMet-Error: 1234\r\n") == std::string::npos)
   {
-    TEST_FAILED("Missing X-SmartNet-Error header for high_load");
+    TEST_FAILED("Missing X-SmartMet-Error header for high_load");
   }
 
   TEST_PASSED();
@@ -819,7 +819,7 @@ void custom_status_serialization()
 void custom_status_recovery_parse_response()
 {
   std::string raw_response =
-      "HTTP/1.0 503 High Load in Backend Server\r\nX-SmartNet-Error: "
+      "HTTP/1.0 503 High Load in Backend Server\r\nX-SmartMet-Error: "
       "1234\r\nContent-Length: 0\r\n\r\n";
 
   auto req = SmartMet::Spine::HTTP::parseResponse(raw_response);
@@ -847,7 +847,7 @@ void custom_status_recovery_parse_response()
 void custom_status_recovery_parse_response_full()
 {
   std::string raw_response =
-      "HTTP/1.0 503 Shutdown in progress\r\nX-SmartNet-Error: "
+      "HTTP/1.0 503 Shutdown in progress\r\nX-SmartMet-Error: "
       "3210\r\nContent-Length: 4\r\n\r\nBusy";
 
   auto result = SmartMet::Spine::HTTP::parseResponseFull(raw_response);
@@ -888,7 +888,7 @@ void custom_status_no_header_stays_service_unavailable()
 
   if (response->getStatus() != SmartMet::Spine::HTTP::Status::service_unavailable)
   {
-    TEST_FAILED("503 without X-SmartNet-Error must stay service_unavailable");
+    TEST_FAILED("503 without X-SmartMet-Error must stay service_unavailable");
   }
 
   if (response->getReasonPhrase() != "Service Unavailable")
@@ -902,7 +902,7 @@ void custom_status_no_header_stays_service_unavailable()
 void custom_status_unknown_header_value_ignored_with_warning()
 {
   std::string raw_response =
-      "HTTP/1.0 503 Service Unavailable\r\nX-SmartNet-Error: 9999\r\nContent-Length: 0\r\n\r\n";
+      "HTTP/1.0 503 Service Unavailable\r\nX-SmartMet-Error: 9999\r\nContent-Length: 0\r\n\r\n";
 
   std::ostringstream capturedErr;
   std::streambuf* originalErrBuf = std::cerr.rdbuf(capturedErr.rdbuf());
@@ -920,14 +920,14 @@ void custom_status_unknown_header_value_ignored_with_warning()
 
   if (response->getStatus() != SmartMet::Spine::HTTP::Status::service_unavailable)
   {
-    TEST_FAILED("Unknown X-SmartNet-Error value must keep status as service_unavailable");
+    TEST_FAILED("Unknown X-SmartMet-Error value must keep status as service_unavailable");
   }
 
   const std::string warning = capturedErr.str();
-  if (warning.find("Warning: Ignoring unknown X-SmartNet-Error value '9999'") ==
+  if (warning.find("Warning: Ignoring unknown X-SmartMet-Error value '9999'") ==
       std::string::npos)
   {
-    TEST_FAILED("Expected warning for unknown X-SmartNet-Error value not found");
+    TEST_FAILED("Expected warning for unknown X-SmartMet-Error value not found");
   }
 
   TEST_PASSED();

@@ -24,8 +24,6 @@
 
 namespace
 {
-const std::string x_smartnet_error_header = "X-SmartNet-Error";
-
 int getStatusCodeForStatusLine(SmartMet::Spine::HTTP::Status status)
 {
   if (status == SmartMet::Spine::HTTP::Status::high_load ||
@@ -60,7 +58,8 @@ SmartMet::Spine::HTTP::Status recoverCustomStatusCode(
     return responseStatus;
   }
 
-  const auto iter = headers.find(x_smartnet_error_header);
+  using SmartMet::Spine::HTTP::smartmet_error_header;
+  const auto iter = headers.find(std::string(smartmet_error_header));
   if (iter == headers.end())
   {
     return responseStatus;
@@ -72,7 +71,7 @@ SmartMet::Spine::HTTP::Status recoverCustomStatusCode(
     return *customStatus;
   }
 
-  std::cerr << "Warning: Ignoring unknown X-SmartNet-Error value '" << iter->second
+  std::cerr << "Warning: Ignoring unknown " << smartmet_error_header << " value '" << iter->second
             << "' in HTTP 503 response" << std::endl;
 
   return responseStatus;
@@ -1287,7 +1286,7 @@ std::string Response::headersToString() const
 
     if (itsStatus == Status::high_load || itsStatus == Status::shutdown)
     {
-      out += x_smartnet_error_header;
+      out += smartmet_error_header;
       out += ": ";
       out += Fmi::to_string(static_cast<int>(itsStatus));
       out += "\r\n";
