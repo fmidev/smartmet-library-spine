@@ -106,6 +106,8 @@ enum Status
   shutdown = 3210
 };
 
+constexpr const std::string_view smartmet_error_header = "X-SmartMet-Error";
+
 // ----------------------------------------------------------------------
 /*!
  * \brief HTTP Request type holder class

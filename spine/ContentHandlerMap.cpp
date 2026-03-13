@@ -1422,8 +1422,8 @@ catch (...)
 void ContentHandlerMap::AdminHandlerInfo::maybe_setup_admin_handler(const Options& options)
 try
 {
-    std::string uri;
-    options.itsConfig.lookupValue("admin.uri", uri);
+  std::string uri = "/admin";
+  const bool admin_uri_configured = options.itsConfig.lookupValue("admin.uri", uri);
 
     // Cannot handle admin requests here is no URI is provided
     // One can do this however by registering content handler in some plugin
@@ -1465,9 +1465,24 @@ try
     // Find the ip filters
     std::vector<std::string> filterTokens;
     lookupHostStringSettings(options.itsConfig, filterTokens, "admin.ip_filters");
-    if (!filterTokens.empty())
+    if (filterTokens.empty() && !admin_uri_configured)
     {
+      // Unfortunately IPFilter currently does not support IPv6 loopback address
+      filterTokens = {"127.0.0.1" /* "::1" */ };
+
+      std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_BLUE
+                << " Admin request IP filter defaults to localhost only"
+                << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+    }
+
+    if (!filterTokens.empty())
       itsIPFilter.reset(new IPFilter::IPFilter(filterTokens));
+
+    if (!admin_uri_configured)
+    {
+      std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_BLUE
+                << " Admin request URI defaults to /admin"
+                << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
     }
 }
 catch (...)

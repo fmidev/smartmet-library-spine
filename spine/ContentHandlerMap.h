@@ -507,7 +507,9 @@ private:
     struct AdminHandlerInfo
     {
         /**
-         * @brief Admin request URI. Default is empty
+         * @brief Admin request URI. Default is /admin
+         *
+         * Set to empty string in configuration to disable builtin admin handler.
          */
         std::optional<std::string> itsAdminUri;
 
