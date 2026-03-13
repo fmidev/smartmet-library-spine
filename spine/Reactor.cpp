@@ -2008,10 +2008,10 @@ try
     if (shuttingDown)
       return "interrupted (shutting down)\r\n";
 
-    return "ready in " + (end - start).to_iso_string() + " seconds\r\n";
+    return "ready in " + Fmi::to_string(0.001 * (end - start).total_milliseconds()) + " seconds\r\n";
   }
 
-  return "timeout in " + std::to_string(timeout) + " seconds\r\n";
+  return "timeout in " + Fmi::to_string(timeout) + " seconds\r\n";
 }
 catch (...)
 {
