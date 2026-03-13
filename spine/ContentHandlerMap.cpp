@@ -1467,7 +1467,8 @@ try
     lookupHostStringSettings(options.itsConfig, filterTokens, "admin.ip_filters");
     if (filterTokens.empty() && !admin_uri_configured)
     {
-      filterTokens = {"127.0.0.1", "::1"};
+      // Unfortunately IPFilter currently does not support IPv6 loopback address
+      filterTokens = {"127.0.0.1" /* "::1" */ };
 
       std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_BLUE
                 << " Admin request IP filter defaults to localhost only"
