@@ -1963,41 +1963,55 @@ catch (...)
 std::string Reactor::waitForReady(const HTTP::Request& request)
 try
 {
+  bool wait_ok = false;
+  bool shuttingDown = false;
+  Fmi::DateTime start;
+  const std::string format = Spine::optional_string(request.getParameter("timeout"), "60");
+  const int timeout = std::min(0, std::max(300, Fmi::stoi(format)));
+
   // Restrict number of concurrent waitForReady calls to avoid DoS attack.
   // This is not a perfect solution, but it is better than nothing.
   static std::atomic<int> nUses{0};
 
-  if (nUses.fetch_add(1) >= 10)
+  // I would prefer to use std::scope_exit here, but is available
+  // from C++23 only according to. I did not want to use similar
+  // functionality from boost
+  try
+  {
+    if (nUses.fetch_add(1) >= 5)
+    {
+      nUses.fetch_sub(1);
+      return "Too many concurrent waitForReady calls, try again later\r\n";
+    }
+
+    start = Fmi::SecondClock::universal_time();
+
+    boost::unique_lock<boost::mutex> lock(initDoneMutex);
+    wait_ok = initDoneCond.wait_for(
+      lock,
+      boost::chrono::seconds(timeout),
+      [] { return gInitDone.load() && !gIsShuttingDown.load(); });
+
+    shuttingDown = gIsShuttingDown.load();
+    lock.unlock();
+    nUses.fetch_sub(1);
+  }
+  catch (...)
   {
     nUses.fetch_sub(1);
-    return "Too many concurrent waitForReady calls, try again later\r\n";
+    throw;
   }
 
-  const std::string format = Spine::optional_string(request.getParameter("timeout"), "60");
-  const int timeout = std::min(0, std::max(300, Fmi::stoi(format)));
-  auto start = Fmi::SecondClock::universal_time();
-
-  boost::unique_lock<boost::mutex> lock(initDoneMutex);
-  bool done = initDoneCond.wait_for(
-    lock,
-    boost::chrono::seconds(timeout),
-    [] { return gInitDone.load() && !gIsShuttingDown.load(); });
-
-  const bool initDone = gInitDone.load();
-  const bool shuttingDown = gIsShuttingDown.load();
-  lock.unlock();
-
-  if (!done)
-    return "timeout in " + std::to_string(timeout) + " seconds\r\n";
-
-  auto end = Fmi::SecondClock::universal_time();
-  if (initDone)
+  if (wait_ok)
   {
+    auto end = Fmi::SecondClock::universal_time();
     if (shuttingDown)
       return "interrupted (shutting down)\r\n";
 
     return "ready in " + (end - start).to_iso_string() + " seconds\r\n";
   }
+
+  return "timeout in " + std::to_string(timeout) + " seconds\r\n";
 }
 catch (...)
 {
