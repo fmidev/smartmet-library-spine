@@ -54,6 +54,12 @@ BuildRequires: smartmet-library-macgyver-devel >= 26.2.4
 BuildRequires: smartmet-library-newbase-devel >= 26.2.4
 BuildRequires: smartmet-utils-devel >= 26.2.4
 
+# OpenTelemetry C++ SDK — optional; enables SMARTMET_SPINE_OPENTELEMETRY when present.
+# Not yet packaged for RHEL/Rocky; see docs/build-opentelemetry.md for a local build.
+# Uncomment once opentelemetry-cpp-devel is available:
+#BuildRequires: opentelemetry-cpp-devel
+#Requires:      opentelemetry-cpp
+
 %if 0%{?rhel} && 0%{rhel} == 8
 Requires: libpqxx >= 1:7.7.0, libpqxx < 1:7.8.0
 BuildRequires: libpqxx-devel >= 1:7.7.0, libpqxx-devel < 1:7.8.0

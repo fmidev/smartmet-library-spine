@@ -20,6 +20,7 @@
 #include "IPFilter.h"
 #include "LoggedRequest.h"
 #include "Options.h"
+#include "OTelMetricsExporter.h"
 #include "SmartMet.h"
 #include "SmartMetEngine.h"
 #include "SmartMetPlugin.h"
@@ -329,6 +330,9 @@ class Reactor final : public ContentHandlerMap
   std::atomic_bool itsInitializing{true};
 
   std::atomic_bool initFailed{false};
+
+  // OTel cache-statistics periodic metrics export (null when disabled)
+  std::unique_ptr<OTelMetricsExporter> itsOTelMetrics;
 
   /* [[noreturn]] */ void cleanLog();
 

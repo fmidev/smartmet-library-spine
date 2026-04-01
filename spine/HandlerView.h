@@ -4,6 +4,8 @@
 #include "HTTP.h"
 #include "IPFilter.h"
 #include "LogRange.h"
+#include "OTelLogger.h"
+#include "OTelOptions.h"
 #include "SmartMetPlugin.h"
 #include "Thread.h"
 #include <functional>
@@ -34,12 +36,14 @@ class HandlerView
               bool loggingStatus,
               bool isprivate,
               const std::set<std::string>& supportedPostContexts,
-              const std::string& accessLogDir);
+              const std::string& accessLogDir,
+              const OTelOptions& otelOptions);
 
   // CatchNoMatch handler
   explicit HandlerView(ContentHandler theHandler,
               const std::string& accessLogDir,
-              const std::optional<std::string>& accessLogName);
+              const std::optional<std::string>& accessLogName,
+              const OTelOptions& otelOptions);
 
   // Destructor
   ~HandlerView();
@@ -134,6 +138,9 @@ class HandlerView
 
   // Handle for access log file
   std::unique_ptr<AccessLogger> itsAccessLog;
+
+  // Handle for OpenTelemetry trace export (null when OTel is disabled)
+  std::unique_ptr<OTelLogger> itsOTelLog;
 
   // Supported POST content types
   // application/x-www-form-urlencoded is always supported

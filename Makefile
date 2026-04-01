@@ -12,6 +12,36 @@ CFLAGS += -Wno-pedantic -Wno-deprecated-declarations
 
 DEFINES = -DUNIX -D_REENTRANT
 
+# ── OpenTelemetry C++ (optional) ─────────────────────────────────────────────
+# Detection order:
+#   1. System pkg-config  (e.g. opentelemetry-cpp-devel RPM if ever packaged)
+#   2. Local build in third_party/opentelemetry-cpp/install
+#      (see docs/build-opentelemetry.md for instructions)
+#
+OTEL_PC := opentelemetry-cpp
+OTEL_LOCAL := $(CURDIR)/third_party/opentelemetry-cpp/install
+
+ifeq ($(shell pkg-config --exists $(OTEL_PC) 2>/dev/null && echo yes),yes)
+  DEFINES  += -DSMARTMET_SPINE_OPENTELEMETRY
+  CFLAGS   += $(shell pkg-config --cflags $(OTEL_PC))
+  LIBS     += $(shell pkg-config --libs   $(OTEL_PC))
+else ifneq ($(wildcard $(OTEL_LOCAL)/include/opentelemetry/trace/provider.h),)
+  DEFINES  += -DSMARTMET_SPINE_OPENTELEMETRY
+  CFLAGS   += -I$(OTEL_LOCAL)/include
+  LIBS     += -L$(OTEL_LOCAL)/lib64 -L$(OTEL_LOCAL)/lib \
+              -lopentelemetry_trace \
+              -lopentelemetry_exporter_otlp_http \
+              -lopentelemetry_otlp_recordable \
+              -lopentelemetry_resources \
+              -lopentelemetry_common \
+              -lopentelemetry_proto \
+              -lprotobuf \
+              -lcurl \
+              -Wl,-rpath,$(OTEL_LOCAL)/lib64 \
+              -Wl,-rpath,$(OTEL_LOCAL)/lib
+endif
+# ─────────────────────────────────────────────────────────────────────────────
+
 # Common library compiling template
 
 LIBS +=	-lsmartmet-newbase \

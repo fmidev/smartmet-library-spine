@@ -181,7 +181,8 @@ try
       new HandlerView(
         theHandler,
         itsOptions.accesslogdir,
-        accessLogName));
+        accessLogName,
+        itsOptions.otel));
   }
   else
   {
@@ -249,7 +250,8 @@ try
                                                        itsLoggingEnabled,
                                                        isPrivate,
                                                        supportedPostContentTypes,
-                                                       itsOptions.accesslogdir));
+                                                       itsOptions.accesslogdir,
+                                                       itsOptions.otel));
 
   if (handlesUriPrefix)
   {
