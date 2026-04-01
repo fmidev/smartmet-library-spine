@@ -34,7 +34,8 @@ HandlerView::HandlerView(ContentHandler theHandler,
                          bool loggingStatus,
                          bool isprivate,
                          const std::set<std::string>& supportedPostContexts,
-                         const std::string& accessLogDir)
+                         const std::string& accessLogDir,
+                         const OTelOptions& otelOptions)
     : itsHandler(std::move(theHandler)),
       itsIpFilter(std::move(theIpFilter)),
       itsPlugin(thePlugin),
@@ -43,12 +44,17 @@ HandlerView::HandlerView(ContentHandler theHandler,
       isLogging(loggingStatus),
       itsLastFlushedRequest(itsRequestLog.begin()),
       itsAccessLog(new AccessLogger(theResource, accessLogDir)),
+      itsOTelLog(otelOptions.enabled ? std::make_unique<OTelLogger>(theResource, otelOptions)
+                                     : nullptr),
       checkPostContentType(true)
 {
   try
   {
     if (isLogging)
       itsAccessLog->start();
+
+    if (itsOTelLog)
+      itsOTelLog->start();
 
     // Insert supported POST contexts
     itsSupportedPostContents.insert("application/x-www-form-urlencoded"s);
@@ -66,12 +72,16 @@ HandlerView::HandlerView(ContentHandler theHandler,
 HandlerView::HandlerView(
     ContentHandler theHandler,
     const std::string& accessLogDir,
-    const std::optional<std::string>& name)
+    const std::optional<std::string>& name,
+    const OTelOptions& otelOptions)
 
     : itsHandler(std::move(theHandler)),
       itsIsCatchNoMatch(true),
       isLogging(name.has_value()),
       itsLastFlushedRequest(itsRequestLog.begin()),
+      itsOTelLog(otelOptions.enabled ? std::make_unique<OTelLogger>(
+                                           name.value_or("default-handler"), otelOptions)
+                                     : nullptr),
       checkPostContentType(false)
 {
   if (name)
@@ -79,6 +89,8 @@ HandlerView::HandlerView(
     itsAccessLog = std::make_unique<AccessLogger>(*name, accessLogDir);
     itsAccessLog->start();
   }
+  if (itsOTelLog)
+    itsOTelLog->start();
 }
 
 HandlerView::~HandlerView()
@@ -104,9 +116,9 @@ bool HandlerView::handle(Reactor& theReactor,
       }
     }
 
-    if (!isLogging || !itsAccessLog)
+    if ((!isLogging || !itsAccessLog) && !itsOTelLog)
     {
-      // Frontends do not log finished requests
+      // No logging of any kind — take the fast path
       auto key = theReactor.insertActiveRequest(theRequest);
       try
       {
@@ -212,24 +224,32 @@ bool HandlerView::handle(Reactor& theReactor,
       theReactor.removeActiveRequest(key, theResponse.getStatus());
 
       WriteLock lock(itsLoggingMutex);
+
+      auto etag   = theResponse.getHeader("ETag");
+      auto apikey = FmiApiKey::getFmiApiKey(theRequest);
+
+      // Build the LoggedRequest used by both file access log and OTel
+      const LoggedRequest logged(theRequest.getURI(),
+                                 Fmi::MicrosecClock::local_time(),
+                                 accessDuration,
+                                 theResponse.getStatusString(),
+                                 theRequest.getClientIP(),
+                                 theRequest.getMethodString(),
+                                 theResponse.getVersion(),
+                                 theResponse.getContentLength(),
+                                 (etag ? *etag : "-"),
+                                 (apikey ? *apikey : "-"));
+
       if (isLogging)  // Need to check this again because it may have changed in previous request
       {
         // Insert new request to the logging list
-
-        auto etag = theResponse.getHeader("ETag");
-        auto apikey = FmiApiKey::getFmiApiKey(theRequest);
-
-        itsRequestLog.emplace_back(LoggedRequest(theRequest.getURI(),
-                                                 Fmi::MicrosecClock::local_time(),
-                                                 accessDuration,
-                                                 theResponse.getStatusString(),
-                                                 theRequest.getClientIP(),
-                                                 theRequest.getMethodString(),
-                                                 theResponse.getVersion(),
-                                                 theResponse.getContentLength(),
-                                                 (etag ? *etag : "-"),
-                                                 (apikey ? *apikey : "-")));
+        itsRequestLog.push_back(logged);
       }
+
+      // OTel export is independent of file logging toggle.
+      // BatchSpanProcessor queues the span internally and returns immediately.
+      if (itsOTelLog)
+        itsOTelLog->log(logged);
 
       if (error)
         std::rethrow_exception(error);
@@ -414,6 +434,9 @@ void HandlerView::flushLogNolock()
   }
 
   itsAccessLog->flush();
+
+  if (itsOTelLog)
+    itsOTelLog->flush();
 
   // Return to the last flushed request (not past the end)
   itsLastFlushedRequest = --flushIter;

@@ -318,6 +318,8 @@ void Options::parseConfig()
       lookupHostSetting(itsConfig, lazylinking, "lazylinking");
       lookupHostSetting(itsConfig, accesslogdir, "accesslogdir");
 
+      otel = OTelOptions::fromConfig(itsConfig);
+
       lookupHostSetting(itsConfig, throttle.limit, "maxactiverequests");     // old variable name
       lookupHostSetting(itsConfig, throttle.limit, "activerequests.limit");  // new variable name
       lookupHostSetting(itsConfig, throttle.start_limit, "activerequests.start_limit");

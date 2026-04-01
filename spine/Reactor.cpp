@@ -332,6 +332,15 @@ void Reactor::init()
 
     setLogging(itsOptions.defaultlogging);
 
+    // Start OTel cache-statistics metrics export if configured
+    if (itsOptions.otel.enabled && itsOptions.otel.metrics_interval_s > 0)
+    {
+      itsOTelMetrics = std::make_unique<OTelMetricsExporter>(
+          itsOptions.otel,
+          [this]() { return getCacheStats(); });
+      itsOTelMetrics->start();
+    }
+
     itsInitializing = false;
 
     initDone();

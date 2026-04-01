@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "OTelOptions.h"
 #include <macgyver/Optional.h>
 #include <libconfig.h++>
 #include <memory>
@@ -65,6 +66,8 @@ struct Options
   unsigned int maxrequestsize = 131072;  // Limit incoming request sizes, 0 means unlimited
 
   std::string accesslogdir{"/var/log/smartmet"};
+
+  OTelOptions otel;
 
   PoolOptions adminpool;
   PoolOptions slowpool;
