@@ -1,95 +1,128 @@
 # SmartMet Server
-SmartMet Server is a data and product server for MetOcean data. It provides a high capacity and high availability data and product server for MetOcean data. The server is written in C++, since 2008 it has been in operational use by the Finnish Meteorological Institute FMI. 
 
-The server can read input data from various sources:
-* GRIB (1 and 2) 
-* NetCDF
-* SQL database
+SmartMet Server is a high-performance, high-availability data and product server for MetOcean data, developed and operated by the [Finnish Meteorological Institute (FMI)](https://www.fmi.fi/). Written in C++, it has been in operational use since 2008 and powers the [FMI Open Data Portal](https://en.ilmatieteenlaitos.fi/open-data) since 2013. The server is INSPIRE compliant.
 
-The server provides several output interfaces:
-* WMS 1.3.0
-* WFS 2.0
-* Several custom interface
-and several output formats:
-* JSON
-* XML
-* ASCII
-* HTML
-* SERIAL
-* GRIB1
-* GRIB2 
-* NetCDF
-* Raster images
+## Capabilities
 
-The server is INSPIRE compliant. It is used for FMI data services and product generation. It's been operative since 2008 and used for FMI Open Data Portal since 2013.
+**Input formats:**
+- GRIB 1 and GRIB 2
+- NetCDF
+- SQL databases
+- QueryData (FMI native format)
 
-The server is especially good for extracting weather data and generating products based on gridded data (GRIB and NetCDF). The data is extracted and products generating always on-demand. 
+**Output interfaces and formats:**
+- OGC WMS 1.3.0, WFS 2.0
+- JSON, XML, ASCII, HTML
+- GRIB 1, GRIB 2, NetCDF
+- Raster images (PNG, JPEG, SVG)
 
-## Server Structure
+The server specializes in on-demand extraction and product generation from gridded weather data (GRIB, NetCDF). It is designed for multi-core use, provides LRU caching, and supports frontend/backend load balancing via the Sputnik engine.
 
-![](https://github.com/fmidev/smartmet-server/blob/master/SmartMet_Structure.png "Server structure")
+## Architecture
 
-SmartMet Server consists of following components:
+![SmartMet Server Structure](https://github.com/fmidev/smartmet-server/blob/master/SmartMet_Structure.png)
 
-<table>
-<tr>
-<th>Component</th><th>Description</th><th>Source Code</th>
-</tr>
-<tr valign="top">
-<td>qdtools         </td><td>Helper programs to handle underling data          </td><td> https://github.com/fmidev/smartmet-qdtools </td></tr>
-<tr valign="top">
-<td> Libraries       </td><td>Libraries required to run programs and the server </td><td> https://github.com/fmidev/smartmet-library-spine<br>
-     		     				    		     	 		  https://github.com/fmidev/smartmet-library-newbase<br>
-											  https://github.com/fmidev/smartmet-library-macgyver<br>
-											  https://github.com/fmidev/smartmet-library-gis<br>
-											  https://github.com/fmidev/smartmet-library-giza<br>
-											  https://github.com/fmidev/smartmet-library-locus<br>
-											  https://github.com/fmidev/smartmet-library-regression<br>
-											  https://github.com/fmidev/smartmet-library-imagine</td>
-</tr
-<tr valign="top">
-<td>Server          </td><td>The server daemon itself                          </td><td> https://github.com/fmidev/smartmet-server  </td>
-</tr>
-<tr valign="top">
-<td>Engines         </td><td>Common modules with a state                       </td><td> https://github.com/fmidev/smartmet-engine-geonames<br>
-											 https://github.com/fmidev/smartmet-engine-sputnik<br>
-											 https://github.com/fmidev/smartmet-engine-querydata<br>
-											 https://github.com/fmidev/smartmet-engine-observation<br>
-											 https://github.com/fmidev/smartmet-engine-contour<br>
-											 https://github.com/fmidev/smartmet-engine-gis </td>
-</tr>
-<tr valign="top">
-<td>Plugins         </td><td>Plugins providing interfaces to clients           </td><td> https://github.com/fmidev/smartmet-plugin-timeseries<br>
-											  https://github.com/fmidev/smartmet-plugin-meta<br>
-											  https://github.com/fmidev/smartmet-plugin-frontend<br>
-											  https://github.com/fmidev/smartmet-plugin-wfs<br>
-											  https://github.com/fmidev/smartmet-plugin-wms<br>
-											  https://github.com/fmidev/smartmet-plugin-autocomplete<br>
-											  https://github.com/fmidev/smartmet-plugin-backend<br>
-											  https://github.com/fmidev/smartmet-plugin-download<br>
-											  https://github.com/fmidev/smartmet-plugin-admin </td>
-</tr>
-</table>
+The server daemon loads **engines** (shared stateful modules) and **plugins** (HTTP interface handlers) at startup. All components share common **libraries**.
 
-## Licence
-The server is published with MIT-license.
+## Components
 
-## How to contribute
-Found a bug? Want to implement a new feature? Your contribution is very welcome!
+### Server Daemon
+| Repository | Description |
+|---|---|
+| [smartmet-server](https://github.com/fmidev/smartmet-server) | The server daemon — loads plugins and engines, handles HTTP |
 
-Small changes and bug fixes can be submitted via pull request. In larger contributions, premilinary plan is recommended (in GitHub wiki). 
+### Libraries
+| Repository | Description |
+|---|---|
+| [smartmet-library-spine](https://github.com/fmidev/smartmet-library-spine) | Core server framework: HTTP handling, plugin/engine management, configuration, thread pool |
+| [smartmet-library-newbase](https://github.com/fmidev/smartmet-library-newbase) | Core QueryData format library — the native FMI weather data format with projection and parameter support |
+| [smartmet-library-macgyver](https://github.com/fmidev/smartmet-library-macgyver) | General utilities: astronomy, caching, datetime parsing, filesystem, charset conversion, CSV, Base64 |
+| [smartmet-library-gis](https://github.com/fmidev/smartmet-library-gis) | GIS operations: coordinate projections, geometry clipping, antimeridian handling, DEM/raster data, PostGIS |
+| [smartmet-library-giza](https://github.com/fmidev/smartmet-library-giza) | Color mapping and SVG rendering: palettes, color trees, color-mapped image generation |
+| [smartmet-library-locus](https://github.com/fmidev/smartmet-library-locus) | Geographic name and location lookup: geocoding queries with multilingual support |
+| [smartmet-library-imagine](https://github.com/fmidev/smartmet-library-imagine) | 2D graphics rendering: Bezier curves, affine transforms, color blending, image compositing |
+| [smartmet-library-imagine2](https://github.com/fmidev/smartmet-library-imagine2) | Updated 2D graphics rendering library (successor to imagine) |
+| [smartmet-library-calculator](https://github.com/fmidev/smartmet-library-calculator) | Time series and area calculation tools for QueryData |
+| [smartmet-library-delfoi](https://github.com/fmidev/smartmet-library-delfoi) | Oracle database access layer for meteorological observations and flash data |
+| [smartmet-library-grid-content](https://github.com/fmidev/smartmet-library-grid-content) | Grid support: Content Server, Data Server, and Query Server APIs with Redis, cache, CORBA, and HTTP implementations |
+| [smartmet-library-grid-files](https://github.com/fmidev/smartmet-library-grid-files) | Unified driver layer for grid file formats: GRIB 1, GRIB 2, NetCDF, QueryData |
+| [smartmet-library-regression](https://github.com/fmidev/smartmet-library-regression) | Regression testing framework for SmartMet tools and libraries |
+| [smartmet-library-smarttools](https://github.com/fmidev/smartmet-library-smarttools) | Scripting tools for the SmartMet editor, also used by qdtools |
+| [smartmet-library-textgen](https://github.com/fmidev/smartmet-library-textgen) | Algorithms for generating weather forecast text from querydata |
+| [smartmet-library-timeseries](https://github.com/fmidev/smartmet-library-timeseries) | Time series data structures and operations |
+| [smartmet-library-trajectory](https://github.com/fmidev/smartmet-library-trajectory) | Trajectory calculations for massless particles (used by SmartMet Editor and Server) |
+| [smartmet-library-trax](https://github.com/fmidev/smartmet-library-trax) | High-performance marching-squares contouring: isobands and isolines from 2D gridded data |
+| [smartmet-library-woml](https://github.com/fmidev/smartmet-library-woml) | Weather Object Model (WOML) file reader, used by the frontier renderer |
 
-CLA is required in order to contribute. Please contact us for more information!
+### Engines
+Engines are shared stateful modules loaded by the server daemon. They are shared across all plugins.
 
-## Documentation
-Each module is documented in module [module wiki](../../wiki). 
+| Repository | Description |
+|---|---|
+| [smartmet-engine-querydata](https://github.com/fmidev/smartmet-engine-querydata) | QueryData file management and access |
+| [smartmet-engine-geonames](https://github.com/fmidev/smartmet-engine-geonames) | Geographic name lookup and geocoding |
+| [smartmet-engine-observation](https://github.com/fmidev/smartmet-engine-observation) | Weather station observation data access |
+| [smartmet-engine-contour](https://github.com/fmidev/smartmet-engine-contour) | Isoline and isoband contour generation |
+| [smartmet-engine-gis](https://github.com/fmidev/smartmet-engine-gis) | GIS data and projection support for plugins |
+| [smartmet-engine-sputnik](https://github.com/fmidev/smartmet-engine-sputnik) | Frontend/backend cluster management and load balancing |
 
-## Communication and Resources
-You may contact us from following channels:
-* Email: beta@fmi.fi
-* Facebook: https://www.facebook.com/fmibeta/
-* GitHub: [issues](../../issues)
+### Plugins
+Plugins handle HTTP requests and provide the server's external interfaces.
 
-Other resources which may be useful:
-* Presentation about the server: http://www.slideshare.net/tervo/smartmet-server-providing-metocean-data
-* Our public web pages (in Finnish):  http://ilmatieteenlaitos.fi/avoin-lahdekoodi
+| Repository | Description |
+|---|---|
+| [smartmet-plugin-timeseries](https://github.com/fmidev/smartmet-plugin-timeseries) | Time series data retrieval (weather parameters at locations over time) |
+| [smartmet-plugin-wms](https://github.com/fmidev/smartmet-plugin-wms) | OGC Web Map Service 1.3.0 |
+| [smartmet-plugin-wfs](https://github.com/fmidev/smartmet-plugin-wfs) | OGC Web Feature Service 2.0 |
+| [smartmet-plugin-download](https://github.com/fmidev/smartmet-plugin-download) | Bulk data download in GRIB, NetCDF, and QueryData formats |
+| [smartmet-plugin-frontend](https://github.com/fmidev/smartmet-plugin-frontend) | Load-balancing frontend that distributes requests to backend servers |
+| [smartmet-plugin-backend](https://github.com/fmidev/smartmet-plugin-backend) | Backend handler for frontend-routed requests |
+| [smartmet-plugin-autocomplete](https://github.com/fmidev/smartmet-plugin-autocomplete) | Location name autocomplete |
+| [smartmet-plugin-meta](https://github.com/fmidev/smartmet-plugin-meta) | Metadata about available data and parameters |
+| [smartmet-plugin-admin](https://github.com/fmidev/smartmet-plugin-admin) | Server administration interface |
+
+### Tools and Applications
+| Repository | Description |
+|---|---|
+| [smartmet-qdtools](https://github.com/fmidev/smartmet-qdtools) | Comprehensive suite of QueryData handling, conversion, and inspection tools |
+| [smartmet-qdcontour](https://github.com/fmidev/smartmet-qdcontour) | Legacy QueryData contouring and map rendering tool |
+| [smartmet-qdcontour2](https://github.com/fmidev/smartmet-qdcontour2) | Updated QueryData contouring and map rendering tool |
+| [smartmet-shapetools](https://github.com/fmidev/smartmet-shapetools) | Command-line tools for ESRI shapefile operations |
+| [smartmet-tools-grid](https://github.com/fmidev/smartmet-tools-grid) | Grid support server, client, and file inspection programs |
+| [smartmet-press](https://github.com/fmidev/smartmet-press) | PostScript and ASCII product generation from QueryData |
+| [smartmet-fmitools](https://github.com/fmidev/smartmet-fmitools) | FMI-specific meteorological data manipulation tools |
+| [smartmet-textgenapps](https://github.com/fmidev/smartmet-textgenapps) | Weather forecast text generation applications |
+| [smartmet-frontier](https://github.com/fmidev/smartmet-frontier) | SVG weather chart renderer from WOML input |
+| [smartmet-timezones](https://github.com/fmidev/smartmet-timezones) | Timezone data files: Boost.Date_Time database and packed global shapefile |
+| [smartmet-fonts](https://github.com/fmidev/smartmet-fonts) | Weather symbol fonts used by SmartMet rendering tools |
+| [smartmet-roadindex](https://github.com/fmidev/smartmet-roadindex) | Road weather index calculations |
+| [smartmet-roadmodel](https://github.com/fmidev/smartmet-roadmodel) | Road weather model |
+| [smartmet-utils](https://github.com/fmidev/smartmet-utils) | General utility scripts |
+
+## smartmet-library-spine
+
+The spine library is the **core framework** of SmartMet Server. It provides:
+
+- **HTTP server** — multi-threaded request handling with a configurable thread pool
+- **Plugin manager** — dynamic loading and lifecycle management of plugins
+- **Engine manager** — dynamic loading and lifecycle management of shared engines
+- **Configuration** — libconfig-based configuration with include support
+- **Request/response abstractions** — HTTP request parsing and response building
+- **Logging** — structured logging with configurable levels
+- **LRU cache** — configurable in-memory response caching
+
+Plugins and engines are built against the spine library API. The spine library itself depends on [smartmet-library-macgyver](https://github.com/fmidev/smartmet-library-macgyver).
+
+## License
+
+MIT — see [LICENSE](LICENSE)
+
+## Contributing
+
+Bug reports and pull requests are welcome on [GitHub](../../issues). For larger contributions, open an issue for discussion first. A CLA is required — contact us for details.
+
+## Contact
+
+- Email: beta@fmi.fi
+- GitHub Issues: [issues](../../issues)
+- FMI Open Source: https://en.ilmatieteenlaitos.fi/open-source-code
