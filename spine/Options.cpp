@@ -317,6 +317,8 @@ void Options::parseConfig()
       lookupHostSetting(itsConfig, defaultlogging, "defaultlogging");
       lookupHostSetting(itsConfig, lazylinking, "lazylinking");
       lookupHostSetting(itsConfig, accesslogdir, "accesslogdir");
+      lookupHostSetting(itsConfig, staleWhileRevalidate, "stalewhilerevalidate");
+      lookupHostSetting(itsConfig, staleIfError, "staleiferror");
 
       otel = OTelOptions::fromConfig(itsConfig);
 
@@ -406,7 +408,9 @@ void Options::report() const
               << "Stack trace on crash\t\t= " << (stacktrace ? "ON" : "OFF")
               << "\n"
                  "Out of memory handler\t\t= "
-              << new_handler << "\n";
+              << new_handler << "\n"
+              << "stale-while-revalidate\t\t= " << staleWhileRevalidate << "s\n"
+              << "stale-if-error\t\t\t= " << staleIfError << "s\n";
 
     std::cout << ANSI_ITALIC_OFF << std::endl;
   }

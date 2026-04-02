@@ -65,6 +65,14 @@ struct Options
 
   unsigned int maxrequestsize = 131072;  // Limit incoming request sizes, 0 means unlimited
 
+  // stale-while-revalidate: how long (seconds) a CDN/browser may serve a stale response while
+  // fetching a fresh one in the background. 0 disables the directive.
+  unsigned int staleWhileRevalidate = 60;
+
+  // stale-if-error: how long (seconds) a CDN/browser may serve a stale response when the origin
+  // returns an error (5xx, network failure, etc.). 0 disables the directive.
+  unsigned int staleIfError = 86400;
+
   std::string accesslogdir{"/var/log/smartmet"};
 
   OTelOptions otel;
