@@ -89,13 +89,7 @@ class SmartMetCache
 
   void queueFileWrites(const std::vector<std::pair<KeyType, ValueType>>& items);
 
-  Fmi::Cache::Cache<KeyType,
-                    ValueType,
-                    Fmi::Cache::LRUEviction,
-                    int,
-                    Fmi::Cache::StaticExpire,
-                    BufferSizeFunction>
-      itsMemoryCache;
+  Fmi::Cache::Cache<KeyType, ValueType, BufferSizeFunction> itsMemoryCache;
 
   std::unique_ptr<Fmi::Cache::FileCache> itsFileCache;
 
