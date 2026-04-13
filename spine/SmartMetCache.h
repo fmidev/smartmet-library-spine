@@ -93,7 +93,11 @@ class SmartMetCache
 
   void queueFileWrites(const std::vector<std::pair<KeyType, ValueType>>& items);
 
-  Fmi::Cache::Cache<KeyType, ValueType, BufferSizeFunction> itsMemoryCache;
+  // NumShards=1: the memory cache uses byte-based sizing (BufferSizeFunction) and
+  // feeds evicted items to the file cache, which requires deterministic LRU ordering.
+  // Sharding would split the capacity across shards, silently rejecting values that
+  // exceed the tiny per-shard limit.
+  Fmi::Cache::Cache<KeyType, ValueType, BufferSizeFunction, 1> itsMemoryCache;
 
   std::unique_ptr<Fmi::Cache::FileCache> itsFileCache;
 
