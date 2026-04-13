@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.3.13
+Version: 26.4.13
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -49,8 +49,8 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 26.2.4
-BuildRequires: smartmet-library-macgyver-devel >= 26.2.4
+BuildRequires: smartmet-library-gis-devel >= 26.4.13
+BuildRequires: smartmet-library-macgyver-devel >= 26.4.13
 BuildRequires: smartmet-library-newbase-devel >= 26.2.4
 BuildRequires: smartmet-utils-devel >= 26.2.4
 
@@ -98,8 +98,8 @@ Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: libbacktrace
 Requires: double-conversion
-Requires: smartmet-library-gis >= 26.2.4
-Requires: smartmet-library-macgyver >= 26.2.4
+Requires: smartmet-library-gis >= 26.4.13
+Requires: smartmet-library-macgyver >= 26.4.13
 Requires: smartmet-library-newbase >= 26.2.4
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
@@ -110,7 +110,7 @@ Requires: smartmet-timezones >= 24.5.27
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 26.2.4
+#TestRequires: smartmet-library-macgyver-devel >= 26.4.13
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -122,8 +122,8 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 26.2.4
-Requires: smartmet-library-gis-devel >= 26.2.4
+Requires: smartmet-library-macgyver-devel >= 26.4.13
+Requires: smartmet-library-gis-devel >= 26.4.13
 Requires: smartmet-library-newbase-devel >= 26.2.4
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
@@ -168,6 +168,11 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Apr 13 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.4.13-1.fmi
+- Rewrote SmartMetCache due to macgyver Cache changes
+- Add stale-while-revalidate and stale-if-error to server Options
+- Add optional OpenTelemetry C++ instrumentation
+
 * Fri Mar 13 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.3.13-1.fmi
 - Add admin request waitforready. Replace non standard HTTP statuscodes with standard ones
 
