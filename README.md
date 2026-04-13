@@ -18,6 +18,10 @@ The spine library is the **core framework** of SmartMet Server. It provides the 
 
 Plugins and engines are built against the spine library API. The spine library itself depends on [smartmet-library-macgyver](https://github.com/fmidev/smartmet-library-macgyver).
 
+## Documentation
+
+- [OpenTelemetry support](docs/build-opentelemetry.md) — distributed traces and cache-statistics metrics
+
 ## License
 
 MIT — see [LICENSE](LICENSE)
