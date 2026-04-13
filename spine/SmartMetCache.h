@@ -1,8 +1,12 @@
 #pragma once
+#include <atomic>
+#include <condition_variable>
+#include <deque>
 #include <filesystem>
 #include <memory>
-#include <deque>
+#include <mutex>
 #include <string>
+#include <thread>
 
 #include <macgyver/Cache.h>
 
@@ -95,13 +99,13 @@ class SmartMetCache
 
   std::deque<std::pair<KeyType, ValueType>> itsPendingWrites;
 
-  std::unique_ptr<boost::thread> itsFileThread;
+  std::unique_ptr<std::thread> itsFileThread;
 
   // This guards the itsPendingWrites stack
-  boost::mutex itsMutex;  // For condition variable, shared mutex won't do.
+  std::mutex itsMutex;  // For condition variable, shared mutex won't do.
 
-  boost::condition_variable itsCondition;
-  boost::atomic<bool> itsShutdownRequested{false};
+  std::condition_variable itsCondition;
+  std::atomic<bool> itsShutdownRequested{false};
 };
 
 }  // namespace Spine

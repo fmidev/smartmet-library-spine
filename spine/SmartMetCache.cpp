@@ -1,10 +1,6 @@
 #include "SmartMetCache.h"
-#include <boost/bind/bind.hpp>
-#include <boost/make_shared.hpp>
 #include <macgyver/Exception.h>
 #include <vector>
-
-using namespace boost::placeholders;
 
 namespace SmartMet
 {
@@ -20,7 +16,7 @@ SmartMetCache::SmartMetCache(std::size_t memoryCacheSize,
     if (fileCacheSize > 0)
     {
       itsFileCache.reset(new Fmi::Cache::FileCache(cacheDirectory, fileCacheSize));
-      itsFileThread.reset(new boost::thread(boost::bind(&SmartMetCache::operateFileCache, this)));
+      itsFileThread = std::make_unique<std::thread>(&SmartMetCache::operateFileCache, this);
     }
   }
   catch (...)
@@ -33,29 +29,18 @@ SmartMetCache::~SmartMetCache()
 {
   try
   {
-    boost::unique_lock<boost::mutex> theLock(itsMutex);
-    itsShutdownRequested = true;
-
-    if (itsFileCache)  // constructed only once, safe to test in threads
     {
-      // boost::thread::interrupt for current thread when here would cause std::terminate.
-      // Therefore avoid interruptions
-      //
-      // FIXME: could be possibly optimized by running SmartMetCache::operateFileCache under
-      //        Fmi::AsyncTask and check for interrutions using
-      //        boost::this_thread::interruption_requested()
-      boost::this_thread::disable_interruption do_not_disturb;
+      std::unique_lock<std::mutex> theLock(itsMutex);
+      itsShutdownRequested = true;
       itsCondition.notify_one();
-      theLock.unlock();
-      boost::this_thread::sleep_for(boost::chrono::milliseconds(200));
-      itsFileThread->interrupt();
-      itsFileThread->join();
     }
+
+    if (itsFileThread && itsFileThread->joinable())
+      itsFileThread->join();
   }
   catch (...)
   {
     std::cout << Fmi::Exception::Trace(BCP, "Operation failed!") << std::endl;
-    // FIXME: should we abort here?
   }
 }
 
@@ -143,7 +128,7 @@ void SmartMetCache::operateFileCache()
   {
     while (!itsShutdownRequested)
     {
-      boost::unique_lock<boost::mutex> theLock(itsMutex);
+      std::unique_lock<std::mutex> theLock(itsMutex);
       if (itsPendingWrites.empty())
       {
         // Wait for something to write
@@ -177,7 +162,7 @@ void SmartMetCache::queueFileWrites(const std::vector<std::pair<KeyType, ValueTy
   // never called if there is no file cache and thus no update thread
   try
   {
-    boost::unique_lock<boost::mutex> theLock(itsMutex);
+    std::unique_lock<std::mutex> theLock(itsMutex);
     for (const auto& entry_pair : items)
     {
       // Insert this entry into the pending writes queue
@@ -195,7 +180,7 @@ void SmartMetCache::queueFileWrites(const std::vector<std::pair<KeyType, ValueTy
 
 void SmartMetCache::shutdown()
 {
-  boost::unique_lock<boost::mutex> theLock(itsMutex);
+  std::unique_lock<std::mutex> theLock(itsMutex);
   itsShutdownRequested = true;
   if (itsFileThread)
     itsCondition.notify_one();
