@@ -115,6 +115,11 @@ void TcpMultiQuery::execute()
   }
 }
 
+void TcpMultiQuery::stop()
+{
+  impl->io_service.stop();
+}
+
 std::set<std::string> TcpMultiQuery::get_ids() const
 {
   std::set<std::string> result;
