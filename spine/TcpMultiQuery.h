@@ -62,6 +62,8 @@ class TcpMultiQuery
 
   Response operator[](const std::string& id) const;
 
+  void stop();
+
  private:
   void report_request_complete();
 
