@@ -19,6 +19,9 @@ bool lookupPathSetting(const libconfig::Config& theConfig,
 
 void expandVariables(libconfig::Config& theConfig);
 
+std::string config_hash(const libconfig::Setting& setting);
+std::string config_hash(const libconfig::Config& config);
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Return a setting, which may have a host specific value
