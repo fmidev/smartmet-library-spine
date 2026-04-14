@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.3.13
+Version: 26.4.14
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -162,6 +162,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Apr 14 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.4.14-1.fmi
+- Added methods for getting SHA256 sums based on content of libconfig settings
+- Added method for stoping TcpMultiQuery queries
+
 * Fri Mar 13 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.3.13-1.fmi
 - Add admin request waitforready. Replace non standard HTTP statuscodes with standard ones
 
