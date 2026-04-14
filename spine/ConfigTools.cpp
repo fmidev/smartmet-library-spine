@@ -1,7 +1,85 @@
 #include "ConfigTools.h"
 #include <filesystem>
+#include <macgyver/Base64.h>
 #include <macgyver/Exception.h>
+#include <openssl/sha.h>
 #include <cstdlib>
+
+namespace
+{
+
+void sha256_update(SHA256_CTX& ctx, const void* data, std::size_t len)
+{
+  SHA256_Update(&ctx, data, len);
+}
+
+void sha256_update(SHA256_CTX& ctx, const std::string& str)
+{
+  sha256_update(ctx, str.data(), str.size());
+}
+
+template <typename T>
+void sha256_update_value(SHA256_CTX& ctx, const T& value)
+{
+  sha256_update(ctx, &value, sizeof(value));
+}
+
+void sha256_update_setting(SHA256_CTX& ctx, const libconfig::Setting& setting)
+{
+  const std::string path = setting.getPath();
+  sha256_update(ctx, path);
+
+  const int type = setting.getType();
+  sha256_update_value(ctx, type);
+
+  switch (type)
+  {
+    case libconfig::Setting::TypeInt:
+    {
+      const int value = setting;
+      sha256_update_value(ctx, value);
+      break;
+    }
+    case libconfig::Setting::TypeInt64:
+    {
+      const long long value = setting;
+      sha256_update_value(ctx, value);
+      break;
+    }
+    case libconfig::Setting::TypeFloat:
+    {
+      const double value = setting;
+      sha256_update_value(ctx, value);
+      break;
+    }
+    case libconfig::Setting::TypeString:
+    {
+      const char* value = setting;
+      sha256_update(ctx, value, std::strlen(value));
+      break;
+    }
+    case libconfig::Setting::TypeBoolean:
+    {
+      const bool value = setting;
+      sha256_update_value(ctx, value);
+      break;
+    }
+    case libconfig::Setting::TypeGroup:
+    case libconfig::Setting::TypeList:
+    case libconfig::Setting::TypeArray:
+    {
+      const int len = setting.getLength();
+      sha256_update_value(ctx, len);
+      for (int i = 0; i < len; i++)
+        sha256_update_setting(ctx, setting[i]);
+      break;
+    }
+    default:
+      break;
+  }
+}
+
+}  // anonymous namespace
 
 namespace SmartMet
 {
@@ -203,6 +281,37 @@ void expandVariables(libconfig::Config& theConfig, libconfig::Setting& theSettin
 void expandVariables(libconfig::Config& theConfig)
 {
   expandVariables(theConfig, theConfig.getRoot());
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Compute SHA256 hash of a libconfig::Setting tree
+ *
+ * Recursively hashes the path, type, and value of each setting,
+ * producing a content-based digest that is independent of file
+ * modification time and whitespace.  The result is base64 encoded.
+ */
+// ----------------------------------------------------------------------
+
+std::string config_hash(const libconfig::Setting& setting)
+{
+  SHA256_CTX ctx;
+  SHA256_Init(&ctx);
+  sha256_update_setting(ctx, setting);
+  unsigned char digest[SHA256_DIGEST_LENGTH];
+  SHA256_Final(digest, &ctx);
+  return Fmi::Base64::encode(std::string(reinterpret_cast<const char*>(digest), SHA256_DIGEST_LENGTH));
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Compute SHA256 hash of a libconfig::Config (its root setting)
+ */
+// ----------------------------------------------------------------------
+
+std::string config_hash(const libconfig::Config& config)
+{
+  return config_hash(config.getRoot());
 }
 
 }  // namespace Spine
