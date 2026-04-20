@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.4.13
+Version: 26.4.14
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -168,6 +168,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Apr 14 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.4.14-1.fmi
+- Added methods for getting SHA256 sums based on content of libconfig settings
+- Added method for stoping TcpMultiQuery queries
+
 * Mon Apr 13 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.4.13-1.fmi
 - Rewrote SmartMetCache due to macgyver Cache changes
 - Add stale-while-revalidate and stale-if-error to server Options
