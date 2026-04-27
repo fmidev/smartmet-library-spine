@@ -4,6 +4,7 @@ engineinfo <builtin> no no yes Request engine info
 getlogging <builtin> no no yes Get logging status
 lastrequests <builtin> no no yes Get last requests
 list <builtin> no yes yes List all admin requests
+mallocstats <builtin> no no yes Allocator stats (jemalloc / mimalloc). Optional `opts` query parameter is passed verbatim to jemalloc's malloc_stats_print (default "J" = JSON output)
 plugininfo <builtin> no no yes Request plugin info
 serviceinfo <builtin> no yes yes Get info about available services
 servicestats <builtin> no no yes Request service stats

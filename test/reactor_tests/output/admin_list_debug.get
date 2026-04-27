@@ -8,6 +8,7 @@
 <td>getlogging</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Get logging status</td></tr><tr>
 <td>lastrequests</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Get last requests</td></tr><tr>
 <td>list</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>yes</td><td>List all admin requests</td></tr><tr>
+<td>mallocstats</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Allocator stats (jemalloc / mimalloc). Optional `opts` query parameter is passed verbatim to jemalloc&apos;s malloc_stats_print (default &quot;J&quot; = JSON output)</td></tr><tr>
 <td>plugininfo</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Request plugin info</td></tr><tr>
 <td>serviceinfo</td><td>&lt;builtin&gt;</td><td>no</td><td>yes</td><td>yes</td><td>Get info about available services</td></tr><tr>
 <td>servicestats</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Request service stats</td></tr><tr>
