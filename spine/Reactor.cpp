@@ -11,6 +11,7 @@
 #include "DynamicPlugin.h"
 #include "FmiApiKey.h"
 #include "HostInfo.h"
+#include "MallocStats.h"
 #include "Names.h"
 #include "Options.h"
 #include "SmartMet.h"
@@ -271,6 +272,15 @@ Reactor::Reactor(Options& options)
         AdminRequestAccess::Private,
         std::bind(&Reactor::waitForReady, this, std::placeholders::_2),
         "Wait until initialization is done (parameters timeout in seconds, default 60)");
+
+    addAdminStringRequestHandler(
+        NoTarget{},
+        "mallocstats",
+        AdminRequestAccess::Private,
+        std::bind(&Reactor::requestMallocStats, this, std::placeholders::_2),
+        "Allocator stats (jemalloc / mimalloc). Optional `opts` query "
+        "parameter is passed verbatim to jemalloc's malloc_stats_print "
+        "(default \"J\" = JSON output)");
   }
   catch (...)
   {
@@ -2021,6 +2031,21 @@ try
   }
 
   return "timeout in " + Fmi::to_string(timeout) + " seconds\r\n";
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
+std::string Reactor::requestMallocStats(const HTTP::Request& theRequest) const
+try
+{
+  // Optional `opts` query parameter is forwarded to jemalloc's
+  // malloc_stats_print as-is. Default "J" requests JSON; the
+  // smtop-side parser knows how to handle that shape. mimalloc
+  // ignores `opts` and always emits its text format.
+  const auto opts = theRequest.getParameter("opts");
+  return getMallocStats(opts ? *opts : std::string{"J"});
 }
 catch (...)
 {

@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.4.14
+Version: 26.4.27
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -168,6 +168,20 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Apr 27 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.4.27-1.fmi
+- New admin handler ?what=mallocstats. Returns the active
+  allocator's machine-readable stats dump as the response body
+  (JSON for jemalloc, text for mimalloc). Allocator is detected
+  at runtime via dlsym; jemalloc is preferred over mimalloc
+  over glibc, falling back to a JSON-shaped error string when
+  no supported allocator is found. Optional `opts` query
+  parameter is passed verbatim to jemalloc's
+  malloc_stats_print (defaults to "J" = JSON; see jemalloc
+  docs for the full option set). Used by smartmet-monitor's
+  Heap panel to display per-arena fragmentation and
+  per-bin size-class distribution without needing
+  server-side instrumentation hooks.
+
 * Tue Apr 14 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.4.14-1.fmi
 - Added methods for getting SHA256 sums based on content of libconfig settings
 - Added method for stoping TcpMultiQuery queries

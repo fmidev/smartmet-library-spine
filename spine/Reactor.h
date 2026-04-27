@@ -231,6 +231,11 @@ class Reactor final : public ContentHandlerMap
 
   std::string waitForReady(const HTTP::Request& theRequest);
 
+  // Allocator stats (jemalloc / mimalloc). Returned verbatim as the
+  // string body of the admin response; the operator-side smtop "Heap"
+  // panel parses it. See MallocStats.h for the option-string syntax.
+  std::string requestMallocStats(const HTTP::Request& theRequest) const;
+
   /**
    * @brief Install handler for cases when std::terminate is called
    *
