@@ -2,6 +2,7 @@
 #include "Convenience.h"
 #include "FmiApiKey.h"
 #include "Reactor.h"
+#include <ctime>
 #include <iostream>
 #include <functional>
 #include <filesystem>
@@ -204,6 +205,24 @@ bool HandlerView::handle(Reactor& theReactor,
       }
 
       auto key = theReactor.insertActiveRequest(theRequest);
+      // CPU-time bracketing via CLOCK_THREAD_CPUTIME_ID. The clock
+      // advances only while THIS thread is on-CPU, so the resulting
+      // duration measures actual compute time (user + kernel) and
+      // excludes off-CPU stalls (lock waits, I/O, sleeps) that the
+      // wall-clock difference would include. ?what=servicestats
+      // surfaces the average as AverageCPUMs alongside the existing
+      // wall-clock AverageDuration so operators can read CPU-bound
+      // vs wait-bound handlers at a glance. The clock_gettime call
+      // itself resolves through the vDSO on modern kernels (~10 ns)
+      // so the per-request overhead is unmeasurable next to the
+      // existing wall-clock bracketing.
+      struct timespec cpu_before
+      {
+      };
+      struct timespec cpu_after
+      {
+      };
+      ::clock_gettime(CLOCK_THREAD_CPUTIME_ID, &cpu_before);
       auto before = Fmi::MicrosecClock::universal_time();
 
       std::exception_ptr error;
@@ -221,7 +240,24 @@ bool HandlerView::handle(Reactor& theReactor,
         error = std::current_exception();
       }
       auto accessDuration = Fmi::MicrosecClock::universal_time() - before;
+      ::clock_gettime(CLOCK_THREAD_CPUTIME_ID, &cpu_after);
       theReactor.removeActiveRequest(key, theResponse.getStatus());
+
+      // Convert the timespec delta to a Fmi::TimeDuration. Carry the
+      // nanosecond field if it went negative across a second
+      // boundary; split into seconds + microseconds to avoid the
+      // 32-bit overflow of Fmi::Microseconds(int) on long-running
+      // requests.
+      long cpu_secs = cpu_after.tv_sec - cpu_before.tv_sec;
+      long cpu_nsec = cpu_after.tv_nsec - cpu_before.tv_nsec;
+      if (cpu_nsec < 0)
+      {
+        --cpu_secs;
+        cpu_nsec += 1'000'000'000L;
+      }
+      const auto cpuDuration =
+          Fmi::Seconds(static_cast<int>(cpu_secs)) +
+          Fmi::Microseconds(static_cast<int>(cpu_nsec / 1000));
 
       WriteLock lock(itsLoggingMutex);
 
@@ -232,6 +268,7 @@ bool HandlerView::handle(Reactor& theReactor,
       const LoggedRequest logged(theRequest.getURI(),
                                  Fmi::MicrosecClock::local_time(),
                                  accessDuration,
+                                 cpuDuration,
                                  theResponse.getStatusString(),
                                  theRequest.getClientIP(),
                                  theRequest.getMethodString(),

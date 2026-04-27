@@ -1815,8 +1815,16 @@ std::unique_ptr<Table> Reactor::requestCacheStats(const HTTP::Request& theReques
 std::unique_ptr<Table> Reactor::requestServiceStats(const HTTP::Request& theRequest) const
 try
 {
-  const std::vector<std::string> headers{
-      "Handler", "LastMinute", "LastHour", "Last24Hours", "AverageDuration"};
+  // AverageCPUMs added at the end so existing JSON consumers that
+  // ignored unknown columns continue to work unchanged. The
+  // smartmet-monitor Heap / Services panel reads the new column to
+  // expose CPU-bound vs wait-bound handlers at a glance.
+  const std::vector<std::string> headers{"Handler",
+                                         "LastMinute",
+                                         "LastHour",
+                                         "Last24Hours",
+                                         "AverageDuration",
+                                         "AverageCPUMs"};
   std::unique_ptr<Table> statsTable = std::make_unique<Table>();
   statsTable->setTitle("Service statistics");
   statsTable->setNames(headers);
@@ -1832,6 +1840,7 @@ try
   unsigned long total_hour = 0;
   unsigned long total_day = 0;
   long global_microsecs = 0;
+  long global_cpu_microsecs = 0;
 
   for (const auto& reqpair : std::get<1>(currentRequests))
   {
@@ -1840,16 +1849,20 @@ try
     unsigned long inHour = 0;
     unsigned long inDay = 0;
     long total_microsecs = 0;
+    long total_cpu_microsecs = 0;
     // We go from newest to oldest
 
     for (const auto& item : reqpair.second)
     {
       auto sinceDuration = currentTime - item.getRequestEndTime();
       auto accessDuration = item.getAccessDuration();
+      auto cpuDuration = item.getCpuDuration();
 
       total_microsecs += accessDuration.total_microseconds();
+      total_cpu_microsecs += cpuDuration.total_microseconds();
 
       global_microsecs += accessDuration.total_microseconds();
+      global_cpu_microsecs += cpuDuration.total_microseconds();
 
       if (sinceDuration < Fmi::Hours(24))
       {
@@ -1884,6 +1897,10 @@ try
 
     std::string msecs = average_and_format(total_microsecs, inDay);
     statsTable->set(column, row, msecs);
+    ++column;
+
+    std::string cpu_msecs = average_and_format(total_cpu_microsecs, inDay);
+    statsTable->set(column, row, cpu_msecs);
 
     ++row;
   }
@@ -1905,6 +1922,10 @@ try
 
   std::string msecs = average_and_format(global_microsecs, total_day);
   statsTable->set(column, row, msecs);
+  ++column;
+
+  std::string cpu_msecs = average_and_format(global_cpu_microsecs, total_day);
+  statsTable->set(column, row, cpu_msecs);
 
   return statsTable;
 }

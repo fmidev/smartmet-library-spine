@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.4.27
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -168,6 +168,23 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Apr 27 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.4.27-2.fmi
+- Per-handler CPU time tracking. HandlerView::handle now
+  brackets each handler invocation with
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, ...) calls in
+  addition to the existing wall-clock timing, and
+  LoggedRequest carries the resulting per-thread CPU
+  duration alongside the wall-clock access duration.
+  ?what=servicestats&format=json gains a new column
+  AverageCPUMs at the end of every row (and in the totals
+  row), letting smartmet-monitor and other clients distinguish
+  CPU-bound from wait-bound handlers at a glance.
+- LoggedRequest gets a new 11-arg constructor that takes
+  cpuDuration as a positional argument, plus a delegating
+  10-arg overload preserving the historical signature
+  (cpuDuration defaults to zero) so out-of-tree callers
+  continue to compile and link without changes.
+
 * Mon Apr 27 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.4.27-1.fmi
 - New admin handler ?what=mallocstats. Returns the active
   allocator's machine-readable stats dump as the response body

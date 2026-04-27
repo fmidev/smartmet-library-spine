@@ -12,6 +12,7 @@ namespace Spine
 LoggedRequest::LoggedRequest(std::string theRequestString,
                              const Fmi::DateTime& requestEndTime,
                              Fmi::TimeDuration accessDuration,
+                             Fmi::TimeDuration cpuDuration,
                              std::string theStatus,
                              std::string theIP,
                              std::string theMethod,
@@ -22,6 +23,7 @@ LoggedRequest::LoggedRequest(std::string theRequestString,
     : itsRequestString(std::move(theRequestString)),
       itsRequestEndTime(requestEndTime),
       itsAccessDuration(std::move(accessDuration)),
+      itsCpuDuration(std::move(cpuDuration)),
       itsStatus(std::move(theStatus)),
       itsIP(std::move(theIP)),
       itsMethod(std::move(theMethod)),
@@ -29,6 +31,34 @@ LoggedRequest::LoggedRequest(std::string theRequestString,
       itsContentLength(theContentLength),
       itsETag(std::move(theETag)),
       itsApiKey(std::move(theApiKey))
+{
+}
+
+// Backwards-compatible delegating constructor — preserves the
+// historical signature for any out-of-tree code that built against
+// previous spine releases. cpuDuration defaults to zero, which the
+// servicestats consumer interprets as "CPU time not measured".
+LoggedRequest::LoggedRequest(std::string theRequestString,
+                             const Fmi::DateTime& requestEndTime,
+                             Fmi::TimeDuration accessDuration,
+                             std::string theStatus,
+                             std::string theIP,
+                             std::string theMethod,
+                             std::string theVersion,
+                             std::size_t theContentLength,
+                             std::string theETag,
+                             std::string theApiKey)
+    : LoggedRequest(std::move(theRequestString),
+                    requestEndTime,
+                    std::move(accessDuration),
+                    Fmi::TimeDuration(),
+                    std::move(theStatus),
+                    std::move(theIP),
+                    std::move(theMethod),
+                    std::move(theVersion),
+                    theContentLength,
+                    std::move(theETag),
+                    std::move(theApiKey))
 {
 }
 
@@ -50,6 +80,11 @@ std::string LoggedRequest::getRequestString() const
 Fmi::TimeDuration LoggedRequest::getAccessDuration() const
 {
   return itsAccessDuration;
+}
+
+Fmi::TimeDuration LoggedRequest::getCpuDuration() const
+{
+  return itsCpuDuration;
 }
 
 std::string LoggedRequest::getStatus() const
