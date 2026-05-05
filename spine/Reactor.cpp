@@ -1627,9 +1627,6 @@ std::string average_and_format(long total_microsecs, unsigned long requests)
 std::unique_ptr<Table> Reactor::requestLastRequests(const HTTP::Request& theRequest) const
 try
 {
-  std::unique_ptr<Table> result = std::make_unique<Table>();
-  std::vector<std::string> headers = {"Time", "Duration", "RequestString"};
-
   // Get optional parameters from the request
   const std::string s_minutes = optional_string(theRequest.getParameter("minutes"), "1");
   const std::string pluginName = optional_string(theRequest.getParameter("plugin"), "all");
@@ -1638,41 +1635,196 @@ try
   const std::string format = optional_string(theRequest.getParameter("format"), "");
   const bool decode_request = (format == "debug" || format == "html");
 
+  // Optional ?fields=... selector. Any subset of the field keys
+  // listed below, comma-separated. ``fields=all`` returns every
+  // log field. Empty / absent keeps the historical default
+  // (Time, Duration, RequestString) so older callers (operator
+  // scripts, smwebmon prior to its IP-flow extension) keep
+  // working unchanged. Unknown field names are silently dropped
+  // so a forward-rolling caller can request optimistically.
+  const std::string fields_param = optional_string(theRequest.getParameter("fields"), "");
+
+  using LR = Spine::LoggedRequest;
+  using FieldFn = std::function<std::string(const LR&, const std::string&)>;
+
+  // Field registry. Order matters: ``fields=all`` emits columns in
+  // the order they appear here. ``time`` keeps the historical
+  // HH:MM:SS.fff time-of-day shape; ``end`` / ``start`` carry the
+  // full datetime. Both honour the ``timeformat`` query parameter
+  // (iso / xml / sql / epoch / timestamp — same vocabulary
+  // every other admin endpoint uses) when given.
+  // Field key → output column header. ``requeststring`` is kept
+  // as an alias of ``url`` so callers using the historical name
+  // (e.g. operators referring to the old admin docs) continue to
+  // work without change.
+  const std::vector<std::pair<std::string, std::string>> field_order = {
+      {"time",       "Time"},
+      {"endtime",    "EndTime"},
+      {"starttime",  "StartTime"},
+      {"duration",   "Duration"},
+      {"cpu",        "Cpu"},
+      {"ip",         "IP"},
+      {"status",     "Status"},
+      {"size",       "ContentLength"},
+      {"method",     "Method"},
+      {"version",    "Version"},
+      {"etag",       "ETag"},
+      {"apikey",     "Apikey"},
+      {"plugin",     "Plugin"},
+      {"url",        "URL"},
+  };
+  // Aliases — accepted on input, mapped to the canonical key.
+  const std::map<std::string, std::string> field_aliases = {
+      {"requeststring", "url"},
+      {"bytes",         "size"},
+  };
+
+  // Optional time formatter. When ``timeformat`` is supplied, the
+  // time / end / start fields are formatted via Fmi::TimeFormatter
+  // for ``epoch`` (Unix seconds), ``iso`` (compact YYYYMMDDTHHMMSS),
+  // ``xml`` (extended YYYY-MM-DDTHH:MM:SS), ``sql``, ``timestamp``.
+  // Empty / absent keeps the legacy default — ``time`` shows
+  // HH:MM:SS.fff time-of-day, ``end`` and ``start`` use the
+  // historical to_iso_extended_string output.
+  const std::string time_format =
+      optional_string(theRequest.getParameter("timeformat"), "");
+  std::shared_ptr<Fmi::TimeFormatter> timeFormatter;
+  if (!time_format.empty())
+    timeFormatter.reset(Fmi::TimeFormatter::create(time_format));
+
+  const std::map<std::string, FieldFn> formatters = {
+      {"time", [timeFormatter](const LR& r, const std::string&) {
+         if (timeFormatter)
+           return timeFormatter->format(r.getRequestEndTime());
+         return Fmi::to_iso_extended_string(r.getRequestEndTime().time_of_day());
+       }},
+      {"endtime", [timeFormatter](const LR& r, const std::string&) {
+         if (timeFormatter)
+           return timeFormatter->format(r.getRequestEndTime());
+         return Fmi::to_iso_extended_string(r.getRequestEndTime());
+       }},
+      {"starttime", [timeFormatter](const LR& r, const std::string&) {
+         if (timeFormatter)
+           return timeFormatter->format(r.getRequestStartTime());
+         return Fmi::to_iso_extended_string(r.getRequestStartTime());
+       }},
+      {"duration", [](const LR& r, const std::string&) {
+         // Integer milliseconds, matching the format the access-log
+         // writer (AccessLogger.cpp) uses on disk and the units
+         // every downstream tool already speaks.
+         return Fmi::to_string(r.getAccessDuration().total_milliseconds());
+       }},
+      {"cpu", [](const LR& r, const std::string&) {
+         return Fmi::to_string(r.getCpuDuration().total_milliseconds());
+       }},
+      {"ip", [](const LR& r, const std::string&) { return r.getIP(); }},
+      {"status", [](const LR& r, const std::string&) { return r.getStatus(); }},
+      {"size", [](const LR& r, const std::string&) {
+         // Plain integer bytes for now. A future ``sizeformat=
+         // readable`` parameter could format this as KB / MB / GB
+         // for human consumers without changing the field key.
+         return Fmi::to_string(r.getContentLength());
+       }},
+      {"method", [](const LR& r, const std::string&) { return r.getMethod(); }},
+      {"version", [](const LR& r, const std::string&) { return r.getVersion(); }},
+      {"etag", [](const LR& r, const std::string&) { return r.getETag(); }},
+      {"apikey", [](const LR& r, const std::string&) { return r.getApiKey(); }},
+      {"plugin", [](const LR&, const std::string& plugin) { return plugin; }},
+      {"url", [decode_request](const LR& r, const std::string&) {
+         const auto& s = r.getRequestString();
+         return decode_request ? HTTP::urldecode(s) : s;
+       }},
+  };
+
+  // Resolve column selection. Default (no ``fields=``) returns
+  // every field so an interactive operator hitting the URL gets a
+  // useful overview without having to learn the field-set syntax.
+  // Bandwidth-conscious callers (e.g. smwebmon's IP-flow poll)
+  // pass an explicit comma-separated subset.
+  std::vector<std::string> selected;
+  if (fields_param.empty() || fields_param == "all")
+  {
+    for (const auto& kv : field_order)
+      selected.push_back(kv.first);
+  }
+  else
+  {
+    std::vector<std::string> tokens;
+    boost::algorithm::split(tokens, fields_param, boost::is_any_of(","));
+    for (auto& t : tokens)
+    {
+      boost::algorithm::trim(t);
+      boost::algorithm::to_lower(t);
+      // Resolve aliases first, then accept the canonical key.
+      auto alias_it = field_aliases.find(t);
+      if (alias_it != field_aliases.end())
+        t = alias_it->second;
+      if (!t.empty() && formatters.count(t))
+        selected.push_back(t);
+      // Unknown field names are silently dropped — forward-compat
+      // for clients probing with future field names.
+    }
+    if (selected.empty())
+    {
+      // Caller passed fields= but nothing matched — fall back to
+      // the all-fields view rather than emitting an empty table.
+      for (const auto& kv : field_order)
+        selected.push_back(kv.first);
+    }
+  }
+
+  std::map<std::string, std::string> key_to_header;
+  for (const auto& kv : field_order)
+    key_to_header.emplace(kv.first, kv.second);
+
+  std::vector<std::string> headers;
+  headers.reserve(selected.size());
+  for (const auto& k : selected)
+    headers.push_back(key_to_header.at(k));
+
+  auto result = std::make_unique<Table>();
   result->setTitle("Last requests of " +
-                   (pluginName == "all" ? "all plugins" : pluginName + " plugin") + " for last " +
-                   Fmi::to_string(minutes) + " minute" + (minutes == 1 ? "" : "s"));
+                   (pluginName == "all" ? "all plugins" : pluginName + " plugin") +
+                   " for last " + Fmi::to_string(minutes) + " minute" + (minutes == 1 ? "" : "s"));
   result->setNames(headers);
   // Alignment in default debug format for table admin request handlers is not very usable.
   // Choose "html" instead for better readability. User may of course say otherwise, but that
   // is not handled here.
   result->setDefaultFormat("html");
 
-  const auto currentRequests = getLoggedRequests(pluginName);
+  // Copy-then-format. The LogRanges in ``currentRequests`` hold a
+  // reader-count pin that prevents the cleaner from purging
+  // entries for the duration of their lifetime. Snapshotting the
+  // requested time-window into a local vector first — then
+  // letting ``currentRequests`` go out of scope — releases the
+  // pin before we do the table-formatting work, which on a
+  // multi-hour pull can dominate. The pin is held only for the
+  // copy itself (microseconds per entry, no I/O); the slow
+  // formatting + serialization happens unpinned.
+  std::vector<std::pair<std::string, LR>> snapshot;
+  {
+    const auto currentRequests = getLoggedRequests(pluginName);
+    const auto firstValidTime = Fmi::SecondClock::local_time() - Fmi::Minutes(minutes);
+    for (const auto& req : std::get<1>(currentRequests))
+    {
+      auto firstConsidered = std::find_if(req.second.begin(),
+                                          req.second.end(),
+                                          [&firstValidTime](const LR& cmp)
+                                          { return cmp.getRequestEndTime() > firstValidTime; });
+      for (auto it = firstConsidered; it != req.second.end(); ++it)
+        snapshot.emplace_back(req.first, *it);
+    }
+  }  // currentRequests destructed; LogRange pins released.
 
   std::size_t row = 0;
-  auto firstValidTime = Fmi::SecondClock::local_time() - Fmi::Minutes(minutes);
-
-  for (const auto& req : std::get<1>(currentRequests))
+  for (const auto& entry : snapshot)
   {
-    auto firstConsidered = std::find_if(req.second.begin(),
-                                        req.second.end(),
-                                        [&firstValidTime](const Spine::LoggedRequest& compare)
-                                        { return compare.getRequestEndTime() > firstValidTime; });
-
-    for (auto reqIt = firstConsidered; reqIt != req.second.end();
-         ++reqIt)  // NOLINT(modernize-loop-convert)
-    {
-      const std::string uri = reqIt->getRequestString();
-      std::size_t column = 0;
-      std::string endtime = Fmi::to_iso_extended_string(reqIt->getRequestEndTime().time_of_day());
-      std::string msec_duration = average_and_format(
-          reqIt->getAccessDuration().total_microseconds(), 1);  // just format the single duration
-      std::string requestString = reqIt->getRequestString();
-      result->set(column++, row, endtime);
-      result->set(column++, row, msec_duration);
-      result->set(column++, row, decode_request ? HTTP::urldecode(uri) : uri);
-      ++row;
-    }
+    const auto& plugin = entry.first;
+    const auto& req = entry.second;
+    std::size_t column = 0;
+    for (const auto& key : selected)
+      result->set(column++, row, formatters.at(key)(req, plugin));
+    ++row;
   }
 
   return result;
