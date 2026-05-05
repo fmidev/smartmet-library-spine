@@ -2,11 +2,14 @@
 #include "Convenience.h"
 #include "FmiApiKey.h"
 #include "Reactor.h"
+#include <algorithm>
 #include <ctime>
-#include <iostream>
-#include <functional>
 #include <filesystem>
+#include <functional>
+#include <iostream>
+#include <iterator>
 #include <string>
+#include <vector>
 #include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
 #include <macgyver/Join.h>
@@ -20,6 +23,20 @@ bool isNotOld(const Fmi::DateTime& target, const SmartMet::Spine::LoggedRequest&
 {
   return compare.getRequestEndTime() > target;
 }
+
+// Returns the iterator of the first request that has not yet been
+// flushed to disk. The marker convention is: ``end()`` means "no
+// entry has been flushed yet" (std::list iterators have no
+// "before-begin" position so we use end() as the sentinel).
+SmartMet::Spine::LogListType::iterator firstUnflushed(
+    SmartMet::Spine::LogListType& log,
+    SmartMet::Spine::LogListType::iterator marker)
+{
+  if (marker == log.end())
+    return log.begin();
+  return std::next(marker);
+}
+
 }  // namespace
 
 namespace p = std::placeholders;
@@ -313,33 +330,62 @@ void HandlerView::setLogging(bool newStatus)
       return;
     }
 
-    WriteLock lock(itsLoggingMutex);
+    // Snapshot of pending entries to flush, captured under the lock
+    // and written to disk after we drop it. Same lock-vs-IO split
+    // as cleanLog / flushLog: a high-traffic log queue can take
+    // seconds to flush; holding the WriteLock for that long stalls
+    // every concurrent request handler waiting to enqueue its own
+    // log entry (HandlerView::handle, line 262).
+    std::vector<LoggedRequest> to_flush;
+    LogListType cleared_owner;  // takes ownership of the cleared queue
+    bool transitioned_off = false;
 
-    bool previousStatus = isLogging;  // Save previous status to detect changes
-    isLogging = newStatus;
-
-    if (isLogging == previousStatus)
     {
-      // No change in status, simply return
-      return;
+      WriteLock lock(itsLoggingMutex);
+
+      const bool previousStatus = isLogging;
+      isLogging = newStatus;
+
+      if (isLogging == previousStatus)
+      {
+        // No change in status, simply return.
+        return;
+      }
+
+      if (!isLogging)
+      {
+        // True -> false: snapshot pending entries for one final
+        // flush, then move the in-memory queue into a local list
+        // so its destructors run AFTER the lock is released.
+        auto first = firstUnflushed(itsRequestLog, itsLastFlushedRequest);
+        if (first != itsRequestLog.end())
+          to_flush.assign(first, itsRequestLog.end());
+        cleared_owner.splice(cleared_owner.end(), itsRequestLog);
+        itsLastFlushedRequest = itsRequestLog.end();
+        transitioned_off = true;
+      }
+      else
+      {
+        // False -> true: nothing to flush; reset the marker and
+        // (re-)open the on-disk file. itsAccessLog->start() opens
+        // an ofstream which is a quick syscall but does no I/O
+        // beyond create-if-missing, so it stays under the lock.
+        itsLastFlushedRequest = itsRequestLog.end();
+        itsAccessLog->start();
+      }
     }
 
-    if (!isLogging)
+    if (!to_flush.empty())
     {
-      // Status set to false, make the transition true->false
-
-      // Flush queued entries whatever we may have and stop logging
-      flushLogNolock();
-      itsRequestLog.clear();
-      itsLastFlushedRequest = itsRequestLog.begin();
+      for (const auto& r : to_flush)
+        itsAccessLog->log(r);
+      itsAccessLog->flush();
+      if (itsOTelLog)
+        itsOTelLog->flush();
+    }
+    if (transitioned_off)
       itsAccessLog->stop();
-    }
-    else
-    {
-      // Status set to true, make the transition false->true
-      itsLastFlushedRequest = itsRequestLog.begin();
-      itsAccessLog->start();
-    }
+    // cleared_owner destructs here, outside the lock.
   }
   catch (...)
   {
@@ -398,45 +444,85 @@ bool HandlerView::getLogging() const
   return isLogging;
 }
 
+// Periodic cleaner driven from ContentHandlerMap::cleanLog (every
+// 5 s). The previous implementation held the WriteLock for the
+// duration of (a) the disk flush — slow, sometimes seconds under
+// concurrent reader load — and (b) the destruction of N
+// LoggedRequest objects (each carrying ~10 std::string members).
+// Both are now off the critical path.
+//
+// Phase A: under a brief WriteLock, copy entries pending flush into
+//          a local vector and advance ``itsLastFlushedRequest``.
+//          The lock is released immediately afterwards.
+// Phase B: write the local vector to disk with NO LOCK HELD.
+//          Concurrent request handlers can ``push_back`` freely.
+// Phase C: under another brief WriteLock, splice the to-be-purged
+//          prefix into a local list. Drop the lock. The local
+//          list destructs outside the critical section so request
+//          handlers don't queue behind N std::string frees.
 void HandlerView::cleanLog(const Fmi::DateTime& minTime, bool flush)
 {
   try
   {
-    WriteLock lock(itsLoggingMutex);
-
-    // Ignore cleaning operation if someone is reading the log right now
-
-    if (itsLogReaderCount != 0)
-      return;
-
-    auto it = std::find_if(
-        itsRequestLog.begin(), itsRequestLog.end(), std::bind(isNotOld, minTime, p::_1));
-
-    // Update disk flush iterator accordingly
-
-    // Find distance between flushed request iterator and purge iterator
-
-    auto iter = itsLastFlushedRequest;
-
-    while (iter != itsRequestLog.end())
+    // ----- Phase A: snapshot entries pending flush -----
+    std::vector<LoggedRequest> to_flush;
+    if (flush && itsAccessLog)
     {
-      if (iter == it)
+      WriteLock lock(itsLoggingMutex);
+      auto first = firstUnflushed(itsRequestLog, itsLastFlushedRequest);
+      if (first != itsRequestLog.end())
       {
-        // Log purging iterator has passed the last flushed iterator (should happen only with very
-        // tight log cleaning)
-        itsLastFlushedRequest = it;
-        break;
+        to_flush.assign(first, itsRequestLog.end());
+        itsLastFlushedRequest = std::prev(itsRequestLog.end());
       }
-
-      ++iter;
     }
 
-    itsRequestLog.erase(itsRequestLog.begin(), it);
-
-    if (flush)
+    // ----- Phase B: disk I/O outside the lock -----
+    if (!to_flush.empty())
     {
-      flushLogNolock();
+      for (const auto& r : to_flush)
+        itsAccessLog->log(r);
+      itsAccessLog->flush();
+      if (itsOTelLog)
+        itsOTelLog->flush();
     }
+
+    // ----- Phase C: purge old entries; destructors run unlocked -----
+    LogListType erased_owner;
+    {
+      WriteLock lock(itsLoggingMutex);
+
+      // Skip the purge if a LogRange (?what=lastrequests) is in
+      // flight; it holds raw iterators we mustn't invalidate. The
+      // entries will be picked up on the next cycle.
+      if (itsLogReaderCount != 0)
+        return;
+
+      auto purge_end = std::find_if(itsRequestLog.begin(),
+                                     itsRequestLog.end(),
+                                     std::bind(isNotOld, minTime, p::_1));
+
+      if (purge_end != itsRequestLog.begin())
+      {
+        // After Phase A, ``itsLastFlushedRequest`` points to the
+        // most recent entry. If we are erasing every entry
+        // (purge_end == end()), the marker becomes invalid; reset
+        // to end(). Otherwise the most recent entry survives and
+        // the iterator remains valid (std::list iterator stability).
+        if (purge_end == itsRequestLog.end())
+          itsLastFlushedRequest = itsRequestLog.end();
+
+        // splice() transfers nodes between lists in O(N) (size
+        // bookkeeping) without allocating, copying, or destructing.
+        // The destructors then fire when ``erased_owner`` goes out
+        // of scope below — outside the WriteLock.
+        erased_owner.splice(erased_owner.end(),
+                             itsRequestLog,
+                             itsRequestLog.begin(),
+                             purge_end);
+      }
+    }
+    // erased_owner destructs here, outside the lock.
   }
   catch (...)
   {
@@ -444,39 +530,37 @@ void HandlerView::cleanLog(const Fmi::DateTime& minTime, bool flush)
   }
 }
 
+// Operator-driven flush (e.g. handler destructor on shutdown). Same
+// lock-vs-IO split as cleanLog's Phase A + B; no purge phase.
 void HandlerView::flushLog()
 {
   try
   {
-    WriteLock lock(itsLoggingMutex);
-    flushLogNolock();
+    std::vector<LoggedRequest> to_flush;
+    {
+      WriteLock lock(itsLoggingMutex);
+      if (itsAccessLog == nullptr)
+        return;
+      auto first = firstUnflushed(itsRequestLog, itsLastFlushedRequest);
+      if (first != itsRequestLog.end())
+      {
+        to_flush.assign(first, itsRequestLog.end());
+        itsLastFlushedRequest = std::prev(itsRequestLog.end());
+      }
+    }
+    if (!to_flush.empty())
+    {
+      for (const auto& r : to_flush)
+        itsAccessLog->log(r);
+      itsAccessLog->flush();
+      if (itsOTelLog)
+        itsOTelLog->flush();
+    }
   }
   catch (...)
   {
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
-}
-
-void HandlerView::flushLogNolock()
-{
-  if (itsAccessLog == nullptr)
-    return;
-
-  auto flushIter = itsLastFlushedRequest;
-  ++flushIter;
-
-  for (; flushIter != itsRequestLog.end(); ++flushIter)
-  {
-      itsAccessLog->log(*flushIter);
-  }
-
-  itsAccessLog->flush();
-
-  if (itsOTelLog)
-    itsOTelLog->flush();
-
-  // Return to the last flushed request (not past the end)
-  itsLastFlushedRequest = --flushIter;
 }
 
 LogRange HandlerView::getLoggedRequests()
