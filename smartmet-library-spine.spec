@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.4.27
-Release: 2%{?dist}.fmi
+Version: 26.6.9
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -49,10 +49,10 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 26.4.13
-BuildRequires: smartmet-library-macgyver-devel >= 26.4.13
+BuildRequires: smartmet-library-gis-devel >= 26.6.8
+BuildRequires: smartmet-library-macgyver-devel >= 26.6.2
 BuildRequires: smartmet-library-newbase-devel >= 26.2.4
-BuildRequires: smartmet-utils-devel >= 26.2.4
+BuildRequires: smartmet-utils-devel >= 26.5.22
 
 # OpenTelemetry C++ SDK — optional; enables SMARTMET_SPINE_OPENTELEMETRY when present.
 # Not yet packaged for RHEL/Rocky; see docs/build-opentelemetry.md for a local build.
@@ -98,8 +98,8 @@ Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: libbacktrace
 Requires: double-conversion
-Requires: smartmet-library-gis >= 26.4.13
-Requires: smartmet-library-macgyver >= 26.4.13
+Requires: smartmet-library-gis >= 26.6.8
+Requires: smartmet-library-macgyver >= 26.6.2
 Requires: smartmet-library-newbase >= 26.2.4
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
@@ -110,7 +110,7 @@ Requires: smartmet-timezones >= 24.5.27
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 26.4.13
+#TestRequires: smartmet-library-macgyver-devel >= 26.6.2
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -122,8 +122,8 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 26.4.13
-Requires: smartmet-library-gis-devel >= 26.4.13
+Requires: smartmet-library-macgyver-devel >= 26.6.2
+Requires: smartmet-library-gis-devel >= 26.6.8
 Requires: smartmet-library-newbase-devel >= 26.2.4
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
@@ -168,6 +168,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Jun  9 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.6.9-1.fmi
+- Fixed to use new macgyver API for empty caches
+
 * Mon Apr 27 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.4.27-2.fmi
 - Per-handler CPU time tracking. HandlerView::handle now
   brackets each handler invocation with
