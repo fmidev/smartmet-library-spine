@@ -85,7 +85,7 @@ class SmartMetCache
   Fmi::Cache::CacheStats getMemoryCacheStats() const { return itsMemoryCache.statistics(); }
   Fmi::Cache::CacheStats getFileCacheStats() const
   {
-    return (itsFileCache ? itsFileCache->statistics() : Fmi::Cache::EMPTY_CACHE_STATS);
+    return (itsFileCache ? itsFileCache->statistics() : Fmi::Cache::CacheStats());
   }
 
  private:
