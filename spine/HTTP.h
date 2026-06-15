@@ -16,6 +16,7 @@
 // For asio buffer types
 #include <boost/asio/buffer.hpp>
 
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
@@ -691,6 +692,24 @@ class Response : public Message
 
   // ----------------------------------------------------------------------
   /*!
+   * \brief Deferred access-log finalizer for streamed responses.
+   *
+   * The body size and the true wall-clock duration of a streamed response
+   * are not known when the handler returns: the data is produced and sent
+   * chunk by chunk later, by the server connection layer. HandlerView sets
+   * this handler for such responses; the connection invokes it exactly once,
+   * once the final chunk has been sent, passing the actual number of body
+   * bytes streamed. The handler then writes the access-log entry with the
+   * real size and total duration. No-op for non-streamed responses.
+   */
+  // ----------------------------------------------------------------------
+  using StreamCompletionHandler = std::function<void(const Response&, std::size_t bytesSent)>;
+  void setStreamCompletionHandler(StreamCompletionHandler handler);
+  bool hasStreamCompletionHandler() const;
+  void runStreamCompletionHandler(std::size_t bytesSent);
+
+  // ----------------------------------------------------------------------
+  /*!
    * \brief Get response status as as string
    */
   // ----------------------------------------------------------------------
@@ -764,6 +783,8 @@ class Response : public Message
 
   std::string itsOriginatingBackend;
   int itsBackendPort = 0;
+
+  StreamCompletionHandler itsStreamCompletionHandler;
 };
 
 // ----------------------------------------------------------------------

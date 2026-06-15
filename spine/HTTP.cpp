@@ -1049,7 +1049,40 @@ std::string Response::getDecodedContent()
 
 std::size_t Response::getContentLength() const
 {
-  return itsContent.size();
+  // A streamed response with no declared length (the chunked-send path,
+  // setContent(streamer)) stores size_t(-1) as an "unknown size" sentinel.
+  // That value must never escape as a real byte count: it would corrupt the
+  // access log (and anything else summing content lengths) with a ~16 EB
+  // figure. The true streamed size is not known until the connection layer
+  // finishes sending the chunks, long after this is read, so report 0
+  // ("unknown") rather than the sentinel. Responses streamed with a known
+  // size, and all non-streamed responses, are unaffected.
+  const auto length = itsContent.size();
+  if (length == std::numeric_limits<std::size_t>::max())
+    return 0;
+  return length;
+}
+
+void Response::setStreamCompletionHandler(StreamCompletionHandler handler)
+{
+  itsStreamCompletionHandler = std::move(handler);
+}
+
+bool Response::hasStreamCompletionHandler() const
+{
+  return static_cast<bool>(itsStreamCompletionHandler);
+}
+
+void Response::runStreamCompletionHandler(std::size_t bytesSent)
+{
+  // Run at most once: move the handler out before calling so any extra
+  // invocations from the connection's terminal paths (success, error,
+  // teardown) become no-ops. Safe to call on responses without a handler.
+  if (!itsStreamCompletionHandler)
+    return;
+  auto handler = std::move(itsStreamCompletionHandler);
+  itsStreamCompletionHandler = nullptr;
+  handler(*this, bytesSent);
 }
 
 void Response::appendContent(const std::string& bodyPart)

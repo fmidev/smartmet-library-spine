@@ -103,6 +103,22 @@ class HandlerView
  private:
   void flushLogNolock();
 
+  // Assemble a LoggedRequest from its fields and append it to the in-memory
+  // request log (when logging is enabled) and the OTel trace export. Takes
+  // itsLoggingMutex internally. Used both for the immediate (non-streamed)
+  // logging path and, deferred, for streamed responses once the connection
+  // layer reports the actual number of body bytes streamed.
+  void appendLoggedRequest(const std::string& uri,
+                           Fmi::TimeDuration accessDuration,
+                           Fmi::TimeDuration cpuDuration,
+                           const std::string& status,
+                           const std::string& ip,
+                           const std::string& method,
+                           const std::string& version,
+                           std::size_t contentLength,
+                           const std::string& etag,
+                           const std::string& apikey);
+
   // The actual handler functor
   const ContentHandler itsHandler;
 
