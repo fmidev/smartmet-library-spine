@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.6.9
+Version: 26.6.15
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -50,7 +50,7 @@ BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 26.6.8
-BuildRequires: smartmet-library-macgyver-devel >= 26.6.2
+BuildRequires: smartmet-library-macgyver-devel >= 26.6.15
 BuildRequires: smartmet-library-newbase-devel >= 26.2.4
 BuildRequires: smartmet-utils-devel >= 26.5.22
 
@@ -99,7 +99,7 @@ Requires: libicu
 Requires: libbacktrace
 Requires: double-conversion
 Requires: smartmet-library-gis >= 26.6.8
-Requires: smartmet-library-macgyver >= 26.6.2
+Requires: smartmet-library-macgyver >= 26.6.15
 Requires: smartmet-library-newbase >= 26.2.4
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
@@ -110,7 +110,7 @@ Requires: smartmet-timezones >= 24.5.27
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 26.6.2
+#TestRequires: smartmet-library-macgyver-devel >= 26.6.15
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -122,7 +122,7 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 26.6.2
+Requires: smartmet-library-macgyver-devel >= 26.6.15
 Requires: smartmet-library-gis-devel >= 26.6.8
 Requires: smartmet-library-newbase-devel >= 26.2.4
 Requires: libconfig17-devel
@@ -168,6 +168,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Jun 15 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.6.15-1.fmi
+- Repackaged to resolve ABI issues
+
 * Tue Jun  9 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.6.9-1.fmi
 - Fixed to use new macgyver API for empty caches
 
