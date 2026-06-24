@@ -170,6 +170,28 @@ make %{_smp_mflags}
 %changelog
 * Mon Jun 15 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.6.15-1.fmi
 - Repackaged to resolve ABI issues
+- Streamed responses now log the correct body size and total
+  execution time. Access logging for a streamed/chunked response is
+  deferred until the server connection layer has sent the final
+  chunk: HandlerView::handle registers a completion handler on the
+  Response (HTTP::Response::setStreamCompletionHandler /
+  runStreamCompletionHandler), which the server invokes with the
+  actual number of body bytes streamed. The logged duration then
+  spans handler start to last-chunk-sent, and the size is the real
+  total instead of 0. Requires the matching smartmet-server change.
+  CPU time is unchanged and unaffected: it is not part of the
+  access-log file (it only feeds the admin servicestats metric), so
+  for streamed responses it keeps measuring the handler thread as
+  before.
+- Response::getContentLength() no longer returns the size_t(-1)
+  "unknown size" sentinel for streamed responses sent with chunked
+  transfer encoding (setContent(streamer) with no declared length).
+  It now reports 0 in that case. Previously the sentinel
+  (18446744073709551615) was written verbatim as the byte count in
+  the access log, corrupting any downstream byte-sum analysis.
+  Chunked responses use Transfer-Encoding rather than Content-Length,
+  so on-the-wire framing is unaffected. This remains the fallback for
+  any streamed response whose completion handler never fires.
 
 * Tue Jun  9 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.6.9-1.fmi
 - Fixed to use new macgyver API for empty caches

@@ -1329,6 +1329,131 @@ void response_parse_full_with_null_bytes()
   }
 }
 
+// Minimal one-shot streamer for the content-length tests below.
+class TestStreamer : public SmartMet::Spine::HTTP::ContentStreamer
+{
+ public:
+  std::string getChunk() override
+  {
+    if (itsDone)
+    {
+      setStatus(StreamerStatus::EXIT_OK);
+      return "";
+    }
+    itsDone = true;
+    return "chunk";
+  }
+
+ private:
+  bool itsDone = false;
+};
+
+void response_content_length_string()
+{
+  // A plain string response reports its real byte count.
+  SmartMet::Spine::HTTP::Response response;
+  response.setContent(std::string("Hello, World!"));
+  response.setStatus(SmartMet::Spine::HTTP::Status::ok);
+
+  if (response.getContentLength() == 13)
+  {
+    TEST_PASSED();
+  }
+  else
+  {
+    TEST_FAILED("Expected content length 13, got " +
+                std::to_string(response.getContentLength()));
+  }
+}
+
+void response_content_length_chunked_stream_is_zero()
+{
+  // A streamed response sent with chunked transfer encoding has no declared
+  // length; getContentLength() must report 0 ("unknown"), NOT the internal
+  // size_t(-1) sentinel that would corrupt access-log byte sums.
+  SmartMet::Spine::HTTP::Response response;
+  response.setContent(std::make_shared<TestStreamer>());
+  response.setStatus(SmartMet::Spine::HTTP::Status::ok);
+
+  if (!response.getChunked())
+  {
+    TEST_FAILED("Unsized streamer response should be marked chunked");
+  }
+
+  if (response.getContentLength() == 0)
+  {
+    TEST_PASSED();
+  }
+  else
+  {
+    TEST_FAILED("Chunked stream content length should be 0, got " +
+                std::to_string(response.getContentLength()));
+  }
+}
+
+void response_content_length_sized_stream()
+{
+  // A streamed response with an explicitly declared size keeps that size.
+  SmartMet::Spine::HTTP::Response response;
+  response.setContent(std::make_shared<TestStreamer>(), 1234);
+  response.setStatus(SmartMet::Spine::HTTP::Status::ok);
+
+  if (response.getContentLength() == 1234)
+  {
+    TEST_PASSED();
+  }
+  else
+  {
+    TEST_FAILED("Sized stream content length should be 1234, got " +
+                std::to_string(response.getContentLength()));
+  }
+}
+
+void response_stream_completion_handler()
+{
+  // The deferred access-log finalizer must: be absent by default, fire once
+  // with the reported byte count and a reference to the response, and become
+  // a no-op after firing (so the connection's success + error paths can both
+  // call it safely).
+  SmartMet::Spine::HTTP::Response response;
+  response.setStatus(SmartMet::Spine::HTTP::Status::ok);
+
+  if (response.hasStreamCompletionHandler())
+    TEST_FAILED("Fresh response should have no stream completion handler");
+
+  // No-op when unset must not throw.
+  response.runStreamCompletionHandler(123);
+
+  int calls = 0;
+  std::size_t seen = 0;
+  const SmartMet::Spine::HTTP::Response* seenResponse = nullptr;
+  response.setStreamCompletionHandler(
+      [&](const SmartMet::Spine::HTTP::Response& r, std::size_t bytesSent)
+      {
+        ++calls;
+        seen = bytesSent;
+        seenResponse = &r;
+      });
+
+  if (!response.hasStreamCompletionHandler())
+    TEST_FAILED("Handler should be set after setStreamCompletionHandler");
+
+  response.runStreamCompletionHandler(4096);
+  response.runStreamCompletionHandler(9999);  // must be a no-op (run once)
+
+  if (calls != 1)
+    TEST_FAILED("Stream completion handler must fire exactly once, fired " +
+                std::to_string(calls) + " times");
+  if (seen != 4096)
+    TEST_FAILED("Handler got wrong byte count: " + std::to_string(seen));
+  if (seenResponse != &response)
+    TEST_FAILED("Handler did not receive the originating response");
+  if (response.hasStreamCompletionHandler())
+    TEST_FAILED("Handler should be cleared after firing");
+
+  TEST_PASSED();
+}
+
 class tests : public tframe::tests
 {
   virtual const char* error_message_prefix() const { return "\n\t"; }
@@ -1373,6 +1498,10 @@ class tests : public tframe::tests
     TEST(response_decoded_content_gzip);
     TEST(response_parse_full);
     TEST(response_parse_full_with_null_bytes);
+    TEST(response_content_length_string);
+    TEST(response_content_length_chunked_stream_is_zero);
+    TEST(response_content_length_sized_stream);
+    TEST(response_stream_completion_handler);
   }
 };
 }  // namespace HTTPTest

@@ -259,34 +259,55 @@ bool HandlerView::handle(Reactor& theReactor,
           Fmi::Seconds(static_cast<int>(cpu_secs)) +
           Fmi::Microseconds(static_cast<int>(cpu_nsec / 1000));
 
-      WriteLock lock(itsLoggingMutex);
-
-      auto etag   = theResponse.getHeader("ETag");
       auto apikey = FmiApiKey::getFmiApiKey(theRequest);
+      const std::string apikeyStr = (apikey ? *apikey : "-");
 
-      // Build the LoggedRequest used by both file access log and OTel
-      const LoggedRequest logged(theRequest.getURI(),
-                                 Fmi::MicrosecClock::local_time(),
-                                 accessDuration,
-                                 cpuDuration,
-                                 theResponse.getStatusString(),
-                                 theRequest.getClientIP(),
-                                 theRequest.getMethodString(),
-                                 theResponse.getVersion(),
-                                 theResponse.getContentLength(),
-                                 (etag ? *etag : "-"),
-                                 (apikey ? *apikey : "-"));
-
-      if (isLogging)  // Need to check this again because it may have changed in previous request
+      if (theResponse.hasStreamContent())
       {
-        // Insert new request to the logging list
-        itsRequestLog.push_back(logged);
+        // Streamed response: the body size and the true wall-clock duration
+        // are not known yet — the data is produced and sent chunk by chunk by
+        // the connection layer after this returns. Defer the access-log write
+        // to stream completion. Capture the request-derived fields and the
+        // handler-start instant (before) by value; the connection invokes the
+        // handler with the actual bytes streamed, and the total duration is
+        // measured to that moment. cpuDuration is the handler-thread CPU time
+        // as measured before — unchanged here, and not part of the file access
+        // log in any case (it only feeds the admin servicestats metric).
+        const std::string uri    = theRequest.getURI();
+        const std::string ip     = theRequest.getClientIP();
+        const std::string method = theRequest.getMethodString();
+        theResponse.setStreamCompletionHandler(
+            [this, uri, ip, method, apikeyStr, before, cpuDuration](const HTTP::Response& response,
+                                                                    std::size_t bytesSent)
+            {
+              const auto totalDuration = Fmi::MicrosecClock::universal_time() - before;
+              auto etag = response.getHeader("ETag");
+              appendLoggedRequest(uri,
+                                  totalDuration,
+                                  cpuDuration,
+                                  response.getStatusString(),
+                                  ip,
+                                  method,
+                                  response.getVersion(),
+                                  bytesSent,
+                                  (etag ? *etag : "-"),
+                                  apikeyStr);
+            });
       }
-
-      // OTel export is independent of file logging toggle.
-      // BatchSpanProcessor queues the span internally and returns immediately.
-      if (itsOTelLog)
-        itsOTelLog->log(logged);
+      else
+      {
+        auto etag = theResponse.getHeader("ETag");
+        appendLoggedRequest(theRequest.getURI(),
+                            accessDuration,
+                            cpuDuration,
+                            theResponse.getStatusString(),
+                            theRequest.getClientIP(),
+                            theRequest.getMethodString(),
+                            theResponse.getVersion(),
+                            theResponse.getContentLength(),
+                            (etag ? *etag : "-"),
+                            apikeyStr);
+      }
 
       if (error)
         std::rethrow_exception(error);
@@ -437,6 +458,51 @@ void HandlerView::cleanLog(const Fmi::DateTime& minTime, bool flush)
     {
       flushLogNolock();
     }
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+void HandlerView::appendLoggedRequest(const std::string& uri,
+                                      Fmi::TimeDuration accessDuration,
+                                      Fmi::TimeDuration cpuDuration,
+                                      const std::string& status,
+                                      const std::string& ip,
+                                      const std::string& method,
+                                      const std::string& version,
+                                      std::size_t contentLength,
+                                      const std::string& etag,
+                                      const std::string& apikey)
+{
+  try
+  {
+    WriteLock lock(itsLoggingMutex);
+
+    // Build the LoggedRequest used by both file access log and OTel.
+    // requestEndTime is taken now, i.e. at handler return for normal
+    // responses and at stream completion for deferred streamed ones.
+    const LoggedRequest logged(uri,
+                               Fmi::MicrosecClock::local_time(),
+                               accessDuration,
+                               cpuDuration,
+                               status,
+                               ip,
+                               method,
+                               version,
+                               contentLength,
+                               etag,
+                               apikey);
+
+    // isLogging may have changed since the request started.
+    if (isLogging)
+      itsRequestLog.push_back(logged);
+
+    // OTel export is independent of file logging toggle.
+    // BatchSpanProcessor queues the span internally and returns immediately.
+    if (itsOTelLog)
+      itsOTelLog->log(logged);
   }
   catch (...)
   {
