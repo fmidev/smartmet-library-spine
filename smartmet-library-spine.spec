@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.6.15
+Version: 26.6.24
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -49,10 +49,10 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 26.6.8
+BuildRequires: smartmet-library-gis-devel >= 26.6.15
 BuildRequires: smartmet-library-macgyver-devel >= 26.6.15
-BuildRequires: smartmet-library-newbase-devel >= 26.2.4
-BuildRequires: smartmet-utils-devel >= 26.5.22
+BuildRequires: smartmet-library-newbase-devel >= 26.6.24
+BuildRequires: smartmet-utils-devel >= 26.6.17
 
 # OpenTelemetry C++ SDK — optional; enables SMARTMET_SPINE_OPENTELEMETRY when present.
 # Not yet packaged for RHEL/Rocky; see docs/build-opentelemetry.md for a local build.
@@ -98,9 +98,9 @@ Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: libbacktrace
 Requires: double-conversion
-Requires: smartmet-library-gis >= 26.6.8
+Requires: smartmet-library-gis >= 26.6.15
 Requires: smartmet-library-macgyver >= 26.6.15
-Requires: smartmet-library-newbase >= 26.2.4
+Requires: smartmet-library-newbase >= 26.6.24
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -123,8 +123,8 @@ Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
 Requires: smartmet-library-macgyver-devel >= 26.6.15
-Requires: smartmet-library-gis-devel >= 26.6.8
-Requires: smartmet-library-newbase-devel >= 26.2.4
+Requires: smartmet-library-gis-devel >= 26.6.15
+Requires: smartmet-library-newbase-devel >= 26.6.24
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
@@ -168,8 +168,7 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
-* Mon Jun 15 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.6.15-1.fmi
-- Repackaged to resolve ABI issues
+* Wed Jun 24 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.6.24-1.fmi
 - Streamed responses now log the correct body size and total
   execution time. Access logging for a streamed/chunked response is
   deferred until the server connection layer has sent the final
@@ -192,6 +191,9 @@ make %{_smp_mflags}
   Chunked responses use Transfer-Encoding rather than Content-Length,
   so on-the-wire framing is unaffected. This remains the fallback for
   any streamed response whose completion handler never fires.
+
+* Mon Jun 15 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.6.15-1.fmi
+- Repackaged to resolve ABI issues
 
 * Tue Jun  9 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.6.9-1.fmi
 - Fixed to use new macgyver API for empty caches
