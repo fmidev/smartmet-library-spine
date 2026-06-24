@@ -77,8 +77,8 @@ class HandlerView
   // Get logging status
   bool getLogging() const;
 
-  // Clean too old entries from the log list and optionally flash the log after cleaning
-  void cleanLog(const Fmi::DateTime& minTime, bool flash);
+  // Clean too old entries from the log list and optionally flush the log after cleaning
+  void cleanLog(const Fmi::DateTime& minTime, bool flush);
 
   // Flush pending requests to disk
   void flushLog();
@@ -101,8 +101,6 @@ class HandlerView
   const std::string& getResource() const;
 
  private:
-  void flushLogNolock();
-
   // Assemble a LoggedRequest from its fields and append it to the in-memory
   // request log (when logging is enabled) and the OTel trace export. Takes
   // itsLoggingMutex internally. Used both for the immediate (non-streamed)
