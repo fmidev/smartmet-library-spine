@@ -996,7 +996,7 @@ bool Reactor::loadEngine(const std::string& sectionName,
 void Reactor::initializeEngine(SmartMetEngine* theEngine, const std::string& theName)
 {
   itsInitTasks->add(
-      "Load engine [" + theName + "]",
+      "ld-e-" + short_tag(theName),
       [this, theEngine, theName]()
       {
         try

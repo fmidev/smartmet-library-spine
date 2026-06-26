@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.6.26
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -168,6 +168,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Jun 26 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> 26.6.26-2.fmi
+- Thread naming: the engine initialization task now uses the ld-e-* name too (was "Load engine [name]")
+
 * Fri Jun 26 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> 26.6.26-1.fmi
 - Thread naming: Renamed plugin/engine load and shutdown tasks (ld-p-*, ld-e-*, sd-p-*, sd-e-*) and named the log-cleaner and shutdown-watch threads
 
