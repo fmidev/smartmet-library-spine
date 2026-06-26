@@ -1,6 +1,7 @@
 #include "ContentHandlerMap.h"
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
+#include <macgyver/ThreadName.h>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/TimeFormatter.h>
 #include <iostream>
@@ -540,7 +541,12 @@ try
     kill_cleaner_thread();
 
     // Launch log cleaner thread
-    itsLogCleanerThread.reset(new boost::thread(std::bind(&ContentHandlerMap::cleanLog, this)));
+    itsLogCleanerThread.reset(new boost::thread(
+        [this]()
+        {
+          Fmi::set_thread_name("upd-logclean");
+          cleanLog();
+        }));
 
     // Set log cleanup time
     itsLogLastCleaned = Fmi::SecondClock::local_time();

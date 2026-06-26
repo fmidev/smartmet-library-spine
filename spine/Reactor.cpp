@@ -39,6 +39,7 @@
 #include <macgyver/Join.h>
 #include <macgyver/PostgreSQLConnection.h>
 #include <macgyver/StringConversion.h>
+#include <macgyver/ThreadName.h>
 #include <macgyver/TimeFormatter.h>
 #include <filesystem>
 
@@ -74,6 +75,21 @@ boost::mutex initDoneMutex;
 boost::condition_variable shutdownRequestedCond;
 boost::condition_variable shutdownFinishedCond;
 boost::condition_variable initDoneCond;
+
+// Map long engine/plugin names to short tags so the lifecycle thread names
+// (ld-p-*, ld-e-*, sd-p-*, sd-e-*) stay within the 15-character thread-name
+// limit. Unknown names are returned lowercased as-is.
+std::string short_tag(const std::string& name)
+{
+  const std::string lower = Fmi::ascii_tolower_copy(name);
+  static const std::map<std::string, std::string> tags = {{"observation", "obs"},
+                                                           {"authentication", "auth"},
+                                                           {"autocomplete", "acomp"},
+                                                           {"cross_section", "xsect"},
+                                                           {"timeseries", "tseries"}};
+  const auto it = tags.find(lower);
+  return it != tags.end() ? it->second : lower;
+}
 
 void absolutize_path(std::string& file_name)
 {
@@ -212,6 +228,7 @@ Reactor::Reactor(Options& options)
     shutdownWatchThread = std::thread(
         [this]() -> void
         {
+          Fmi::set_thread_name("sd-watch");
           try
           {
             waitForShutdownStart();
@@ -728,7 +745,7 @@ bool Reactor::loadPlugin(const std::string& sectionName,
     {
       // Start to initialize the plugin
 
-      itsInitTasks->add("Load plugin[" + theFilename + "]",
+      itsInitTasks->add("ld-p-" + short_tag(pluginname),
                         [this, plugin, pluginname]()
                         { initializePlugin(plugin.get(), pluginname); });
 
@@ -794,7 +811,7 @@ Reactor::newInstance(const std::string& theClassName, void* user_data)
     }
 
     // Fire the initialization thread
-    itsInitTasks->add("New engine instance[" + theClassName + "]",
+    itsInitTasks->add("ld-e-" + short_tag(theClassName),
                       [this, theEngine, theClassName]()
                       { initializeEngine(theEngine.get(), theClassName); });
 
@@ -1282,7 +1299,7 @@ void Reactor::shutdown_plugins()
   {
     std::cout << ANSI_FG_RED << "* Plugin [" << plugin->pluginname() << "] shutting down\n"
               << ANSI_FG_DEFAULT;
-    shutdownTasks.add("Plugin [" + plugin->pluginname() + "] shutdown",
+    shutdownTasks.add("sd-p-" + short_tag(plugin->pluginname()),
                      [this, &plugin]()
                       {
                         // Better be sure that all handlers are removed before plugin is shut down
@@ -1323,7 +1340,7 @@ void Reactor::shutdown_engines()
          << '\n';
     std::cout << tmp1.str() << std::flush;
     std::shared_ptr<SmartMetEngine> engine = singleton.second;
-    shutdownTasks.add("Engine [" + singleton.first + "] shutdown",
+    shutdownTasks.add("sd-e-" + short_tag(singleton.first),
                       [this, engine, singleton]()
                       {
                         // Better be sure that all handlers are removed before engine is shut down
