@@ -114,11 +114,14 @@ All `TableFormatter`-derived; created via `TableFormatterFactory`:
   (for admin views).
 - **`ActiveBackends`** — currently-connected backends.
 - **`MallocStats`** — runtime memory statistics.
-- **`HostInfo`** — client-IP reverse-DNS (PTR) resolution for the
-  `-HostName:` log field. Cached (LRU + positive/negative TTL),
-  time-bounded and resolved on a background thread so a slow or
-  missing PTR record can never stall request handling. Controlled
-  via the `resolveclienthostname` / `clienthostnametimeout` options.
+- **`HostInfo`** — client-IP reverse-DNS (PTR) resolution for
+  diagnostics / the admin active-requests view. Cached (LRU +
+  positive/negative TTL) and resolved entirely on background worker
+  threads: the request thread only `prefetch()`es the IP and output
+  consumers read the cache via `getHostName()`, so a slow or missing
+  PTR record can never stall request handling. Controlled via the
+  `dns` config group (`dns.resolve`, `dns.cachesize`, `dns.positivettl`,
+  `dns.negativettl`, `dns.threads`).
 - **`Backtrace`** — runtime stack-trace capture, used by the
   `Fmi::Exception` family on crashes.
 - **`Exceptions`** — spine-specific exception types over

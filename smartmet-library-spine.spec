@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.6.26
-Release: 2%{?dist}.fmi
+Version: 26.6.29
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -168,6 +168,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Jun 29 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> 26.6.29-1.fmi
+- Client-IP reverse-DNS resolution is now fully non-blocking: the request thread only enqueues the IP, background workers resolve and cache it (positive/negative TTL), and getHostName reads the cache only. Expired entries are served stale while a background refresh runs. IPv6 is now resolved. Configured via the "dns" config group (dns.resolve/cachesize/positivettl/negativettl/threads).
+
 * Fri Jun 26 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> 26.6.26-2.fmi
 - Thread naming: the engine initialization task now uses the ld-e-* name too (was "Load engine [name]")
 

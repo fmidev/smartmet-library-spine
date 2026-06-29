@@ -201,10 +201,10 @@ Reactor::Reactor(Options& options)
     {
       HostInfo::Options hostinfo_options;
       hostinfo_options.enabled = itsOptions.resolveClientHostName;
-      hostinfo_options.timeout_ms = itsOptions.clientHostNameTimeout;
       hostinfo_options.cache_size = itsOptions.clientHostNameCacheSize;
       hostinfo_options.positive_ttl_s = itsOptions.clientHostNamePositiveTtl;
       hostinfo_options.negative_ttl_s = itsOptions.clientHostNameNegativeTtl;
+      hostinfo_options.threads = itsOptions.clientHostNameThreads;
       HostInfo::configure(hostinfo_options);
     }
 
@@ -547,6 +547,17 @@ void print_requests(const Spine::ActiveRequests::Requests& requests)
 std::size_t Reactor::insertActiveRequest(const HTTP::Request& theRequest)
 {
   auto key = itsActiveRequests.insert(theRequest);
+
+  // Forward the client IP (and the X-Forwarded-For origin, if any) to the
+  // background reverse-DNS resolver. This is a non-blocking enqueue: the host
+  // names are resolved off the request thread and read from the cache later by
+  // admin output / diagnostics (see Spine::HostInfo).
+  HostInfo::prefetch(theRequest.getClientIP());
+  if (auto originIP = theRequest.getHeader("X-Forwarded-For"))
+  {
+    const auto loc = originIP->find(',');
+    HostInfo::prefetch(loc == std::string::npos ? *originIP : originIP->substr(0, loc));
+  }
 
   // Check if we should report high load
 
@@ -1256,6 +1267,14 @@ void Reactor::shutdown_impl()
     itsInitTasks->stop();
     // All init task should also be ended before we begin to destroy objects
     itsInitTasks->wait();
+
+    // Stop the background reverse-DNS resolver threads. Done here, after init
+    // tasks have finished but before plugins/engines are torn down: a worker
+    // parked in a non-interruptible getnameinfo() may delay the join by up to a
+    // DNS timeout, and this overlaps with nothing critical. getHostName() and
+    // prefetch() are safe to call after this (they no-op / read the cache),
+    // which matters because plugins may still log during their own shutdown.
+    HostInfo::shutdown();
 
     //---------------------------------------------------------------------------------------------
     // Perform preliminary cleanup of base class ContentHandlerMap to avoid some objects

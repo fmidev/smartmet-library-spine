@@ -13,10 +13,10 @@
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <optional>
-#include <filesystem>
 
 namespace SmartMet
 {
@@ -45,8 +45,7 @@ unsigned int parse_threads(const std::string& str)
 }
 
 // Parse config setting for number of threads
-std::optional<unsigned int> parse_threads(const libconfig::Config& config,
-                                            const std::string& name)
+std::optional<unsigned int> parse_threads(const libconfig::Config& config, const std::string& name)
 {
   try
   {
@@ -317,11 +316,11 @@ void Options::parseConfig()
       lookupHostSetting(itsConfig, defaultlogging, "defaultlogging");
       lookupHostSetting(itsConfig, lazylinking, "lazylinking");
       lookupHostSetting(itsConfig, accesslogdir, "accesslogdir");
-      lookupHostSetting(itsConfig, resolveClientHostName, "resolveclienthostname");
-      lookupHostSetting(itsConfig, clientHostNameTimeout, "clienthostnametimeout");
-      lookupHostSetting(itsConfig, clientHostNameCacheSize, "clienthostnamecachesize");
-      lookupHostSetting(itsConfig, clientHostNamePositiveTtl, "clienthostnamepositivettl");
-      lookupHostSetting(itsConfig, clientHostNameNegativeTtl, "clienthostnamenegativettl");
+      lookupHostSetting(itsConfig, resolveClientHostName, "dns.resolve");
+      lookupHostSetting(itsConfig, clientHostNameCacheSize, "dns.cachesize");
+      lookupHostSetting(itsConfig, clientHostNamePositiveTtl, "dns.positivettl");
+      lookupHostSetting(itsConfig, clientHostNameNegativeTtl, "dns.negativettl");
+      lookupHostSetting(itsConfig, clientHostNameThreads, "dns.threads");
       lookupHostSetting(itsConfig, staleWhileRevalidate, "stalewhilerevalidate");
       lookupHostSetting(itsConfig, staleIfError, "staleiferror");
 
@@ -412,7 +411,7 @@ void Options::report() const
               << "Access log directory\t\t= " << accesslogdir << "\n"
               << "Logs requests by default\t= " << defaultlogging << "\n"
               << "Resolve client host name\t= " << (resolveClientHostName ? "ON" : "OFF") << "\n"
-              << "- resolve timeout\t\t= " << clientHostNameTimeout << "ms\n"
+              << "- resolver threads\t\t= " << clientHostNameThreads << "\n"
               << "Lazy linking\t\t\t= " << (lazylinking ? "ON" : "OFF") << "\n"
               << "Stack trace on crash\t\t= " << (stacktrace ? "ON" : "OFF")
               << "\n"

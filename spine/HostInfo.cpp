@@ -1,6 +1,6 @@
 // ======================================================================
 /*!
- * \brief Bounded, cached, non-blocking reverse-DNS (PTR) resolution.
+ * \brief Background, cache-only reverse-DNS (PTR) resolution.
  *
  * See HostInfo.h for the rationale. The implementation is a small singleton
  * resolver consisting of:
@@ -8,14 +8,14 @@
  *   - an LRU cache (IP -> host name) with separate positive/negative TTLs,
  *   - a bounded, deduplicated work queue,
  *   - one or more background worker threads that perform the actual blocking
- *     getnameinfo() call off the request thread and populate the cache.
+ *     getnameinfo() call off the caller thread and populate the cache.
  *
- * getHostName() consults the cache first (instant), and on a miss enqueues the
- * IP and waits at most Options::timeout_ms for the worker to produce a result.
- * On timeout it returns "" immediately while the worker keeps going and caches
- * the result for the next request from the same IP. A slow or missing PTR can
- * therefore never delay request handling by more than the configured timeout,
- * and repeat / known-bad IPs cost essentially nothing.
+ * The request thread calls prefetch() at request ingress to schedule a lookup;
+ * it never waits. getHostName() is a pure cache read used by diagnostics/admin
+ * output: it returns the cached name (or "" for an unknown / failed / not-yet-
+ * resolved IP) and never resolves anything inline. A slow or missing PTR can
+ * therefore never delay a request thread, and repeat / known-bad IPs cost
+ * essentially nothing.
  */
 // ======================================================================
 
@@ -34,13 +34,12 @@
 #include <condition_variable>
 #include <cstring>
 #include <deque>
-#include <future>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
 #include <thread>
-#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace SmartMet
@@ -55,7 +54,7 @@ using SteadyClock = std::chrono::steady_clock;
 
 // Upper bound on simultaneously pending (queued + in-flight) lookups. Caps memory
 // and prevents unbounded growth when the resolver is stuck during a DNS outage:
-// further cache misses simply log the IP only instead of queuing.
+// further prefetch()es are simply dropped until the backlog drains.
 constexpr std::size_t kMaxInFlight = 1000;
 
 // One cache entry: the resolved name ("" means "no PTR record") plus its expiry.
@@ -65,37 +64,49 @@ struct CachedHost
   SteadyClock::time_point expires;
 };
 
-// Shared state for callers waiting on an in-flight lookup. Several concurrent
-// requests for the same IP share one future.
-struct Pending
+// Normalise an IP string into a stable cache key. Trims surrounding whitespace so
+// that an X-Forwarded-For element such as " 1.2.3.4" produces the same key whether
+// it is fed by prefetch() or looked up by getHostName().
+std::string normalize(const std::string& theIP)
 {
-  std::promise<std::string> promise;
-  std::shared_future<std::string> future{promise.get_future().share()};
-};
+  const auto first = theIP.find_first_not_of(" \t");
+  if (first == std::string::npos)
+    return {};
+  const auto last = theIP.find_last_not_of(" \t");
+  return theIP.substr(first, last - first + 1);
+}
 
 // Perform the actual blocking reverse lookup. Returns "" if the address cannot
 // be parsed or has no PTR record. Runs only on a worker thread, never on the
-// request thread, so the lack of a per-call timeout here is harmless.
+// caller thread, so the lack of a per-call timeout here is harmless.
 std::string blockingLookup(const std::string& theIP)
 {
-  struct sockaddr_in sa;
   char node[NI_MAXHOST];
 
-  memset(&sa, 0, sizeof(sa));
-  sa.sin_family = AF_INET;
+  // Try IPv4 first, then IPv6. An unparseable address degrades to "no host name".
+  struct sockaddr_in sa4;
+  memset(&sa4, 0, sizeof(sa4));
+  sa4.sin_family = AF_INET;
+  if (inet_pton(AF_INET, theIP.c_str(), &sa4.sin_addr) == 1)
+  {
+    if (getnameinfo(
+            (struct sockaddr*)&sa4, sizeof(sa4), node, sizeof(node), nullptr, 0, NI_NAMEREQD) != 0)
+      return {};
+    return node;
+  }
 
-  // Only IPv4 client addresses are resolved, matching the historical behaviour.
-  // An unparseable (e.g. IPv6) address degrades to "no host name".
-  if (inet_pton(AF_INET, theIP.c_str(), &sa.sin_addr) != 1)
-    return {};
+  struct sockaddr_in6 sa6;
+  memset(&sa6, 0, sizeof(sa6));
+  sa6.sin6_family = AF_INET6;
+  if (inet_pton(AF_INET6, theIP.c_str(), &sa6.sin6_addr) == 1)
+  {
+    if (getnameinfo(
+            (struct sockaddr*)&sa6, sizeof(sa6), node, sizeof(node), nullptr, 0, NI_NAMEREQD) != 0)
+      return {};
+    return node;
+  }
 
-  int res =
-      getnameinfo((struct sockaddr*)&sa, sizeof(sa), node, sizeof(node), nullptr, 0, NI_NAMEREQD);
-
-  if (res != 0)
-    return {};
-
-  return node;
+  return {};
 }
 
 class Resolver
@@ -115,16 +126,16 @@ class Resolver
     std::unique_lock<std::mutex> lock(itsMutex);
 
     itsEnabled.store(options.enabled, std::memory_order_relaxed);
-    itsTimeoutMs.store(options.timeout_ms, std::memory_order_relaxed);
     itsPositiveTtl.store(options.positive_ttl_s, std::memory_order_relaxed);
     itsNegativeTtl.store(options.negative_ttl_s, std::memory_order_relaxed);
 
     // The cache size is a startup setting: the cache is created once and then
-    // read lock-free off the request thread, so it is not resized afterwards.
+    // read off the caller thread, so it is not resized afterwards.
     itsCacheSize = std::max<std::size_t>(1, options.cache_size);
     ensureCacheLocked();
 
-    startWorkersLocked(std::max(1U, options.threads));
+    if (options.enabled)
+      startWorkersLocked(std::max(1U, options.threads));
   }
 
   void shutdown()
@@ -146,51 +157,43 @@ class Resolver
     // the workers are (lazily) restarted, keeping all access to it lock-guarded.
   }
 
+  void prefetch(const std::string& theIP)
+  {
+    if (!itsEnabled.load(std::memory_order_relaxed))
+      return;
+
+    const std::string ip = normalize(theIP);
+    if (ip.empty())
+      return;
+
+    // Already cached with a still-valid TTL (positive or negative)? Nothing to do.
+    if (cacheFresh(ip))
+      return;
+
+    scheduleResolve(ip);
+  }
+
   std::string getHostName(const std::string& theIP)
   {
     if (!itsEnabled.load(std::memory_order_relaxed))
       return {};
 
-    if (theIP.empty())
+    const std::string ip = normalize(theIP);
+    if (ip.empty())
       return {};
 
-    // 1. Cache first - the common case for repeat / known-bad clients.
-    if (auto cached = cacheFind(theIP))
-      return *cached;
-
-    // 2. Cache miss: hand the lookup to a worker and (optionally) wait briefly.
-    std::shared_future<std::string> future;
-    {
-      std::unique_lock<std::mutex> lock(itsMutex);
-      startWorkersLocked(1);  // lazily (re)start workers if needed
-
-      auto it = itsInFlight.find(theIP);
-      if (it != itsInFlight.end())
-      {
-        future = it->second->future;
-      }
-      else
-      {
-        if (itsInFlight.size() >= kMaxInFlight)
-          return {};  // overloaded: degrade to IP-only logging
-
-        auto pending = std::make_shared<Pending>();
-        itsInFlight.emplace(theIP, pending);
-        itsQueue.push_back(theIP);
-        future = pending->future;
-        itsCv.notify_one();
-      }
-    }
-
-    // 3. Wait at most timeout_ms for a fresh result; otherwise degrade instantly.
-    const unsigned int timeout_ms = itsTimeoutMs.load(std::memory_order_relaxed);
-    if (timeout_ms == 0)
-      return {};  // fully asynchronous: never wait, the cache fills in the background
-
-    if (future.wait_for(std::chrono::milliseconds(timeout_ms)) == std::future_status::ready)
-      return future.get();
-
-    return {};  // timed out; the worker keeps going and caches the result
+    // Stale-while-revalidate cache read. The TTL never blanks an entry: an IP
+    // that was previously resolved keeps returning its last name even after the
+    // TTL has expired, and the stale read itself schedules a background
+    // re-resolution so the name is refreshed without ever blocking the caller.
+    // A genuine miss (never resolved) returns "" without resolving - new IPs
+    // enter the cache only via prefetch() at request ingress.
+    auto entry = cacheLookup(ip);
+    if (!entry)
+      return {};
+    if (SteadyClock::now() >= entry->expires)
+      scheduleResolve(ip);  // stale: refresh in the background, serve the old name now
+    return entry->name;
   }
 
  private:
@@ -198,19 +201,43 @@ class Resolver
 
   Resolver() = default;
 
-  // Lock-free on the request thread: Fmi::Cache is internally thread-safe and the
-  // cache object is created once and never replaced.
-  std::optional<std::string> cacheFind(const std::string& theIP)
+  // Enqueue a background reverse lookup for theIP unless one is already pending
+  // or the resolver is overloaded. Non-blocking. Caller must NOT hold itsMutex.
+  void scheduleResolve(const std::string& theIP)
+  {
+    std::unique_lock<std::mutex> lock(itsMutex);
+    startWorkersLocked(1);  // lazily (re)start workers if needed
+
+    if (itsInFlight.count(theIP) != 0)
+      return;  // someone is already resolving this IP
+    if (itsInFlight.size() >= kMaxInFlight)
+      return;  // overloaded: drop the request, the caller logs the IP only
+
+    itsInFlight.insert(theIP);
+    itsQueue.push_back(theIP);
+    itsCv.notify_one();
+  }
+
+  // Look up the raw cache entry (name + expiry) regardless of TTL. Fmi::Cache is
+  // internally thread-safe; the cache object is published once via an atomic.
+  std::optional<CachedHost> cacheLookup(const std::string& theIP)
   {
     Cache* cache = itsCache.load(std::memory_order_acquire);
     if (cache == nullptr)
       return std::nullopt;
+    return cache->find(theIP);
+  }
+
+  // True if theIP has a still-valid cache entry (positive or negative).
+  bool cacheFresh(const std::string& theIP)
+  {
+    Cache* cache = itsCache.load(std::memory_order_acquire);
+    if (cache == nullptr)
+      return false;
     auto value = cache->find(theIP);
     if (!value)
-      return std::nullopt;
-    if (SteadyClock::now() >= value->expires)
-      return std::nullopt;  // expired; treat as a miss so it is re-resolved
-    return value->name;
+      return false;
+    return SteadyClock::now() < value->expires;
   }
 
   void cacheStore(const std::string& theIP, const std::string& name)
@@ -251,7 +278,6 @@ class Resolver
     for (;;)
     {
       std::string ip;
-      std::shared_ptr<Pending> pending;
       {
         std::unique_lock<std::mutex> lock(itsMutex);
         itsCv.wait(lock, [this] { return itsStop || !itsQueue.empty(); });
@@ -259,19 +285,12 @@ class Resolver
           return;
         ip = std::move(itsQueue.front());
         itsQueue.pop_front();
-        auto it = itsInFlight.find(ip);
-        if (it == itsInFlight.end())
-          continue;  // defensive: should always be present
-        pending = it->second;
       }
 
       // Resolve without holding the lock - this is the call that may block.
-      std::string name = blockingLookup(ip);
+      const std::string name = blockingLookup(ip);
 
-      // Publish into the cache before satisfying waiters, so that a request that
-      // wakes up immediately sees a consistent cache entry.
       cacheStore(ip, name);
-      pending->promise.set_value(name);
 
       {
         std::unique_lock<std::mutex> lock(itsMutex);
@@ -284,16 +303,15 @@ class Resolver
   std::condition_variable itsCv;
 
   std::atomic<bool> itsEnabled{true};
-  std::atomic<unsigned int> itsTimeoutMs{200};
   std::atomic<unsigned int> itsPositiveTtl{3600};
   std::atomic<unsigned int> itsNegativeTtl{60};
 
   std::unique_ptr<Cache> itsCacheOwner;   // owns lifetime; touched only under itsMutex
-  std::atomic<Cache*> itsCache{nullptr};  // published once, read lock-free on hot path
-  std::size_t itsCacheSize{10000};
+  std::atomic<Cache*> itsCache{nullptr};  // published once for safe lock-guarded reads
+  std::size_t itsCacheSize{200000};
 
   std::deque<std::string> itsQueue;
-  std::unordered_map<std::string, std::shared_ptr<Pending>> itsInFlight;
+  std::unordered_set<std::string> itsInFlight;
 
   std::vector<std::thread> itsWorkers;
   bool itsRunning{false};
@@ -310,6 +328,11 @@ void configure(const Options& options)
 void shutdown()
 {
   Resolver::instance().shutdown();
+}
+
+void prefetch(const std::string& theIP)
+{
+  Resolver::instance().prefetch(theIP);
 }
 
 std::string getHostName(const std::string& theIP)
