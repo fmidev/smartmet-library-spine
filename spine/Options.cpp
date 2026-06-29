@@ -317,6 +317,11 @@ void Options::parseConfig()
       lookupHostSetting(itsConfig, defaultlogging, "defaultlogging");
       lookupHostSetting(itsConfig, lazylinking, "lazylinking");
       lookupHostSetting(itsConfig, accesslogdir, "accesslogdir");
+      lookupHostSetting(itsConfig, resolveClientHostName, "resolveclienthostname");
+      lookupHostSetting(itsConfig, clientHostNameTimeout, "clienthostnametimeout");
+      lookupHostSetting(itsConfig, clientHostNameCacheSize, "clienthostnamecachesize");
+      lookupHostSetting(itsConfig, clientHostNamePositiveTtl, "clienthostnamepositivettl");
+      lookupHostSetting(itsConfig, clientHostNameNegativeTtl, "clienthostnamenegativettl");
       lookupHostSetting(itsConfig, staleWhileRevalidate, "stalewhilerevalidate");
       lookupHostSetting(itsConfig, staleIfError, "staleiferror");
 
@@ -406,6 +411,8 @@ void Options::report() const
               << "Timeout\t\t\t\t= " << timeout << "\n"
               << "Access log directory\t\t= " << accesslogdir << "\n"
               << "Logs requests by default\t= " << defaultlogging << "\n"
+              << "Resolve client host name\t= " << (resolveClientHostName ? "ON" : "OFF") << "\n"
+              << "- resolve timeout\t\t= " << clientHostNameTimeout << "ms\n"
               << "Lazy linking\t\t\t= " << (lazylinking ? "ON" : "OFF") << "\n"
               << "Stack trace on crash\t\t= " << (stacktrace ? "ON" : "OFF")
               << "\n"

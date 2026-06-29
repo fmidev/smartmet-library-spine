@@ -61,6 +61,17 @@ struct Options
   bool lazylinking = true;
   bool stacktrace = false;
 
+  // Reverse-DNS (PTR) resolution of the client IP for the "-HostName:" field of
+  // the request/access log. A slow or missing PTR record must never delay
+  // request handling, so resolution is cached, time-bounded and performed off
+  // the request thread (see Spine::HostInfo). Set resolveclienthostname=false to
+  // log the raw client IP only and skip the lookup entirely.
+  bool resolveClientHostName = true;         // master switch
+  unsigned int clientHostNameTimeout = 200;  // ms a request may wait for a fresh lookup; 0 = async
+  unsigned int clientHostNameCacheSize = 10000;   // max cached IP -> host name entries (LRU)
+  unsigned int clientHostNamePositiveTtl = 3600;  // s a successful lookup stays cached
+  unsigned int clientHostNameNegativeTtl = 60;    // s a failed/timed-out lookup stays cached
+
   ThrottleOptions throttle;
 
   unsigned int maxrequestsize = 131072;  // Limit incoming request sizes, 0 means unlimited

@@ -196,6 +196,18 @@ Reactor::Reactor(Options& options)
     // Initial limit for simultaneous active requests
     itsActiveRequestsLimit = itsOptions.throttle.start_limit;
 
+    // Configure client-IP reverse-DNS resolution before any request handling
+    // starts, so that slow/missing PTR records can never block a request thread.
+    {
+      HostInfo::Options hostinfo_options;
+      hostinfo_options.enabled = itsOptions.resolveClientHostName;
+      hostinfo_options.timeout_ms = itsOptions.clientHostNameTimeout;
+      hostinfo_options.cache_size = itsOptions.clientHostNameCacheSize;
+      hostinfo_options.positive_ttl_s = itsOptions.clientHostNamePositiveTtl;
+      hostinfo_options.negative_ttl_s = itsOptions.clientHostNameNegativeTtl;
+      HostInfo::configure(hostinfo_options);
+    }
+
     // This has to be done before threading starts
     mysql_library_init(0, nullptr, nullptr);
 
