@@ -1491,6 +1491,9 @@ Fmi::Cache::CacheStatistics Reactor::getCacheStats() const
     }
   }
 
+  // Spine-internal caches
+  ret.insert(std::make_pair("Spine::HostInfo::dns_cache", HostInfo::getCacheStats()));
+
   return ret;
 }
 

@@ -121,7 +121,9 @@ All `TableFormatter`-derived; created via `TableFormatterFactory`:
   consumers read the cache via `getHostName()`, so a slow or missing
   PTR record can never stall request handling. Controlled via the
   `dns` config group (`dns.resolve`, `dns.cachesize`, `dns.positivettl`,
-  `dns.negativettl`, `dns.threads`).
+  `dns.negativettl`, `dns.threads`). Its LRU cache is reported in the
+  server's overall cache-statistics output (`getCacheStats()`) as
+  `Spine::HostInfo::dns_cache`.
 - **`Backtrace`** — runtime stack-trace capture, used by the
   `Fmi::Exception` family on crashes.
 - **`Exceptions`** — spine-specific exception types over
@@ -229,4 +231,4 @@ Two helper programs are built alongside the library:
 
 ---
 
-*Last updated: 2026-06-01.*
+*Last updated: 2026-06-30.*

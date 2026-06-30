@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.6.29
+Version: 26.6.30
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -168,6 +168,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Jun 30 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> 26.6.30-1.fmi
+- The client-IP reverse-DNS LRU cache is now included in the server's overall cache-statistics report (getCacheStats / admin cache-statistics) as "Spine::HostInfo::dns_cache".
+
 * Mon Jun 29 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> 26.6.29-1.fmi
 - Client-IP reverse-DNS resolution is now fully non-blocking: the request thread only enqueues the IP, background workers resolve and cache it (positive/negative TTL), and getHostName reads the cache only. Expired entries are served stale while a background refresh runs. IPv6 is now resolved. Configured via the "dns" config group (dns.resolve/cachesize/positivettl/negativettl/threads).
 

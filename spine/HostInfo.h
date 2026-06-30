@@ -24,6 +24,7 @@
 // ======================================================================
 
 #pragma once
+#include <macgyver/CacheStats.h>
 #include <string>
 
 namespace SmartMet
@@ -62,6 +63,11 @@ void prefetch(const std::string& theIP);
 // failure, or "" if theIP has not been resolved yet. Never resolves, never
 // enqueues, never blocks. Feed IPs via prefetch() to populate the cache.
 std::string getHostName(const std::string& theIP);
+
+// Statistics of the reverse-DNS LRU cache, for inclusion in the server's overall
+// cache-statistics report (see Reactor::getCacheStats). Returns zeroed stats if
+// resolution is disabled or the cache has not been created yet.
+Fmi::Cache::CacheStats getCacheStats();
 
 }  // namespace HostInfo
 }  // namespace Spine

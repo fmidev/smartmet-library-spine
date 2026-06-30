@@ -196,6 +196,16 @@ class Resolver
     return entry->name;
   }
 
+  // Cache statistics for the overall cache-statistics report. Returns zeroed
+  // stats when the cache has not been created yet (resolution never enabled).
+  Fmi::Cache::CacheStats statistics() const
+  {
+    Cache* cache = itsCache.load(std::memory_order_acquire);
+    if (cache == nullptr)
+      return {};
+    return cache->statistics();
+  }
+
  private:
   using Cache = Fmi::Cache::Cache<std::string, CachedHost>;
 
@@ -338,6 +348,11 @@ void prefetch(const std::string& theIP)
 std::string getHostName(const std::string& theIP)
 {
   return Resolver::instance().getHostName(theIP);
+}
+
+Fmi::Cache::CacheStats getCacheStats()
+{
+  return Resolver::instance().statistics();
 }
 
 }  // namespace HostInfo

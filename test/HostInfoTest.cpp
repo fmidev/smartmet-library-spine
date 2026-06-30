@@ -188,6 +188,40 @@ void ipv6()
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief getCacheStats() reflects the cache so it can be surfaced in the
+ *        server's overall cache-statistics report. Resolving a fresh IP must
+ *        grow the cache and register at least one insert.
+ */
+// ----------------------------------------------------------------------
+
+void cache_stats()
+{
+  HI::Options options;
+  options.enabled = true;
+  HI::configure(options);
+
+  const auto before = HI::getCacheStats();
+
+  // A fresh TEST-NET-2 address never touched by the other tests. It has no PTR
+  // record, so it resolves to a cached negative - which is still a cache insert.
+  HI::prefetch("198.51.100.42");
+  drain();
+
+  const auto after = HI::getCacheStats();
+
+  if (after.maxsize != options.cache_size)
+    TEST_FAILED("Reported maxsize " + std::to_string(after.maxsize) + " should equal cache_size " +
+                std::to_string(options.cache_size));
+  if (after.size == 0)
+    TEST_FAILED("Cache size should be non-zero after a resolution");
+  if (after.inserts <= before.inserts)
+    TEST_FAILED("Resolving a new IP should register a cache insert");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+/*!
  * The actual test suite
  */
 // ----------------------------------------------------------------------
@@ -203,6 +237,7 @@ class tests : public tframe::tests
     TEST(prefetch_then_cached);
     TEST(negative_cached);
     TEST(ipv6);
+    TEST(cache_stats);
   }
 };
 
