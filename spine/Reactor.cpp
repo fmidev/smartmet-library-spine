@@ -205,6 +205,7 @@ Reactor::Reactor(Options& options)
       hostinfo_options.positive_ttl_s = itsOptions.clientHostNamePositiveTtl;
       hostinfo_options.negative_ttl_s = itsOptions.clientHostNameNegativeTtl;
       hostinfo_options.threads = itsOptions.clientHostNameThreads;
+      hostinfo_options.max_in_flight = itsOptions.clientHostNameMaxInFlight;
       HostInfo::configure(hostinfo_options);
     }
 

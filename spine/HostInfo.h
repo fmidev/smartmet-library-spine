@@ -43,6 +43,8 @@ struct Options
   unsigned int positive_ttl_s = 3600;  // how long a successful lookup stays cached
   unsigned int negative_ttl_s = 60;    // how long a failed lookup stays cached
   unsigned int threads = 1;            // number of background resolver threads
+  unsigned int max_in_flight = 1000;   // max simultaneously pending (queued + in-flight)
+                                       // lookups; further prefetch()es are dropped
 };
 
 // Configure the resolver. Safe to call once at startup before request handling

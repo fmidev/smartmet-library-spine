@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.6.30
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -168,6 +168,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Jun 30 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> 26.6.30-2.fmi
+- The reverse-DNS resolver's max simultaneously-pending (queued + in-flight) lookups is now configurable via dns.maxinflight (default 1000).
+
 * Tue Jun 30 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> 26.6.30-1.fmi
 - The client-IP reverse-DNS LRU cache is now included in the server's overall cache-statistics report (getCacheStats / admin cache-statistics) as "Spine::HostInfo::dns_cache".
 

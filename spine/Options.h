@@ -74,6 +74,7 @@ struct Options
   unsigned int clientHostNamePositiveTtl = 3600;  // s a successful lookup stays cached
   unsigned int clientHostNameNegativeTtl = 60;    // s a failed lookup stays cached
   unsigned int clientHostNameThreads = 1;         // number of background resolver threads
+  unsigned int clientHostNameMaxInFlight = 1000;  // max pending (queued + in-flight) lookups
 
   ThrottleOptions throttle;
 

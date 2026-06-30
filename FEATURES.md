@@ -121,7 +121,7 @@ All `TableFormatter`-derived; created via `TableFormatterFactory`:
   consumers read the cache via `getHostName()`, so a slow or missing
   PTR record can never stall request handling. Controlled via the
   `dns` config group (`dns.resolve`, `dns.cachesize`, `dns.positivettl`,
-  `dns.negativettl`, `dns.threads`). Its LRU cache is reported in the
+  `dns.negativettl`, `dns.threads`, `dns.maxinflight`). Its LRU cache is reported in the
   server's overall cache-statistics output (`getCacheStats()`) as
   `Spine::HostInfo::dns_cache`.
 - **`Backtrace`** — runtime stack-trace capture, used by the

@@ -321,6 +321,7 @@ void Options::parseConfig()
       lookupHostSetting(itsConfig, clientHostNamePositiveTtl, "dns.positivettl");
       lookupHostSetting(itsConfig, clientHostNameNegativeTtl, "dns.negativettl");
       lookupHostSetting(itsConfig, clientHostNameThreads, "dns.threads");
+      lookupHostSetting(itsConfig, clientHostNameMaxInFlight, "dns.maxinflight");
       lookupHostSetting(itsConfig, staleWhileRevalidate, "stalewhilerevalidate");
       lookupHostSetting(itsConfig, staleIfError, "staleiferror");
 
@@ -412,6 +413,7 @@ void Options::report() const
               << "Logs requests by default\t= " << defaultlogging << "\n"
               << "Resolve client host name\t= " << (resolveClientHostName ? "ON" : "OFF") << "\n"
               << "- resolver threads\t\t= " << clientHostNameThreads << "\n"
+              << "- max in-flight lookups\t\t= " << clientHostNameMaxInFlight << "\n"
               << "Lazy linking\t\t\t= " << (lazylinking ? "ON" : "OFF") << "\n"
               << "Stack trace on crash\t\t= " << (stacktrace ? "ON" : "OFF")
               << "\n"
