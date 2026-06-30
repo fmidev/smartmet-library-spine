@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.6.30
-Release: 2%{?dist}.fmi
+Release: 3%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -168,6 +168,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Jun 30 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> 26.6.30-3.fmi
+- Renamed the reverse-DNS pending-lookups limit config key dns.maxinflight to dns.maxqueuesize.
+
 * Tue Jun 30 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> 26.6.30-2.fmi
 - The reverse-DNS resolver's max simultaneously-pending (queued + in-flight) lookups is now configurable via dns.maxinflight (default 1000).
 

@@ -55,8 +55,8 @@ using SteadyClock = std::chrono::steady_clock;
 // Default upper bound on simultaneously pending (queued + in-flight) lookups.
 // Caps memory and prevents unbounded growth when the resolver is stuck during a
 // DNS outage: further prefetch()es are simply dropped until the backlog drains.
-// Configurable via dns.maxinflight (HostInfo::Options::max_in_flight).
-constexpr std::size_t kDefaultMaxInFlight = 1000;
+// Configurable via dns.maxqueuesize (HostInfo::Options::max_queue_size).
+constexpr std::size_t kDefaultMaxQueueSize = 1000;
 
 // One cache entry: the resolved name ("" means "no PTR record") plus its expiry.
 struct CachedHost
@@ -130,7 +130,7 @@ class Resolver
     itsPositiveTtl.store(options.positive_ttl_s, std::memory_order_relaxed);
     itsNegativeTtl.store(options.negative_ttl_s, std::memory_order_relaxed);
 
-    itsMaxInFlight = std::max<std::size_t>(1, options.max_in_flight);
+    itsMaxQueueSize = std::max<std::size_t>(1, options.max_queue_size);
 
     // The cache size is a startup setting: the cache is created once and then
     // read off the caller thread, so it is not resized afterwards.
@@ -223,7 +223,7 @@ class Resolver
 
     if (itsInFlight.count(theIP) != 0)
       return;  // someone is already resolving this IP
-    if (itsInFlight.size() >= itsMaxInFlight)
+    if (itsInFlight.size() >= itsMaxQueueSize)
       return;  // overloaded: drop the request, the caller logs the IP only
 
     itsInFlight.insert(theIP);
@@ -325,7 +325,7 @@ class Resolver
 
   std::deque<std::string> itsQueue;
   std::unordered_set<std::string> itsInFlight;
-  std::size_t itsMaxInFlight{kDefaultMaxInFlight};  // touched only under itsMutex
+  std::size_t itsMaxQueueSize{kDefaultMaxQueueSize};  // touched only under itsMutex
 
   std::vector<std::thread> itsWorkers;
   bool itsRunning{false};
