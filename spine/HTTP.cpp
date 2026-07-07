@@ -151,6 +151,7 @@ const std::string not_implemented = "Not Implemented";
 const std::string bad_gateway = "Bad Gateway";
 const std::string service_unavailable = "Service Unavailable";
 const std::string length_required = "Length Required";
+const std::string precondition_failed = "Precondition Failed";
 const std::string request_entity_too_large = "Request Entity Too Large";
 const std::string request_header_fields_too_large = "Request header fields too large";
 const std::string request_timeout = "Request Timeout";
@@ -197,6 +198,8 @@ std::string statusCodeToString(Status theStatus)
         return service_unavailable;
       case Status::length_required:
         return length_required;
+      case Status::precondition_failed:
+        return precondition_failed;
       case Status::request_entity_too_large:
         return request_entity_too_large;
       case Status::request_header_fields_too_large:
@@ -318,6 +321,12 @@ const std::string length_required =
     "<body><h1>503 Service Unavailable</h1></body>"
     "</html>";
 
+const std::string precondition_failed =
+    "<html>"
+    "<head><title>Precondition Failed</title></head>"
+    "<body><h1>412 Precondition Failed</h1></body>"
+    "</html>";
+
 const std::string request_entity_too_large =
     "<html>"
     "<head><title>Request Entity Too Large</title></head>"
@@ -388,6 +397,8 @@ std::string getStockReply(Status theStatus)
         return service_unavailable;
       case Status::length_required:
         return length_required;
+      case Status::precondition_failed:
+        return precondition_failed;
       case Status::request_entity_too_large:
         return request_entity_too_large;
       case Status::request_timeout:
@@ -441,6 +452,8 @@ Status stringToStatusCode(const std::string& theCode)
     return Status::request_timeout;
   if (theCode == "411")
     return Status::length_required;
+  if (theCode == "412")
+    return Status::precondition_failed;
   if (theCode == "413")
     return Status::request_entity_too_large;
   if (theCode == "431")
@@ -2150,13 +2163,13 @@ ETagFilter::ETagFilter(const Request& request)
   }
 }
 
-bool ETagFilter::full_response_required(const std::string& etag) const
+std::pair<bool, Status> ETagFilter::evaluate(const std::string& etag) const
 {
   try
   {
     // No conditional headers -> the full response is always required
     if (!itsHasIfMatch && !itsHasIfNoneMatch)
-      return true;
+      return {true, Status::ok};
 
     const auto parsed = parse_entity_tag(etag);
     const EntityTag resource{parsed.first, parsed.second};
@@ -2177,9 +2190,9 @@ bool ETagFilter::full_response_required(const std::string& etag) const
           }
         }
       }
-      // Failed If-Match precondition -> not a 304, a full response is required
+      // Failed If-Match precondition -> 412 Precondition Failed, no body needed
       if (!matched)
-        return true;
+        return {false, Status::precondition_failed};
     }
 
     // If-None-Match uses weak comparison: opaque values must be equal,
@@ -2200,10 +2213,22 @@ bool ETagFilter::full_response_required(const std::string& etag) const
       }
       // The client already has this representation -> 304 Not Modified
       if (matched)
-        return false;
+        return {false, Status::not_modified};
     }
 
-    return true;
+    return {true, Status::ok};
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+bool ETagFilter::full_response_required(const std::string& etag) const
+{
+  try
+  {
+    return evaluate(etag).first;
   }
   catch (...)
   {

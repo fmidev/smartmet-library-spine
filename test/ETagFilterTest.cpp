@@ -10,6 +10,7 @@
 using SmartMet::Spine::HTTP::ETagFilter;
 using SmartMet::Spine::HTTP::ParsingStatus;
 using SmartMet::Spine::HTTP::Request;
+using SmartMet::Spine::HTTP::Status;
 
 namespace ETagFilterTest
 {
@@ -153,9 +154,9 @@ void if_match_not_matching()
   auto req = makeRequest({"If-Match: \"abc\""});
   ETagFilter filter(*req);
 
-  // Failed If-Match precondition -> not a 304, a full (error) response is required
-  if (!filter.full_response_required("\"xyz\""))
-    TEST_FAILED("Failed If-Match precondition should require a full response (not 304)");
+  // Failed If-Match precondition -> 412 Precondition Failed, no body required
+  if (filter.full_response_required("\"xyz\""))
+    TEST_FAILED("Failed If-Match precondition should not require a full response (412, no body)");
 
   TEST_PASSED();
 }
@@ -181,9 +182,9 @@ void if_match_uses_strong_comparison()
   auto req = makeRequest({"If-Match: W/\"abc\""});
   ETagFilter filter(*req);
 
-  // Weak vs strong -> precondition fails -> full response required
-  if (!filter.full_response_required("\"abc\""))
-    TEST_FAILED("Weak If-Match must not match under strong comparison (full response required)");
+  // Weak vs strong -> precondition fails -> 412, no full response required
+  if (filter.full_response_required("\"abc\""))
+    TEST_FAILED("Weak If-Match must not match under strong comparison (412, no body)");
 
   TEST_PASSED();
 }
@@ -192,12 +193,12 @@ void if_match_uses_strong_comparison()
 
 void both_headers_if_match_fails()
 {
-  // If-Match is evaluated first; a failed precondition wins -> full response
+  // If-Match is evaluated first; a failed precondition wins -> 412, no body
   auto req = makeRequest({"If-Match: \"abc\"", "If-None-Match: \"xyz\""});
   ETagFilter filter(*req);
 
-  if (!filter.full_response_required("\"xyz\""))
-    TEST_FAILED("If-Match failure should require full response even if If-None-Match matches");
+  if (filter.full_response_required("\"xyz\""))
+    TEST_FAILED("If-Match failure should yield 412 (no body) even if If-None-Match matches");
 
   TEST_PASSED();
 }
@@ -236,6 +237,103 @@ void opaque_tag_with_comma()
 
 // ----------------------------------------------------------------------
 
+void evaluate_no_headers()
+{
+  auto req = makeRequest({});
+  ETagFilter filter(*req);
+
+  auto result = filter.evaluate("\"abc\"");
+  if (!result.first)
+    TEST_FAILED("Full response must be required when no conditional headers present");
+  if (result.second != Status::ok)
+    TEST_FAILED("Suggested status must be 200 OK when no conditional headers present");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
+void evaluate_if_none_match_match_yields_304()
+{
+  auto req = makeRequest({"If-None-Match: \"abc\""});
+  ETagFilter filter(*req);
+
+  auto result = filter.evaluate("\"abc\"");
+  if (result.first)
+    TEST_FAILED("Matching If-None-Match should not require a full response");
+  if (result.second != Status::not_modified)
+    TEST_FAILED("Matching If-None-Match should suggest 304 Not Modified");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
+void evaluate_if_none_match_no_match_yields_200()
+{
+  auto req = makeRequest({"If-None-Match: \"abc\""});
+  ETagFilter filter(*req);
+
+  auto result = filter.evaluate("\"xyz\"");
+  if (!result.first)
+    TEST_FAILED("Non-matching If-None-Match should require a full response");
+  if (result.second != Status::ok)
+    TEST_FAILED("Non-matching If-None-Match should suggest 200 OK");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
+void evaluate_if_match_pass_yields_200()
+{
+  auto req = makeRequest({"If-Match: \"abc\""});
+  ETagFilter filter(*req);
+
+  auto result = filter.evaluate("\"abc\"");
+  if (!result.first)
+    TEST_FAILED("Matching If-Match should require a full response");
+  if (result.second != Status::ok)
+    TEST_FAILED("Matching If-Match should suggest 200 OK");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
+void evaluate_if_match_fail_yields_412()
+{
+  auto req = makeRequest({"If-Match: \"abc\""});
+  ETagFilter filter(*req);
+
+  auto result = filter.evaluate("\"xyz\"");
+  if (result.first)
+    TEST_FAILED("Failed If-Match should not require a full response (412, no body)");
+  if (result.second != Status::precondition_failed)
+    TEST_FAILED("Failed If-Match should suggest 412 Precondition Failed");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
+void evaluate_if_match_fail_wins_over_if_none_match()
+{
+  // If-Match is evaluated first; a failed precondition wins -> 412, not 304
+  auto req = makeRequest({"If-Match: \"abc\"", "If-None-Match: \"xyz\""});
+  ETagFilter filter(*req);
+
+  auto result = filter.evaluate("\"xyz\"");
+  if (result.first)
+    TEST_FAILED("Failed If-Match should not require a full response");
+  if (result.second != Status::precondition_failed)
+    TEST_FAILED("Failed If-Match should suggest 412 even if If-None-Match matches");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
 class tests : public tframe::tests
 {
   virtual const char* error_message_prefix() const { return "\n\t"; }
@@ -255,6 +353,12 @@ class tests : public tframe::tests
     TEST(both_headers_if_match_fails);
     TEST(both_headers_if_match_ok_if_none_match_matches);
     TEST(opaque_tag_with_comma);
+    TEST(evaluate_no_headers);
+    TEST(evaluate_if_none_match_match_yields_304);
+    TEST(evaluate_if_none_match_no_match_yields_200);
+    TEST(evaluate_if_match_pass_yields_200);
+    TEST(evaluate_if_match_fail_yields_412);
+    TEST(evaluate_if_match_fail_wins_over_if_none_match);
   }
 };
 

@@ -96,6 +96,7 @@ enum Status
   not_found = 404,
   request_timeout = 408,
   length_required = 411,
+  precondition_failed = 412,
   request_entity_too_large = 413,
   request_header_fields_too_large = 431,
   internal_server_error = 500,
@@ -821,10 +822,38 @@ class ETagFilter
 
   // --------------------------------------------------------------------
   /*!
+   * \brief Evaluate the conditional preconditions for the given ETag
+   *
+   * Returns a pair {full_response_required, suggested_status} describing how
+   * the caller should respond to a GET/HEAD request for a resource with the
+   * given ETag (RFC 7232):
+   *
+   *  - {true,  Status::ok}                  Preconditions pass (or none were
+   *                                         present). The caller must build
+   *                                         its normal full response; the
+   *                                         suggested status is only a hint
+   *                                         and the caller keeps its own
+   *                                         status code.
+   *  - {false, Status::not_modified}        If-None-Match matched. The caller
+   *                                         should send a bodyless "304 Not
+   *                                         Modified".
+   *  - {false, Status::precondition_failed} If-Match failed. The caller should
+   *                                         send a bodyless "412 Precondition
+   *                                         Failed".
+   *
+   * If-Match is evaluated before If-None-Match, so a failed If-Match wins
+   * over a matching If-None-Match.
+   */
+  // --------------------------------------------------------------------
+  std::pair<bool, Status> evaluate(const std::string& etag) const;
+
+  // --------------------------------------------------------------------
+  /*!
    * \brief Check whether a full response is required for the given ETag
    *
-   * Returns true if the full response (body) must be returned for the
-   * given ETag, and false if a "304 Not Modified" response is sufficient.
+   * Convenience wrapper around evaluate(): returns true if the full response
+   * (body) must be returned for the given ETag, and false if a bodyless
+   * "304 Not Modified" or "412 Precondition Failed" response is sufficient.
    *
    * When neither If-Match nor If-None-Match was present in the request,
    * this always returns true for any ETag value.
