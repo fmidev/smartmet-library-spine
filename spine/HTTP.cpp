@@ -151,6 +151,7 @@ const std::string not_implemented = "Not Implemented";
 const std::string bad_gateway = "Bad Gateway";
 const std::string service_unavailable = "Service Unavailable";
 const std::string length_required = "Length Required";
+const std::string precondition_failed = "Precondition Failed";
 const std::string request_entity_too_large = "Request Entity Too Large";
 const std::string request_header_fields_too_large = "Request header fields too large";
 const std::string request_timeout = "Request Timeout";
@@ -197,6 +198,8 @@ std::string statusCodeToString(Status theStatus)
         return service_unavailable;
       case Status::length_required:
         return length_required;
+      case Status::precondition_failed:
+        return precondition_failed;
       case Status::request_entity_too_large:
         return request_entity_too_large;
       case Status::request_header_fields_too_large:
@@ -318,6 +321,12 @@ const std::string length_required =
     "<body><h1>503 Service Unavailable</h1></body>"
     "</html>";
 
+const std::string precondition_failed =
+    "<html>"
+    "<head><title>Precondition Failed</title></head>"
+    "<body><h1>412 Precondition Failed</h1></body>"
+    "</html>";
+
 const std::string request_entity_too_large =
     "<html>"
     "<head><title>Request Entity Too Large</title></head>"
@@ -388,6 +397,8 @@ std::string getStockReply(Status theStatus)
         return service_unavailable;
       case Status::length_required:
         return length_required;
+      case Status::precondition_failed:
+        return precondition_failed;
       case Status::request_entity_too_large:
         return request_entity_too_large;
       case Status::request_timeout:
@@ -441,6 +452,8 @@ Status stringToStatusCode(const std::string& theCode)
     return Status::request_timeout;
   if (theCode == "411")
     return Status::length_required;
+  if (theCode == "412")
+    return Status::precondition_failed;
   if (theCode == "413")
     return Status::request_entity_too_large;
   if (theCode == "431")
@@ -2040,6 +2053,203 @@ std::string urlencode(const std::string& url)
       }
     }
     return escaped;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief ETagFilter implementation
+ */
+// ----------------------------------------------------------------------
+
+namespace
+{
+// Split a comma separated list of entity-tags, honouring quoted strings so
+// that a comma inside an opaque-tag does not split the list (RFC 7232 allows
+// commas inside the quoted opaque-tag).
+std::vector<std::string> split_tag_list(const std::string& value)
+{
+  std::vector<std::string> result;
+  std::string current;
+  bool in_quotes = false;
+  for (char c : value)
+  {
+    if (c == '"')
+    {
+      in_quotes = !in_quotes;
+      current += c;
+    }
+    else if (c == ',' && !in_quotes)
+    {
+      result.push_back(current);
+      current.clear();
+    }
+    else
+    {
+      current += c;
+    }
+  }
+  result.push_back(current);
+  return result;
+}
+
+// Parse a single entity-tag such as "abc" or W/"abc" into its weak flag and
+// opaque value (with the surrounding quotes removed if present). Returns
+// {weak, opaque}.
+std::pair<bool, std::string> parse_entity_tag(const std::string& theTag)
+{
+  std::string tag = theTag;
+  boost::algorithm::trim(tag);
+
+  bool weak = false;
+  if (tag.size() >= 2 && (tag[0] == 'W' || tag[0] == 'w') && tag[1] == '/')
+  {
+    weak = true;
+    tag.erase(0, 2);
+    boost::algorithm::trim(tag);
+  }
+
+  if (tag.size() >= 2 && tag.front() == '"' && tag.back() == '"')
+    tag = tag.substr(1, tag.size() - 2);
+
+  return {weak, tag};
+}
+}  // namespace
+
+ETagFilter::ETagFilter(const Request& request)
+{
+  const auto ifMatch = request.getHeader("If-Match");
+  if (ifMatch)
+  {
+    itsHasIfMatch = true;
+    for (const auto& token : split_tag_list(*ifMatch))
+    {
+      std::string trimmed = token;
+      boost::algorithm::trim(trimmed);
+      if (trimmed.empty())
+        continue;
+      if (trimmed == "*")
+      {
+        itsIfMatchAny = true;
+        continue;
+      }
+      auto parsed = parse_entity_tag(trimmed);
+      itsIfMatch.push_back(EntityTag{parsed.first, parsed.second});
+    }
+  }
+
+  const auto ifNoneMatch = request.getHeader("If-None-Match");
+  if (ifNoneMatch)
+  {
+    itsHasIfNoneMatch = true;
+    for (const auto& token : split_tag_list(*ifNoneMatch))
+    {
+      std::string trimmed = token;
+      boost::algorithm::trim(trimmed);
+      if (trimmed.empty())
+        continue;
+      if (trimmed == "*")
+      {
+        itsIfNoneMatchAny = true;
+        continue;
+      }
+      auto parsed = parse_entity_tag(trimmed);
+      itsIfNoneMatch.push_back(EntityTag{parsed.first, parsed.second});
+    }
+  }
+}
+
+std::pair<bool, Status> ETagFilter::evaluate(const std::string& etag) const
+{
+  try
+  {
+    // No conditional headers -> the full response is always required
+    if (!itsHasIfMatch && !itsHasIfNoneMatch)
+      return {true, Status::ok};
+
+    const auto parsed = parse_entity_tag(etag);
+    const EntityTag resource{parsed.first, parsed.second};
+
+    // If-Match is evaluated first (RFC 7232). It uses strong comparison:
+    // both tags must be strong and their opaque values must be equal.
+    if (itsHasIfMatch)
+    {
+      bool matched = itsIfMatchAny;
+      if (!matched)
+      {
+        for (const auto& tag : itsIfMatch)
+        {
+          if (!tag.weak && !resource.weak && tag.opaque == resource.opaque)
+          {
+            matched = true;
+            break;
+          }
+        }
+      }
+      // Failed If-Match precondition -> 412 Precondition Failed, no body needed
+      if (!matched)
+        return {false, Status::precondition_failed};
+    }
+
+    // If-None-Match uses weak comparison: opaque values must be equal,
+    // regardless of the weakness of either tag.
+    if (itsHasIfNoneMatch)
+    {
+      bool matched = itsIfNoneMatchAny;
+      if (!matched)
+      {
+        for (const auto& tag : itsIfNoneMatch)
+        {
+          if (tag.opaque == resource.opaque)
+          {
+            matched = true;
+            break;
+          }
+        }
+      }
+      // The client already has this representation -> 304 Not Modified
+      if (matched)
+        return {false, Status::not_modified};
+    }
+
+    return {true, Status::ok};
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+bool ETagFilter::full_response_required(const std::string& etag) const
+{
+  try
+  {
+    return evaluate(etag).first;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+std::optional<Status> conditionalResponseStatus(const Request& request, const std::string& etag)
+{
+  try
+  {
+    // While the frontend is probing for the ETag it performs the conditional
+    // evaluation itself, so the backend must not short-circuit to 304/412.
+    if (request.getHeader(std::string{request_etag_header}))
+      return std::nullopt;
+
+    const auto result = ETagFilter(request).evaluate(etag);
+    if (result.first)
+      return std::nullopt;  // full response required
+
+    return result.second;  // not_modified or precondition_failed
   }
   catch (...)
   {

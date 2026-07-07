@@ -96,6 +96,7 @@ enum Status
   not_found = 404,
   request_timeout = 408,
   length_required = 411,
+  precondition_failed = 412,
   request_entity_too_large = 413,
   request_header_fields_too_large = 431,
   internal_server_error = 500,
@@ -786,6 +787,143 @@ class Response : public Message
 
   StreamCompletionHandler itsStreamCompletionHandler;
 };
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Evaluate the conditional request headers If-Match and If-None-Match
+ *
+ * Given the ETag of the resource that is about to be served, this class
+ * decides whether the full response body has to be returned or whether a
+ * "304 Not Modified" response is sufficient.
+ *
+ * The required information is extracted from the HTTP::Request object at
+ * construction time.
+ *
+ * See RFC 7232 for the exact semantics:
+ *  - If-Match uses strong comparison and, when it fails, the precondition
+ *    has failed (a full response is required, not a 304).
+ *  - If-None-Match uses weak comparison and, when it matches, the client's
+ *    cached representation is still current, so "304 Not Modified" applies.
+ *  - A value of "*" matches any current representation.
+ *
+ * When neither header is present, a full response is always required.
+ */
+// ----------------------------------------------------------------------
+
+class ETagFilter
+{
+ public:
+  // --------------------------------------------------------------------
+  /*!
+   * \brief Extract If-Match and If-None-Match information from the request
+   */
+  // --------------------------------------------------------------------
+  explicit ETagFilter(const Request& request);
+
+  // --------------------------------------------------------------------
+  /*!
+   * \brief Evaluate the conditional preconditions for the given ETag
+   *
+   * Returns a pair {full_response_required, suggested_status} describing how
+   * the caller should respond to a GET/HEAD request for a resource with the
+   * given ETag (RFC 7232):
+   *
+   *  - {true,  Status::ok}                  Preconditions pass (or none were
+   *                                         present). The caller must build
+   *                                         its normal full response; the
+   *                                         suggested status is only a hint
+   *                                         and the caller keeps its own
+   *                                         status code.
+   *  - {false, Status::not_modified}        If-None-Match matched. The caller
+   *                                         should send a bodyless "304 Not
+   *                                         Modified".
+   *  - {false, Status::precondition_failed} If-Match failed. The caller should
+   *                                         send a bodyless "412 Precondition
+   *                                         Failed".
+   *
+   * If-Match is evaluated before If-None-Match, so a failed If-Match wins
+   * over a matching If-None-Match.
+   */
+  // --------------------------------------------------------------------
+  std::pair<bool, Status> evaluate(const std::string& etag) const;
+
+  // --------------------------------------------------------------------
+  /*!
+   * \brief Check whether a full response is required for the given ETag
+   *
+   * Convenience wrapper around evaluate(): returns true if the full response
+   * (body) must be returned for the given ETag, and false if a bodyless
+   * "304 Not Modified" or "412 Precondition Failed" response is sufficient.
+   *
+   * When neither If-Match nor If-None-Match was present in the request,
+   * this always returns true for any ETag value.
+   */
+  // --------------------------------------------------------------------
+  bool full_response_required(const std::string& etag) const;
+
+  // --------------------------------------------------------------------
+  /*!
+   * \brief True if the request contained an If-Match header
+   */
+  // --------------------------------------------------------------------
+  bool has_if_match() const { return itsHasIfMatch; }
+
+  // --------------------------------------------------------------------
+  /*!
+   * \brief True if the request contained an If-None-Match header
+   */
+  // --------------------------------------------------------------------
+  bool has_if_none_match() const { return itsHasIfNoneMatch; }
+
+ private:
+  struct EntityTag
+  {
+    bool weak = false;
+    std::string opaque;
+  };
+
+  bool itsHasIfMatch = false;
+  bool itsHasIfNoneMatch = false;
+  bool itsIfMatchAny = false;      // If-Match: *
+  bool itsIfNoneMatchAny = false;  // If-None-Match: *
+  std::vector<EntityTag> itsIfMatch;
+  std::vector<EntityTag> itsIfNoneMatch;
+};
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Header the SmartMet frontend sets when probing a backend for just a
+ *        resource's ETag (no body).
+ *
+ * While this header is present a backend must not short-circuit to 304/412:
+ * the frontend performs the conditional (If-Match / If-None-Match) evaluation
+ * itself once it has the ETag.
+ */
+// ----------------------------------------------------------------------
+
+constexpr std::string_view request_etag_header = "X-Request-ETag";
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Backend-side conditional-request handling (RFC 7232)
+ *
+ * Returns the bodyless status to send for a resource whose current entity-tag
+ * is \a etag:
+ *   - Status::not_modified        when If-None-Match matches
+ *   - Status::precondition_failed when If-Match fails
+ * or std::nullopt when the full response body must be produced (no matching
+ * precondition, or no conditional headers).
+ *
+ * Returns std::nullopt while the frontend is probing (request_etag_header
+ * present), leaving the conditional decision to the frontend.
+ *
+ * This is the backend convenience layer over ETagFilter::evaluate(); callers
+ * that need finer control (e.g. the frontend's own If-Modified-Since handling)
+ * use ETagFilter directly.
+ */
+// ----------------------------------------------------------------------
+
+std::optional<Status> conditionalResponseStatus(const Request& request, const std::string& etag);
 
 // ----------------------------------------------------------------------
 /*!
