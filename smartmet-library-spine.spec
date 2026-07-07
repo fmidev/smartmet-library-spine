@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.6.30
-Release: 3%{?dist}.fmi
+Version: 26.7.7
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -168,6 +168,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Jul  7 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.7.7-1.fmi
+- SmartMet::Spine::HTTP::ETagFilter: new class fir If-None-Match and If-Match support
+
 * Tue Jun 30 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> 26.6.30-3.fmi
 - Renamed the reverse-DNS pending-lookups limit config key dns.maxinflight to dns.maxqueuesize.
 
