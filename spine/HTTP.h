@@ -789,6 +789,80 @@ class Response : public Message
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Evaluate the conditional request headers If-Match and If-None-Match
+ *
+ * Given the ETag of the resource that is about to be served, this class
+ * decides whether the full response body has to be returned or whether a
+ * "304 Not Modified" response is sufficient.
+ *
+ * The required information is extracted from the HTTP::Request object at
+ * construction time.
+ *
+ * See RFC 7232 for the exact semantics:
+ *  - If-Match uses strong comparison and, when it fails, the precondition
+ *    has failed (a full response is required, not a 304).
+ *  - If-None-Match uses weak comparison and, when it matches, the client's
+ *    cached representation is still current, so "304 Not Modified" applies.
+ *  - A value of "*" matches any current representation.
+ *
+ * When neither header is present, a full response is always required.
+ */
+// ----------------------------------------------------------------------
+
+class ETagFilter
+{
+ public:
+  // --------------------------------------------------------------------
+  /*!
+   * \brief Extract If-Match and If-None-Match information from the request
+   */
+  // --------------------------------------------------------------------
+  explicit ETagFilter(const Request& request);
+
+  // --------------------------------------------------------------------
+  /*!
+   * \brief Check whether a full response is required for the given ETag
+   *
+   * Returns true if the full response (body) must be returned for the
+   * given ETag, and false if a "304 Not Modified" response is sufficient.
+   *
+   * When neither If-Match nor If-None-Match was present in the request,
+   * this always returns true for any ETag value.
+   */
+  // --------------------------------------------------------------------
+  bool full_response_required(const std::string& etag) const;
+
+  // --------------------------------------------------------------------
+  /*!
+   * \brief True if the request contained an If-Match header
+   */
+  // --------------------------------------------------------------------
+  bool has_if_match() const { return itsHasIfMatch; }
+
+  // --------------------------------------------------------------------
+  /*!
+   * \brief True if the request contained an If-None-Match header
+   */
+  // --------------------------------------------------------------------
+  bool has_if_none_match() const { return itsHasIfNoneMatch; }
+
+ private:
+  struct EntityTag
+  {
+    bool weak = false;
+    std::string opaque;
+  };
+
+  bool itsHasIfMatch = false;
+  bool itsHasIfNoneMatch = false;
+  bool itsIfMatchAny = false;      // If-Match: *
+  bool itsIfNoneMatchAny = false;  // If-None-Match: *
+  std::vector<EntityTag> itsIfMatch;
+  std::vector<EntityTag> itsIfNoneMatch;
+};
+
+// ----------------------------------------------------------------------
+/*!
  * \brief urlencode a string
  */
 // ----------------------------------------------------------------------

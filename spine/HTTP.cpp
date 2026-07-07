@@ -2047,6 +2047,170 @@ std::string urlencode(const std::string& url)
   }
 }
 
+// ----------------------------------------------------------------------
+/*!
+ * \brief ETagFilter implementation
+ */
+// ----------------------------------------------------------------------
+
+namespace
+{
+// Split a comma separated list of entity-tags, honouring quoted strings so
+// that a comma inside an opaque-tag does not split the list (RFC 7232 allows
+// commas inside the quoted opaque-tag).
+std::vector<std::string> split_tag_list(const std::string& value)
+{
+  std::vector<std::string> result;
+  std::string current;
+  bool in_quotes = false;
+  for (char c : value)
+  {
+    if (c == '"')
+    {
+      in_quotes = !in_quotes;
+      current += c;
+    }
+    else if (c == ',' && !in_quotes)
+    {
+      result.push_back(current);
+      current.clear();
+    }
+    else
+    {
+      current += c;
+    }
+  }
+  result.push_back(current);
+  return result;
+}
+
+// Parse a single entity-tag such as "abc" or W/"abc" into its weak flag and
+// opaque value (with the surrounding quotes removed if present). Returns
+// {weak, opaque}.
+std::pair<bool, std::string> parse_entity_tag(const std::string& theTag)
+{
+  std::string tag = theTag;
+  boost::algorithm::trim(tag);
+
+  bool weak = false;
+  if (tag.size() >= 2 && (tag[0] == 'W' || tag[0] == 'w') && tag[1] == '/')
+  {
+    weak = true;
+    tag.erase(0, 2);
+    boost::algorithm::trim(tag);
+  }
+
+  if (tag.size() >= 2 && tag.front() == '"' && tag.back() == '"')
+    tag = tag.substr(1, tag.size() - 2);
+
+  return {weak, tag};
+}
+}  // namespace
+
+ETagFilter::ETagFilter(const Request& request)
+{
+  const auto ifMatch = request.getHeader("If-Match");
+  if (ifMatch)
+  {
+    itsHasIfMatch = true;
+    for (const auto& token : split_tag_list(*ifMatch))
+    {
+      std::string trimmed = token;
+      boost::algorithm::trim(trimmed);
+      if (trimmed.empty())
+        continue;
+      if (trimmed == "*")
+      {
+        itsIfMatchAny = true;
+        continue;
+      }
+      auto parsed = parse_entity_tag(trimmed);
+      itsIfMatch.push_back(EntityTag{parsed.first, parsed.second});
+    }
+  }
+
+  const auto ifNoneMatch = request.getHeader("If-None-Match");
+  if (ifNoneMatch)
+  {
+    itsHasIfNoneMatch = true;
+    for (const auto& token : split_tag_list(*ifNoneMatch))
+    {
+      std::string trimmed = token;
+      boost::algorithm::trim(trimmed);
+      if (trimmed.empty())
+        continue;
+      if (trimmed == "*")
+      {
+        itsIfNoneMatchAny = true;
+        continue;
+      }
+      auto parsed = parse_entity_tag(trimmed);
+      itsIfNoneMatch.push_back(EntityTag{parsed.first, parsed.second});
+    }
+  }
+}
+
+bool ETagFilter::full_response_required(const std::string& etag) const
+{
+  try
+  {
+    // No conditional headers -> the full response is always required
+    if (!itsHasIfMatch && !itsHasIfNoneMatch)
+      return true;
+
+    const auto parsed = parse_entity_tag(etag);
+    const EntityTag resource{parsed.first, parsed.second};
+
+    // If-Match is evaluated first (RFC 7232). It uses strong comparison:
+    // both tags must be strong and their opaque values must be equal.
+    if (itsHasIfMatch)
+    {
+      bool matched = itsIfMatchAny;
+      if (!matched)
+      {
+        for (const auto& tag : itsIfMatch)
+        {
+          if (!tag.weak && !resource.weak && tag.opaque == resource.opaque)
+          {
+            matched = true;
+            break;
+          }
+        }
+      }
+      // Failed If-Match precondition -> not a 304, a full response is required
+      if (!matched)
+        return true;
+    }
+
+    // If-None-Match uses weak comparison: opaque values must be equal,
+    // regardless of the weakness of either tag.
+    if (itsHasIfNoneMatch)
+    {
+      bool matched = itsIfNoneMatchAny;
+      if (!matched)
+      {
+        for (const auto& tag : itsIfNoneMatch)
+        {
+          if (tag.opaque == resource.opaque)
+          {
+            matched = true;
+            break;
+          }
+        }
+      }
+      // The client already has this representation -> 304 Not Modified
+      if (matched)
+        return false;
+    }
+
+    return true;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
 }  // namespace HTTP
 }  // namespace Spine
 }  // namespace SmartMet
