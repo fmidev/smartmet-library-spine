@@ -892,6 +892,41 @@ class ETagFilter
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Header the SmartMet frontend sets when probing a backend for just a
+ *        resource's ETag (no body).
+ *
+ * While this header is present a backend must not short-circuit to 304/412:
+ * the frontend performs the conditional (If-Match / If-None-Match) evaluation
+ * itself once it has the ETag.
+ */
+// ----------------------------------------------------------------------
+
+constexpr std::string_view request_etag_header = "X-Request-ETag";
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Backend-side conditional-request handling (RFC 7232)
+ *
+ * Returns the bodyless status to send for a resource whose current entity-tag
+ * is \a etag:
+ *   - Status::not_modified        when If-None-Match matches
+ *   - Status::precondition_failed when If-Match fails
+ * or std::nullopt when the full response body must be produced (no matching
+ * precondition, or no conditional headers).
+ *
+ * Returns std::nullopt while the frontend is probing (request_etag_header
+ * present), leaving the conditional decision to the frontend.
+ *
+ * This is the backend convenience layer over ETagFilter::evaluate(); callers
+ * that need finer control (e.g. the frontend's own If-Modified-Since handling)
+ * use ETagFilter directly.
+ */
+// ----------------------------------------------------------------------
+
+std::optional<Status> conditionalResponseStatus(const Request& request, const std::string& etag);
+
+// ----------------------------------------------------------------------
+/*!
  * \brief urlencode a string
  */
 // ----------------------------------------------------------------------

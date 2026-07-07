@@ -7,6 +7,7 @@
 
 #include <regression/tframe.h>
 
+using SmartMet::Spine::HTTP::conditionalResponseStatus;
 using SmartMet::Spine::HTTP::ETagFilter;
 using SmartMet::Spine::HTTP::ParsingStatus;
 using SmartMet::Spine::HTTP::Request;
@@ -334,6 +335,72 @@ void evaluate_if_match_fail_wins_over_if_none_match()
 
 // ----------------------------------------------------------------------
 
+void conditional_status_no_headers()
+{
+  auto req = makeRequest({});
+  auto status = conditionalResponseStatus(*req, "\"abc\"");
+  if (status)
+    TEST_FAILED("No conditional headers should require the full response (nullopt)");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
+void conditional_status_if_none_match_match()
+{
+  auto req = makeRequest({"If-None-Match: \"abc\""});
+  auto status = conditionalResponseStatus(*req, "\"abc\"");
+  if (!status)
+    TEST_FAILED("Matching If-None-Match should yield a status (304)");
+  if (*status != Status::not_modified)
+    TEST_FAILED("Matching If-None-Match should yield 304 Not Modified");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
+void conditional_status_if_none_match_no_match()
+{
+  auto req = makeRequest({"If-None-Match: \"abc\""});
+  auto status = conditionalResponseStatus(*req, "\"xyz\"");
+  if (status)
+    TEST_FAILED("Non-matching If-None-Match should require the full response (nullopt)");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
+void conditional_status_if_match_fail()
+{
+  auto req = makeRequest({"If-Match: \"abc\""});
+  auto status = conditionalResponseStatus(*req, "\"xyz\"");
+  if (!status)
+    TEST_FAILED("Failed If-Match should yield a status (412)");
+  if (*status != Status::precondition_failed)
+    TEST_FAILED("Failed If-Match should yield 412 Precondition Failed");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
+void conditional_status_probe_skips_evaluation()
+{
+  // While the frontend probes (X-Request-ETag), the backend must not
+  // short-circuit even if a precondition matches.
+  auto req = makeRequest({"X-Request-ETag: true", "If-None-Match: \"abc\""});
+  auto status = conditionalResponseStatus(*req, "\"abc\"");
+  if (status)
+    TEST_FAILED("X-Request-ETag probe should suppress conditional shortcuts (nullopt)");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
 class tests : public tframe::tests
 {
   virtual const char* error_message_prefix() const { return "\n\t"; }
@@ -359,6 +426,11 @@ class tests : public tframe::tests
     TEST(evaluate_if_match_pass_yields_200);
     TEST(evaluate_if_match_fail_yields_412);
     TEST(evaluate_if_match_fail_wins_over_if_none_match);
+    TEST(conditional_status_no_headers);
+    TEST(conditional_status_if_none_match_match);
+    TEST(conditional_status_if_none_match_no_match);
+    TEST(conditional_status_if_match_fail);
+    TEST(conditional_status_probe_skips_evaluation);
   }
 };
 

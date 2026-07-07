@@ -2236,6 +2236,27 @@ bool ETagFilter::full_response_required(const std::string& etag) const
   }
 }
 
+std::optional<Status> conditionalResponseStatus(const Request& request, const std::string& etag)
+{
+  try
+  {
+    // While the frontend is probing for the ETag it performs the conditional
+    // evaluation itself, so the backend must not short-circuit to 304/412.
+    if (request.getHeader(std::string{request_etag_header}))
+      return std::nullopt;
+
+    const auto result = ETagFilter(request).evaluate(etag);
+    if (result.first)
+      return std::nullopt;  // full response required
+
+    return result.second;  // not_modified or precondition_failed
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
 }  // namespace HTTP
 }  // namespace Spine
 }  // namespace SmartMet
