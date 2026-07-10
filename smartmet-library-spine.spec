@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.7.7
+Version: 26.7.10
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -49,10 +49,10 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 26.6.15
+BuildRequires: smartmet-library-gis-devel >= 26.6.25
 BuildRequires: smartmet-library-macgyver-devel >= 26.6.26
-BuildRequires: smartmet-library-newbase-devel >= 26.6.24
-BuildRequires: smartmet-utils-devel >= 26.6.17
+BuildRequires: smartmet-library-newbase-devel >= 26.6.26
+BuildRequires: smartmet-utils-devel >= 26.6.24
 
 # OpenTelemetry C++ SDK — optional; enables SMARTMET_SPINE_OPENTELEMETRY when present.
 # Not yet packaged for RHEL/Rocky; see docs/build-opentelemetry.md for a local build.
@@ -98,9 +98,9 @@ Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: libbacktrace
 Requires: double-conversion
-Requires: smartmet-library-gis >= 26.6.15
+Requires: smartmet-library-gis >= 26.6.25
 Requires: smartmet-library-macgyver >= 26.6.26
-Requires: smartmet-library-newbase >= 26.6.24
+Requires: smartmet-library-newbase >= 26.6.26
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -123,8 +123,8 @@ Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
 Requires: smartmet-library-macgyver-devel >= 26.6.26
-Requires: smartmet-library-gis-devel >= 26.6.15
-Requires: smartmet-library-newbase-devel >= 26.6.24
+Requires: smartmet-library-gis-devel >= 26.6.25
+Requires: smartmet-library-newbase-devel >= 26.6.26
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
@@ -168,6 +168,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Jul 10 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.7.10-1.fmi
+- Fix strerror_r calls
+
 * Tue Jul  7 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.7.7-1.fmi
 - SmartMet::Spine::HTTP::ETagFilter: new class fir If-None-Match and If-Match support
 
