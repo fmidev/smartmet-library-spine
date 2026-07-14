@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.7.10
+Version: 26.7.14
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -168,6 +168,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Jul 14 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.7.14-1.fmi
+- FileCache re-checks file modification times at most once per configurable interval (default 10 s) to avoid excessive stat calls
+
 * Fri Jul 10 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.7.10-1.fmi
 - Fix strerror_r calls
 
