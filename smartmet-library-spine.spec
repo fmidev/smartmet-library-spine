@@ -49,10 +49,10 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 26.6.25
-BuildRequires: smartmet-library-macgyver-devel >= 26.6.26
-BuildRequires: smartmet-library-newbase-devel >= 26.6.26
-BuildRequires: smartmet-utils-devel >= 26.6.24
+BuildRequires: smartmet-library-gis-devel >= 26.7.14
+BuildRequires: smartmet-library-macgyver-devel >= 26.7.9
+BuildRequires: smartmet-library-newbase-devel >= 26.7.14
+BuildRequires: smartmet-utils-devel >= 26.7.14
 
 # OpenTelemetry C++ SDK — optional; enables SMARTMET_SPINE_OPENTELEMETRY when present.
 # Not yet packaged for RHEL/Rocky; see docs/build-opentelemetry.md for a local build.
@@ -98,9 +98,9 @@ Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: libbacktrace
 Requires: double-conversion
-Requires: smartmet-library-gis >= 26.6.25
-Requires: smartmet-library-macgyver >= 26.6.26
-Requires: smartmet-library-newbase >= 26.6.26
+Requires: smartmet-library-gis >= 26.7.14
+Requires: smartmet-library-macgyver >= 26.7.9
+Requires: smartmet-library-newbase >= 26.7.14
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -110,7 +110,7 @@ Requires: smartmet-timezones >= 24.5.27
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 26.6.26
+#TestRequires: smartmet-library-macgyver-devel >= 26.7.9
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -122,9 +122,9 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 26.6.26
-Requires: smartmet-library-gis-devel >= 26.6.25
-Requires: smartmet-library-newbase-devel >= 26.6.26
+Requires: smartmet-library-macgyver-devel >= 26.7.9
+Requires: smartmet-library-gis-devel >= 26.7.14
+Requires: smartmet-library-newbase-devel >= 26.7.14
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
