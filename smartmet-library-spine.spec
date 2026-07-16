@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.7.14
+Version: 26.7.16
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -168,6 +168,8 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Thu Jul 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.7.16-1.fmi
+- FileCache: tolerate a missing file in modification-time checks by caching a negative result (modification_time 0) instead of throwing, so throttled ETag/hash lookups for optional or in-document (url(#...)) references no longer fail; get() still throws when the file content is actually required
 * Tue Jul 14 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.7.14-1.fmi
 - FileCache re-checks file modification times at most once per configurable interval (default 10 s) to avoid excessive stat calls
 

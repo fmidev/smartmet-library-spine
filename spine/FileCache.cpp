@@ -43,9 +43,23 @@ void FileCache::setMaxCheckAge(std::chrono::seconds theMaxCheckAge)
 FileCache::FileContents FileCache::refresh(const std::filesystem::path& thePath,
                                            std::chrono::steady_clock::time_point now) const
 {
-  // Throws if the file does not exist. If a symbol has suddenly been
-  // removed from disk, the product is most likely already incorrect.
-  const std::time_t mtime = Fmi::last_write_time(thePath);
+  // Modification time, tolerating a missing file. A missing/unreadable file is
+  // cached as a negative result (modification_time == 0) so that repeated
+  // modification-time checks (ETag/hash calculation) are throttled exactly like
+  // existing files instead of re-stat'ing on every call. get() turns the
+  // negative result into an exception; last_modified() simply returns 0.
+  std::error_code ec;
+  std::time_t mtime = Fmi::last_write_time(thePath, ec);
+  if (ec)
+    mtime = 0;
+
+  if (mtime == 0)
+  {
+    FileContents missing(0, now, std::string());
+    WriteLock lock(itsMutex);
+    itsCache[thePath] = missing;
+    return missing;
+  }
 
   // If the file has not changed, just refresh the check time and reuse the contents
   {
@@ -94,11 +108,18 @@ std::string FileCache::get(const std::filesystem::path& thePath) const
       ReadLock lock(itsMutex);
       auto iter = itsCache.find(thePath);
       if (iter != itsCache.end() && now - iter->second.checked_time < itsMaxCheckAge)
+      {
+        if (iter->second.modification_time == 0)
+          throw Fmi::Exception(BCP, "Failed to open '" + thePath.string() + "' for reading!");
         return iter->second.content;
+      }
     }
 
     // The check has expired (or the file is not cached): validate against the disk
-    return refresh(thePath, now).content;
+    const auto contents = refresh(thePath, now);
+    if (contents.modification_time == 0)
+      throw Fmi::Exception(BCP, "Failed to open '" + thePath.string() + "' for reading!");
+    return contents.content;
   }
   catch (...)
   {
