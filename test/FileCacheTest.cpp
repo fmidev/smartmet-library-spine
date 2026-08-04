@@ -147,6 +147,64 @@ void missing_file_throws()
   TEST_PASSED();
 }
 
+// stamp() returns the same modification time as last_modified(), plus the size
+// of the contents, and is subject to the same check window.
+void stamps()
+{
+  auto path = write_file("stamp.txt", "hello");
+
+  FileCache cache(std::chrono::seconds(3600));
+
+  auto stamp = cache.stamp(path);
+
+  if (stamp.modification_time == 0)
+    TEST_FAILED("Modification time should not be zero for an existing file");
+
+  if (stamp.size != 5)
+    TEST_FAILED("Size should be 5, not " + std::to_string(stamp.size));
+
+  if (stamp.modification_time != cache.last_modified(path))
+    TEST_FAILED("stamp() and last_modified() should report the same modification time");
+
+  // A change of equal length within the check window is not seen
+  write_file("stamp.txt", "world");
+  bump_mtime(path, 100);
+
+  auto cached = cache.stamp(path);
+  if (cached.modification_time != stamp.modification_time || cached.size != stamp.size)
+    TEST_FAILED("The stamp should still be cached within the check window");
+
+  TEST_PASSED();
+}
+
+// A change of the file size is seen even if the modification time is preserved,
+// which is the reason for reporting the size at all.
+void stamp_notices_size_change()
+{
+  auto path = write_file("stampsize.txt", "12345");
+
+  FileCache cache(std::chrono::seconds(1));
+
+  auto stamp = cache.stamp(path);
+  const auto mtime = std::filesystem::last_write_time(path);
+
+  // Rewrite with a different length, restoring the original modification time
+  write_file("stampsize.txt", "1234567890");
+  std::filesystem::last_write_time(path, mtime);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+
+  auto stamp2 = cache.stamp(path);
+
+  if (stamp2.modification_time != stamp.modification_time)
+    TEST_FAILED("The modification time was supposed to stay the same");
+
+  if (stamp2.size == stamp.size)
+    TEST_FAILED("The change of size should have been noticed");
+
+  TEST_PASSED();
+}
+
 // ----------------------------------------------------------------------
 
 class tests : public tframe::tests
@@ -158,6 +216,8 @@ class tests : public tframe::tests
     TEST(caches_within_window);
     TEST(refresh_after_expiry);
     TEST(missing_file_throws);
+    TEST(stamps);
+    TEST(stamp_notices_size_change);
   }
 };
 

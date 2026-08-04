@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.8.19
+Version: 26.8.24
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -168,6 +168,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Aug 24 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.8.24-1.fmi
+- FileCache: added stamp() returning the modification time and the size of a file for ETag/hash purposes, and a cached entry is now considered unchanged only if both still match; both values come from a single stat call, so the number of stat calls is unchanged
+
 * Wed Aug 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.8.19-1.fmi
 - Added ConfigTools parseSize() and lookupSizeSetting() for reading byte size
   settings. The value may be an integer, a libconfig long integer, or a string with
