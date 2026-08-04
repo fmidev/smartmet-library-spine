@@ -1454,6 +1454,322 @@ void response_stream_completion_handler()
   TEST_PASSED();
 }
 
+// ----------------------------------------------------------------------
+// parseOneRequest: reads a single message and reports what it consumed, so a
+// connection can carry more than one request.
+// ----------------------------------------------------------------------
+
+namespace
+{
+std::string describe(SmartMet::Spine::HTTP::ParsingStatus status)
+{
+  switch (status)
+  {
+    case SmartMet::Spine::HTTP::ParsingStatus::COMPLETE:
+      return "COMPLETE";
+    case SmartMet::Spine::HTTP::ParsingStatus::INCOMPLETE:
+      return "INCOMPLETE";
+    case SmartMet::Spine::HTTP::ParsingStatus::FAILED:
+      return "FAILED";
+  }
+  return "?";
+}
+}  // namespace
+
+void parse_one_simple_get()
+{
+  const std::string buffer = "GET /a?x=1 HTTP/1.1\r\nHost: h\r\n\r\n";
+
+  auto res = SmartMet::Spine::HTTP::parseOneRequest(buffer);
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+    TEST_FAILED("Expected COMPLETE, got " + describe(res.status));
+  if (res.consumed != buffer.size())
+    TEST_FAILED("Consumed " + std::to_string(res.consumed) + ", expected " +
+                std::to_string(buffer.size()));
+  if (res.request->getResource() != "/a")
+    TEST_FAILED("Wrong resource: " + res.request->getResource());
+  if (!res.request->getParameter("x") || *res.request->getParameter("x") != "1")
+    TEST_FAILED("Parameter x not parsed");
+
+  TEST_PASSED();
+}
+
+void parse_one_leaves_pipelined_bytes()
+{
+  const std::string first = "GET /a HTTP/1.1\r\nHost: h\r\n\r\n";
+  const std::string second = "GET /b HTTP/1.1\r\nHost: h\r\n\r\n";
+
+  auto res = SmartMet::Spine::HTTP::parseOneRequest(first + second);
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+    TEST_FAILED("Expected COMPLETE, got " + describe(res.status));
+  if (res.consumed != first.size())
+    TEST_FAILED("Consumed " + std::to_string(res.consumed) + ", expected " +
+                std::to_string(first.size()));
+  if (res.request->getResource() != "/a")
+    TEST_FAILED("Wrong resource: " + res.request->getResource());
+  if (res.request->getContentLength() != 0)
+    TEST_FAILED("The second request leaked into the first one's body");
+
+  // What is left must parse as the second request
+  auto rest = SmartMet::Spine::HTTP::parseOneRequest((first + second).substr(res.consumed));
+  if (rest.status != SmartMet::Spine::HTTP::ParsingStatus::COMPLETE ||
+      rest.request->getResource() != "/b")
+    TEST_FAILED("Leftover bytes did not parse as the second request");
+
+  TEST_PASSED();
+}
+
+void parse_one_content_length_body()
+{
+  const std::string buffer =
+      "POST /a HTTP/1.1\r\nHost: h\r\nContent-Length: 5\r\n\r\nhelloGET /next HTTP/1.1\r\n\r\n";
+
+  auto res = SmartMet::Spine::HTTP::parseOneRequest(buffer);
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+    TEST_FAILED("Expected COMPLETE, got " + describe(res.status));
+  if (res.request->getContent() != "hello")
+    TEST_FAILED("Wrong body: '" + res.request->getContent() + "'");
+  if (buffer.substr(res.consumed) != "GET /next HTTP/1.1\r\n\r\n")
+    TEST_FAILED("Wrong leftover: '" + buffer.substr(res.consumed) + "'");
+
+  TEST_PASSED();
+}
+
+void parse_one_incomplete_body()
+{
+  auto res = SmartMet::Spine::HTTP::parseOneRequest(
+      "POST /a HTTP/1.1\r\nHost: h\r\nContent-Length: 10\r\n\r\nshort");
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::INCOMPLETE)
+    TEST_FAILED("Expected INCOMPLETE, got " + describe(res.status));
+
+  TEST_PASSED();
+}
+
+void parse_one_incomplete_head()
+{
+  auto res = SmartMet::Spine::HTTP::parseOneRequest("GET /a HTTP/1.1\r\nHos");
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::INCOMPLETE)
+    TEST_FAILED("Expected INCOMPLETE, got " + describe(res.status));
+
+  TEST_PASSED();
+}
+
+void parse_one_chunked_body()
+{
+  const std::string buffer =
+      "POST /a HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: chunked\r\n\r\n"
+      "5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n"
+      "GET /next HTTP/1.1\r\n\r\n";
+
+  auto res = SmartMet::Spine::HTTP::parseOneRequest(buffer);
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+    TEST_FAILED("Expected COMPLETE, got " + describe(res.status));
+  if (res.request->getContent() != "hello world")
+    TEST_FAILED("Wrong decoded body: '" + res.request->getContent() + "'");
+  if (buffer.substr(res.consumed) != "GET /next HTTP/1.1\r\n\r\n")
+    TEST_FAILED("Wrong leftover: '" + buffer.substr(res.consumed) + "'");
+
+  // The handler must see an ordinary body, not chunk framing
+  if (res.request->getHeader("Transfer-Encoding"))
+    TEST_FAILED("Transfer-Encoding survived decoding");
+  auto len = res.request->getHeader("Content-Length");
+  if (!len || *len != "11")
+    TEST_FAILED("Content-Length not set to the decoded length");
+
+  TEST_PASSED();
+}
+
+void parse_one_chunked_with_extension_and_trailer()
+{
+  const std::string buffer =
+      "POST /a HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: chunked\r\n\r\n"
+      "5;name=value\r\nhello\r\n0\r\nX-Trailer: v\r\n\r\n";
+
+  auto res = SmartMet::Spine::HTTP::parseOneRequest(buffer);
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+    TEST_FAILED("Expected COMPLETE, got " + describe(res.status));
+  if (res.request->getContent() != "hello")
+    TEST_FAILED("Wrong decoded body: '" + res.request->getContent() + "'");
+  if (res.consumed != buffer.size())
+    TEST_FAILED("Trailer section not consumed");
+
+  TEST_PASSED();
+}
+
+void parse_one_chunked_incomplete()
+{
+  auto res = SmartMet::Spine::HTTP::parseOneRequest(
+      "POST /a HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhel");
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::INCOMPLETE)
+    TEST_FAILED("Expected INCOMPLETE, got " + describe(res.status));
+
+  TEST_PASSED();
+}
+
+void parse_one_rejects_both_framings()
+{
+  auto res = SmartMet::Spine::HTTP::parseOneRequest(
+      "POST /a HTTP/1.1\r\nHost: h\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\n"
+      "0\r\n\r\n");
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::FAILED)
+    TEST_FAILED("Content-Length together with Transfer-Encoding must be rejected, got " +
+                describe(res.status));
+
+  TEST_PASSED();
+}
+
+void parse_one_rejects_conflicting_content_lengths()
+{
+  auto res = SmartMet::Spine::HTTP::parseOneRequest(
+      "POST /a HTTP/1.1\r\nHost: h\r\nContent-Length: 5\r\nContent-Length: 6\r\n\r\nhello!");
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::FAILED)
+    TEST_FAILED("Conflicting Content-Length must be rejected, got " + describe(res.status));
+
+  TEST_PASSED();
+}
+
+void parse_one_accepts_identical_content_lengths()
+{
+  auto res = SmartMet::Spine::HTTP::parseOneRequest(
+      "POST /a HTTP/1.1\r\nHost: h\r\nContent-Length: 5\r\nContent-Length: 5\r\n\r\nhello");
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+    TEST_FAILED("Identical repeated Content-Length is allowed, got " + describe(res.status));
+  if (res.request->getContent() != "hello")
+    TEST_FAILED("Wrong body: '" + res.request->getContent() + "'");
+
+  TEST_PASSED();
+}
+
+void parse_one_rejects_bad_content_length()
+{
+  // Note that "5 " is *not* in this list: RFC 9112 5 defines the whitespace
+  // around a field value as framing, not as part of the value, so a trailing
+  // space is legal and is checked separately below.
+  const char* bad[] = {"+5", "0x5", "five", "-1", "", "5 5", "1e3"};
+
+  for (const auto* value : bad)
+  {
+    auto res = SmartMet::Spine::HTTP::parseOneRequest(std::string("POST /a HTTP/1.1\r\nHost: h\r\n"
+                                                                  "Content-Length: ") +
+                                                      value + "\r\n\r\nhello");
+    if (res.status != SmartMet::Spine::HTTP::ParsingStatus::FAILED)
+      TEST_FAILED(std::string("Content-Length '") + value + "' must be rejected, got " +
+                  describe(res.status));
+  }
+
+  // Surrounding whitespace is framing, not value, so this one is well formed
+  auto ok = SmartMet::Spine::HTTP::parseOneRequest(
+      "POST /a HTTP/1.1\r\nHost: h\r\nContent-Length: 5 \r\n\r\nhello");
+  if (ok.status != SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+    TEST_FAILED("Content-Length with trailing whitespace must be accepted, got " +
+                describe(ok.status));
+  if (ok.request->getContent() != "hello")
+    TEST_FAILED("Wrong body: '" + ok.request->getContent() + "'");
+
+  TEST_PASSED();
+}
+
+void parse_one_rejects_unknown_transfer_coding()
+{
+  auto res = SmartMet::Spine::HTTP::parseOneRequest(
+      "POST /a HTTP/1.1\r\nHost: h\r\nTransfer-Encoding: gzip\r\n\r\nxx");
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::FAILED)
+    TEST_FAILED("A transfer coding we cannot decode must be rejected, got " +
+                describe(res.status));
+
+  TEST_PASSED();
+}
+
+void parse_one_rejects_line_folding()
+{
+  auto res = SmartMet::Spine::HTTP::parseOneRequest(
+      "GET /a HTTP/1.1\r\nHost: h\r\nX-Foo: a\r\n  b\r\n\r\n");
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::FAILED)
+    TEST_FAILED("Obsolete line folding must be rejected, got " + describe(res.status));
+
+  TEST_PASSED();
+}
+
+void parse_one_head_method()
+{
+  auto res = SmartMet::Spine::HTTP::parseOneRequest("HEAD /a HTTP/1.1\r\nHost: h\r\n\r\n");
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+    TEST_FAILED("Expected COMPLETE, got " + describe(res.status));
+  if (res.request->getMethod() != SmartMet::Spine::HTTP::RequestMethod::HEAD)
+    TEST_FAILED("Method is not HEAD");
+  if (res.request->getMethodString() != "HEAD")
+    TEST_FAILED("getMethodString() gave '" + res.request->getMethodString() + "'");
+
+  TEST_PASSED();
+}
+
+void parse_one_optional_whitespace()
+{
+  // RFC 9112 5 allows any amount of whitespace after the colon, and an empty
+  // value.  The original parser insisted on exactly one space and a non-empty
+  // value.
+  auto res = SmartMet::Spine::HTTP::parseOneRequest(
+      "GET /a HTTP/1.1\r\nHost:h\r\nX-Pad:    spaced   \r\nX-Empty:\r\n\r\n");
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+    TEST_FAILED("Expected COMPLETE, got " + describe(res.status));
+
+  auto host = res.request->getHeader("Host");
+  if (!host || *host != "h")
+    TEST_FAILED("Host not parsed without a space after the colon");
+
+  auto pad = res.request->getHeader("X-Pad");
+  if (!pad || *pad != "spaced")
+    TEST_FAILED("Surrounding whitespace not trimmed: '" + (pad ? *pad : std::string("(none)")) +
+                "'");
+
+  auto empty = res.request->getHeader("X-Empty");
+  if (!empty || !empty->empty())
+    TEST_FAILED("Empty header value not accepted");
+
+  TEST_PASSED();
+}
+
+void parse_one_urlencoded_post()
+{
+  auto res = SmartMet::Spine::HTTP::parseOneRequest(
+      "POST /a HTTP/1.1\r\nHost: h\r\nContent-Type: application/x-www-form-urlencoded\r\n"
+      "Content-Length: 11\r\n\r\nx=1&y=hello");
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
+    TEST_FAILED("Expected COMPLETE, got " + describe(res.status));
+  if (!res.request->hasParsedPostData())
+    TEST_FAILED("POST data was not parsed");
+  if (!res.request->getParameter("y") || *res.request->getParameter("y") != "hello")
+    TEST_FAILED("POST parameter not available");
+
+  TEST_PASSED();
+}
+
+void parse_one_garbled_head()
+{
+  auto res = SmartMet::Spine::HTTP::parseOneRequest("this is not a request\r\n\r\n");
+
+  if (res.status != SmartMet::Spine::HTTP::ParsingStatus::FAILED)
+    TEST_FAILED("Expected FAILED, got " + describe(res.status));
+
+  TEST_PASSED();
+}
+
 class tests : public tframe::tests
 {
   virtual const char* error_message_prefix() const { return "\n\t"; }
@@ -1502,6 +1818,24 @@ class tests : public tframe::tests
     TEST(response_content_length_chunked_stream_is_zero);
     TEST(response_content_length_sized_stream);
     TEST(response_stream_completion_handler);
+    TEST(parse_one_simple_get);
+    TEST(parse_one_leaves_pipelined_bytes);
+    TEST(parse_one_content_length_body);
+    TEST(parse_one_incomplete_body);
+    TEST(parse_one_incomplete_head);
+    TEST(parse_one_chunked_body);
+    TEST(parse_one_chunked_with_extension_and_trailer);
+    TEST(parse_one_chunked_incomplete);
+    TEST(parse_one_rejects_both_framings);
+    TEST(parse_one_rejects_conflicting_content_lengths);
+    TEST(parse_one_accepts_identical_content_lengths);
+    TEST(parse_one_rejects_bad_content_length);
+    TEST(parse_one_rejects_unknown_transfer_coding);
+    TEST(parse_one_rejects_line_folding);
+    TEST(parse_one_head_method);
+    TEST(parse_one_optional_whitespace);
+    TEST(parse_one_urlencoded_post);
+    TEST(parse_one_garbled_head);
   }
 };
 }  // namespace HTTPTest

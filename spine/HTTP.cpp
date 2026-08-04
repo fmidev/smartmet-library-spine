@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <list>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -155,6 +156,7 @@ const std::string precondition_failed = "Precondition Failed";
 const std::string request_entity_too_large = "Request Entity Too Large";
 const std::string request_header_fields_too_large = "Request header fields too large";
 const std::string request_timeout = "Request Timeout";
+const std::string expectation_failed = "Expectation Failed";
 const std::string high_load = "High Load in Backend Server";
 const std::string shutdown = "Shutdown in progress";
 
@@ -206,6 +208,8 @@ std::string statusCodeToString(Status theStatus)
         return request_header_fields_too_large;
       case Status::request_timeout:
         return request_timeout;
+      case Status::expectation_failed:
+        return expectation_failed;
       case Status::not_a_status:
         return internal_server_error;
       case Status::high_load:
@@ -345,6 +349,12 @@ const std::string request_timeout =
     "<body><h1>408 Request Timeout</h1></body>"
     "</html>";
 
+const std::string expectation_failed =
+    "<html>"
+    "<head><title>Expectation Failed</title></head>"
+    "<body><h1>417 Expectation Failed</h1></body>"
+    "</html>";
+
 const std::string high_load =
     "<html>"
     "<head><title>High Load</title></head>"
@@ -403,6 +413,8 @@ std::string getStockReply(Status theStatus)
         return request_entity_too_large;
       case Status::request_timeout:
         return request_timeout;
+      case Status::expectation_failed:
+        return expectation_failed;
       case Status::not_a_status:
         return internal_server_error;
       case Status::high_load:
@@ -452,6 +464,8 @@ Status stringToStatusCode(const std::string& theCode)
     return Status::request_timeout;
   if (theCode == "411")
     return Status::length_required;
+  if (theCode == "417")
+    return Status::expectation_failed;
   if (theCode == "412")
     return Status::precondition_failed;
   if (theCode == "413")
@@ -542,6 +556,11 @@ void Message::removeHeader(const std::string& headerName)
   }
 }
 
+void Message::setVersion(const std::string& version)
+{
+  itsVersion = version;
+}
+
 std::string Message::getVersion() const
 {
   return itsVersion;
@@ -599,6 +618,7 @@ std::string Request::toString() const
 
       switch (itsMethod)
       {
+        case RequestMethod::HEAD:  // HEAD is a GET that asks for the headers only
         case RequestMethod::GET:
         {
           // In GET-requests parameters go to URL
@@ -687,6 +707,7 @@ std::string Request::toString() const
       // No parameters added, this means any body content has been given explicitly
       switch (itsMethod)
       {
+        case RequestMethod::HEAD:  // HEAD is a GET that asks for the headers only
         case RequestMethod::GET:
         {
           if (!itsContent.empty())
@@ -780,6 +801,9 @@ std::string Request::getMethodString() const
         break;
       case RequestMethod::OPTIONS:
         ret = "OPTIONS";
+        break;
+      case RequestMethod::HEAD:
+        ret = "HEAD";
         break;
     }
 
@@ -1540,6 +1564,298 @@ std::pair<ParsingStatus, std::unique_ptr<Request>> parseRequest(const std::strin
 
     // Token has arrived, so the message is garbled
     return std::make_pair(ParsingStatus::FAILED, std::unique_ptr<Request>());
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+namespace
+{
+// Longest chunk size we are willing to believe, so that a hostile chunk header
+// cannot overflow the accumulator or make us reserve absurd amounts. The server
+// bounds the total request size anyway; this only guards the arithmetic.
+constexpr std::size_t max_chunk_size = std::size_t(1) << 40;
+
+// Trim the optional whitespace RFC 9112 allows around a field value
+std::string trim_ows(const std::string& value)
+{
+  const std::size_t first = value.find_first_not_of(" \t");
+  if (first == std::string::npos)
+    return {};
+  const std::size_t last = value.find_last_not_of(" \t");
+  return value.substr(first, last - first + 1);
+}
+
+// Strict decimal, as required for Content-Length: no sign, no whitespace, no
+// hex, nothing a proxy and this server could read differently.
+bool parseContentLength(const std::string& value, std::size_t& result)
+{
+  if (value.empty() || value.size() > 19)
+    return false;
+
+  std::size_t length = 0;
+  for (const char c : value)
+  {
+    if (c < '0' || c > '9')
+      return false;
+    length = length * 10 + static_cast<std::size_t>(c - '0');
+  }
+
+  result = length;
+  return true;
+}
+
+// Decode a chunked message body starting at `start`.
+//
+// On COMPLETE, `body` holds the concatenated chunk data with the framing
+// removed and `consumed` points just past the trailer section, i.e. at the
+// first byte of the next message.
+ParsingStatus decodeChunkedBody(const std::string& buffer,
+                                std::size_t start,
+                                std::string& body,
+                                std::size_t& consumed)
+{
+  std::size_t pos = start;
+  body.clear();
+
+  // Chunks, until the zero-sized one
+  while (true)
+  {
+    const std::size_t eol = buffer.find("\r\n", pos);
+    if (eol == std::string::npos)
+      return ParsingStatus::INCOMPLETE;
+
+    // chunk-size [ ";" chunk-ext ]
+    std::string field = buffer.substr(pos, eol - pos);
+    const std::size_t ext = field.find(';');
+    if (ext != std::string::npos)
+      field.resize(ext);
+    field = trim_ows(field);
+
+    if (field.empty())
+      return ParsingStatus::FAILED;
+
+    std::size_t chunkSize = 0;
+    for (const char c : field)
+    {
+      int digit;
+      if (c >= '0' && c <= '9')
+        digit = c - '0';
+      else if (c >= 'a' && c <= 'f')
+        digit = c - 'a' + 10;
+      else if (c >= 'A' && c <= 'F')
+        digit = c - 'A' + 10;
+      else
+        return ParsingStatus::FAILED;
+
+      if (chunkSize > max_chunk_size)
+        return ParsingStatus::FAILED;
+      chunkSize = chunkSize * 16 + static_cast<std::size_t>(digit);
+    }
+
+    if (chunkSize > max_chunk_size)
+      return ParsingStatus::FAILED;
+
+    pos = eol + 2;
+
+    if (chunkSize == 0)
+      break;  // Last chunk; the trailer section follows
+
+    // chunk-data CRLF
+    if (buffer.size() < pos + chunkSize + 2)
+      return ParsingStatus::INCOMPLETE;
+    if (buffer.compare(pos + chunkSize, 2, "\r\n") != 0)
+      return ParsingStatus::FAILED;
+
+    body.append(buffer, pos, chunkSize);
+    pos += chunkSize + 2;
+  }
+
+  // Trailer section: field lines up to the blank line that ends the message.
+  // The fields themselves are dropped - nothing downstream reads trailers, and
+  // silently merging them into the header map would let a sender append headers
+  // that the framing checks above have already been made on.
+  while (true)
+  {
+    const std::size_t eol = buffer.find("\r\n", pos);
+    if (eol == std::string::npos)
+      return ParsingStatus::INCOMPLETE;
+
+    if (eol == pos)
+    {
+      consumed = pos + 2;
+      return ParsingStatus::COMPLETE;
+    }
+
+    pos = eol + 2;
+  }
+}
+}  // namespace
+
+RequestParseResult parseOneRequest(const std::string& buffer)
+{
+  try
+  {
+    RequestParseResult result;
+
+    // Every early return below is a framing problem: the end of the message
+    // cannot be determined, so the caller must answer 400 and close rather than
+    // guess. Start from FAILED so no rejection path can fall through as a short
+    // read, and set the other two outcomes explicitly.
+    result.status = ParsingStatus::FAILED;
+
+    RequestHeadParser<std::string::const_iterator> parser;
+    RawRequestHead target;
+
+    auto startIt = buffer.begin();
+    auto stopIt = buffer.end();
+
+    if (!qi::parse(startIt, stopIt, parser, target))
+    {
+      // The head did not parse. If the terminating CRLFCRLF has not arrived yet
+      // this is simply a short read; if it has, the head is genuinely garbled.
+      result.status = buffer.find("\r\n\r\n") == std::string::npos ? ParsingStatus::INCOMPLETE
+                                                                   : ParsingStatus::FAILED;
+      return result;
+    }
+
+    const std::size_t headEnd = static_cast<std::size_t>(std::distance(buffer.begin(), startIt));
+
+    // ---- Framing headers -------------------------------------------------
+    //
+    // Repeated Content-Length or Transfer-Encoding fields, and the two of them
+    // together, are the classic ways of getting a proxy and an origin server to
+    // disagree on where one request ends and the next begins. Rather than
+    // applying the precedence rules and hoping the proxy applies the same ones,
+    // every such message is rejected (RFC 9112 6.3).
+    std::optional<std::string> contentLengthField;
+    std::optional<std::string> transferEncodingField;
+
+    for (const auto& field : target.headers)
+    {
+      const std::string value = trim_ows(field.second);
+
+      if (boost::algorithm::iequals(field.first, "Content-Length"))
+      {
+        if (contentLengthField && *contentLengthField != value)
+          return result;  // FAILED: conflicting lengths
+        contentLengthField = value;
+      }
+      else if (boost::algorithm::iequals(field.first, "Transfer-Encoding"))
+      {
+        if (transferEncodingField && *transferEncodingField != value)
+          return result;  // FAILED: conflicting transfer codings
+        transferEncodingField = value;
+      }
+    }
+
+    if (contentLengthField && transferEncodingField)
+      return result;  // FAILED: both framings present
+
+    // ---- Body ------------------------------------------------------------
+    std::string body;
+    std::size_t consumed = headEnd;
+
+    if (transferEncodingField)
+    {
+      // Only the chunked coding can be decoded here. Anything else (gzip, or a
+      // coding list ending in something other than chunked) would leave a body
+      // this parser cannot delimit, so the message is rejected rather than
+      // guessed at.
+      std::string coding = *transferEncodingField;
+      boost::algorithm::to_lower(coding);
+      if (coding != "chunked")
+        return result;
+
+      const ParsingStatus status = decodeChunkedBody(buffer, headEnd, body, consumed);
+      if (status != ParsingStatus::COMPLETE)
+      {
+        result.status = status;
+        return result;
+      }
+    }
+    else if (contentLengthField)
+    {
+      std::size_t declaredLength = 0;
+      if (!parseContentLength(*contentLengthField, declaredLength))
+        return result;  // FAILED: not a plain decimal number
+
+      if (buffer.size() - headEnd < declaredLength)
+      {
+        result.status = ParsingStatus::INCOMPLETE;
+        return result;
+      }
+
+      body = buffer.substr(headEnd, declaredLength);
+      consumed = headEnd + declaredLength;
+    }
+    // else: no framing header, so the request has no body (RFC 9112 6). Note
+    // that this is where parseRequest() would have taken the whole rest of the
+    // buffer instead, swallowing any pipelined request that followed.
+
+    // ---- Method ----------------------------------------------------------
+    RequestMethod method;
+    if (target.type == "GET")
+      method = RequestMethod::GET;
+    else if (target.type == "POST")
+      method = RequestMethod::POST;
+    else if (target.type == "OPTIONS")
+      method = RequestMethod::OPTIONS;
+    else if (target.type == "HEAD")
+      method = RequestMethod::HEAD;
+    else
+      return result;  // FAILED: method not supported
+
+    // ---- Parameters and headers ------------------------------------------
+    ParamMap theParameters;
+    for (const auto& pair : target.params)
+    {
+      std::string first = urldecode(pair.first);
+      if (!first.empty())  // Ignore any empty parameters
+      {
+        std::string second = pair.second;
+        boost::algorithm::replace_all(second, "+", " ");  // replace plusses with spaces
+        second = urldecode(second);
+        theParameters.insert(std::make_pair(first, second));
+      }
+    }
+
+    HeaderMap headerMap;
+    for (const auto& pair : target.headers)
+      headerMap.insert(std::make_pair(pair.first, trim_ows(pair.second)));
+
+    bool hasParsedPostData = false;
+    auto formHeader = headerMap.find("Content-Type");
+    if (formHeader != headerMap.end())
+    {
+      static const boost::regex formHeaderRegex("application/x-www-form-urlencoded(;.*)?",
+                                                boost::regex::icase);
+      if (boost::regex_match(formHeader->second, formHeaderRegex))
+      {
+        ::parseTokens(theParameters, body, "&", true);
+        hasParsedPostData = true;
+      }
+    }
+
+    // A decoded chunked body is delivered as an ordinary one, so the handler
+    // never sees chunk framing and the length now matches what it was given.
+    if (transferEncodingField)
+    {
+      headerMap.erase("Transfer-Encoding");
+      headerMap.insert(std::make_pair("Content-Length", Fmi::to_string(body.size())));
+    }
+
+    const std::string version =
+        Fmi::to_string(target.version.first) + "." + Fmi::to_string(target.version.second);
+
+    result.status = ParsingStatus::COMPLETE;
+    result.consumed = consumed;
+    result.request = std::unique_ptr<Request>(new Request(
+        headerMap, body, version, theParameters, target.resource, method, hasParsedPostData));
+
+    return result;
   }
   catch (...)
   {

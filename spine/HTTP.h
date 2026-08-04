@@ -96,6 +96,7 @@ enum Status
   not_found = 404,
   request_timeout = 408,
   length_required = 411,
+  expectation_failed = 417,
   precondition_failed = 412,
   request_entity_too_large = 413,
   request_header_fields_too_large = 431,
@@ -120,7 +121,8 @@ enum class RequestMethod
 {
   GET,
   POST,
-  OPTIONS
+  OPTIONS,
+  HEAD
 };
 
 // ----------------------------------------------------------------------
@@ -287,6 +289,16 @@ class Message
    */
   // ----------------------------------------------------------------------
   std::string getVersion() const;
+
+  // ----------------------------------------------------------------------
+  /*!
+   * \brief Set message HTTP version, e.g. "1.1"
+   *
+   * A server must answer in the version the client spoke, since the two
+   * disagree on whether a connection is persistent by default.
+   */
+  // ----------------------------------------------------------------------
+  void setVersion(const std::string& version);
 
   // ----------------------------------------------------------------------
   /*!
@@ -948,6 +960,53 @@ std::string urldecode(const std::string& url);
  */
 // ----------------------------------------------------------------------
 std::pair<ParsingStatus, std::unique_ptr<Request>> parseRequest(const std::string& message);
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Result of parsing a single request out of a connection buffer
+ */
+// ----------------------------------------------------------------------
+
+struct RequestParseResult
+{
+  ParsingStatus status = ParsingStatus::INCOMPLETE;
+
+  /// Set only when status is COMPLETE
+  std::unique_ptr<Request> request;
+
+  /// Number of bytes of the buffer the message occupied. Meaningful only when
+  /// status is COMPLETE; whatever follows belongs to the next request.
+  std::size_t consumed = 0;
+};
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Parse exactly one HTTP request from the start of a buffer
+ *
+ * parseRequest() treats everything after the header section as the body, so a
+ * second request arriving in the same TCP segment is silently swallowed into
+ * the first one's body. That makes it unusable on a connection that carries
+ * more than one request. This reads a single message instead: the body length
+ * comes from Content-Length or from the chunked transfer coding, and `consumed`
+ * says how much of the buffer the message took, so the caller can keep the rest
+ * for the next request.
+ *
+ * Chunked request bodies are decoded, so the returned Request carries the
+ * assembled body and the caller never sees chunk framing.
+ *
+ * Framing combinations that exist to smuggle a second request past a proxy are
+ * rejected outright rather than resolved by precedence rules (RFC 9112 6.3):
+ * Content-Length together with Transfer-Encoding, repeated Content-Length or
+ * Transfer-Encoding fields whose values differ, a Content-Length that is not a
+ * plain decimal number, and any transfer coding other than chunked (which
+ * cannot be decoded here).
+ *
+ * \param buffer Bytes received so far, starting at a message boundary
+ * \return status, the request when COMPLETE, and the bytes consumed
+ */
+// ----------------------------------------------------------------------
+
+RequestParseResult parseOneRequest(const std::string& buffer);
 
 // ----------------------------------------------------------------------
 /*!
