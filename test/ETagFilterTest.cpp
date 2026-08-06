@@ -387,6 +387,46 @@ void conditional_status_if_match_fail()
 
 // ----------------------------------------------------------------------
 
+void content_coded_variants_compare_equal()
+{
+  // A client holding the entity-tag of an encoded variant must be answered
+  // "304 Not Modified" by code that knows only the entity-tag of the data,
+  // and the other way round: the content coding names the variant, not the
+  // resource.
+  auto req = makeRequest({"If-None-Match: \"abc+zstd\""});
+  if (ETagFilter(*req).full_response_required("\"abc\""))
+    TEST_FAILED("If-None-Match of the zstd variant should match the entity-tag of the data");
+
+  req = makeRequest({"If-None-Match: \"abc\""});
+  if (ETagFilter(*req).full_response_required("\"abc+gzip\""))
+    TEST_FAILED("If-None-Match of the data should match the entity-tag of the gzip variant");
+
+  req = makeRequest({"If-None-Match: \"abc+gzip\""});
+  if (ETagFilter(*req).full_response_required("\"abc+zstd\""))
+    TEST_FAILED("Entity-tags of two encodings of the same data should match");
+
+  // Different data still does not match
+  req = makeRequest({"If-None-Match: \"abc+zstd\""});
+  if (!ETagFilter(*req).full_response_required("\"xyz\""))
+    TEST_FAILED("A variant entity-tag of other data must not match");
+
+  // If-Match uses strong comparison, but the coding is not part of the
+  // resource identity either
+  req = makeRequest({"If-Match: \"abc+zstd\""});
+  auto result = ETagFilter(*req).evaluate("\"abc\"");
+  if (!result.first)
+    TEST_FAILED("If-Match of the zstd variant should pass for the entity-tag of the data");
+
+  // An opaque tag that merely contains a '+' is not a coding
+  req = makeRequest({"If-None-Match: \"abc+something\""});
+  if (!ETagFilter(*req).full_response_required("\"abc\""))
+    TEST_FAILED("A '+' that does not introduce a known coding must not be stripped");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
 void conditional_status_probe_skips_evaluation()
 {
   // While the frontend probes (X-Request-ETag), the backend must not
@@ -430,6 +470,7 @@ class tests : public tframe::tests
     TEST(conditional_status_if_none_match_match);
     TEST(conditional_status_if_none_match_no_match);
     TEST(conditional_status_if_match_fail);
+    TEST(content_coded_variants_compare_equal);
     TEST(conditional_status_probe_skips_evaluation);
   }
 };

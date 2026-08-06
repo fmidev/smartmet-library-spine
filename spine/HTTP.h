@@ -939,6 +939,114 @@ std::optional<Status> conditionalResponseStatus(const Request& request, const st
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Negotiate the content coding to use for a response (RFC 9110 12.5.3)
+ *
+ * \a supportedCodings lists the codings the caller is able to produce, best
+ * first, so that it decides the tie-break order (for example {"zstd","gzip"}).
+ * Returns the winning coding, or an empty string for the identity (not
+ * encoded) representation.
+ *
+ * Quality values are honoured, which a plain substring search for the coding
+ * name is not able to do: "gzip, deflate, zstd;q=0" explicitly *refuses* zstd
+ * and must be answered with gzip. A coding is acceptable only when its
+ * quality value is greater than zero, where the value is the one given for
+ * the coding itself, or the one given for "*", or zero when neither is
+ * present.
+ *
+ * The identity representation is acceptable by default, but being acceptable
+ * is not a preference: a client sending "gzip;q=0.9" wants gzip rather than an
+ * unencoded response. It is therefore used only when no supported coding is
+ * acceptable, or when it was given a quality value of its own (by name or
+ * through "*") that is higher than that of every acceptable coding.
+ *
+ * \a wildcardCoding is the coding to use when a supported coding is
+ * acceptable through "*" alone, i.e. when the client named no coding we can
+ * produce but said it accepts anything. "*" expresses no preference at all,
+ * so this is deliberately a separate choice from the head of
+ * \a supportedCodings: it lets the caller answer such requests with its most
+ * widely interoperable coding rather than its newest one. An empty value (the
+ * default) answers them with the identity representation.
+ *
+ * A missing Accept-Encoding header, or one whose value is empty, yields the
+ * identity representation: responses are never encoded unsolicited.
+ */
+// ----------------------------------------------------------------------
+
+std::string selectContentEncoding(const std::optional<std::string>& acceptEncoding,
+                                  const std::vector<std::string>& supportedCodings,
+                                  const std::string& wildcardCoding = "");
+
+std::string selectContentEncoding(const Request& request,
+                                  const std::vector<std::string>& supportedCodings,
+                                  const std::string& wildcardCoding = "");
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief The content codings a SmartMet server encodes responses with
+ *
+ * In preference order: zstd before gzip, since at their configured levels zstd
+ * is both faster and compresses better.
+ *
+ * The server encodes the responses, but the frontend plugin caches them one
+ * variant at a time and has to negotiate the same coding to find the variant
+ * the backend produced, so both use this list. Two independent lists drifting
+ * apart is what made zstd responses end up in the frontend's cache of
+ * unencoded responses.
+ */
+// ----------------------------------------------------------------------
+
+const std::vector<std::string>& supportedContentEncodings();
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief The content coding to answer "Accept-Encoding: *" with
+ *
+ * gzip: "*" says that any coding is acceptable, which is not a reason to pick
+ * the newest one over the one every client can decode.
+ */
+// ----------------------------------------------------------------------
+
+const std::string& wildcardContentEncoding();
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Entity-tag of the given content coded variant of a representation
+ *
+ * RFC 9110 4.3.4 requires distinct entity-tags for representations that
+ * differ in their content coding: an entity-tag identifies a representation,
+ * and the gzip and zstd encodings of the same data are different
+ * representations. Plugins hash the data they produce and therefore generate
+ * one coding independent entity-tag, so the coding is appended to it when the
+ * response body is encoded: "abc-timeseries" becomes "abc-timeseries+zstd".
+ *
+ * An empty coding (or "identity") returns the entity-tag of the identity
+ * representation, and an entity-tag that already names a coding has that
+ * coding replaced, so the mapping is idempotent. Weak tags keep their "W/"
+ * prefix.
+ */
+// ----------------------------------------------------------------------
+
+std::string contentCodedETag(const std::string& etag, const std::string& coding);
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Entity-tag of the identity representation
+ *
+ * Strips the content coding appended by contentCodedETag(), returning the
+ * coding independent entity-tag the producer of the data generated. Tags that
+ * do not name a known content coding are returned unchanged.
+ *
+ * This is what makes an entity-tag usable as a cache key that is shared by
+ * all the encodings of one resource, and what lets a conditional request
+ * carrying the entity-tag of an encoded variant be compared against the
+ * entity-tag of the data itself.
+ */
+// ----------------------------------------------------------------------
+
+std::string baseETag(const std::string& etag);
+
+// ----------------------------------------------------------------------
+/*!
  * \brief urlencode a string
  */
 // ----------------------------------------------------------------------

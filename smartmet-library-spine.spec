@@ -168,6 +168,20 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Thu Aug  6 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.8.6-1.fmi
+- Added HTTP::selectContentEncoding() for negotiating the response content coding,
+  and HTTP::supportedContentEncodings() / HTTP::wildcardContentEncoding() for the
+  codings a SmartMet server offers.
+  Quality values are honoured, so an explicitly refused coding such as
+  "zstd;q=0" is no longer selected, and "*" is answered with the caller's
+  compatibility choice instead of its preferred coding
+- Added HTTP::contentCodedETag() and HTTP::baseETag() for deriving the
+  entity-tag of a content coded variant from the coding independent entity-tag
+  the data producer generated, and back (RFC 9110 4.3.4)
+- HTTP::ETagFilter now compares entity-tags without their content coding, so a
+  conditional request carrying the entity-tag of an encoded variant is answered
+  "304 Not Modified"
+
 * Wed Aug 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.8.19-1.fmi
 - Added ConfigTools parseSize() and lookupSizeSetting() for reading byte size
   settings. The value may be an integer, a libconfig long integer, or a string with
