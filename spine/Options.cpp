@@ -6,6 +6,7 @@
 
 #include "Options.h"
 #include "ConfigTools.h"
+#include "HTTP.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/optional.hpp>
@@ -13,6 +14,7 @@
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -41,6 +43,48 @@ unsigned int parse_threads(const std::string& str)
   catch (...)
   {
     throw Fmi::Exception::Trace(BCP, "Failed to parse thread setting").addParameter("Threads", str);
+  }
+}
+
+// Parse a comma separated list of content codings ("zstd,gzip") into the codings
+// the server offers. Only codings the server knows how to produce are accepted:
+// a typo must stop the server at startup rather than silently disable a codec.
+std::vector<std::string> parse_content_codings(const std::string& str)
+{
+  try
+  {
+    std::vector<std::string> result;
+
+    std::vector<std::string> tokens;
+    boost::algorithm::split(tokens, str, boost::algorithm::is_any_of(","));
+
+    for (const auto& token : tokens)
+    {
+      auto coding = Fmi::ascii_tolower_copy(boost::algorithm::trim_copy(token));
+      if (coding.empty())
+        continue;
+
+      const auto& known = Spine::HTTP::supportedContentEncodings();
+      if (std::find(known.begin(), known.end(), coding) == known.end())
+        throw Fmi::Exception(BCP, "Unknown content coding")
+            .addParameter("Coding", coding)
+            .addParameter("Known codings", boost::algorithm::join(known, ","));
+
+      if (std::find(result.begin(), result.end(), coding) == result.end())
+        result.push_back(coding);
+    }
+
+    if (result.empty())
+      throw Fmi::Exception(BCP,
+                           "At least one content coding must be given, use compress=false to "
+                           "disable response compression");
+
+    return result;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to parse content coding setting")
+        .addParameter("Codings", str);
   }
 }
 
@@ -134,6 +178,7 @@ bool Options::parseOptions(int argc, char* argv[])
     const char* msguser = "set the username the server is running as";
     const char* msgzip = "enable compression";
     const char* msgziplimit = "compression size limit in bytes";
+    const char* msgzipcodings = "content codings to offer, in preference order (default=zstd,gzip)";
     const char* msgdefaultlog = "make request logs by default";
     const char* msglocale = "default locale";
     const char* msgnewhandler = "new_handler for OOM situations (default/bad_alloc/terminate)";
@@ -190,6 +235,7 @@ bool Options::parseOptions(int argc, char* argv[])
         "user,u", po::value(&username)->default_value(username), msguser)(
         "compress,z", po::bool_switch(&compress)->default_value(compress), msgzip)(
         "compresslimit,Z", po::value(&compresslimit)->default_value(compresslimit), msgziplimit)(
+        "compresscodings", po::value(&compresscodings)->default_value(compresscodings), msgzipcodings)(
         "defaultlogging,e", po::bool_switch(&defaultlogging)->default_value(defaultlogging), msgdefaultlog)(
         "accesslogdir,a", po::value(&accesslogdir)->default_value(accesslogdir), msgaccesslogdir)(
         "new-handler", po::value(&new_handler)->default_value(new_handler), msgnewhandler);
@@ -239,6 +285,11 @@ bool Options::parseOptions(int argc, char* argv[])
 
     if (compresslimit < 100)
       throw Fmi::Exception(BCP, "Compression size limit below 100 makes no sense!");
+
+    // Resolve the configured codings once, so that an invalid setting stops the
+    // server here instead of at the first response it fails to encode
+    contentCodings = (compresscodings.empty() ? Spine::HTTP::supportedContentEncodings()
+                                              : parse_content_codings(compresscodings));
 
     if (throttle.start_limit == 0 || throttle.limit == 0 || throttle.increase_rate == 0)
       throw Fmi::Exception(BCP, "Active request settings must be > 0")
@@ -313,6 +364,7 @@ void Options::parseConfig()
       lookupHostSetting(itsConfig, logrequests, "logrequests");
       lookupHostSetting(itsConfig, compress, "compress");
       lookupHostSetting(itsConfig, compresslimit, "compresslimit");
+      lookupHostSetting(itsConfig, compresscodings, "compresscodings");
       lookupHostSetting(itsConfig, defaultlogging, "defaultlogging");
       lookupHostSetting(itsConfig, lazylinking, "lazylinking");
       lookupHostSetting(itsConfig, accesslogdir, "accesslogdir");
@@ -407,6 +459,9 @@ void Options::report() const
               << "- at start\t\t\t= " << throttle.start_limit << "\n"
               << "- at slowdown\t\t\t= " << throttle.restart_limit << "\n"
               << "- increase rate\t\t\t= " << throttle.increase_rate << "\n"
+              << "Compression\t\t\t= "
+              << (compress ? boost::algorithm::join(contentCodings, ",") : std::string("OFF"))
+              << "\n"
               << "Port\t\t\t\t= " << port << "\n"
               << "Timeout\t\t\t\t= " << timeout << "\n"
               << "Access log directory\t\t= " << accesslogdir << "\n"
