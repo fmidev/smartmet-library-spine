@@ -1,4 +1,5 @@
 #include "HTTP.h"
+#include <boost/algorithm/string/join.hpp>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -11,6 +12,7 @@
 using SmartMet::Spine::HTTP::baseETag;
 using SmartMet::Spine::HTTP::contentCodedETag;
 using SmartMet::Spine::HTTP::ParsingStatus;
+using SmartMet::Spine::HTTP::rankContentEncodings;
 using SmartMet::Spine::HTTP::Request;
 using SmartMet::Spine::HTTP::selectContentEncoding;
 
@@ -18,13 +20,13 @@ namespace ContentEncodingTest
 {
 // The codings the SmartMet server can produce, in its own preference order,
 // and the coding it answers a bare "*" with
-const std::vector<std::string> supported{"zstd", "gzip"};
+const std::vector<std::string> supported_codings{"zstd", "gzip"};
 const std::string wildcard_coding = "gzip";
 
 // Negotiate for the given Accept-Encoding field value
 std::string negotiate(const std::optional<std::string>& accept_encoding)
 {
-  return selectContentEncoding(accept_encoding, supported, wildcard_coding);
+  return selectContentEncoding(accept_encoding, supported_codings, wildcard_coding);
 }
 
 void check(const std::optional<std::string>& accept_encoding, const std::string& expected)
@@ -146,7 +148,7 @@ void wildcard()
   check(std::string("*;q=0.1, gzip;q=0.9"), "gzip");
 
   // With no wildcard coding to offer, "*" yields the identity representation
-  if (!selectContentEncoding(std::string("*"), supported).empty())
+  if (!selectContentEncoding(std::string("*"), supported_codings).empty())
     TEST_FAILED("'*' must yield identity when the caller offers no wildcard coding");
 
   TEST_PASSED();
@@ -178,7 +180,7 @@ void negotiate_from_request()
   if (parsed.first != ParsingStatus::COMPLETE)
     TEST_FAILED("Failed to parse the test request");
 
-  if (selectContentEncoding(*parsed.second, supported, wildcard_coding) != "gzip")
+  if (selectContentEncoding(*parsed.second, supported_codings, wildcard_coding) != "gzip")
     TEST_FAILED("Request overload should select gzip for 'gzip, deflate'");
 
   // A request without the header must not be encoded
@@ -187,8 +189,79 @@ void negotiate_from_request()
   if (parsed.first != ParsingStatus::COMPLETE)
     TEST_FAILED("Failed to parse the test request");
 
-  if (!selectContentEncoding(*parsed.second, supported, wildcard_coding).empty())
+  if (!selectContentEncoding(*parsed.second, supported_codings, wildcard_coding).empty())
     TEST_FAILED("Request without Accept-Encoding must yield the identity representation");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
+void ranking()
+{
+  auto ranked = [](const std::string& accept_encoding,
+                   const std::vector<std::string>& supported = supported_codings)
+  {
+    return boost::algorithm::join(rankContentEncodings(accept_encoding, supported, wildcard_coding),
+                                  ",");
+  };
+
+  // Every acceptable coding, best first, so that a caller holding only some of
+  // the variants of a resource can fall back to the next best one
+  if (ranked("gzip, deflate, br, zstd") != "zstd,gzip")
+    TEST_FAILED("Both codings are acceptable, preferred one first: got " +
+                ranked("gzip, deflate, br, zstd"));
+  if (ranked("zstd;q=0.1, gzip;q=0.9") != "gzip,zstd")
+    TEST_FAILED("Quality values decide the order: got " + ranked("zstd;q=0.1, gzip;q=0.9"));
+
+  // Refused and unacceptable codings are not in the list at all
+  if (ranked("gzip, deflate, zstd;q=0") != "gzip")
+    TEST_FAILED("A refused coding must not be listed: got " + ranked("gzip, deflate, zstd;q=0"));
+  if (!ranked("zstd;q=0").empty())
+    TEST_FAILED("Nothing is acceptable, the list must be empty");
+  if (!ranked("br").empty())
+    TEST_FAILED("A coding we cannot produce must not be listed");
+  if (!ranked("identity, gzip;q=0.5").empty())
+    TEST_FAILED("Codings the client likes less than identity must not be listed");
+
+  // "*" makes the codings the client did not name acceptable, compatibility
+  // choice first
+  if (ranked("*") != "gzip,zstd")
+    TEST_FAILED("'*' should list the wildcard coding first: got " + ranked("*"));
+  if (ranked("zstd;q=0, *") != "gzip")
+    TEST_FAILED("'*' must not resurrect an explicitly refused coding: got " +
+                ranked("zstd;q=0, *"));
+  if (ranked("zstd, *") != "zstd,gzip")
+    TEST_FAILED("A named coding outranks the wildcard: got " + ranked("zstd, *"));
+
+  // A server offering only one coding
+  if (ranked("gzip, deflate, br, zstd", {"gzip"}) != "gzip")
+    TEST_FAILED("Only the offered coding may be listed: got " +
+                ranked("gzip, deflate, br, zstd", {"gzip"}));
+  if (!ranked("zstd", {"gzip"}).empty())
+    TEST_FAILED("A coding the server does not offer must not be listed");
+
+  // A server that does not offer the wildcard coding answers "*" with what it
+  // does offer rather than with the identity representation
+  if (ranked("*", {"zstd"}) != "zstd")
+    TEST_FAILED("'*' should fall back to the offered codings: got " + ranked("*", {"zstd"}));
+  if (selectContentEncoding(std::string("*"), {"zstd"}, wildcard_coding) != "zstd")
+    TEST_FAILED("'*' should select the only offered coding");
+
+  // selectContentEncoding() is the head of the list
+  for (const char* header : {"gzip, deflate, br, zstd",
+                             "zstd;q=0.1, gzip;q=0.9",
+                             "gzip, deflate, zstd;q=0",
+                             "zstd;q=0",
+                             "*",
+                             "identity, gzip;q=0.5"})
+  {
+    auto list = rankContentEncodings(std::string(header), supported_codings, wildcard_coding);
+    auto selected = selectContentEncoding(std::string(header), supported_codings, wildcard_coding);
+    if (selected != (list.empty() ? std::string() : list.front()))
+      TEST_FAILED(std::string("selectContentEncoding disagrees with the ranking for '") + header +
+                  "'");
+  }
 
   TEST_PASSED();
 }
@@ -275,6 +348,7 @@ class tests : public tframe::tests
     TEST(wildcard);
     TEST(malformed_values);
     TEST(negotiate_from_request);
+    TEST(ranking);
     TEST(coded_etags);
     TEST(base_etags);
   }

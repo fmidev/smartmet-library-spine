@@ -2692,9 +2692,9 @@ AcceptedCodings parse_accept_encoding(const std::string& value)
 }
 }  // namespace
 
-std::string selectContentEncoding(const std::optional<std::string>& acceptEncoding,
-                                  const std::vector<std::string>& supportedCodings,
-                                  const std::string& wildcardCoding)
+std::vector<std::string> rankContentEncodings(const std::optional<std::string>& acceptEncoding,
+                                              const std::vector<std::string>& supportedCodings,
+                                              const std::string& wildcardCoding)
 {
   try
   {
@@ -2718,35 +2718,82 @@ std::string selectContentEncoding(const std::optional<std::string>& acceptEncodi
     else if (accepted.has_wildcard)
       identity_q = accepted.wildcard;
 
-    // Best coding the client named itself. supportedCodings is in preference
-    // order, so the first one found wins a tie in quality values.
-    std::string best;
-    double best_q = 0;
+    // The codings the client named itself, dropping the ones it refused and the
+    // ones it likes less than the unencoded response
+    std::vector<std::pair<double, std::string>> named_codings;
 
     for (const auto& coding : supportedCodings)
     {
-      auto named = accepted.named(Fmi::ascii_tolower_copy(coding));
-      if (named && *named > 0 && *named > best_q)
-      {
-        best = coding;
-        best_q = *named;
-      }
+      auto q = accepted.named(Fmi::ascii_tolower_copy(coding));
+      if (q && *q > 0 && *q >= identity_q)
+        named_codings.emplace_back(*q, coding);
     }
 
-    if (!best.empty())
-      return (best_q >= identity_q) ? best : std::string{};
+    // Highest quality value first. A stable sort leaves codings of equal
+    // quality in the caller's preference order, which is where the choice
+    // belongs when the client stated no preference between them.
+    std::stable_sort(named_codings.begin(),
+                     named_codings.end(),
+                     [](const auto& lhs, const auto& rhs) { return lhs.first > rhs.first; });
 
-    // The client named none of our codings. "*" makes them all acceptable, but
-    // expresses no preference, so answer with the caller's compatibility choice.
+    std::vector<std::string> result;
+    result.reserve(supportedCodings.size());
+
+    for (const auto& coding : named_codings)
+      result.push_back(coding.second);
+
+    // "*" makes every coding the client did not name acceptable, but expresses
+    // no preference between them, so the caller's compatibility choice leads.
     if (accepted.has_wildcard && accepted.wildcard > 0 && accepted.wildcard >= identity_q &&
         !wildcardCoding.empty())
     {
+      const std::string wildcard = Fmi::ascii_tolower_copy(wildcardCoding);
+
       for (const auto& coding : supportedCodings)
-        if (Fmi::ascii_tolower_copy(coding) == Fmi::ascii_tolower_copy(wildcardCoding))
-          return coding;
+        if (Fmi::ascii_tolower_copy(coding) == wildcard && !accepted.named(wildcard))
+          result.push_back(coding);
+
+      for (const auto& coding : supportedCodings)
+      {
+        const std::string name = Fmi::ascii_tolower_copy(coding);
+        if (name != wildcard && !accepted.named(name))
+          result.push_back(coding);
+      }
     }
 
-    return {};
+    return result;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+std::vector<std::string> rankContentEncodings(const Request& request,
+                                              const std::vector<std::string>& supportedCodings,
+                                              const std::string& wildcardCoding)
+{
+  try
+  {
+    return rankContentEncodings(
+        request.getHeader("Accept-Encoding"), supportedCodings, wildcardCoding);
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+std::string selectContentEncoding(const std::optional<std::string>& acceptEncoding,
+                                  const std::vector<std::string>& supportedCodings,
+                                  const std::string& wildcardCoding)
+{
+  try
+  {
+    const auto ranked = rankContentEncodings(acceptEncoding, supportedCodings, wildcardCoding);
+    if (ranked.empty())
+      return {};
+    return ranked.front();
   }
   catch (...)
   {

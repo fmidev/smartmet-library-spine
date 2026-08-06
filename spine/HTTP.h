@@ -965,7 +965,9 @@ std::optional<Status> conditionalResponseStatus(const Request& request, const st
  * so this is deliberately a separate choice from the head of
  * \a supportedCodings: it lets the caller answer such requests with its most
  * widely interoperable coding rather than its newest one. An empty value (the
- * default) answers them with the identity representation.
+ * default) answers them with the identity representation instead, and a value
+ * that is not among \a supportedCodings leaves the remaining supported codings
+ * to answer them in preference order.
  *
  * A missing Accept-Encoding header, or one whose value is empty, yields the
  * identity representation: responses are never encoded unsolicited.
@@ -982,10 +984,37 @@ std::string selectContentEncoding(const Request& request,
 
 // ----------------------------------------------------------------------
 /*!
- * \brief The content codings a SmartMet server encodes responses with
+ * \brief Every content coding acceptable for a request, best first
+ *
+ * The arguments and the rules are those of selectContentEncoding(), which
+ * returns the first element of this list. The identity representation is not
+ * an element: an empty list means it is the only answer left.
+ *
+ * Use this rather than selectContentEncoding() when a coding may be
+ * unavailable and the next best one will do, as in a cache that holds only
+ * some of the variants of a resource. Insisting on the first choice alone
+ * turns "the server no longer offers zstd" into a lookup that never hits.
+ */
+// ----------------------------------------------------------------------
+
+std::vector<std::string> rankContentEncodings(const std::optional<std::string>& acceptEncoding,
+                                              const std::vector<std::string>& supportedCodings,
+                                              const std::string& wildcardCoding = "");
+
+std::vector<std::string> rankContentEncodings(const Request& request,
+                                              const std::vector<std::string>& supportedCodings,
+                                              const std::string& wildcardCoding = "");
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief The content codings a SmartMet server is able to encode responses with
  *
  * In preference order: zstd before gzip, since at their configured levels zstd
  * is both faster and compresses better.
+ *
+ * This is what the code implements. Which of them a given server actually
+ * offers is Options::contentCodings, so that a codec can be taken out of use
+ * without a rebuild.
  *
  * The server encodes the responses, but the frontend plugin caches them one
  * variant at a time and has to negotiate the same coding to find the variant
