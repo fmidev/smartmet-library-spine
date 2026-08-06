@@ -2413,9 +2413,45 @@ std::vector<std::string> split_tag_list(const std::string& value)
   return result;
 }
 
+// Separator between the coding independent part of an entity-tag and the name
+// of the content coding of the variant it identifies. Valid inside a quoted
+// opaque-tag, and not produced by the hexadecimal hash values the plugins use.
+const char coding_suffix_separator = '+';
+
+// The content codings that may appear as an entity-tag suffix. Only these are
+// stripped again, so that an opaque-tag which happens to contain a '+' of its
+// own survives untouched. Any coding a response body may be encoded with has
+// to be listed here, or the entity-tag of the encoded variant no longer maps
+// back to the entity-tag of the data itself.
+bool is_known_content_coding(const std::string& coding)
+{
+  for (const char* known : {"gzip", "x-gzip", "zstd", "deflate", "br", "compress", "xz", "lzma"})
+    if (coding == known)
+      return true;
+  return false;
+}
+
+// Strip the content coding from an unquoted opaque-tag, see baseETag()
+std::string strip_coding_suffix(const std::string& opaque)
+{
+  const auto pos = opaque.rfind(coding_suffix_separator);
+  if (pos == std::string::npos)
+    return opaque;
+
+  if (!is_known_content_coding(Fmi::ascii_tolower_copy(opaque.substr(pos + 1))))
+    return opaque;
+
+  return opaque.substr(0, pos);
+}
+
 // Parse a single entity-tag such as "abc" or W/"abc" into its weak flag and
 // opaque value (with the surrounding quotes removed if present). Returns
 // {weak, opaque}.
+//
+// The content coding of the variant is stripped from the opaque value, so that
+// all the encodings of one resource compare equal: a conditional request
+// carrying the entity-tag of the zstd variant must be answered "304 Not
+// Modified" by the code holding the entity-tag of the data itself.
 std::pair<bool, std::string> parse_entity_tag(const std::string& theTag)
 {
   std::string tag = theTag;
@@ -2432,7 +2468,7 @@ std::pair<bool, std::string> parse_entity_tag(const std::string& theTag)
   if (tag.size() >= 2 && tag.front() == '"' && tag.back() == '"')
     tag = tag.substr(1, tag.size() - 2);
 
-  return {weak, tag};
+  return {weak, strip_coding_suffix(tag)};
 }
 }  // namespace
 
@@ -2566,6 +2602,229 @@ std::optional<Status> conditionalResponseStatus(const Request& request, const st
       return std::nullopt;  // full response required
 
     return result.second;  // not_modified or precondition_failed
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Content coding negotiation
+ */
+// ----------------------------------------------------------------------
+
+namespace
+{
+// Quality value of an Accept-Encoding element. A malformed value is ignored
+// rather than taken to mean "unacceptable": clients whose parameters we fail
+// to understand are better served the coding they asked for than none of them.
+double parse_qvalue(const std::string& text)
+{
+  try
+  {
+    const double q = std::stod(text);
+    if (q < 0)
+      return 0;
+    if (q > 1)
+      return 1;
+    return q;
+  }
+  catch (...)
+  {
+    return 1.0;
+  }
+}
+
+struct AcceptedCodings
+{
+  std::map<std::string, double> qvalues;  // lower case coding name -> quality value
+  double wildcard = 0;                    // quality value given for "*"
+  bool has_wildcard = false;
+
+  // Quality value given for the coding itself, if any
+  std::optional<double> named(const std::string& coding) const
+  {
+    auto pos = qvalues.find(coding);
+    if (pos == qvalues.end())
+      return std::nullopt;
+    return pos->second;
+  }
+};
+
+// Parse an Accept-Encoding field value into its codings and quality values
+AcceptedCodings parse_accept_encoding(const std::string& value)
+{
+  AcceptedCodings result;
+
+  std::vector<std::string> elements;
+  boost::algorithm::split(elements, value, boost::algorithm::is_any_of(","));
+
+  for (const auto& element : elements)
+  {
+    std::vector<std::string> parts;
+    boost::algorithm::split(parts, element, boost::algorithm::is_any_of(";"));
+
+    std::string coding = Fmi::ascii_tolower_copy(boost::algorithm::trim_copy(parts.front()));
+    if (coding.empty())
+      continue;
+
+    double q = 1.0;
+    for (std::size_t i = 1; i < parts.size(); i++)
+    {
+      std::string parameter = boost::algorithm::trim_copy(parts[i]);
+      if (parameter.size() > 2 && (parameter[0] == 'q' || parameter[0] == 'Q') &&
+          parameter.find('=') == 1)
+        q = parse_qvalue(parameter.substr(2));
+    }
+
+    if (coding == "*")
+    {
+      result.has_wildcard = true;
+      result.wildcard = q;
+    }
+    else
+      result.qvalues[coding] = q;
+  }
+
+  return result;
+}
+}  // namespace
+
+std::string selectContentEncoding(const std::optional<std::string>& acceptEncoding,
+                                  const std::vector<std::string>& supportedCodings,
+                                  const std::string& wildcardCoding)
+{
+  try
+  {
+    // No header, or an empty value: the client asked for no content coding
+    if (!acceptEncoding)
+      return {};
+
+    const std::string value = boost::algorithm::trim_copy(*acceptEncoding);
+    if (value.empty())
+      return {};
+
+    const auto accepted = parse_accept_encoding(value);
+
+    // The identity representation is acceptable unless refused, but being
+    // acceptable is not a preference: a client sending "gzip;q=0.9" wants gzip,
+    // not the unencoded response. It therefore only outranks a coding when it
+    // was given a quality value of its own, by name or through "*".
+    double identity_q = 0;
+    if (auto named = accepted.named("identity"))
+      identity_q = *named;
+    else if (accepted.has_wildcard)
+      identity_q = accepted.wildcard;
+
+    // Best coding the client named itself. supportedCodings is in preference
+    // order, so the first one found wins a tie in quality values.
+    std::string best;
+    double best_q = 0;
+
+    for (const auto& coding : supportedCodings)
+    {
+      auto named = accepted.named(Fmi::ascii_tolower_copy(coding));
+      if (named && *named > 0 && *named > best_q)
+      {
+        best = coding;
+        best_q = *named;
+      }
+    }
+
+    if (!best.empty())
+      return (best_q >= identity_q) ? best : std::string{};
+
+    // The client named none of our codings. "*" makes them all acceptable, but
+    // expresses no preference, so answer with the caller's compatibility choice.
+    if (accepted.has_wildcard && accepted.wildcard > 0 && accepted.wildcard >= identity_q &&
+        !wildcardCoding.empty())
+    {
+      for (const auto& coding : supportedCodings)
+        if (Fmi::ascii_tolower_copy(coding) == Fmi::ascii_tolower_copy(wildcardCoding))
+          return coding;
+    }
+
+    return {};
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+std::string selectContentEncoding(const Request& request,
+                                  const std::vector<std::string>& supportedCodings,
+                                  const std::string& wildcardCoding)
+{
+  try
+  {
+    return selectContentEncoding(
+        request.getHeader("Accept-Encoding"), supportedCodings, wildcardCoding);
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+const std::vector<std::string>& supportedContentEncodings()
+{
+  static const std::vector<std::string> codings{"zstd", "gzip"};
+  return codings;
+}
+
+const std::string& wildcardContentEncoding()
+{
+  static const std::string coding{"gzip"};
+  return coding;
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Entity-tags of content coded variants
+ */
+// ----------------------------------------------------------------------
+
+std::string contentCodedETag(const std::string& etag, const std::string& coding)
+{
+  try
+  {
+    const std::string base = baseETag(etag);
+
+    if (base.empty())
+      return base;
+
+    const std::string name = Fmi::ascii_tolower_copy(boost::algorithm::trim_copy(coding));
+    if (name.empty() || name == "identity")
+      return base;
+
+    // Append inside the quotes of the opaque-tag when the tag is quoted
+    if (base.size() >= 2 && base.back() == '"')
+      return base.substr(0, base.size() - 1) + coding_suffix_separator + name + '"';
+
+    return base + coding_suffix_separator + name;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+std::string baseETag(const std::string& etag)
+{
+  try
+  {
+    const bool quoted = (etag.size() >= 2 && etag.back() == '"');
+
+    const std::string opaque = quoted ? etag.substr(0, etag.size() - 1) : etag;
+    const std::string stripped = strip_coding_suffix(opaque);
+
+    if (stripped == opaque)
+      return etag;  // no coding to strip, keep the tag as it is
+
+    return quoted ? stripped + '"' : stripped;
   }
   catch (...)
   {
