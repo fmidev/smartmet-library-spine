@@ -131,6 +131,110 @@ BOOST_AUTO_TEST_CASE(config_hash_setting)
   BOOST_CHECK_NE(hash_a, hash_b);
 }
 
+BOOST_AUTO_TEST_CASE(parse_size_setting)
+{
+  using namespace SmartMet::Spine;
+  using libconfig::Setting;
+
+  BOOST_TEST_MESSAGE("+ [ConfigTools] Testing parseSize");
+
+  libconfig::Config cfg;
+  auto& root = cfg.getRoot();
+  root.add("small", Setting::TypeInt) = 1000;
+  root.add("zero", Setting::TypeInt) = 0;
+  root.add("big", Setting::TypeInt64) = 34359738368LL;
+  root.add("digits", Setting::TypeString) = "34359738368";
+  root.add("longdigits", Setting::TypeString) = "34359738368L";
+  root.add("gigas", Setting::TypeString) = "32G";
+  root.add("gigabytes", Setting::TypeString) = "32GB";
+  root.add("gibibytes", Setting::TypeString) = "32 GiB";
+  root.add("megas", Setting::TypeString) = "512M";
+  root.add("fraction", Setting::TypeString) = "1.5G";
+  root.add("negative", Setting::TypeInt) = -1;
+  root.add("negativebig", Setting::TypeInt64) = -1LL;
+  root.add("garbage", Setting::TypeString) = "32 gigs";
+  root.add("boolean", Setting::TypeBoolean) = true;
+  root.add("floating", Setting::TypeFloat) = 1.5;
+
+  BOOST_CHECK_EQUAL(1000UL, parseSize(root["small"]));
+  BOOST_CHECK_EQUAL(0UL, parseSize(root["zero"]));
+  BOOST_CHECK_EQUAL(32UL << 30, parseSize(root["big"]));
+  BOOST_CHECK_EQUAL(32UL << 30, parseSize(root["digits"]));
+  BOOST_CHECK_EQUAL(32UL << 30, parseSize(root["longdigits"]));
+  BOOST_CHECK_EQUAL(32UL << 30, parseSize(root["gigas"]));
+  BOOST_CHECK_EQUAL(32UL << 30, parseSize(root["gigabytes"]));
+  BOOST_CHECK_EQUAL(32UL << 30, parseSize(root["gibibytes"]));
+  BOOST_CHECK_EQUAL(512UL << 20, parseSize(root["megas"]));
+  BOOST_CHECK_EQUAL(3UL << 29, parseSize(root["fraction"]));
+
+  BOOST_CHECK_THROW(parseSize(root["negative"]), Fmi::Exception);
+  BOOST_CHECK_THROW(parseSize(root["negativebig"]), Fmi::Exception);
+  BOOST_CHECK_THROW(parseSize(root["garbage"]), Fmi::Exception);
+  BOOST_CHECK_THROW(parseSize(root["boolean"]), Fmi::Exception);
+  BOOST_CHECK_THROW(parseSize(root["floating"]), Fmi::Exception);
+}
+
+BOOST_AUTO_TEST_CASE(lookup_size_setting)
+{
+  using namespace SmartMet::Spine;
+  using libconfig::Setting;
+
+  BOOST_TEST_MESSAGE("+ [ConfigTools] Testing lookupSizeSetting");
+
+  libconfig::Config cfg;
+  auto& root = cfg.getRoot();
+  auto& cache = root.add("cache", Setting::TypeGroup);
+  cache.add("memory_bytes", Setting::TypeString) = "32G";
+  cache.add("filesystem_bytes", Setting::TypeInt64) = 2147483648LL;
+
+  std::size_t value = 0;
+
+  BOOST_REQUIRE(lookupSizeSetting(cfg, value, "cache.memory_bytes"));
+  BOOST_CHECK_EQUAL(32UL << 30, value);
+
+  BOOST_REQUIRE(lookupSizeSetting(cfg, value, "cache.filesystem_bytes"));
+  BOOST_CHECK_EQUAL(2UL << 30, value);
+
+  // A missing setting must leave the value alone
+  value = 12345;
+  BOOST_CHECK(!lookupSizeSetting(cfg, value, "cache.missing_bytes"));
+  BOOST_CHECK_EQUAL(12345UL, value);
+
+  // Default value variant
+  BOOST_CHECK_EQUAL(32UL << 30, lookupSizeSetting(cfg, "cache.memory_bytes", 100UL));
+  BOOST_CHECK_EQUAL(100UL, lookupSizeSetting(cfg, "cache.missing_bytes", 100UL));
+}
+
+BOOST_AUTO_TEST_CASE(lookup_size_setting_override)
+{
+  using namespace SmartMet::Spine;
+  using libconfig::Setting;
+
+  BOOST_TEST_MESSAGE("+ [ConfigTools] Testing lookupSizeSetting host overrides");
+
+  // A host specific override must win over the global default
+  const std::string hostname = boost::asio::ip::host_name();
+
+  libconfig::Config cfg;
+  auto& root = cfg.getRoot();
+  root.add("memory_bytes", Setting::TypeString) = "1G";
+
+  auto& overrides = root.add("overrides", Setting::TypeList);
+  auto& group = overrides.add(Setting::TypeGroup);
+  auto& names = group.add("name", Setting::TypeArray);
+  names.add(Setting::TypeString) = hostname;
+  group.add("memory_bytes", Setting::TypeString) = "32G";
+
+  std::size_t value = 0;
+  BOOST_REQUIRE(lookupSizeSetting(cfg, value, "memory_bytes"));
+  BOOST_CHECK_EQUAL(32UL << 30, value);
+
+  // A setting without an override falls back to the global value
+  root.add("filesystem_bytes", Setting::TypeString) = "2G";
+  BOOST_REQUIRE(lookupSizeSetting(cfg, value, "filesystem_bytes"));
+  BOOST_CHECK_EQUAL(2UL << 30, value);
+}
+
 BOOST_AUTO_TEST_CASE(config_hash_all_types)
 {
   using namespace SmartMet::Spine;
