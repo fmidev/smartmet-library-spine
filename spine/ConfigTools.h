@@ -24,6 +24,43 @@ std::string config_hash(const libconfig::Config& config);
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Byte size settings
+ *
+ * A byte size may be given either as an integer or as a string with
+ * an optional unit, so all of the following mean 32 gibibytes:
+ *
+ *     memory_bytes = 34359738368;
+ *     memory_bytes = 34359738368L;
+ *     memory_bytes = "34359738368";
+ *     memory_bytes = "32G";
+ *     memory_bytes = "32GB";
+ *     memory_bytes = "32 GiB";
+ *
+ * The unit is case insensitive, and B, K, M, G, T and P are accepted
+ * both alone and followed by "B" or "iB". All units are binary
+ * multiples, so "1KB" and "1KiB" both mean 1024 bytes. Fractions such
+ * as "1.5G" are rounded to the nearest byte.
+ *
+ * Note that libconfig requires an 'L' suffix for integers not fitting
+ * into 32 bits, which is exactly why the string form is preferable for
+ * large sizes.
+ */
+// ----------------------------------------------------------------------
+
+std::size_t parseSize(const libconfig::Setting& theSetting);
+
+// Return false if the setting does not exist. Host specific overrides are honoured.
+bool lookupSizeSetting(const libconfig::Config& theConfig,
+                       std::size_t& theValue,
+                       const std::string& theVariable);
+
+// Return the default value if the setting does not exist.
+std::size_t lookupSizeSetting(const libconfig::Config& theConfig,
+                              const std::string& theVariable,
+                              std::size_t theDefault);
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Return a setting, which may have a host specific value
  *
  * Example:

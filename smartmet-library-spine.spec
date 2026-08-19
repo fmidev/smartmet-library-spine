@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.8.4
+Version: 26.8.19
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -50,7 +50,7 @@ BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 26.7.14
-BuildRequires: smartmet-library-macgyver-devel >= 26.7.9
+BuildRequires: smartmet-library-macgyver-devel >= 26.8.19
 BuildRequires: smartmet-library-newbase-devel >= 26.7.14
 BuildRequires: smartmet-utils-devel >= 26.7.14
 
@@ -99,7 +99,7 @@ Requires: libicu
 Requires: libbacktrace
 Requires: double-conversion
 Requires: smartmet-library-gis >= 26.7.14
-Requires: smartmet-library-macgyver >= 26.7.9
+Requires: smartmet-library-macgyver >= 26.8.19
 Requires: smartmet-library-newbase >= 26.7.14
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
@@ -110,7 +110,7 @@ Requires: smartmet-timezones >= 24.5.27
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 26.7.9
+#TestRequires: smartmet-library-macgyver-devel >= 26.8.19
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -122,7 +122,7 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 26.7.9
+Requires: smartmet-library-macgyver-devel >= 26.8.19
 Requires: smartmet-library-gis-devel >= 26.7.14
 Requires: smartmet-library-newbase-devel >= 26.7.14
 Requires: libconfig17-devel
@@ -168,6 +168,12 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Aug 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.8.19-1.fmi
+- Added ConfigTools parseSize() and lookupSizeSetting() for reading byte size
+  settings. The value may be an integer, a libconfig long integer, or a string with
+  an optional unit, so 'memory_bytes = 34359738368L' can now be written as
+  'memory_bytes = "32G"'. Host specific overrides are honoured
+
 * Tue Aug  4 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.8.4-1.fmi
 - Add HTTP keep-alive (persistent connection) support
 
