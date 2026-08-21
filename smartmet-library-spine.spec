@@ -49,7 +49,7 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 26.7.14
+BuildRequires: smartmet-library-gis-devel >= 26.8.10
 BuildRequires: smartmet-library-macgyver-devel >= 26.8.19
 BuildRequires: smartmet-library-newbase-devel >= 26.7.14
 BuildRequires: smartmet-utils-devel >= 26.7.14
@@ -98,7 +98,7 @@ Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: libbacktrace
 Requires: double-conversion
-Requires: smartmet-library-gis >= 26.7.14
+Requires: smartmet-library-gis >= 26.8.10
 Requires: smartmet-library-macgyver >= 26.8.19
 Requires: smartmet-library-newbase >= 26.7.14
 Requires: smartmet-timezones >= 24.5.27
@@ -123,7 +123,7 @@ Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
 Requires: smartmet-library-macgyver-devel >= 26.8.19
-Requires: smartmet-library-gis-devel >= 26.7.14
+Requires: smartmet-library-gis-devel >= 26.8.10
 Requires: smartmet-library-newbase-devel >= 26.7.14
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
