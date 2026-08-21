@@ -2,8 +2,10 @@
 #include <filesystem>
 #include <macgyver/Base64.h>
 #include <macgyver/Exception.h>
+#include <macgyver/StringConversion.h>
 #include <openssl/sha.h>
 #include <cstdlib>
+#include <limits>
 
 namespace
 {
@@ -77,6 +79,45 @@ void sha256_update_setting(SHA256_CTX& ctx, const libconfig::Setting& setting)
     default:
       break;
   }
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Find a setting, preferring a host specific override if one exists
+ *
+ * Returns nullptr if the setting does not exist at all.
+ */
+// ----------------------------------------------------------------------
+
+const libconfig::Setting* find_host_setting(const libconfig::Config& theConfig,
+                                            const std::string& theVariable)
+{
+  if (theConfig.exists("overrides"))
+  {
+    const std::string hostname = boost::asio::ip::host_name();
+
+    const libconfig::Setting& overrides = theConfig.lookup("overrides");
+    for (int i = 0; i < overrides.getLength(); i++)
+    {
+      const libconfig::Setting& trial_hosts = overrides[i]["name"];
+      for (int j = 0; j < trial_hosts.getLength(); j++)
+      {
+        const std::string trial_host = trial_hosts[j];
+        // Does the start of the host name match and there is a value for the setting?
+        if (boost::algorithm::istarts_with(hostname, trial_host))
+        {
+          const std::string path = "overrides.[" + std::to_string(i) + "]." + theVariable;
+          if (theConfig.exists(path))
+            return &theConfig.lookup(path);
+        }
+      }
+    }
+  }
+
+  if (theConfig.exists(theVariable))
+    return &theConfig.lookup(theVariable);
+
+  return nullptr;
 }
 
 }  // anonymous namespace
@@ -312,6 +353,91 @@ std::string config_hash(const libconfig::Setting& setting)
 std::string config_hash(const libconfig::Config& config)
 {
   return config_hash(config.getRoot());
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Parse a byte size setting
+ *
+ * The setting may be an integer, a long integer, or a string with an
+ * optional unit such as "32G". See ConfigTools.h for the details.
+ */
+// ----------------------------------------------------------------------
+
+std::size_t parseSize(const libconfig::Setting& theSetting)
+{
+  try
+  {
+    switch (theSetting.getType())
+    {
+      case libconfig::Setting::TypeInt:
+      {
+        const int value = theSetting;
+        if (value < 0)
+          throw Fmi::Exception(BCP, "A byte size setting cannot be negative");
+        return static_cast<std::size_t>(value);
+      }
+      case libconfig::Setting::TypeInt64:
+      {
+        const long long value = theSetting;
+        if (value < 0)
+          throw Fmi::Exception(BCP, "A byte size setting cannot be negative");
+        if (static_cast<unsigned long long>(value) > std::numeric_limits<std::size_t>::max())
+          throw Fmi::Exception(BCP, "A byte size setting is too large to be represented");
+        return static_cast<std::size_t>(value);
+      }
+      case libconfig::Setting::TypeString:
+        return Fmi::stosz(theSetting.c_str());
+      default:
+        throw Fmi::Exception(BCP, "A byte size setting must be an integer or a string");
+    }
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to parse a byte size setting")
+        .addParameter("variable", theSetting.getPath());
+  }
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Lookup a byte size setting
+ */
+// ----------------------------------------------------------------------
+
+bool lookupSizeSetting(const libconfig::Config& theConfig,
+                       std::size_t& theValue,
+                       const std::string& theVariable)
+{
+  try
+  {
+    const auto* setting = find_host_setting(theConfig, theVariable);
+    if (setting == nullptr)
+      return false;
+
+    theValue = parseSize(*setting);
+    return true;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Error trying to find byte size setting value")
+        .addParameter("variable", theVariable);
+  }
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Lookup a byte size setting with a default value
+ */
+// ----------------------------------------------------------------------
+
+std::size_t lookupSizeSetting(const libconfig::Config& theConfig,
+                              const std::string& theVariable,
+                              std::size_t theDefault)
+{
+  std::size_t value = theDefault;
+  lookupSizeSetting(theConfig, value, theVariable);
+  return value;
 }
 
 }  // namespace Spine
