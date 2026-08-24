@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.8.19
+Version: 26.8.24
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -168,6 +168,28 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Aug 24 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.8.24-1.fmi
+- Added HTTP::selectContentEncoding() for negotiating the response content coding,
+  and HTTP::supportedContentEncodings() / HTTP::wildcardContentEncoding() for the
+  codings a SmartMet server can produce.
+  Quality values are honoured, so an explicitly refused coding such as
+  "zstd;q=0" is no longer selected, and "*" is answered with the caller's
+  compatibility choice instead of its preferred coding
+- Added HTTP::contentCodedETag() and HTTP::baseETag() for deriving the
+  entity-tag of a content coded variant from the coding independent entity-tag
+  the data producer generated, and back (RFC 9110 4.3.4)
+- HTTP::ETagFilter now compares entity-tags without their content coding, so a
+  conditional request carrying the entity-tag of an encoded variant is answered
+  "304 Not Modified"
+- Added HTTP::rankContentEncodings() for callers that need every acceptable
+  coding rather than only the best one, such as a cache holding some of the
+  variants of a resource
+- Added the 'compresscodings' setting (Options::contentCodings), a comma
+  separated list of the content codings the server offers in preference order.
+  Only codings the server can produce are accepted and an unknown name stops the
+  server at startup, so a codec can be taken out of use across a cluster without
+  a rebuild. The startup report prints the offered codings
+
 * Wed Aug 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.8.19-1.fmi
 - Added ConfigTools parseSize() and lookupSizeSetting() for reading byte size
   settings. The value may be an integer, a libconfig long integer, or a string with

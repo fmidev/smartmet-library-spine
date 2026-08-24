@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <vector>
 
 namespace SmartMet
 {
@@ -57,6 +58,26 @@ struct Options
   bool logrequests = false;
   bool compress = false;
   unsigned int compresslimit = 1000;
+
+  // The content codings this server offers, in preference order.
+  //
+  // Configured as a comma separated list ("zstd,gzip", "gzip"), which parse()
+  // validates into contentCodings below. Only codings the server knows how to
+  // produce, i.e. members of HTTP::supportedContentEncodings(), are accepted, so
+  // the setting can narrow and reorder that list but not extend it. Use
+  // compress=false to stop encoding altogether.
+  //
+  // The point of the setting is that a codec can be taken out of use across a
+  // cluster by editing configuration, without waiting for a rebuild. Clients
+  // that advertise a coding they cannot actually decode do exist, and the
+  // symptom -- a client reporting our response as corrupt -- is indistinguishable
+  // from a server side bug until someone can turn the codec off and see.
+  std::string compresscodings;
+
+  // Parsed form of compresscodings. Empty means HTTP::supportedContentEncodings(),
+  // so that an Options object that has not been through parse() still offers the
+  // built-in codings rather than silently none.
+  std::vector<std::string> contentCodings;
   bool defaultlogging = true;
   bool lazylinking = true;
   bool stacktrace = false;
