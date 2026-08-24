@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.8.19
+Version: 26.8.24
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -168,7 +168,7 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
-* Thu Aug  6 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.8.6-1.fmi
+* Mon Aug 24 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.8.24-1.fmi
 - Added HTTP::selectContentEncoding() for negotiating the response content coding,
   and HTTP::supportedContentEncodings() / HTTP::wildcardContentEncoding() for the
   codings a SmartMet server can produce.
