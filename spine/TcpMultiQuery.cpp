@@ -54,6 +54,7 @@ struct TcpMultiQuery::Impl
 
   boost::asio::io_context io_service;
   boost::asio::basic_waitable_timer<std::chrono::steady_clock> timeout;
+  bool nodelay = false;
 };
 
 TcpMultiQuery::TcpMultiQuery(int timeout_sec)
@@ -69,6 +70,12 @@ TcpMultiQuery::TcpMultiQuery(int timeout_sec)
           impl->io_service.stop();
         }
       });
+}
+
+TcpMultiQuery::TcpMultiQuery(int timeout_sec, no_delay_t nodelay)
+   : TcpMultiQuery(timeout_sec)
+{
+  impl->nodelay = true;
 }
 
 TcpMultiQuery::~TcpMultiQuery()
@@ -182,6 +189,11 @@ void TcpMultiQuery::Query::on_connected(boost::system::error_code error)
   else
   {
     using namespace std::placeholders;
+    if (client.impl->nodelay)
+    {
+      boost::system::error_code ignored;
+      socket.set_option(boost::asio::ip::tcp::no_delay(true), ignored);
+    }
     async_write(socket,
                 boost::asio::buffer(request_body.data(), request_body.length()),
                 std::bind(&Query::on_request_sent, this, _1, _2));

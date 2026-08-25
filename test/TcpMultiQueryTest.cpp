@@ -11,6 +11,7 @@
 #include <boost/chrono.hpp>
 #include <boost/thread.hpp>
 #include <regression/tframe.h>
+#include <macgyver/DateTime.h>
 #include <memory>
 
 namespace a = boost::asio;
@@ -345,6 +346,44 @@ int two_requests_one_times_out()
   TEST_PASSED();
 }
 
+int time_request_with_nagle_algorithm_enabled()
+{
+  constexpr int number_of_requests = 10;
+  Fmi::TimeDuration total_time = Fmi::Seconds(0);
+  for (int i = 0; i < number_of_requests; i++)
+  {
+    const Fmi::DateTime start_time = Fmi::MicrosecClock::universal_time();
+    SmartMet::Spine::TcpMultiQuery test(1);
+    test.add_query("foo", "127.0.0.1", std::to_string(server_port_1), "foo");
+    test.execute();
+    const Fmi::DateTime end_time = Fmi::MicrosecClock::universal_time();
+    const Fmi::TimeDuration duration = end_time - start_time;
+    total_time += duration;
+  }
+
+  std::cout << "Average time for " << number_of_requests << " requests with Nagle algorithm enabled: "
+            << total_time.total_microseconds() / number_of_requests << " us" << std::endl;
+  TEST_PASSED();
+}
+
+int time_request_with_nagle_algorithm_disabled()
+{
+  constexpr int number_of_requests = 10;
+  Fmi::TimeDuration total_time = Fmi::Seconds(0);
+  for (int i = 0; i < number_of_requests; i++)
+  {
+    Fmi::DateTime start_time = Fmi::MicrosecClock::universal_time();
+    SmartMet::Spine::TcpMultiQuery test(1, SmartMet::Spine::TcpMultiQuery::no_delay);
+    test.add_query("foo", "127.0.0.1", std::to_string(server_port_1), "foo");
+    test.execute();
+    Fmi::DateTime end_time = Fmi::MicrosecClock::universal_time();
+    total_time += end_time - start_time;
+  }
+  std::cout << "Average time for " << number_of_requests << " requests with Nagle algorithm disabled: "
+            << total_time.total_microseconds() / number_of_requests << " us" << std::endl;
+  TEST_PASSED();
+}
+
 // ----------------------------------------------------------------------
 /*!
  * The actual test suite
@@ -361,7 +400,8 @@ class tests : public tframe::tests
     TEST(several_requests);
     TEST(slow_server_read);
     TEST(two_requests_one_times_out);
-  }
+    TEST(time_request_with_nagle_algorithm_enabled);
+    TEST(time_request_with_nagle_algorithm_disabled);}
 };
 };  // namespace TcpMultiQueryTest
 

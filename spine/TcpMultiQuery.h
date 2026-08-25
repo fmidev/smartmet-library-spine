@@ -48,7 +48,17 @@ class TcpMultiQuery
     }
   };
 
+  enum class no_delay_t
+  {
+    no_delay,
+  };
+
+  static constexpr no_delay_t no_delay = no_delay_t::no_delay;
+
   explicit TcpMultiQuery(int timeout_sec);
+
+  explicit TcpMultiQuery(int timeout_sec, no_delay_t no_delay);
+
   virtual ~TcpMultiQuery();
 
   void add_query(const std::string& id,
