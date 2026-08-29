@@ -139,6 +139,46 @@ void no_such_user()
   }
 }
 
+void case_sensitive_digest()
+{
+  // The Base64 credential digest must be compared case-sensitively: a header whose Base64
+  // payload differs only in letter case decodes to different bytes and must be rejected.
+  // (A previous case-insensitive compare accepted such a mismatched digest.)
+  std::string correct = makeBasicAuthHash("user_b", "password_b");
+  std::string prefix = "Basic ";
+  std::string b64 = correct.substr(prefix.size());
+  std::string swapped = b64;
+  for (char& c : swapped)
+  {
+    if (c >= 'a' && c <= 'z')
+      c = static_cast<char>(c - 'a' + 'A');
+    else if (c >= 'A' && c <= 'Z')
+      c = static_cast<char>(c - 'A' + 'a');
+  }
+  if (swapped == b64)
+  {
+    // No alphabetic characters to swap; the test is not meaningful for this digest.
+    TEST_PASSED();
+    return;
+  }
+
+  HTTP::HeaderMap headers = {{"Content-Type", "text/html; charset=\"UTF-8\""},
+                             {"Authorization", prefix + swapped}};
+  HTTP::ParamMap params = {{"foo", "bar"}};
+  HTTP::Request request(headers, "", "1.1", params, "/foo", HTTP::RequestMethod::GET, false);
+  HTTP::Authentication auth(true);
+  auth.addUser("user_b", "password_b");
+  HTTP::Response response;
+  if (auth.authenticateRequest(request, response))
+  {
+    TEST_FAILED("Case-altered digest accepted (comparison is not case-sensitive)");
+  }
+  else
+  {
+    TEST_PASSED();
+  }
+}
+
 void user_access_test_1()
 {
   HTTP::HeaderMap headers = {{"Content-Type", "text/html; charset=\"UTF-8\""},
@@ -178,6 +218,7 @@ class tests : public tframe::tests
     TEST(auth_missing);
     TEST(correct_auth_provided);
     TEST(bad_user_password);
+    TEST(case_sensitive_digest);
     TEST(user_access_test_1);
   }
 };

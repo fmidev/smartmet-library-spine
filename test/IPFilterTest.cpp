@@ -97,4 +97,27 @@ BOOST_AUTO_TEST_CASE(range_filter)
   BOOST_CHECK_EQUAL(theFilter.match("192.171.16.1"), false);
 }
 
+BOOST_AUTO_TEST_CASE(malformed_address)
+{
+  BOOST_TEST_MESSAGE("Testing malformed addresses - filter");
+
+  auto raw = create_config();
+
+  ip::IPFilter theFilter(raw);
+
+  // An address with more than four dotted fields must not match (and must not read the
+  // internal 4-element filter array out of bounds).
+  BOOST_CHECK_EQUAL(theFilter.match("192.168.1.1.5.6"), false);
+  BOOST_CHECK_EQUAL(theFilter.match("192.168.10.10.0"), false);
+
+  // A truncated address must not match a prefix of a filter rule.
+  BOOST_CHECK_EQUAL(theFilter.match("192"), false);
+  BOOST_CHECK_EQUAL(theFilter.match("192.168"), false);
+  BOOST_CHECK_EQUAL(theFilter.match("192.168.1"), false);
+
+  // An IPv6 address tokenises to a single field and must fail closed against IPv4 rules.
+  BOOST_CHECK_EQUAL(theFilter.match("::1"), false);
+  BOOST_CHECK_EQUAL(theFilter.match(""), false);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

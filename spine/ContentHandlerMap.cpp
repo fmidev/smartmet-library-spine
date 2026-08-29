@@ -1473,7 +1473,12 @@ try
     // Find the ip filters
     std::vector<std::string> filterTokens;
     lookupHostStringSettings(options.itsConfig, filterTokens, "admin.ip_filters");
-    if (filterTokens.empty() && !admin_uri_configured)
+    // Fail safe: an admin endpoint must never be reachable with no protection at all.
+    // If neither an IP filter nor password authentication is configured, default the IP
+    // filter to localhost only. Previously this default was applied only for the built-in
+    // /admin URI, so configuring a custom admin.uri without ip_filters (and without a
+    // password) left the admin endpoints open to every client.
+    if (filterTokens.empty() && !itsAdminAuthenticationCallback)
     {
       // Unfortunately IPFilter currently does not support IPv6 loopback address
       filterTokens = {"127.0.0.1" /* "::1" */ };

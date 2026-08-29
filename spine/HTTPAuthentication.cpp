@@ -6,6 +6,9 @@
 #include <macgyver/Exception.h>
 #include <macgyver/TypeName.h>
 
+#include <algorithm>
+#include <cstddef>
+
 namespace ba = boost::algorithm;
 
 namespace SmartMet
@@ -14,6 +17,27 @@ namespace Spine
 {
 namespace HTTP
 {
+namespace
+{
+// Case-sensitive, constant-time string comparison. The Base64 credential digests are
+// case-sensitive, so the previous case-insensitive compare both weakened the check and
+// short-circuited on the first differing byte, leaking how much of the digest matched
+// through timing. This compares over the whole length without an early return.
+bool constantTimeEquals(const std::string& a, const std::string& b)
+{
+  const std::size_t na = a.size();
+  const std::size_t nb = b.size();
+  const std::size_t n = std::max(na, nb);
+  unsigned char diff = static_cast<unsigned char>((na ^ nb) != 0 ? 1 : 0);
+  for (std::size_t i = 0; i < n; ++i)
+  {
+    const unsigned char ca = (i < na) ? static_cast<unsigned char>(a[i]) : 0;
+    const unsigned char cb = (i < nb) ? static_cast<unsigned char>(b[i]) : 0;
+    diff |= static_cast<unsigned char>(ca ^ cb);
+  }
+  return diff == 0;
+}
+}  // namespace
 Authentication::Authentication(bool denyByDefault) : denyByDefault(denyByDefault) {}
 
 Authentication::~Authentication() = default;
@@ -45,7 +69,6 @@ bool Authentication::authenticateRequest(const Request& request, Response& respo
     {
       std::vector<std::string> splitHeader;
       ba::split(splitHeader, *credentials, ba::is_any_of(" "), ba::token_compress_on);
-      // printf("%s: Got credentials: %s\n", METHOD_NAME.c_str(), credentials->c_str());
 
       if (splitHeader.size() < 2)
       {
@@ -63,7 +86,7 @@ bool Authentication::authenticateRequest(const Request& request, Response& respo
           if ((item.second.second & groupMask) != 0)
           {
             auto trueDigest = Fmi::Base64::encode(item.first + ":" + item.second.first);
-            if (ba::iequals(trueDigest, givenDigest))
+            if (constantTimeEquals(trueDigest, givenDigest))
             {
               return true;
             }

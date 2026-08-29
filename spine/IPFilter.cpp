@@ -129,19 +129,23 @@ bool AddressFilter::match(const std::vector<std::string>& ipTokens) const
 {
   try
   {
-    // If for some reason ip has more than 4 fields, the following will segfault.
-    // IPs however come from an boost-asio, so we assume they are OK
-    unsigned int index = 0;
-    for (const auto& token : ipTokens)
+    // An IPv4 address has exactly as many dotted fields as the filter has (4). Anything
+    // else must be rejected here:
+    //  - more tokens (e.g. a crafted "1.2.3.4.5.6") would index itsFilters out of bounds,
+    //  - fewer tokens (e.g. "127") would only test a prefix of the filter and could match
+    //    a "127.0.0.1" rule,
+    //  - a ':'-separated IPv6 address tokenises to a single field and cannot match an IPv4
+    //    rule; it fails closed (denied) rather than being mis-parsed.
+    if (ipTokens.size() != itsFilters.size())
+      return false;
+
+    for (std::size_t index = 0; index < itsFilters.size(); ++index)
     {
-      bool success = itsFilters[index]->match(token);
-      if (!success)
+      if (!itsFilters[index]->match(ipTokens[index]))
       {
         // One miss is all we need
         return false;
       }
-
-      ++index;
     }
 
     return true;
