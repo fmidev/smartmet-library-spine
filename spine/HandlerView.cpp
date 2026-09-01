@@ -134,6 +134,79 @@ bool HandlerView::handle(Reactor& theReactor,
       }
     }
 
+    // Method handling (OPTIONS/CORS preflight, POST content type check,
+    // unsupported method rejection) must not depend on whether logging is
+    // enabled, so it is done before choosing the fast or logging path.
+    const auto method = theRequest.getMethod();
+    if (method == HTTP::RequestMethod::OPTIONS)
+    {
+      theResponse = HTTP::Response::stockOptionsResponse({"GET", "POST", "OPTIONS"});
+
+      // Checking for CORS preflight headers
+      // https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
+      if (theRequest.getHeader("Access-Control-Request-Method"))
+      {
+        // Clone header 'Allow' to 'Access-Control-Allow-Methods' for CORS
+        auto h1 = theResponse.getHeader("Allow");
+        assert(bool(h1));  // HTTP::Response::stockOptionsResponse should have set this header
+        theResponse.setHeader("Access-Control-Allow-Methods", *h1);
+
+        auto opt_origin = theRequest.getHeader("Origin");
+        if (opt_origin)
+        {
+          theResponse.setHeader("Access-Control-Allow-Origin", *opt_origin);
+        }
+
+        auto opt_req_headers = theRequest.getHeader("Access-Control-Request-Headers");
+        if (opt_req_headers)
+        {
+          // FIXME: Should be use actually supported headers here.
+          //        Let us copy requested headers to the response for now
+          theResponse.setHeader("Access-Control-Allow-Headers", *opt_req_headers);
+        }
+
+        theResponse.setHeader("Access-Control-Max-Age", "86400");
+      }
+      return true;
+    }
+
+    if (method == HTTP::RequestMethod::POST)
+    {
+      // Check that content type is supported
+      auto opt_content_type = theRequest.getHeader("Content-Type");
+      if (!opt_content_type)
+      {
+        // No content type, reject the request
+        theResponse.setStatus(HTTP::bad_request);
+        theResponse.setContent("Content-Type header is required for POST requests.\n"
+          "Allowed: " + itsSupportedPostContentsString);
+        return true;
+      }
+
+      // Normalize content type (remove parameters)
+      std::string content_type = Fmi::ascii_tolower_copy(*opt_content_type);
+      const std::size_t sep = content_type.find(';');
+      if (sep != std::string::npos)
+        content_type = content_type.substr(0, sep);
+
+      if (checkPostContentType
+         && itsSupportedPostContents.find(content_type) == itsSupportedPostContents.end())
+      {
+        // Unsupported content type
+        theResponse.setStatus(HTTP::not_implemented);
+        theResponse.setContent("Unsupported Content-Type '" + content_type + "',\n"
+          "Allowed: " + itsSupportedPostContentsString + "\n");
+        return true;
+      }
+    }
+    else if (method != HTTP::RequestMethod::GET)
+    {
+      // Unsupported method
+      theResponse.setStatus(HTTP::not_implemented);
+      theResponse.setHeader("Allow", "GET, POST, OPTIONS");
+      return true;
+    }
+
     if ((!isLogging || !itsAccessLog) && !itsOTelLog)
     {
       // No logging of any kind — take the fast path
@@ -151,76 +224,6 @@ bool HandlerView::handle(Reactor& theReactor,
     }
     else
     {
-      const auto method = theRequest.getMethod();
-      if (method == HTTP::RequestMethod::OPTIONS)
-      {
-        theResponse = HTTP::Response::stockOptionsResponse({"GET", "POST", "OPTIONS"});
-
-        // Checking for CORS preflight headers
-        // https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
-        if (theRequest.getHeader("Access-Control-Request-Method"))
-        {
-          // Clone header 'Allow' to 'Access-Control-Allow-Methods' for CORS
-          auto h1 = theResponse.getHeader("Allow");
-          assert(bool(h1));  // HTTP::Response::stockOptionsResponse should have set this header
-          theResponse.setHeader("Access-Control-Allow-Methods", *h1);
-
-          auto opt_origin = theRequest.getHeader("Origin");
-          if (opt_origin)
-          {
-            theResponse.setHeader("Access-Control-Allow-Origin", *opt_origin);
-          }
-
-          auto opt_req_headers = theRequest.getHeader("Access-Control-Request-Headers");
-          if (opt_req_headers)
-          {
-            // FIXME: Should be use actually supported headers here.
-            //        Let us copy requested headers to the response for now
-            theResponse.setHeader("Access-Control-Allow-Headers", *opt_req_headers);
-          }
-
-          theResponse.setHeader("Access-Control-Max-Age", "86400");
-        }
-        return true;
-      }
-
-      if (method == HTTP::RequestMethod::POST)
-      {
-        // Check that content type is supported
-        auto opt_content_type = theRequest.getHeader("Content-Type");
-        if (!opt_content_type)
-        {
-          // No content type, reject the request
-          theResponse.setStatus(HTTP::bad_request);
-          theResponse.setContent("Content-Type header is required for POST requests.\n"
-            "Allowed: " + itsSupportedPostContentsString);
-          return true;
-        }
-
-        // Normalize content type (remove parameters)
-        std::string content_type = Fmi::ascii_tolower_copy(*opt_content_type);
-        const std::size_t sep = content_type.find(';');
-        if (sep != std::string::npos)
-          content_type = content_type.substr(0, sep);
-
-        if (checkPostContentType
-           && itsSupportedPostContents.find(content_type) == itsSupportedPostContents.end())
-        {
-          // Unsupported content type
-          theResponse.setStatus(HTTP::not_implemented);
-          theResponse.setContent("Unsupported Content-Type '" + content_type + "',\n"
-            "Allowed: " + itsSupportedPostContentsString + "\n");
-          return true;
-        }
-      }
-      else if (method != HTTP::RequestMethod::GET)
-      {
-        // Unsupported method
-        theResponse.setStatus(HTTP::not_implemented);
-        theResponse.setHeader("Allow", "GET, POST, OPTIONS");
-        return true;
-      }
-
       auto key = theReactor.insertActiveRequest(theRequest);
       // CPU-time bracketing via CLOCK_THREAD_CPUTIME_ID. The clock
       // advances only while THIS thread is on-CPU, so the resulting
