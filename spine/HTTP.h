@@ -164,7 +164,18 @@ class ContentStreamer
 
   // ----------------------------------------------------------------------
   /*!
-   * \brief Get the next chunk of data. Empty chunk signals EOF
+   * \brief Get the next chunk of data
+   *
+   * The end of the stream is signalled by the *status*, not by the return
+   * value: setStatus(EXIT_OK) when the body is complete, EXIT_ERROR when it
+   * cannot be completed. An empty chunk while the status is still OK means only
+   * that nothing is ready yet - the server sends the head on its own and asks
+   * again later - so a streamer that returned an empty chunk to mean EOF
+   * without setting a status would be asked forever.
+   *
+   * The last bytes of a body may be returned by the same call that sets
+   * EXIT_OK; the server reads the status before asking for content, so content
+   * handed over with a terminal status is still sent.
    */
   // ----------------------------------------------------------------------
   virtual std::string getChunk() = 0;
@@ -222,6 +233,12 @@ class MessageContent
   content_type getType() const;
 
   ContentStreamer::StreamerStatus getStreamingStatus() const;
+
+  //! The content streamer, or nullptr when the content is not streamed
+  std::shared_ptr<ContentStreamer> getStreamer() const;
+
+  //! Swap in another streamer, leaving the framing this content already decided
+  void replaceStreamer(std::shared_ptr<ContentStreamer> theContent);
 
  private:
   std::string stringContent;
@@ -702,6 +719,25 @@ class Response : public Message
    */
   // ----------------------------------------------------------------------
   bool hasStreamContent() const;
+
+  // ----------------------------------------------------------------------
+  /*!
+   * \brief The content streamer, or nullptr when the content is not streamed
+   */
+  // ----------------------------------------------------------------------
+  std::shared_ptr<ContentStreamer> getContentStreamer() const;
+
+  // ----------------------------------------------------------------------
+  /*!
+   * \brief Swap in another content streamer
+   *
+   * Leaves the framing alone - chunked or announced length, and the announced
+   * length itself - so that a streamer can be wrapped (see CoalescingStreamer)
+   * without disturbing how the response is delimited. Does nothing when the
+   * content is not streamed.
+   */
+  // ----------------------------------------------------------------------
+  void replaceContentStreamer(std::shared_ptr<ContentStreamer> theContent);
 
   // ----------------------------------------------------------------------
   /*!

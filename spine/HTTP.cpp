@@ -1417,6 +1417,30 @@ bool Response::hasStreamContent() const
   }
 }
 
+std::shared_ptr<ContentStreamer> Response::getContentStreamer() const
+{
+  try
+  {
+    return itsContent.getStreamer();
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+void Response::replaceContentStreamer(std::shared_ptr<ContentStreamer> theContent)
+{
+  try
+  {
+    itsContent.replaceStreamer(std::move(theContent));
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
 ContentStreamer::StreamerStatus Response::getStreamingStatus() const
 {
   return itsContent.getStreamingStatus();
@@ -2171,6 +2195,22 @@ bool MessageContent::empty() const
 MessageContent::content_type MessageContent::getType() const
 {
   return itsType;
+}
+
+std::shared_ptr<ContentStreamer> MessageContent::getStreamer() const
+{
+  if (itsType != content_type::streamType)
+    return {};
+
+  return streamContent;
+}
+
+void MessageContent::replaceStreamer(std::shared_ptr<ContentStreamer> theContent)
+{
+  if (itsType != content_type::streamType || !theContent)
+    return;
+
+  streamContent = std::move(theContent);
 }
 
 ContentStreamer::StreamerStatus MessageContent::getStreamingStatus() const
