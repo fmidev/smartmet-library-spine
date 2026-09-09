@@ -10,10 +10,14 @@ namespace HTTP
 {
 CoalescingStreamer::CoalescingStreamer(std::shared_ptr<ContentStreamer> theStreamer,
                                        std::size_t theMinChunkSize,
-                                       std::size_t thePieceLimit)
+                                       std::size_t thePieceLimit,
+                                       Duration theMaxGap,
+                                       Duration theMaxHold)
     : itsStreamer(std::move(theStreamer)),
       itsMinChunkSize(theMinChunkSize),
-      itsPieceLimit(thePieceLimit)
+      itsPieceLimit(thePieceLimit),
+      itsMaxGap(theMaxGap),
+      itsMaxHold(theMaxHold)
 {
   if (!itsStreamer)
     throw Fmi::Exception(BCP, "Cannot coalesce the chunks of a streamer that does not exist");
@@ -26,6 +30,10 @@ std::string CoalescingStreamer::getChunk()
     std::string coalesced;
     std::size_t pieces = 0;
 
+    // When the first piece of this chunk arrived, and so when the bytes now in
+    // hand started waiting. Only meaningful once there is a piece.
+    TimePoint collectingSince;
+
     while (true)
     {
       // The status is what says whether there is anything left to ask for, and
@@ -37,12 +45,21 @@ std::string CoalescingStreamer::getChunk()
         return coalesced;
       }
 
+      const bool timed = (itsMaxGap > Duration::zero() || itsMaxHold > Duration::zero());
+      const TimePoint before = timed ? now() : TimePoint{};
+
       const std::string piece = itsStreamer->getChunk();
       const auto status = itsStreamer->getStatus();
 
+      const TimePoint after = timed ? now() : TimePoint{};
+
       coalesced += piece;
       if (!piece.empty())
+      {
+        if (pieces == 0)
+          collectingSince = after;
         ++pieces;
+      }
 
       if (status != StreamerStatus::OK)
       {
@@ -68,6 +85,19 @@ std::string CoalescingStreamer::getChunk()
       }
 
       if (coalesced.size() >= itsMinChunkSize || pieces >= itsPieceLimit)
+        return coalesced;
+
+      // This piece took long enough that the next one probably will too, and
+      // holding what is in hand for that long buys a fuller chunk at a price
+      // the chunk is not worth. Judged from the call that just returned,
+      // because a pull API gives no way to abandon one in progress.
+      if (itsMaxGap > Duration::zero() && (after - before) >= itsMaxGap)
+        return coalesced;
+
+      // And however fast the pieces come, collected bytes do not wait longer
+      // than this. Measured from the first piece of this chunk: what came
+      // before it was the producer's own time, with nothing yet in hand.
+      if (itsMaxHold > Duration::zero() && (after - collectingSince) >= itsMaxHold)
         return coalesced;
     }
   }
