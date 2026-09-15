@@ -390,7 +390,7 @@ void number_detection_1()
     {
       root = std::make_shared<Json::Value>();
       std::istringstream(out) >> *root;
-      std::cout << "Formatted JSON output for input[" << i << "]:\n" << *root << std::endl;
+      //std::cout << "Formatted JSON output for input[" << i << "]:\n" << *root << std::endl;
     }
     catch (const std::exception& e)
     {
