@@ -19,6 +19,8 @@
 #include <list>
 #include <set>
 
+namespace qi = boost::spirit::qi;
+
 namespace SmartMet
 {
 namespace Spine
@@ -51,23 +53,24 @@ std::string escape_json(const std::string& s)
 
 // ----------------------------------------------------------------------
 /*!
- * \brief Test if string looks like a number
+ * \brief Test if string looks like a number and optionally do some normalization
+          when required for numbers. Return empty optional if not a number.
  */
 // ----------------------------------------------------------------------
 
-bool looks_number(const std::string& theValue)
+std::optional<std::string> check_number(const std::string& theValue)
 {
   try
   {
     double result;
     auto begin = theValue.cbegin();
     auto end = theValue.cend();
-    if (boost::spirit::qi::parse(begin, end, boost::spirit::qi::double_, result))
-    {
-      if (begin == end)
-        return true;
-    }
-    return false;
+    if (!qi::parse(begin, end, qi::double_ >> qi::eoi, result))
+      return std::nullopt;
+
+    // TODO: handle special cases like "NaN", "Inf", "-Inf", "+Inf" etc.
+
+    return theValue;
   }
   catch (...)
   {
@@ -174,10 +177,14 @@ std::string format_recursively(const Table& theTable,
             out += miss;
           else if (value == "nan" || value == "NaN")  // nan is not allowed in JSON
             out += "null";
-          else if (looks_number(value))
-            out += value;
           else
-            out += escape_json(value);
+          {
+            const auto str = check_number(value);
+            if (str)
+              out += *str;
+            else
+              out += escape_json(value);
+          }
         }
         out += '}';
       }

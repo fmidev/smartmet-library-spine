@@ -11,6 +11,7 @@
 #include "TableFormatterOptions.h"
 #include <regression/tframe.h>
 #include <cmath>
+#include <json/json.h>
 
 template <typename T>
 std::string tostr(const T& theValue)
@@ -362,6 +363,44 @@ void not_enough_names_2()
   }
 }
 
+void number_detection_1()
+{
+  SmartMet::Spine::TableFormatter::Names names = {"foo"};
+
+  const std::vector<std::string> input =
+    {"123", "45.67", "abc", "Nan", "Inf", "-Inf", "+Inf",
+    "123x", "01", ".12345", ".12345E4", "12345E-4", "+1"};
+
+  int num_errors = 0;
+  for (std::size_t i = 0; i < input.size(); ++i)
+  {
+    SmartMet::Spine::Table tab;
+    tab.setNames(names);
+    tab.set(0, i, input[i]);
+    SmartMet::Spine::JsonFormatter fmt;
+    SmartMet::Spine::HTTP::Request req;
+    const auto out = fmt.format(tab, {}, req, config);
+    std::shared_ptr<Json::Value> root;
+    try {
+      root = std::make_shared<Json::Value>();
+      std::istringstream(out) >> *root;
+      std::cout << "Formatted JSON output for input[" << i << "]:\n" << *root << std::endl;
+    }
+    catch(const std::exception& e)
+    {
+      std::cerr << "Exception caught while parsing JSON for input '"
+        << input[i] << "': " << e.what() << '\n'
+        << "  in: " << out << std::endl;
+      ++num_errors;
+    }
+  }
+
+  if (num_errors != 0)
+    TEST_FAILED("Number of JSON parsing errors: " + std::to_string(num_errors));
+
+  TEST_PASSED();
+}
+
 // ----------------------------------------------------------------------
 /*!
  * The actual test suite
@@ -381,6 +420,8 @@ class tests : public tframe::tests
     TEST(no_names_1);
     TEST(no_names_2);
     TEST(not_enough_names_1);
+    TEST(not_enough_names_2);
+    TEST(number_detection_1);
     // TEST(missingtext);
   }
 };
