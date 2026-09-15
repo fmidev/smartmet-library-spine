@@ -53,6 +53,19 @@ std::optional<std::string> TableFormatter::check_number(const std::string& theVa
     if (!looks_number(theValue))
       return std::nullopt;
 
+    // Check whether formatted string is already a valid JSON number and return it if so
+    qi::rule<std::string::const_iterator> opt_minus_sign_r = !qi::lit('-');
+    qi::rule<std::string::const_iterator> opt_sign_r = !(qi::lit('-') | qi::lit('+'));
+    qi::rule<std::string::const_iterator> mantissa_r = opt_minus_sign_r
+      >> (qi::char_('0') | (qi::char_('1', '9') >> *qi::digit))
+      >> !(qi::char_('.') >> +qi::digit);
+    qi::rule<std::string::const_iterator> exponent_r = (qi::char_('e') | qi::char_('E')) >> opt_sign_r >> +qi::digit;
+    qi::rule<std::string::const_iterator> json_num_ok = mantissa_r >> !exponent_r >> qi::eoi;
+
+    if (qi::parse(theValue.cbegin(), theValue.cend(), json_num_ok))
+      return theValue;
+
+    // If we reach this point, the string is not a valid JSON number and needs normalization
     const std::size_t sign_len = (theValue.front() == '+' || theValue.front() == '-') ? 1 : 0;
 
     // The exponent needs no normalization, JSON accepts it as is
