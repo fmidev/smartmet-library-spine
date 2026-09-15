@@ -10,16 +10,14 @@
 #include "Table.h"
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/spirit/include/qi.hpp>
 #include <fmt/format.h>
 #include <macgyver/Exception.h>
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
 #include <list>
+#include <optional>
 #include <set>
-
-namespace qi = boost::spirit::qi;
 
 namespace SmartMet
 {
@@ -49,33 +47,6 @@ std::string escape_json(const std::string& s)
   }
   out += '"';
   return out;
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Test if string looks like a number and optionally do some normalization
-          when required for numbers. Return empty optional if not a number.
- */
-// ----------------------------------------------------------------------
-
-std::optional<std::string> check_number(const std::string& theValue)
-{
-  try
-  {
-    double result;
-    auto begin = theValue.cbegin();
-    auto end = theValue.cend();
-    if (!qi::parse(begin, end, qi::double_ >> qi::eoi, result))
-      return std::nullopt;
-
-    // TODO: handle special cases like "NaN", "Inf", "-Inf", "+Inf" etc.
-
-    return theValue;
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
 }
 
 // ----------------------------------------------------------------------
@@ -128,18 +99,20 @@ std::list<std::string> parse_attributes(const std::string& theStr)
   }
 }
 
+}  // namespace
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Format recursion
  */
 // ----------------------------------------------------------------------
 
-std::string format_recursively(const Table& theTable,
-                               const TableFormatter::Names& theNames,
-                               const HTTP::Request& theReq,
-                               Table::Indexes& theCols,
-                               const Table::Indexes& theRows,
-                               std::list<std::string>& theAttributes)
+std::string JsonFormatter::format_recursively(const Table& theTable,
+                                              const TableFormatter::Names& theNames,
+                                              const HTTP::Request& theReq,
+                                              Table::Indexes& theCols,
+                                              const Table::Indexes& theRows,
+                                              std::list<std::string>& theAttributes)
 {
   try
   {
@@ -175,7 +148,10 @@ std::string format_recursively(const Table& theTable,
           const auto& value = theTable.get(i, j);
           if (value.empty())
             out += miss;
-          else if (value == "nan" || value == "NaN")  // nan is not allowed in JSON
+          // Only the conventional spellings of the missing value are reported as
+          // null. Other spellings are formatted as strings, since they may well
+          // be strings, for example the name of the Thai station "Nan".
+          else if (value == "nan" || value == "NaN")
             out += "null";
           else
           {
@@ -247,8 +223,6 @@ std::string format_recursively(const Table& theTable,
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
-
-}  // namespace
 
 // ----------------------------------------------------------------------
 /*!

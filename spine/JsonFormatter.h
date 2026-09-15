@@ -5,7 +5,9 @@
 // ======================================================================
 
 #pragma once
+#include "Table.h"
 #include "TableFormatter.h"
+#include <list>
 
 namespace SmartMet
 {
@@ -22,6 +24,14 @@ class JsonFormatter : public TableFormatter
                      const TableFormatterOptions& theConfig) const override;
 
   std::string mimetype() const override { return "application/json"; }
+
+ private:
+  static std::string format_recursively(const Table& theTable,
+                                        const Names& theNames,
+                                        const HTTP::Request& theReq,
+                                        Table::Indexes& theCols,
+                                        const Table::Indexes& theRows,
+                                        std::list<std::string>& theAttributes);
 };
 
 }  // namespace Spine

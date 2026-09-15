@@ -11,7 +11,6 @@
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/spirit/include/qi.hpp>
 #include <fmt/format.h>
 #include <macgyver/Exception.h>
 #include <algorithm>
@@ -45,32 +44,6 @@ std::string escape_csv(const std::string& s)
   }
   out += '"';
   return out;
-}
-
-// ----------------------------------------------------------------------
-/*!
- * \brief Test if string looks like a number
- */
-// ----------------------------------------------------------------------
-
-bool looks_number(const std::string& theValue)
-{
-  try
-  {
-    double result;
-    auto begin = theValue.cbegin();
-    auto end = theValue.cend();
-    if (boost::spirit::qi::parse(begin, end, boost::spirit::qi::double_, result))
-    {
-      if (begin == end)
-        return true;
-    }
-    return false;
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
 }
 
 }  // namespace

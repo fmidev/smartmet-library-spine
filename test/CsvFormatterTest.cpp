@@ -12,6 +12,9 @@
 #include <regression/tframe.h>
 #include <cmath>
 #include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
 
 template <typename T>
 std::string tostr(const T& theValue)
@@ -165,6 +168,60 @@ void empty()
   TEST_PASSED();
 }
 
+void number_detection()
+{
+  // Numbers are output verbatim without quoting. CSV has no number grammar of
+  // its own, hence the values are not normalized like they are for JSON. The
+  // special values NaN and Inf are not numbers and are hence quoted.
+  const std::vector<std::pair<std::string, std::string>> values = {{"123", "123"},
+                                                                   {"-45.67", "-45.67"},
+                                                                   {"+1", "+1"},
+                                                                   {"007", "007"},
+                                                                   {".5", ".5"},
+                                                                   {"5.", "5."},
+                                                                   {"12345E-4", "12345E-4"},
+                                                                   {"Nan", "\"Nan\""},
+                                                                   {"NaN", "\"NaN\""},
+                                                                   {"nan", "\"nan\""},
+                                                                   {"Inf", "\"Inf\""},
+                                                                   {"-Inf", "\"-Inf\""},
+                                                                   {"infinity", "\"infinity\""},
+                                                                   {"abc", "\"abc\""},
+                                                                   {"123x", "\"123x\""}};
+
+  SmartMet::Spine::Table tab;
+  SmartMet::Spine::TableFormatter::Names names;
+
+  std::string header;
+  std::string row;
+  for (std::size_t i = 0; i < values.size(); ++i)
+  {
+    const std::string name = "n" + std::to_string(i);
+    names.push_back(name);
+    tab.set(i, 0, values[i].first);
+
+    if (i > 0)
+    {
+      header += ',';
+      row += ',';
+    }
+    header += "\"" + name + "\"";
+    row += values[i].second;
+  }
+
+  const std::string res = header + "\n" + row + "\n";
+
+  SmartMet::Spine::HTTP::Request req;
+
+  SmartMet::Spine::CsvFormatter fmt;
+  auto out = fmt.format(tab, names, req, config);
+
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "Expected result:\n" + res);
+
+  TEST_PASSED();
+}
+
 // ----------------------------------------------------------------------
 /*!
  * The actual test suite
@@ -180,6 +237,7 @@ class tests : public tframe::tests
     TEST(format_names_from_table);
     TEST(format_partial_names_from_table);
     TEST(missingtext);
+    TEST(number_detection);
     TEST(empty);
   }
 };

@@ -25,6 +25,9 @@ class WxmlFormatter : public TableFormatter
   std::string mimetype() const override { return "application/xml"; }
 
  private:
+  // Wxml is able to represent the special values, unlike the base class method
+  static bool looks_number_or_special(const std::string& theValue);
+
   std::string format_100(const Table& theTable,
                          const TableFormatter::Names& theNames,
                          const HTTP::Request& theReq,

@@ -10,8 +10,6 @@
 #include "Table.h"
 #include "TableFormatterOptions.h"
 #include <boost/algorithm/string/replace.hpp>
-#include <boost/math/special_functions/fpclassify.hpp>
-#include <boost/spirit/include/qi.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TimeParser.h>
@@ -26,36 +24,6 @@ namespace
 {
 // ----------------------------------------------------------------------
 /*!
- * \brief Test if string looks like a number or is -INF, INF or NaN.
- */
-// ----------------------------------------------------------------------
-
-bool looks_number(const std::string& theValue)
-{
-  try
-  {
-    // Allow correct case special values
-    if (theValue == "-INF" || theValue == "INF" || theValue == "NaN")
-    {
-      return true;
-    }
-
-    double result;
-    auto begin = theValue.cbegin();
-    auto end = theValue.cend();
-    if (boost::spirit::qi::parse(begin, end, boost::spirit::qi::double_, result))
-      if (begin == end)
-        return boost::math::isfinite(result);  // just in case spirit accepts nan, Inf etc
-    return false;
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
-}
-
-// ----------------------------------------------------------------------
-/*!
  * \brief Test if a string looks like a time stamp
  */
 // ----------------------------------------------------------------------
@@ -68,6 +36,28 @@ bool looks_time(const std::string& theValue)
 }
 
 }  // namespace
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Test if string looks like a number or is -INF, INF or NaN.
+ */
+// ----------------------------------------------------------------------
+
+bool WxmlFormatter::looks_number_or_special(const std::string& theValue)
+{
+  try
+  {
+    // Allow correct case special values
+    if (theValue == "-INF" || theValue == "INF" || theValue == "NaN")
+      return true;
+
+    return looks_number(theValue);
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
 
 // ----------------------------------------------------------------------
 /*!
@@ -183,7 +173,7 @@ std::string WxmlFormatter::format_100(const Table& theTable,
         out += "\"";
         if (!value.empty())
         {
-          if (looks_number(value))
+          if (looks_number_or_special(value))
             out += " value=\"";
           else
             out += " text=\"";
@@ -329,7 +319,7 @@ std::string WxmlFormatter::format_200(const Table& theTable,
         out += "\"";
         if (!value.empty())
         {
-          if (looks_number(value))
+          if (looks_number_or_special(value))
             out += " value=\"";
           else
             out += " text=\"";

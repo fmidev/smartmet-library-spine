@@ -9,9 +9,11 @@
 #include "JsonFormatter.h"
 #include "Table.h"
 #include "TableFormatterOptions.h"
+#include <json/json.h>
 #include <regression/tframe.h>
 #include <cmath>
-#include <json/json.h>
+#include <utility>
+#include <vector>
 
 template <typename T>
 std::string tostr(const T& theValue)
@@ -147,8 +149,8 @@ void twoattributes()
   tab.set(3, 3, "ilta");
 
   const char* res =
-      "{\"Helsinki\":{\"aamu\":[{\"col0\":00,\"col1\":10}],\"ilta\":[{\"col0\":02,\"col1\":12}]},"
-      "\"Tampere\":{\"aamu\":[{\"col0\":01,\"col1\":11}],\"ilta\":[{\"col0\":03,\"col1\":13}]}}";
+      "{\"Helsinki\":{\"aamu\":[{\"col0\":0,\"col1\":10}],\"ilta\":[{\"col0\":2,\"col1\":12}]},"
+      "\"Tampere\":{\"aamu\":[{\"col0\":1,\"col1\":11}],\"ilta\":[{\"col0\":3,\"col1\":13}]}}";
 
   SmartMet::Spine::HTTP::Request req;
   req.setParameter("attributes", "col2,col3");
@@ -185,8 +187,8 @@ void twoattributes_names_from_table()
   tab.set(3, 3, "ilta");
 
   const char* res =
-      "{\"Helsinki\":{\"aamu\":[{\"col0\":00,\"col1\":10}],\"ilta\":[{\"col0\":02,\"col1\":12}]},"
-      "\"Tampere\":{\"aamu\":[{\"col0\":01,\"col1\":11}],\"ilta\":[{\"col0\":03,\"col1\":13}]}}";
+      "{\"Helsinki\":{\"aamu\":[{\"col0\":0,\"col1\":10}],\"ilta\":[{\"col0\":2,\"col1\":12}]},"
+      "\"Tampere\":{\"aamu\":[{\"col0\":1,\"col1\":11}],\"ilta\":[{\"col0\":3,\"col1\":13}]}}";
 
   SmartMet::Spine::HTTP::Request req;
   req.setParameter("attributes", "col2,col3");
@@ -269,7 +271,7 @@ void no_names_1()
     fmt.format(tab, {}, req, config);
     TEST_FAILED("Expected exception not thrown");
   }
-  catch(const std::exception& e)
+  catch (const std::exception& e)
   {
     TEST_PASSED();
   }
@@ -291,7 +293,7 @@ void no_names_2()
     fmt.format(tab, {}, req, config);
     TEST_FAILED("Expected exception not thrown");
   }
-  catch(const std::exception& e)
+  catch (const std::exception& e)
   {
     TEST_PASSED();
   }
@@ -310,7 +312,7 @@ void no_names_3()
     fmt.format(tab, {}, req, config);
     TEST_FAILED("Expected exception not thrown");
   }
-  catch(const std::exception& e)
+  catch (const std::exception& e)
   {
     TEST_PASSED();
   }
@@ -333,7 +335,7 @@ void not_enough_names_1()
     fmt.format(tab, {}, req, config);
     TEST_FAILED("Expected exception not thrown");
   }
-  catch(const std::exception& e)
+  catch (const std::exception& e)
   {
     TEST_PASSED();
   }
@@ -357,7 +359,7 @@ void not_enough_names_2()
     fmt.format(tab, {}, req, config);
     TEST_FAILED("Expected exception not thrown");
   }
-  catch(const std::exception& e)
+  catch (const std::exception& e)
   {
     TEST_PASSED();
   }
@@ -367,9 +369,12 @@ void number_detection_1()
 {
   SmartMet::Spine::TableFormatter::Names names = {"foo"};
 
-  const std::vector<std::string> input =
-    {"123", "45.67", "abc", "Nan", "Inf", "-Inf", "+Inf",
-    "123x", "01", ".12345", ".12345E4", "12345E-4", "+1"};
+  const std::vector<std::string> input = {
+      "123",    "45.67",    "abc",       "Nan", "Inf",  "-Inf", "+Inf", "123x",  "01",
+      ".12345", ".12345E4", "12345E-4",  "+1",  "nan",  "NaN",  "NAN",  "-nan",  "nan(1)",
+      "inf",    "infinity", "-infinity", "INF", "0",    "-0",   "000",  "-007",  "00.5",
+      "-.5",    "+.5",      "5.",        "-5.", "1e+5", "1E5",  "1e",   "1.2.3", "0x10",
+      ".",      "-",        "+",         " 1",  "1 ",   "--1",  "1,2"};
 
   int num_errors = 0;
   for (std::size_t i = 0; i < input.size(); ++i)
@@ -381,22 +386,95 @@ void number_detection_1()
     SmartMet::Spine::HTTP::Request req;
     const auto out = fmt.format(tab, {}, req, config);
     std::shared_ptr<Json::Value> root;
-    try {
+    try
+    {
       root = std::make_shared<Json::Value>();
       std::istringstream(out) >> *root;
       std::cout << "Formatted JSON output for input[" << i << "]:\n" << *root << std::endl;
     }
-    catch(const std::exception& e)
+    catch (const std::exception& e)
     {
-      std::cerr << "Exception caught while parsing JSON for input '"
-        << input[i] << "': " << e.what() << '\n'
-        << "  in: " << out << std::endl;
+      std::cerr << "Exception caught while parsing JSON for input '" << input[i]
+                << "': " << e.what() << '\n'
+                << "  in: " << out << std::endl;
       ++num_errors;
     }
   }
 
   if (num_errors != 0)
     TEST_FAILED("Number of JSON parsing errors: " + std::to_string(num_errors));
+
+  TEST_PASSED();
+}
+
+void number_normalization()
+{
+  // Values which are formatted as JSON numbers. Note that Boost.Spirit accepts
+  // several forms which are not valid JSON and which hence must be normalized.
+  const std::vector<std::pair<std::string, std::string>> numbers = {
+      {"123", "123"},
+      {"45.67", "45.67"},
+      {"-45.67", "-45.67"},
+      {"-1", "-1"},
+      {"+1", "1"},  // JSON does not allow a leading plus sign
+      {"01", "1"},  // JSON does not allow leading zeroes
+      {"-007", "-7"},
+      {"000", "0"},
+      {"00.5", "0.5"},
+      {"0", "0"},
+      {"-0", "-0"},
+      {"0.5", "0.5"},
+      {".12345", "0.12345"},  // JSON requires an integer part
+      {"-.5", "-0.5"},
+      {"+.5", "0.5"},
+      {"5.", "5"},  // JSON does not allow a trailing decimal point
+      {"-5.", "-5"},
+      {".12345E4", "0.12345E4"},
+      {"12345E-4", "12345E-4"},
+      {"1e+5", "1e+5"},
+      {"1E5", "1E5"},
+      {"5.e3", "5e3"},
+      {"0100.50", "100.50"}};
+
+  // Values which are not numbers and are hence formatted as JSON strings. In
+  // particular the special values NaN and Inf accepted by Boost.Spirit have no
+  // JSON representation, and neither do station names looking like them.
+  const std::vector<std::string> strings = {"abc",
+                                            "Nan",  // station in Thailand
+                                            "NAN",   "-nan",     "nan(1)",    "Inf", "-Inf", "+Inf",
+                                            "inf",   "infinity", "-infinity", "INF", "123x", "1e",
+                                            "1.2.3", "0x10",     ".",         "-",   "+",    " 1",
+                                            "1 ",    "--1",      "1,2"};
+
+  // Values reported as missing values
+  const std::vector<std::string> nulls = {"", "nan", "NaN"};
+
+  std::vector<std::pair<std::string, std::string>> expected = numbers;
+  for (const auto& value : strings)
+    expected.emplace_back(value, "\"" + value + "\"");
+  for (const auto& value : nulls)
+    expected.emplace_back(value, "null");
+
+  const SmartMet::Spine::TableFormatter::Names names = {"foo"};
+
+  std::string errors;
+  for (const auto& test : expected)
+  {
+    SmartMet::Spine::Table tab;
+    tab.setNames(names);
+    tab.set(0, 0, test.first);
+
+    SmartMet::Spine::JsonFormatter fmt;
+    SmartMet::Spine::HTTP::Request req;
+    const auto out = fmt.format(tab, {}, req, config);
+    const std::string res = "[{\"foo\":" + test.second + "}]";
+
+    if (out != res)
+      errors += "\n\tinput '" + test.first + "': got " + out + ", expected " + res;
+  }
+
+  if (!errors.empty())
+    TEST_FAILED("Incorrect results:" + errors);
 
   TEST_PASSED();
 }
@@ -413,15 +491,19 @@ class tests : public tframe::tests
   void test(void)
   {
     TEST(noattributes);
+    TEST(noattributes_names_from_table);
     TEST(oneattribute);
     TEST(twoattributes);
+    TEST(twoattributes_names_from_table);
     TEST(empty);
     TEST(escaping);
     TEST(no_names_1);
     TEST(no_names_2);
+    TEST(no_names_3);
     TEST(not_enough_names_1);
     TEST(not_enough_names_2);
     TEST(number_detection_1);
+    TEST(number_normalization);
     // TEST(missingtext);
   }
 };
