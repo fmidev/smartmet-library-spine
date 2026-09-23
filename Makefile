@@ -44,7 +44,8 @@ endif
 
 # Common library compiling template
 
-LIBS +=	-lsmartmet-newbase \
+LIBS += $(PREFIX_LDFLAGS) \
+	-lsmartmet-newbase \
 	-lsmartmet-macgyver \
 	-ldouble-conversion \
 	-lboost_regex \
@@ -55,7 +56,6 @@ LIBS +=	-lsmartmet-newbase \
 	-lboost_locale \
 	-lctpp2 \
 	$(REQUIRED_LIBS) \
-	$(PREFIX_LDFLAGS) \
 	-lbacktrace \
 	-ldl \
 	-lrt
