@@ -528,5 +528,26 @@ void JSON::replaceReferences(Json::Value& theJson,
   replaceFromJsonMap(theJson, substitutions, thePrefix, qids, theCaseIsInsensitive, replace_refs);
 }
 
+// ----------------------------------------------------------------------
+/*!
+ * \brief Replace references and includes given as parsed substitutions
+ *
+ * Only values of the form "json:..." or "ref:..." are substituted so that
+ * a subsequent preprocess() call expands them; the other values are
+ * expected to be applied with expand() after the includes have been
+ * expanded, when the qids inside the included files are visible.
+ */
+// ----------------------------------------------------------------------
+
+void JSON::replaceReferences(Json::Value& theJson,
+                             const std::map<std::string, Json::Value>& theParams,
+                             const std::string& thePrefix,
+                             bool theCaseIsInsensitive)
+{
+  const bool replace_refs = true;
+  auto qids = collect_qids(theJson, theCaseIsInsensitive);
+  replaceFromJsonMap(theJson, theParams, thePrefix, qids, theCaseIsInsensitive, replace_refs);
+}
+
 }  // namespace Spine
 }  // namespace SmartMet

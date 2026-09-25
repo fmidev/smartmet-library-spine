@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.8.30
+Version: 26.9.24
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -49,10 +49,10 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 26.8.10
-BuildRequires: smartmet-library-macgyver-devel >= 26.8.19
-BuildRequires: smartmet-library-newbase-devel >= 26.7.14
-BuildRequires: smartmet-utils-devel >= 26.7.14
+BuildRequires: smartmet-library-gis-devel >= 26.9.23
+BuildRequires: smartmet-library-macgyver-devel >= 26.9.23
+BuildRequires: smartmet-library-newbase-devel >= 26.9.23
+BuildRequires: smartmet-utils-devel >= 26.9.3
 
 # OpenTelemetry C++ SDK — optional; enables SMARTMET_SPINE_OPENTELEMETRY when present.
 # Not yet packaged for RHEL/Rocky; see docs/build-opentelemetry.md for a local build.
@@ -98,9 +98,9 @@ Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: libbacktrace
 Requires: double-conversion
-Requires: smartmet-library-gis >= 26.8.10
-Requires: smartmet-library-macgyver >= 26.8.19
-Requires: smartmet-library-newbase >= 26.7.14
+Requires: smartmet-library-gis >= 26.9.23
+Requires: smartmet-library-macgyver >= 26.9.23
+Requires: smartmet-library-newbase >= 26.9.23
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -110,7 +110,7 @@ Requires: smartmet-timezones >= 24.5.27
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 26.8.19
+#TestRequires: smartmet-library-macgyver-devel >= 26.9.23
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -122,9 +122,9 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 26.8.19
-Requires: smartmet-library-gis-devel >= 26.8.10
-Requires: smartmet-library-newbase-devel >= 26.7.14
+Requires: smartmet-library-macgyver-devel >= 26.9.23
+Requires: smartmet-library-gis-devel >= 26.9.23
+Requires: smartmet-library-newbase-devel >= 26.9.23
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
@@ -168,12 +168,18 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
-* Sat Aug 30 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.8.30-1.fmi
-- Security: reject malformed/oversized/short IP addresses in the IP filter (was an
-  out-of-bounds read and a prefix-match bypass); default the admin IP filter to
-  localhost whenever neither an IP filter nor a password is configured (was left
-  open for a configured admin.uri); compare Basic-auth digests case-sensitively and
-  in constant time; drop a dormant credential-logging line.
+* Thu Sep 24 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.9.24-1.fmi
+- Fixed Thread.h includes
+
+* Wed Sep 23 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.9.23-1.fmi
+- Use std::shared_lock instead of boost::shared_lock for speed
+
+* Wed Sep 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.9.16-2.fmi
+- Added JSON::replaceReferences overload taking parsed substitutions, so that json:/ref: valued settings (e.g. WMS layer variants) can be applied before include expansion
+
+* Wed Sep 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.9.16-1.fmi
+- Repackaged due to Fmi::Cache::Cache locking changes
+
 * Mon Aug 24 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.8.24-1.fmi
 - FileCache: added stamp() returning the modification time and the size of a file for ETag/hash purposes, and a cached entry is now considered unchanged only if both still match; both values come from a single stat call, so the number of stat calls is unchanged
 

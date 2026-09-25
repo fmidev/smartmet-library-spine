@@ -27,6 +27,12 @@ void replaceReferences(Json::Value& theJson,
                        const std::string& thePrefix = "",
                        bool theCaseIsInsensitive = true);
 
+// substitute json-includes and references from already parsed substitutions
+void replaceReferences(Json::Value& theJson,
+                       const std::map<std::string, Json::Value>& theParams,
+                       const std::string& thePrefix = "",
+                       bool theCaseIsInsensitive = true);
+
 // expand includes in the Json ("json:file/name.json")
 void preprocess(Json::Value& theJson,
                 const std::string& theRootPath,
