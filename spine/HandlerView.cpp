@@ -113,7 +113,15 @@ HandlerView::HandlerView(
 
 HandlerView::~HandlerView()
 {
-  flushLog();
+  try
+  {
+    flushLog();
+  }
+  catch (...)
+  {
+    // Throwing from a destructor would terminate the process
+    Fmi::Exception::Trace(BCP, "Failed to flush the access log").printError();
+  }
 }
 
 bool HandlerView::handle(Reactor& theReactor,
