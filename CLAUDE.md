@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Namespace: `SmartMet::Spine`. Produces `libsmartmet-spine.so`. Headers install to `smartmet/spine/`.
 
+Full developer documentation: `docs/developer-guide.md`.
+
 ## Build commands
 
 ```bash
@@ -70,14 +72,14 @@ make -C test ASAN=yes test        # Address + UB sanitizer
 ### Caching
 
 - **`SmartMetCache`** — two-tier cache (memory LRU + filesystem). Memory cache uses `Fmi::Cache::Cache` with `NumShards=1` (byte-based sizing requires deterministic LRU). Evicted entries are written to the file cache asynchronously via a background thread.
-- **`JsonCache`** — specialized cache for JSON responses.
+- **`JsonCache`** — cache of parsed JSON files (`get(path)` → `Json::Value`, reloaded when the file changes).
 - **`FileCache`** — standalone filesystem cache.
 
 ### Other notable components
 
 - **`ConfigBase` / `ConfigTools`** — libconfig wrappers with typed accessors and error handling.
 - **`CRSRegistry`** — coordinate reference system registry (projections via GDAL/Proj).
-- **`IPFilter`** — IP-based access control for admin endpoints.
+- **`IPFilter`** — IP allow-list for plugin `ip_filters` and the admin URI (no IPv6). Note: private content handlers are only hidden from the URI map/frontends, not access-restricted.
 - **`Parameter` / `Parameters`** — meteorological parameter definitions and translations.
 - **`TcpMultiQuery`** — parallel TCP queries to multiple backends.
 - **`OTel*`** — optional OpenTelemetry integration (tracing, metrics); enabled by defining `SMARTMET_SPINE_OPENTELEMETRY` at compile time.

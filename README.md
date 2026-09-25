@@ -20,6 +20,7 @@ Plugins and engines are built against the spine library API. The spine library i
 
 ## Documentation
 
+- [Developer guide](docs/developer-guide.md) — Reactor, engine and plugin lifecycle, routing, admin requests, building blocks, binary compatibility
 - [OpenTelemetry support](docs/build-opentelemetry.md) — distributed traces and cache-statistics metrics
 
 ## License
