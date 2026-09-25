@@ -79,7 +79,7 @@ bool Authentication::authenticateRequest(const Request& request, Response& respo
 
       if (ba::iequals(splitHeader.at(0), "basic"))
       {
-        auto givenDigest = splitHeader.at(1);
+        const auto& givenDigest = splitHeader.at(1);
         unsigned groupMask = getAuthenticationGroup(request);
         for (auto& item : userMap)
         {

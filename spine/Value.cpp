@@ -19,7 +19,7 @@ namespace
 using SmartMet::Spine::Value;
 
 template <typename NumType>
-NumType check_limits_impl(NumType arg,
+NumType check_limits_impl(const NumType& arg,
                           const std::optional<Value>& lower_limit,
                           const std::optional<Value>& upper_limit,
                           NumType (Value::*getter)() const)
@@ -54,7 +54,7 @@ NumType check_limits_impl(NumType arg,
 }
 
 template <typename NumType>
-bool inside_limits_impl(NumType arg,
+bool inside_limits_impl(const NumType& arg,
                         const std::optional<Value>& lower_limit,
                         const std::optional<Value>& upper_limit,
                         NumType (Value::*getter)() const)

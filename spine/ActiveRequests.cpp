@@ -82,7 +82,7 @@ std::ostream& operator << (std::ostream& os, const ActiveRequests::Requests& req
 {
   if (requests.empty())
   {
-    os << "No active requests" << std::endl;
+    os << "No active requests" << '\n';
     return os;
   }
 

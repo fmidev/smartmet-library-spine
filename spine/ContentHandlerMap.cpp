@@ -510,7 +510,7 @@ void ContentHandlerMap::dumpURIs(std::ostream& output) const
   ReadLock lock(itsContentMutex);
   for (const auto& item : itsHandlers)
   {
-      output << item.first << " --> " << item.second->getPluginName() << std::endl;
+      output << item.first << " --> " << item.second->getPluginName() << '\n';
   }
 }
 
@@ -673,7 +673,7 @@ try
   handler->target = target;
   handler->requiresAuthentication = access == AdminRequestAccess::RequiresAuthentication;
   handler->isPublic = access == AdminRequestAccess::Public;
-  handler->handler = theHandler;
+  handler->handler = std::move(theHandler);
   handler->description = description;
 
   // Register the request even if no authentication is configured: the caller
@@ -976,12 +976,12 @@ bool ContentHandlerMap::executeAdminRequest(
             *reactor,
             theRequest);
           ok = ok && currOk;
-          errors << (currOk ? "OK    : " : "ERROR  ") << id << std::endl;
+          errors << (currOk ? "OK    : " : "ERROR  ") << id << '\n';
         }
         catch (...)
         {
           ok = false;
-          errors << "ERROR : " << id << std::endl;
+          errors << "ERROR : " << id << '\n';
         }
       }
       else
@@ -1221,12 +1221,12 @@ try
 catch (const std::exception& err)
 {
   // FIXME: use Fmi::Exception
-  errors << "Exception: " << err.what() << std::endl;
+  errors << "Exception: " << err.what() << '\n';
   return false;
 }
 catch (...)
 {
-  errors << "Unknown exception" << std::endl;
+  errors << "Unknown exception" << '\n';
   return false;
 }
 
@@ -1367,7 +1367,7 @@ bool ContentHandlerMap::setLoggingRequest(
     if (!loggingFlag)
       throw Fmi::Exception(BCP, "Logging parameter value not set.");
 
-    std::string flag = *loggingFlag;
+    const std::string& flag = *loggingFlag;
     // Logging status change requested
     if (flag == "enable")
     {

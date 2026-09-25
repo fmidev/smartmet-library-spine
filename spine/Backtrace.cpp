@@ -49,7 +49,7 @@ void Backtrace::backtrace_error_callback(void* data, const char* msg, int errnum
 try
 {
     Backtrace::data.out << "Backtrace error: " << msg << " (" << errnum << ")";
-    Backtrace::data.out << std::endl;
+    Backtrace::data.out << '\n';
 }
 catch (...)
 {
