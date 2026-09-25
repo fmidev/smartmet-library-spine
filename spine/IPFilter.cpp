@@ -1,9 +1,8 @@
-
 #include "IPFilter.h"
+#include "ConfigTools.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/spirit/include/qi.hpp>
 #include <macgyver/Exception.h>
-
+#include <algorithm>
 #include <vector>
 
 namespace SmartMet
@@ -12,286 +11,222 @@ namespace Spine
 {
 namespace IPFilter
 {
-SequenceFilter::~SequenceFilter() = default;
-
-SequenceFilterPtr makeFilter(const std::string& formatToken)
+namespace
 {
-  try
+using Rule = IPFilter::Rule;
+
+// Convert to the 16 byte form used for matching. IPv4 addresses are IPv4-mapped.
+boost::asio::ip::address_v6::bytes_type to_bytes(const boost::asio::ip::address& ip)
+{
+  if (ip.is_v4())
+    return boost::asio::ip::make_address_v6(boost::asio::ip::v4_mapped, ip.to_v4()).to_bytes();
+  return ip.to_v6().to_bytes();
+}
+
+std::optional<boost::asio::ip::address> make_address(const std::string& str)
+{
+  boost::system::error_code ec;
+  auto ip = boost::asio::ip::make_address(str, ec);
+  if (ec)
+    return {};
+  if (ip.is_v6() && ip.to_v6().is_v4_mapped())
+    return boost::asio::ip::address(
+        boost::asio::ip::make_address_v4(boost::asio::ip::v4_mapped, ip.to_v6()));
+  return ip;
+}
+
+// Parse a decimal number with at most the given number of digits
+std::optional<unsigned int> parse_number(const std::string& str, std::size_t maxdigits)
+{
+  if (str.empty() || str.size() > maxdigits || !boost::algorithm::all(str, boost::is_digit()))
+    return {};
+  return static_cast<unsigned int>(std::stoul(str));
+}
+
+// Rule matching exactly the given address prefix
+Rule make_prefix_rule(const boost::asio::ip::address& ip, unsigned int prefix)
+{
+  const auto bytes = to_bytes(ip);
+  Rule rule;
+  for (std::size_t i = 0; i < rule.size(); i++)
   {
-    if (formatToken == "*")
-      return SequenceFilterPtr(new AnyFilter(formatToken));
-
-    if (formatToken.find('-') != std::string::npos)
-      return SequenceFilterPtr(new RangeFilter(formatToken));
-
-    if (boost::algorithm::all(formatToken, boost::is_digit()))
-      return SequenceFilterPtr(new SingleFilter(formatToken));
-
-    throw Fmi::Exception(BCP, "Unrecognized format token: " + formatToken);
+    const unsigned int bits = std::min(8U, prefix - std::min(prefix, 8U * static_cast<unsigned int>(i)));
+    const auto mask = static_cast<std::uint8_t>(0xFF00U >> bits);
+    rule[i] = {static_cast<std::uint8_t>(bytes[i] & mask),
+               static_cast<std::uint8_t>(bytes[i] | static_cast<std::uint8_t>(~mask))};
   }
-  catch (...)
+  return rule;
+}
+
+// Legacy IPv4 pattern like 192.168.14-18.*
+std::optional<Rule> make_pattern_rule(const std::string& str)
+{
+  std::vector<std::string> parts;
+  boost::algorithm::split(parts, str, boost::is_any_of("."));
+  if (parts.size() != 4)
+    return {};
+
+  // IPv4-mapped prefix ::ffff:0:0/96
+  Rule rule;
+  for (std::size_t i = 0; i < 10; i++)
+    rule[i] = {0, 0};
+  rule[10] = {0xFF, 0xFF};
+  rule[11] = {0xFF, 0xFF};
+
+  for (std::size_t i = 0; i < 4; i++)
   {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
-}
-
-AnyFilter::AnyFilter(const std::string& /* format */) {}
-
-bool AnyFilter::match(const std::string& /* sequence */) const
-{
-  // Matches all sequences
-  return true;
-}
-
-SingleFilter::SingleFilter(std::string format) : itsMatch(std::move(format)) {}
-
-bool SingleFilter::match(const std::string& sequence) const
-{
-  // Matches if match is exact
-  return (sequence == itsMatch);
-}
-
-RangeFilter::RangeFilter(const std::string& format)
-{
-  try
-  {
-    std::vector<std::string> limits;
-    limits.reserve(2);
-    boost::algorithm::split(limits, format, boost::is_any_of("-"));
-
-    if (limits.size() != 2)
+    const auto& part = parts[i];
+    unsigned int lo = 0;
+    unsigned int hi = 255;
+    if (part != "*")
     {
-      throw Fmi::Exception(BCP, "Invalid range filter construction format: " + format);
+      const auto pos = part.find('-');
+      auto first = parse_number(part.substr(0, pos), 3);
+      auto last = (pos == std::string::npos ? first : parse_number(part.substr(pos + 1), 3));
+      if (!first || !last || *first > 255 || *last > 255)
+        return {};
+      lo = std::min(*first, *last);
+      hi = std::max(*first, *last);
     }
-
-    unsigned long first = std::strtoul(limits[0].c_str(), nullptr, 10);
-
-    unsigned long second = std::strtoul(limits[1].c_str(), nullptr, 10);
-
-    if (first > second)
-    {
-      itsHighLimit = first;
-      itsLowLimit = second;
-    }
-    else
-    {
-      itsHighLimit = second;
-      itsLowLimit = first;
-    }
+    rule[12 + i] = {static_cast<std::uint8_t>(lo), static_cast<std::uint8_t>(hi)};
   }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
+  return rule;
 }
 
-bool RangeFilter::match(const std::string& sequence) const
+Rule make_rule(const std::string& rulestr)
 {
-  try
-  {
-    unsigned long compare = std::strtoul(sequence.c_str(), nullptr, 10);
+  const auto str = boost::algorithm::trim_copy(rulestr);
 
-    return ((itsLowLimit <= compare) && (compare <= itsHighLimit));
-  }
-  catch (...)
+  const auto slash = str.find('/');
+  if (slash != std::string::npos)
   {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+    auto ip = make_address(str.substr(0, slash));
+    auto prefix = parse_number(str.substr(slash + 1), 3);
+    const unsigned int maxprefix = (ip && ip->is_v4() ? 32 : 128);
+    if (!ip || !prefix || *prefix > maxprefix)
+      throw Fmi::Exception(BCP, "Invalid CIDR IP filter rule: '" + rulestr + "'");
+    return make_prefix_rule(*ip, *prefix + (ip->is_v4() ? 96 : 0));
   }
+
+  if (auto ip = make_address(str))
+    return make_prefix_rule(*ip, 128);
+
+  if (auto rule = make_pattern_rule(str))
+    return *rule;
+
+  throw Fmi::Exception(BCP, "Invalid IP filter rule: '" + rulestr + "'");
 }
 
-AddressFilter::AddressFilter(const std::string& formatString)
+}  // namespace
+
+std::optional<boost::asio::ip::address> parseAddress(const std::string& ip)
 {
-  try
-  {
-    std::vector<std::string> tokens;
-    tokens.reserve(4);
-    boost::algorithm::split(tokens, formatString, boost::is_any_of("."));
+  const auto str = boost::algorithm::trim_copy(ip);
 
-    if (tokens.size() != 4)
-    {
-      throw Fmi::Exception(BCP, "Invalid IP filter format string: " + formatString);
-    }
-
-    unsigned int index = 0;
-    for (auto& token : tokens)
-    {
-      itsFilters[index] = makeFilter(token);
-      ++index;
-    }
-  }
-  catch (...)
+  // [v6] or [v6]:port
+  if (!str.empty() && str.front() == '[')
   {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+    const auto end = str.find(']');
+    if (end == std::string::npos)
+      return {};
+    const auto rest = str.substr(end + 1);
+    if (!rest.empty() && (rest[0] != ':' || !parse_number(rest.substr(1), 5)))
+      return {};
+    auto addr = make_address(str.substr(1, end - 1));
+    if (!addr || addr->is_v4())
+      return {};
+    return addr;
   }
+
+  // a.b.c.d:port
+  const auto colon = str.find(':');
+  if (colon != std::string::npos && str.find(':', colon + 1) == std::string::npos)
+  {
+    if (!parse_number(str.substr(colon + 1), 5))
+      return {};
+    auto addr = make_address(str.substr(0, colon));
+    if (!addr || !addr->is_v4())
+      return {};
+    return addr;
+  }
+
+  return make_address(str);
 }
 
-bool AddressFilter::match(const std::vector<std::string>& ipTokens) const
+IPFilter::IPFilter(const std::vector<std::string>& rules)
+try
 {
-  try
-  {
-    // An IPv4 address has exactly as many dotted fields as the filter has (4). Anything
-    // else must be rejected here:
-    //  - more tokens (e.g. a crafted "1.2.3.4.5.6") would index itsFilters out of bounds,
-    //  - fewer tokens (e.g. "127") would only test a prefix of the filter and could match
-    //    a "127.0.0.1" rule,
-    //  - a ':'-separated IPv6 address tokenises to a single field and cannot match an IPv4
-    //    rule; it fails closed (denied) rather than being mis-parsed.
-    if (ipTokens.size() != itsFilters.size())
-      return false;
-
-    for (std::size_t index = 0; index < itsFilters.size(); ++index)
-    {
-      if (!itsFilters[index]->match(ipTokens[index]))
-      {
-        // One miss is all we need
-        return false;
-      }
-    }
-
-    return true;
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
+  for (const auto& rule : rules)
+    itsRules.push_back(make_rule(rule));
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Failed to construct IP filter");
 }
 
-IPConfig::~IPConfig() = default;
-
-IPConfig::IPConfig(const std::string& configFile, const std::string& root) : ConfigBase(configFile)
+std::shared_ptr<IPFilter> IPFilter::fromConfig(const libconfig::Config& config,
+                                               const std::string& path)
+try
 {
-  try
-  {
-    std::vector<std::string> matchTokens;
-
-    bool success = false;
-    if (root.empty())
-      success = get_config_array(get_root(), "ip_filters", matchTokens);
-    else
-      success = get_config_array(root + ".ip_filters", matchTokens);
-
-    if (!success)
-    {
-      throw Fmi::Exception(BCP,
-                           "Group '" + (root.empty() ? "ip_filters" : (root + ".ip_filters")) +
-                               "' not found in configuration");
-    }
-
-    itsMatchTokens = matchTokens;
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
+  std::vector<std::string> rules;
+  lookupHostStringSettings(config, rules, path);
+  if (rules.empty())
+    return {};
+  return std::make_shared<IPFilter>(rules);
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Failed to read IP filter").addParameter("setting", path);
 }
 
-IPConfig::IPConfig(const std::shared_ptr<libconfig::Config>& configPtr, const std::string& root)
-    : ConfigBase(configPtr)
+bool IPFilter::match(const boost::asio::ip::address& ip) const
 {
-  try
-  {
-    std::vector<std::string> matchTokens;
+  const auto bytes = to_bytes(ip);
 
-    bool success = false;
-    if (root.empty())
-      success = get_config_array(get_root(), "ip_filters", matchTokens);
-    else
-      success = get_config_array(root + ".ip_filters", matchTokens);
-
-    if (!success)
-    {
-      throw Fmi::Exception(BCP,
-                           "Group '" + (root.empty() ? "ip_filters" : (root + ".ip_filters")) +
-                               "' not found in configuration");
-    }
-
-    itsMatchTokens = matchTokens;
-  }
-  catch (...)
+  for (const auto& rule : itsRules)
   {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+    bool ok = true;
+    for (std::size_t i = 0; ok && i < bytes.size(); i++)
+      ok = (rule[i].first <= bytes[i] && bytes[i] <= rule[i].second);
+    if (ok)
+      return true;
   }
-}
-
-const std::vector<std::string>& IPConfig::getTokens() const
-{
-  return itsMatchTokens;
-}
-
-IPFilter::IPFilter(const std::string& configFile, const std::string& root)
-    : itsConfig(new IPConfig(configFile, root))
-{
-  try
-  {
-    const auto theTokens = itsConfig->getTokens();
-    for (const auto& formatToken : theTokens)
-    {
-      itsFilters.emplace_back(formatToken);
-    }
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
-}
-
-IPFilter::IPFilter(const std::shared_ptr<libconfig::Config>& configPtr, const std::string& root)
-    : itsConfig(new IPConfig(configPtr, root))
-{
-  try
-  {
-    const auto theTokens = itsConfig->getTokens();
-    for (const auto& formatToken : theTokens)
-    {
-      itsFilters.emplace_back(formatToken);
-    }
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
-}
-
-IPFilter::IPFilter(const std::vector<std::string>& formatTokens)
-{
-  try
-  {
-    for (const auto& formatToken : formatTokens)
-    {
-      itsFilters.emplace_back(formatToken);
-    }
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
+  return false;
 }
 
 bool IPFilter::match(const std::string& ip) const
 {
-  try
-  {
-    std::vector<std::string> ipTokens;
-    ipTokens.reserve(4);
-    boost::algorithm::split(ipTokens, ip, boost::is_any_of("."));
+  // Note: no port numbers or brackets here, only plain addresses are accepted
+  auto addr = make_address(ip);
+  return addr && match(*addr);
+}
 
-    // Here is an implicit assumption that ipTokens.size() == 4
+std::string resolveClientIP(const std::string& peerIP,
+                            const std::optional<std::string>& forwardedFor,
+                            const IPFilter& trustedProxies)
+try
+{
+  if (!forwardedFor || !trustedProxies.match(peerIP))
+    return peerIP;
 
-    // See if given ip matches ANY of the given rules
-    for (const auto& filter : itsFilters)
-    {
-      if (filter.match(ipTokens))
-      {
-        // Return true if any of the filters is matched
-        return true;
-      }
-    }
-    return false;
-  }
-  catch (...)
+  std::vector<std::string> hops;
+  boost::algorithm::split(hops, *forwardedFor, boost::is_any_of(","));
+
+  std::string client = peerIP;
+  for (auto it = hops.rbegin(); it != hops.rend(); ++it)
   {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+    auto addr = parseAddress(*it);
+    if (!addr)
+      return "unknown";
+    client = addr->to_string();
+    if (!trustedProxies.match(*addr))
+      break;
   }
+  return client;
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Failed to resolve client IP");
 }
 
 }  // namespace IPFilter
