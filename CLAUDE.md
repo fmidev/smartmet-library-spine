@@ -79,7 +79,7 @@ make -C test ASAN=yes test        # Address + UB sanitizer
 
 - **`ConfigBase` / `ConfigTools`** — libconfig wrappers with typed accessors and error handling.
 - **`CRSRegistry`** — coordinate reference system registry (projections via GDAL/Proj).
-- **`IPFilter`** — IP allow-list for plugin `ip_filters` and the admin URI (no IPv6). Note: private content handlers are only hidden from the URI map/frontends, not access-restricted.
+- **`IPFilter`** — IP allow-list for plugin `ip_filters` and the admin URI.
 - **`Parameter` / `Parameters`** — meteorological parameter definitions and translations.
 - **`TcpMultiQuery`** — parallel TCP queries to multiple backends.
 - **`OTel*`** — optional OpenTelemetry integration (tracing, metrics); enabled by defining `SMARTMET_SPINE_OPENTELEMETRY` at compile time.
