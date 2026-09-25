@@ -222,10 +222,9 @@ The server (`AsyncConnection`) then chooses a pool:
 
 **Public and private URIs.** `getURIMap()` lists only **public** handlers. The sputnik
 engine broadcasts that list to the frontends, and frontends only forward the URIs they
-have heard about. A **private** handler is therefore not reachable **through a
-frontend**, but it answers anyone who can connect to the backend's own port directly.
-To restrict it, configure `plugins.<name>.ip_filters` (checked by the handler view) or
-authenticate in the plugin.
+have heard about. A **private** handler is therefore not routed **through a
+frontend**. Restrict administrative plugins with `plugins.<name>.ip_filters` (checked by
+the handler view).
 
 ## 8. Admin and info requests
 
@@ -248,9 +247,8 @@ Requests are made as `<admin uri>?what=<name>` (default `/admin`). The access le
 | `Private` | No authentication; not available through `/info`. |
 | `RequiresAuthentication` | HTTP Basic authentication with `admin.user` / `admin.password` from the server configuration. **If those are not configured, the registration is silently ignored**, so the request does not exist. |
 
-The admin URI is set by `admin.uri`. If `admin.uri` is not configured, the admin
-requests are restricted to `127.0.0.1` unless `admin.ip_filters` says otherwise. When
-`admin.uri` is configured without `admin.ip_filters`, there is no IP restriction.
+The admin URI is set by `admin.uri`, and the allowed clients by `admin.ip_filters`.
+Always configure `admin.ip_filters` together with `admin.uri`.
 
 The Reactor registers its own requests: `list`, `lastrequests`, `activerequests`,
 `cachestats`, `servicestats`, `engineinfo`, `plugininfo`, `waitforready`,
@@ -318,7 +316,6 @@ Most plugins produce tables of values:
 * **`CRSRegistry`** maps CRS names and EPSG codes to GDAL spatial references with
   per-CRS attributes (axis order, bbox), for the OGC plugins.
 * **`IPFilter`** is the IP allow-list used for plugin `ip_filters` and the admin URI.
-  It does not handle IPv6 addresses such as the loopback `::1`.
 * **`HostInfo`** resolves client host names (cached, in background threads, controlled
   by the `clientHostName*` options). **`TcpMultiQuery`** sends several TCP queries in
   parallel; the frontend uses it to query its backends' state.
@@ -368,16 +365,13 @@ packages. The rules that keep them working together:
 
 ## 14. Known pitfalls
 
-* **"Private" does not mean protected.** A private content handler is hidden from the URI
-  list and from the frontends, but it is fully reachable on the backend port. Use
-  `ip_filters` or authentication for administrative plugins.
+* **Restrict administrative plugins with `ip_filters`.** "Private" only controls the URI
+  list and frontend routing.
 * **`isAdminQuery()` is only a scheduling hint.** It picks the admin thread pool and skips
   the high-load check; it grants and denies nothing.
 * **`RequiresAuthentication` admin requests vanish without `admin.user`/`admin.password`.**
   The registration returns success but the request is never added.
-* **Configuring `admin.uri` removes the localhost default.** Without `admin.ip_filters`,
-  the admin requests are then open to every client.
-* **`IPFilter` has no IPv6 support** (not even `::1`).
+* **Configure `admin.ip_filters` whenever you configure `admin.uri`.**
 * **Initialisation is concurrent.** Engines' and plugins' `init()` run in parallel, and a
   plugin that calls an engine method before `getEngine<>()` has returned, or an engine
   that uses shared global state without locking, has a race.
