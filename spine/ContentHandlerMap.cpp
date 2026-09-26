@@ -418,18 +418,9 @@ bool ContentHandlerMap::hasHandlerView(const std::string& resource_) const
 void ContentHandlerMap::addIPFilters(const std::string& pluginName, const std::vector<std::string>& filterTokens)
 try
 {
-  std::shared_ptr<IPFilter::IPFilter> theFilter;
-  try
-  {
-    theFilter.reset(new IPFilter::IPFilter(filterTokens));
-    std::cout << "IP Filter registered for plugin: " << pluginName << std::endl;
-  }
-  catch (std::runtime_error& err)
-  {
-    // No IP filter for this plugin
-    std::cout << "No IP filter for plugin: " << pluginName << ". Reason: " << err.what()
-              << std::endl;
-  }
+  // A malformed rule throws: a plugin must not be left unfiltered because of a typo
+  auto theFilter = std::make_shared<IPFilter::IPFilter>(filterTokens);
+  std::cout << "IP Filter registered for plugin: " << pluginName << std::endl;
 
   auto inserted = itsIPFilters.insert(std::make_pair(pluginName, theFilter));
   if (!inserted.second)
@@ -1473,10 +1464,14 @@ try
     // Find the ip filters
     std::vector<std::string> filterTokens;
     lookupHostStringSettings(options.itsConfig, filterTokens, "admin.ip_filters");
-    if (filterTokens.empty() && !admin_uri_configured)
+    // Fail safe: an admin endpoint must never be reachable with no protection at all.
+    // If neither an IP filter nor password authentication is configured, default the IP
+    // filter to localhost only. Previously this default was applied only for the built-in
+    // /admin URI, so configuring a custom admin.uri without ip_filters (and without a
+    // password) left the admin endpoints open to every client.
+    if (filterTokens.empty() && !itsAdminAuthenticationCallback)
     {
-      // Unfortunately IPFilter currently does not support IPv6 loopback address
-      filterTokens = {"127.0.0.1" /* "::1" */ };
+      filterTokens = {"127.0.0.1", "::1"};
 
       std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_BLUE
                 << " Admin request IP filter defaults to localhost only"

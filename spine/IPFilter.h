@@ -2,21 +2,24 @@
 /*!
  * \brief Interface of class IPFilter
  *
- * This class is used to see if the incoming request IP matches a set
- * of allowed ip masks.
+ * This class is used to see if an IP address matches a set of rules.
+ * It is used for the admin and plugin access filters as well as for
+ * deciding which reverse proxies are trusted to report the client IP
+ * in an X-Forwarded-For header.
  *
  */
 // ======================================================================
 
 #pragma once
 
-#include "ConfigBase.h"
-
-#include <string>
-
+#include <boost/asio/ip/address.hpp>
 #include <array>
-#include <boost/scoped_ptr.hpp>
+#include <cstdint>
+#include <libconfig.h++>
 #include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace SmartMet
 {
@@ -24,115 +27,74 @@ namespace Spine
 {
 namespace IPFilter
 {
-// Base class for for filter tokens
-class SequenceFilter
-{
- public:
-  virtual ~SequenceFilter();
-
-  virtual bool match(const std::string& sequence) const = 0;
-};
-
-using SequenceFilterPtr = std::shared_ptr<SequenceFilter>;
-
-// Matches any ip token (*)
-class AnyFilter : public SequenceFilter
-{
- public:
-  explicit AnyFilter(const std::string& format);
-
-  bool match(const std::string& sequence) const override;
-};
-
-// Matches a single ip token (128)
-class SingleFilter : public SequenceFilter
-{
- public:
-  explicit SingleFilter(std::string format);
-
-  bool match(const std::string& sequence) const override;
-
- private:
-  std::string itsMatch;
-};
-
-// Matches a range of  ip tokens (128-255)
-class RangeFilter : public SequenceFilter
-{
- public:
-  explicit RangeFilter(const std::string& format);
-
-  bool match(const std::string& sequence) const override;
-
- private:
-  unsigned long itsLowLimit;
-
-  unsigned long itsHighLimit;
-};
-
-// Class that holds 4 sequence filters to make up a complete IP filter
-class AddressFilter
-{
- public:
-  explicit AddressFilter(const std::string& formatString);
-
-  bool match(const std::vector<std::string>& ipTokens) const;
-
- private:
-  std::array<SequenceFilterPtr, 4> itsFilters;
-};
-
-// Class for filter configuration
-class IPConfig : public ConfigBase
-{
- public:
-  ~IPConfig() override;
-
-  IPConfig();
-
-  explicit IPConfig(const std::string& configFile, const std::string& root = "");
-
-  explicit IPConfig(const std::shared_ptr<libconfig::Config>& configPtr,
-                    const std::string& root = "");
-
-  const std::vector<std::string>& getTokens() const;
-
- private:
-  std::vector<std::string> itsMatchTokens;
-};
-
 // ----------------------------------------------------------------------
 /*!
  * \brief User-facing IP filter class
  *
- * Holds zero or more IP filtering objects.
- * Constructs using given configuration file and root (in libconfig notation).
+ * Holds zero or more rules, an address is accepted if it matches any
+ * of them. An empty filter matches nothing. Accepted rule formats:
  *
- * Filter looks for 'ip_filter' array in the given configuration location
- * (file + root). Array contains tokens in the form of "192.168.14-18.*".
- * where:
- * - Single number matches as single numer
- * - Dash (-) matches a range of numbers
- * - Asterisk (*) matches any number
+ * - IPv4 patterns such as "192.168.14-18.*", where a number matches
+ *   itself, a dash (-) matches a range and an asterisk (*) matches any
+ *   number
+ * - exact addresses such as "10.1.2.3" or "::1"
+ * - CIDR blocks such as "10.0.0.0/8" or "fd00::/8"
+ *
+ * Malformed rules throw during construction. Malformed addresses never
+ * match. IPv4-mapped IPv6 addresses (::ffff:a.b.c.d) are matched as
+ * IPv4 addresses.
  */
 // ----------------------------------------------------------------------
 class IPFilter
 {
  public:
-  explicit IPFilter(const std::string& configFile, const std::string& root = "");
+  explicit IPFilter(const std::vector<std::string>& rules);
 
-  explicit IPFilter(const std::shared_ptr<libconfig::Config>& configPtr,
-                    const std::string& root = "");
-
-  explicit IPFilter(const std::vector<std::string>& formatTokens);
+  // Build a filter from a string array setting, honouring host specific
+  // 'overrides' like other host settings. Returns nullptr if the setting
+  // does not exist or is empty.
+  static std::shared_ptr<IPFilter> fromConfig(const libconfig::Config& config,
+                                              const std::string& path);
 
   bool match(const std::string& ip) const;
+  bool match(const boost::asio::ip::address& ip) const;
+
+  bool empty() const { return itsRules.empty(); }
+
+  // Allowed range for each byte of an IPv6 (or IPv4-mapped) address
+  using Rule = std::array<std::pair<std::uint8_t, std::uint8_t>, 16>;
 
  private:
-  boost::scoped_ptr<IPConfig> itsConfig;
-
-  std::vector<AddressFilter> itsFilters;
+  std::vector<Rule> itsRules;
 };
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Parse an address as found in an X-Forwarded-For header
+ *
+ * Accepts plain IPv4/IPv6 addresses, "a.b.c.d:port", "[v6]" and
+ * "[v6]:port". IPv4-mapped IPv6 addresses are converted to IPv4.
+ */
+// ----------------------------------------------------------------------
+
+std::optional<boost::asio::ip::address> parseAddress(const std::string& ip);
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Resolve the client IP of a request
+ *
+ * The X-Forwarded-For header is believed only when the socket peer is a
+ * trusted proxy. The header is then walked from right to left, skipping
+ * trusted proxies, and the first untrusted address is the client. If all
+ * the addresses are trusted, the left-most one is the client. A malformed
+ * entry in the part of the chain being walked yields "unknown", never the
+ * address of the proxy which forwarded it.
+ */
+// ----------------------------------------------------------------------
+
+std::string resolveClientIP(const std::string& peerIP,
+                            const std::optional<std::string>& forwardedFor,
+                            const IPFilter& trustedProxies);
 
 }  // namespace IPFilter
 }  // namespace Spine

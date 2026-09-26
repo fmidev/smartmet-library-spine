@@ -747,21 +747,7 @@ bool Reactor::loadPlugin(const std::string& sectionName,
         itsOptions.itsConfig, filterTokens, "plugins." + sectionName + ".ip_filters");
 
     if (not filterTokens.empty())
-    {
-      std::shared_ptr<IPFilter::IPFilter> theFilter;
-
-      try
-      {
-        addIPFilters(pluginname, filterTokens);
-        std::cout << "IP Filter registered for plugin: " << pluginname << std::endl;
-      }
-      catch (std::runtime_error& err)
-      {
-        // No IP filter for this plugin
-        std::cout << "No IP filter for plugin: " << pluginname << ". Reason: " << err.what()
-                  << std::endl;
-      }
-    }
+      addIPFilters(pluginname, filterTokens);
 
     std::shared_ptr<DynamicPlugin> plugin(new DynamicPlugin(theFilename, configfile, *this));
 
