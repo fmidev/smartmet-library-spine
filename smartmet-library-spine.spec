@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.9.25
+Version: 26.9.26
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -168,7 +168,7 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
-* Fri Sep 25 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.9.25-1.fmi
+* Sat Sep 26 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.9.26-1.fmi
 - Security: IPFilter rewritten on parsed addresses; supports CIDR blocks and IPv6 in addition to
   the old 192.168.1-10.* patterns, rejects malformed rules at startup and never matches malformed
   addresses (was an out-of-bounds read and a prefix-match bypass)
@@ -178,6 +178,7 @@ make %{_smp_mflags}
   nor a password is configured; compare Basic-auth digests case-sensitively and in constant time
 - A malformed plugin ip_filters setting now fails plugin loading instead of being reported as
   "No IP filter"
+
 * Thu Sep 24 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.9.24-1.fmi
 - Fixed Thread.h includes
 
