@@ -43,6 +43,14 @@ std::optional<std::string> getFmiApiKey(const HTTP::Request& theRequest, bool ch
   }
 }
 
+bool shouldReturnApiKey(const HTTP::Request& theRequest)
+{
+  const auto omit{theRequest.getHeader("omit-fmi-apikey")};
+  return (!omit ||
+          omit == std::string{"0"} ||
+          omit == std::string{"false"});
+}
+
 }  // namespace FmiApiKey
 }  // namespace Spine
 }  // namespace SmartMet
