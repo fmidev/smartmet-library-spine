@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.9.26
+Version: 26.9.29
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -168,6 +168,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Sep 29 2026 Petteri Hintsanen <petteri.hintsanen@fmi.fi> - 26.9.29-1.fmi
+- Add FmiApiKey::shouldReturnApiKey function.
+
 * Sat Sep 26 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.9.26-1.fmi
 - Security: IPFilter rewritten on parsed addresses; supports CIDR blocks and IPv6 in addition to
   the old 192.168.1-10.* patterns, rejects malformed rules at startup and never matches malformed
