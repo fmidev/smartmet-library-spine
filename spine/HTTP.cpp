@@ -11,6 +11,7 @@
 #include <boost/shared_array.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
 #include <list>
@@ -2447,11 +2448,6 @@ std::string strip_coding_suffix(const std::string& opaque)
 // Parse a single entity-tag such as "abc" or W/"abc" into its weak flag and
 // opaque value (with the surrounding quotes removed if present). Returns
 // {weak, opaque}.
-//
-// The content coding of the variant is stripped from the opaque value, so that
-// all the encodings of one resource compare equal: a conditional request
-// carrying the entity-tag of the zstd variant must be answered "304 Not
-// Modified" by the code holding the entity-tag of the data itself.
 std::pair<bool, std::string> parse_entity_tag(const std::string& theTag)
 {
   std::string tag = theTag;
@@ -2468,11 +2464,38 @@ std::pair<bool, std::string> parse_entity_tag(const std::string& theTag)
   if (tag.size() >= 2 && tag.front() == '"' && tag.back() == '"')
     tag = tag.substr(1, tag.size() - 2);
 
-  return {weak, strip_coding_suffix(tag)};
+  return {weak, tag};
 }
+
+// The content coding named by an unquoted opaque-tag, lower case, or an empty
+// string for the identity representation
+std::string coding_of(const std::string& opaque, const std::string& base)
+{
+  if (base.size() == opaque.size())
+    return {};
+  return Fmi::ascii_tolower_copy(opaque.substr(base.size() + 1));
+}
+
+// True if the request accepts a response with the given content coding, an
+// empty coding meaning the identity representation. Defined with the content
+// coding negotiation below.
+bool content_coding_acceptable(const std::optional<std::string>& acceptEncoding,
+                               const std::string& coding);
 }  // namespace
 
+ETagFilter::EntityTag ETagFilter::EntityTag::parse(const std::string& text)
+{
+  auto parsed = parse_entity_tag(text);
+  EntityTag tag;
+  tag.weak = parsed.first;
+  tag.opaque = parsed.second;
+  tag.base = strip_coding_suffix(tag.opaque);
+  tag.coding = coding_of(tag.opaque, tag.base);
+  return tag;
+}
+
 ETagFilter::ETagFilter(const Request& request)
+    : itsAcceptEncoding(request.getHeader("Accept-Encoding"))
 {
   const auto ifMatch = request.getHeader("If-Match");
   if (ifMatch)
@@ -2489,8 +2512,7 @@ ETagFilter::ETagFilter(const Request& request)
         itsIfMatchAny = true;
         continue;
       }
-      auto parsed = parse_entity_tag(trimmed);
-      itsIfMatch.push_back(EntityTag{parsed.first, parsed.second});
+      itsIfMatch.push_back(EntityTag::parse(trimmed));
     }
   }
 
@@ -2509,10 +2531,45 @@ ETagFilter::ETagFilter(const Request& request)
         itsIfNoneMatchAny = true;
         continue;
       }
-      auto parsed = parse_entity_tag(trimmed);
-      itsIfNoneMatch.push_back(EntityTag{parsed.first, parsed.second});
+      itsIfNoneMatch.push_back(EntityTag::parse(trimmed));
     }
   }
+}
+
+const ETagFilter::EntityTag* ETagFilter::matchingIfNoneMatch(const EntityTag& resource) const
+{
+  // Weak comparison (RFC 9110 8.8.3.2): the weakness of either tag is
+  // ignored. The data must be the same, and the client must accept the
+  // content coding of the variant it holds: every coding of the same data is
+  // a current representation of it, but only one the request accepts can
+  // answer the request. Taking the coding into account is what keeps a shared
+  // cache, which revalidates with the entity-tags of all the variants it
+  // holds, from being told to answer a request with a variant the client
+  // cannot decode.
+  //
+  // Of several matches the variant the server would itself choose wins, and
+  // the identity representation, being acceptable almost always, comes last.
+
+  const auto ranked = rankContentEncodings(
+      itsAcceptEncoding, supportedContentEncodings(), wildcardContentEncoding());
+
+  const auto rank = [&ranked](const EntityTag& tag)
+  {
+    if (tag.coding.empty())
+      return ranked.size() + 1;
+    auto pos = std::find(ranked.begin(), ranked.end(), tag.coding);
+    return static_cast<std::size_t>(pos - ranked.begin());  // ranked.size() if unranked
+  };
+
+  const EntityTag* best = nullptr;
+  for (const auto& tag : itsIfNoneMatch)
+  {
+    if (tag.base != resource.base || !content_coding_acceptable(itsAcceptEncoding, tag.coding))
+      continue;
+    if (best == nullptr || rank(tag) < rank(*best))
+      best = &tag;
+  }
+  return best;
 }
 
 std::pair<bool, Status> ETagFilter::evaluate(const std::string& etag) const
@@ -2523,11 +2580,12 @@ std::pair<bool, Status> ETagFilter::evaluate(const std::string& etag) const
     if (!itsHasIfMatch && !itsHasIfNoneMatch)
       return {true, Status::ok};
 
-    const auto parsed = parse_entity_tag(etag);
-    const EntityTag resource{parsed.first, parsed.second};
+    const auto resource = EntityTag::parse(etag);
 
     // If-Match is evaluated first (RFC 7232). It uses strong comparison:
-    // both tags must be strong and their opaque values must be equal.
+    // both tags must be strong and their data must be the same. The content
+    // coding is not part of the comparison, since If-Match asks about the
+    // state of the resource, not about the variant the client holds.
     if (itsHasIfMatch)
     {
       bool matched = itsIfMatchAny;
@@ -2535,7 +2593,7 @@ std::pair<bool, Status> ETagFilter::evaluate(const std::string& etag) const
       {
         for (const auto& tag : itsIfMatch)
         {
-          if (!tag.weak && !resource.weak && tag.opaque == resource.opaque)
+          if (!tag.weak && !resource.weak && tag.base == resource.base)
           {
             matched = true;
             break;
@@ -2547,28 +2605,41 @@ std::pair<bool, Status> ETagFilter::evaluate(const std::string& etag) const
         return {false, Status::precondition_failed};
     }
 
-    // If-None-Match uses weak comparison: opaque values must be equal,
-    // regardless of the weakness of either tag.
-    if (itsHasIfNoneMatch)
-    {
-      bool matched = itsIfNoneMatchAny;
-      if (!matched)
-      {
-        for (const auto& tag : itsIfNoneMatch)
-        {
-          if (tag.opaque == resource.opaque)
-          {
-            matched = true;
-            break;
-          }
-        }
-      }
-      // The client already has this representation -> 304 Not Modified
-      if (matched)
-        return {false, Status::not_modified};
-    }
+    // If-None-Match: the client already holds a current representation it
+    // can use -> 304 Not Modified
+    if (itsHasIfNoneMatch && (itsIfNoneMatchAny || matchingIfNoneMatch(resource) != nullptr))
+      return {false, Status::not_modified};
 
     return {true, Status::ok};
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+std::optional<std::string> ETagFilter::matchingETag(const std::string& etag) const
+{
+  try
+  {
+    if (!itsHasIfNoneMatch)
+      return std::nullopt;
+
+    const auto resource = EntityTag::parse(etag);
+    const auto* tag = matchingIfNoneMatch(resource);
+    if (tag == nullptr)
+      return std::nullopt;
+
+    // Written in the form of the server's own entity-tag: the weakness and the
+    // quoting are those of the resource, whatever the client sent
+    const std::string trimmed = boost::algorithm::trim_copy(etag);
+    const bool quoted = (trimmed.size() >= 2 && trimmed.back() == '"');
+    std::string result = resource.weak ? "W/" : "";
+    if (quoted)
+      result += '"' + tag->opaque + '"';
+    else
+      result += tag->opaque;
+    return result;
   }
   catch (...)
   {
@@ -2602,6 +2673,21 @@ std::optional<Status> conditionalResponseStatus(const Request& request, const st
       return std::nullopt;  // full response required
 
     return result.second;  // not_modified or precondition_failed
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+std::string notModifiedETag(const Request& request, const std::string& etag)
+{
+  try
+  {
+    auto matched = ETagFilter(request).matchingETag(etag);
+    if (matched)
+      return *matched;
+    return etag;
   }
   catch (...)
   {
@@ -2689,6 +2775,30 @@ AcceptedCodings parse_accept_encoding(const std::string& value)
   }
 
   return result;
+}
+
+bool content_coding_acceptable(const std::optional<std::string>& acceptEncoding,
+                               const std::string& coding)
+{
+  // Without an Accept-Encoding header, or with an empty one, only the identity
+  // representation is acceptable. RFC 9110 12.5.3 would allow any coding, but
+  // the server never encodes a response unsolicited, and a cache must not be
+  // told to answer such a request with an encoded variant it happens to hold.
+  const std::string value =
+      acceptEncoding ? boost::algorithm::trim_copy(*acceptEncoding) : std::string();
+  if (value.empty())
+    return coding.empty();
+
+  const auto accepted = parse_accept_encoding(value);
+
+  // The identity representation is acceptable unless refused by name, or
+  // through "*" when not named
+  const std::string name = coding.empty() ? std::string("identity") : coding;
+  if (auto q = accepted.named(name))
+    return *q > 0;
+  if (accepted.has_wildcard)
+    return accepted.wildcard > 0;
+  return coding.empty();
 }
 }  // namespace
 
