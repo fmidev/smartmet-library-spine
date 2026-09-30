@@ -19,6 +19,9 @@ namespace FmiApiKey
 std::optional<std::string> getFmiApiKey(const HTTP::Request& theRequest,
                                           bool checkAccessToken = false);
 
+// Should the API key be returned in responses?
+bool shouldReturnApiKey(const HTTP::Request& theRequest);
+
 }  // namespace FmiApiKey
 }  // namespace Spine
 }  // namespace SmartMet

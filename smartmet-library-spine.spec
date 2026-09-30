@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.9.29
-Release: 2%{?dist}.fmi
+Version: 26.9.30
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -168,6 +168,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Sep 30 2026 Petteri Hintsanen <petteri.hintsanen@fmi.fi> - 26.9.30-1.fmi
+- Added FmiApiKey::shouldReturnApiKey function.
+
 * Tue Sep 29 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.9.29-2.fmi
 - Added HTTP::selectContentEncoding() for negotiating the response content coding,
   and HTTP::supportedContentEncodings() / HTTP::wildcardContentEncoding() for the
