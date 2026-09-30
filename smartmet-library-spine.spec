@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.9.29
+Version: 26.9.30
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -168,8 +168,36 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
-* Tue Sep 29 2026 Petteri Hintsanen <petteri.hintsanen@fmi.fi> - 26.9.29-1.fmi
-- Add FmiApiKey::shouldReturnApiKey function.
+* Wed Sep 30 2026 Petteri Hintsanen <petteri.hintsanen@fmi.fi> - 26.9.30-1.fmi
+- Added FmiApiKey::shouldReturnApiKey function.
+
+* Tue Sep 29 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.9.29-2.fmi
+- Added HTTP::selectContentEncoding() for negotiating the response content coding,
+  and HTTP::supportedContentEncodings() / HTTP::wildcardContentEncoding() for the
+  codings a SmartMet server can produce.
+  Quality values are honoured, so an explicitly refused coding such as
+  "zstd;q=0" is no longer selected, and "*" is answered with the caller's
+  compatibility choice instead of its preferred coding
+- Added HTTP::rankContentEncodings() for callers that need every acceptable
+  coding rather than only the best one, such as a cache holding some of the
+  variants of a resource
+- Added HTTP::contentCodedETag() and HTTP::baseETag() for deriving the
+  entity-tag of a content coded variant from the coding independent entity-tag
+  the data producer generated, and back (RFC 9110 4.3.4)
+- HTTP::ETagFilter matches an If-None-Match entity-tag of a content coded
+  variant against the entity-tag of the data only when the request accepts that
+  coding, and the tag of the identity representation only when it is
+  acceptable. A request without Accept-Encoding accepts only the identity
+  representation
+- Added HTTP::ETagFilter::matchingETag() and HTTP::notModifiedETag() giving the
+  If-None-Match entity-tag that matched, which is the ETag a 304 must carry so
+  that a cache holding several variants knows which one to use
+- Added the 'compresscodings' setting (Options::contentCodings), a comma
+  separated list of the content codings the server offers in preference order.
+  Only codings the server can produce are accepted and an unknown name stops the
+  server at startup, so a codec can be taken out of use across a cluster without
+  a rebuild. The startup report prints the offered codings
+- ABI change: HTTP::ETagFilter and Options grew
 
 * Sat Sep 26 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.9.26-1.fmi
 - Security: IPFilter rewritten on parsed addresses; supports CIDR blocks and IPv6 in addition to

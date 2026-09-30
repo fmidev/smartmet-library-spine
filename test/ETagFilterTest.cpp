@@ -387,6 +387,138 @@ void conditional_status_if_match_fail()
 
 // ----------------------------------------------------------------------
 
+void content_coded_variants_compare_equal()
+{
+  // A client holding the entity-tag of an encoded variant it can decode must be
+  // answered "304 Not Modified" by code that knows only the entity-tag of the
+  // data: the content coding names the variant, not the resource.
+  auto req = makeRequest({"Accept-Encoding: zstd", "If-None-Match: \"abc+zstd\""});
+  if (ETagFilter(*req).full_response_required("\"abc\""))
+    TEST_FAILED("If-None-Match of the zstd variant should match the entity-tag of the data");
+
+  req = makeRequest({"Accept-Encoding: gzip", "If-None-Match: \"abc\""});
+  if (ETagFilter(*req).full_response_required("\"abc+gzip\""))
+    TEST_FAILED("If-None-Match of the data should match the entity-tag of the gzip variant");
+
+  req = makeRequest({"Accept-Encoding: gzip", "If-None-Match: \"abc+gzip\""});
+  if (ETagFilter(*req).full_response_required("\"abc+zstd\""))
+    TEST_FAILED("Entity-tags of two encodings of the same data should match");
+
+  // Different data still does not match
+  req = makeRequest({"Accept-Encoding: zstd", "If-None-Match: \"abc+zstd\""});
+  if (!ETagFilter(*req).full_response_required("\"xyz\""))
+    TEST_FAILED("A variant entity-tag of other data must not match");
+
+  // If-Match uses strong comparison, but the coding is not part of the
+  // resource identity either
+  req = makeRequest({"If-Match: \"abc+zstd\""});
+  auto result = ETagFilter(*req).evaluate("\"abc\"");
+  if (!result.first)
+    TEST_FAILED("If-Match of the zstd variant should pass for the entity-tag of the data");
+
+  // An opaque tag that merely contains a '+' is not a coding
+  req = makeRequest({"If-None-Match: \"abc+something\""});
+  if (!ETagFilter(*req).full_response_required("\"abc\""))
+    TEST_FAILED("A '+' that does not introduce a known coding must not be stripped");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
+void unacceptable_variant_does_not_match()
+{
+  // A variant whose coding the request does not accept is no use to answer it
+  // with, so it must not validate: a shared cache revalidating with it would be
+  // told to serve a body the client cannot decode.
+  auto req = makeRequest({"If-None-Match: \"abc+gzip\""});
+  if (!ETagFilter(*req).full_response_required("\"abc\""))
+    TEST_FAILED("Without Accept-Encoding the gzip variant must not match");
+
+  req = makeRequest({"Accept-Encoding: gzip", "If-None-Match: \"abc+zstd\""});
+  if (!ETagFilter(*req).full_response_required("\"abc\""))
+    TEST_FAILED("The zstd variant must not match a request accepting only gzip");
+
+  req = makeRequest({"Accept-Encoding: gzip, zstd;q=0", "If-None-Match: \"abc+zstd\""});
+  if (!ETagFilter(*req).full_response_required("\"abc\""))
+    TEST_FAILED("The zstd variant must not match a request refusing zstd");
+
+  req = makeRequest({"Accept-Encoding: gzip, identity;q=0", "If-None-Match: \"abc\""});
+  if (!ETagFilter(*req).full_response_required("\"abc\""))
+    TEST_FAILED("The identity variant must not match a request refusing identity");
+
+  req = makeRequest({"Accept-Encoding: gzip, *;q=0", "If-None-Match: \"abc\""});
+  if (!ETagFilter(*req).full_response_required("\"abc\""))
+    TEST_FAILED("The identity variant must not match a request refusing it through *");
+
+  // The identity representation is acceptable by default, "*" makes codings
+  // the request did not name acceptable
+  req = makeRequest({"Accept-Encoding: gzip", "If-None-Match: \"abc\""});
+  if (ETagFilter(*req).full_response_required("\"abc\""))
+    TEST_FAILED("The identity variant should match a request accepting gzip");
+
+  req = makeRequest({"Accept-Encoding: *", "If-None-Match: \"abc+zstd\""});
+  if (ETagFilter(*req).full_response_required("\"abc\""))
+    TEST_FAILED("The zstd variant should match a request accepting any coding");
+
+  req = makeRequest({"Accept-Encoding: GZIP", "If-None-Match: \"abc+gzip\""});
+  if (ETagFilter(*req).full_response_required("\"abc\""))
+    TEST_FAILED("Coding names are case insensitive");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
+void matching_etag_names_the_variant()
+{
+  using SmartMet::Spine::HTTP::notModifiedETag;
+
+  // The scenario of a shared cache holding both variants: the 304 must name
+  // the one to serve, which is the one the server would itself have chosen
+  auto req = makeRequest({"Accept-Encoding: gzip", "If-None-Match: \"abc\", \"abc+gzip\""});
+  auto tag = ETagFilter(*req).matchingETag("\"abc\"");
+  if (!tag || *tag != "\"abc+gzip\"")
+    TEST_FAILED("Expected the gzip variant, got " + tag.value_or("nothing"));
+
+  req = makeRequest({"If-None-Match: \"abc+gzip\", \"abc\""});
+  tag = ETagFilter(*req).matchingETag("\"abc\"");
+  if (!tag || *tag != "\"abc\"")
+    TEST_FAILED("Expected the identity variant without Accept-Encoding, got " +
+                tag.value_or("nothing"));
+
+  req = makeRequest({"Accept-Encoding: gzip, zstd", "If-None-Match: \"abc+gzip\", \"abc+zstd\""});
+  tag = ETagFilter(*req).matchingETag("\"abc\"");
+  if (!tag || *tag != "\"abc+zstd\"")
+    TEST_FAILED("Expected the preferred zstd variant, got " + tag.value_or("nothing"));
+
+  // A cache holding only the identity variant is told to use it, even if the
+  // server would have compressed a fresh response
+  req = makeRequest({"Accept-Encoding: gzip", "If-None-Match: \"abc\""});
+  if (notModifiedETag(*req, "\"abc\"") != "\"abc\"")
+    TEST_FAILED("Expected the identity variant the client holds");
+
+  // Written in the server's form, whatever the client sent
+  req = makeRequest({"Accept-Encoding: gzip", "If-None-Match: W/\"abc+gzip\""});
+  if (notModifiedETag(*req, "\"abc\"") != "\"abc+gzip\"")
+    TEST_FAILED("Expected a strong tag like the server's own");
+
+  // No particular tag: the resource's own entity-tag
+  req = makeRequest({"If-None-Match: *"});
+  if (ETagFilter(*req).matchingETag("\"abc\""))
+    TEST_FAILED("If-None-Match: * matches no particular variant");
+  if (notModifiedETag(*req, "\"abc\"") != "\"abc\"")
+    TEST_FAILED("If-None-Match: * should keep the resource's entity-tag");
+
+  req = makeRequest({"Accept-Encoding: gzip", "If-None-Match: \"xyz+gzip\""});
+  if (ETagFilter(*req).matchingETag("\"abc\""))
+    TEST_FAILED("Other data must not match");
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+
 void conditional_status_probe_skips_evaluation()
 {
   // While the frontend probes (X-Request-ETag), the backend must not
@@ -430,6 +562,9 @@ class tests : public tframe::tests
     TEST(conditional_status_if_none_match_match);
     TEST(conditional_status_if_none_match_no_match);
     TEST(conditional_status_if_match_fail);
+    TEST(content_coded_variants_compare_equal);
+    TEST(unacceptable_variant_does_not_match);
+    TEST(matching_etag_names_the_variant);
     TEST(conditional_status_probe_skips_evaluation);
   }
 };
