@@ -232,6 +232,14 @@ try
     std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
           << (isPrivate ? "private " : "") << "URI " << theUri << " for plugin "
           << pluginName << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+
+    // Private handlers are only left out of the service lists; any client that
+    // reaches this server directly can still use them.
+    if (isPrivate && !filter)
+      std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED << " WARNING: private URI "
+                << theUri << " of plugin " << pluginName
+                << " has no IP filter; it is available to every client reaching this server"
+                << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
   }
   else
   {
