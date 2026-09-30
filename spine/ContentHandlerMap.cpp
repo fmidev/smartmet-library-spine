@@ -668,14 +668,15 @@ try
   handler->handler = theHandler;
   handler->description = description;
 
+  // Register the request even if no authentication is configured: the caller
+  // is told the truth, the request is listed, and executeAdminRequest() answers
+  // it with 403 Forbidden unless an authentication callback is available.
   if (handler->requiresAuthentication && !itsAdminHandlerInfo->itsAdminAuthenticationCallback)
   {
     std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
-              << " Admin request '" << what << "' registration ignored - "
-              << "no authentication available"
+              << " Admin request '" << what << "' requires authentication, but "
+              << "admin.user and admin.password are not set: the request will be refused"
               << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
-    // No authentication callback available, ignore the request (do not report failure)
-    return true;
   }
 
   // Try adding plugin entry for admin requests. It does not matter whether
