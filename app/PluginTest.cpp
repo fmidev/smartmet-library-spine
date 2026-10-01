@@ -496,7 +496,7 @@ bool PluginTest::process_query(const fs::path& fn,
       else
       {
         auto ignores_it = ignores.find(fn.string());
-        bool filter_ok = not filter or std::regex_search(fn.string(), *filter);
+        bool filter_ok = not filter or boost::regex_search(fn.string(), *filter);
         if (ignores_it != ignores.end())
         {
           ignores_it->second.found = true;

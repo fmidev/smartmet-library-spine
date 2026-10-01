@@ -16,7 +16,7 @@
 #include "Reactor.h"
 #include <filesystem>
 #include <functional>
-#include <regex>
+#include <boost/regex.hpp>
 
 namespace SmartMet
 {
@@ -42,7 +42,7 @@ class PluginTest
   void setOutputDir(const std::string& dir) { mOutputDir = dir; }
   void setFailDir(const std::string& dir) { mFailDir = dir; }
   void addIgnoreList(const std::string& fileName) { ignore_lists.push_back(fileName); }
-  void setFilter(const std::string& filter) { this->filter.reset(new std::regex(filter)); }
+  void setFilter(const std::string& filter) { this->filter.reset(new boost::regex(filter)); }
 
  private:
   struct IgnoreInfo
@@ -67,7 +67,7 @@ class PluginTest
                      SmartMet::Spine::Reactor& reactor,
                      IgnoreMap& ignores) const;
 
-  std::unique_ptr<std::regex> filter;
+  std::unique_ptr<boost::regex> filter;
   std::vector<std::string> read_ignore_list(const std::string& dir) const;
   static std::vector<std::string> read_ignore_file(const std::string& fn);
 };  // class PluginTest
