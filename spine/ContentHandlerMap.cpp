@@ -246,13 +246,21 @@ try
           << (isPrivate ? "private " : "") << "URI " << theUri << " for plugin "
           << pluginName << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
 
-    // Private handlers are only left out of the service lists; any client that
-    // reaches this server directly can still use them.
+    // Private handlers are only left out of the service lists; without a filter
+    // any client reaching this server directly could use them. Unless the
+    // plugin has its own ip_filters, accept only local and private network
+    // addresses.
     if (isPrivate && !filter)
-      std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED << " WARNING: private URI "
+    {
+      static const std::vector<std::string> privateNetworks = {
+          "127.0.0.0/8", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"};
+      filter = std::make_shared<IPFilter::IPFilter>(privateNetworks);
+      std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_BLUE << " Private URI "
                 << theUri << " of plugin " << pluginName
-                << " has no IP filter; it is available to every client reaching this server"
-                << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+                << " accepts only local and private network addresses (set plugins."
+                << pluginName << ".ip_filters to change this)" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
+                << std::endl;
+    }
   }
   else
   {
