@@ -1,4 +1,5 @@
 #include "ContentHandlerMap.h"
+#include <cctype>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/ThreadName.h>
@@ -167,6 +168,18 @@ namespace
   {
     return plugin ? plugin->getPluginName() : "<builtin>";
   }
+
+  // IP filters are configured under the plugin's section name (for example
+  // "grid-gui"), but found by the name the plugin reports ("GridGui"). Compare
+  // the names ignoring case, dashes and underscores.
+  std::string filter_key(const std::string& name)
+  {
+    std::string key;
+    for (char ch : name)
+      if (ch != '-' && ch != '_')
+        key += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    return key;
+  }
 }
 
 
@@ -225,7 +238,7 @@ try
   std::shared_ptr<IPFilter::IPFilter> filter;
   if (thePlugin)
   {
-    auto itsFilterIterator = itsIPFilters.find(Fmi::ascii_tolower_copy(pluginName));
+    auto itsFilterIterator = itsIPFilters.find(filter_key(pluginName));
     if (itsFilterIterator != itsIPFilters.end())
       filter = itsFilterIterator->second;
 
@@ -430,7 +443,7 @@ try
   auto theFilter = std::make_shared<IPFilter::IPFilter>(filterTokens);
   std::cout << "IP Filter registered for plugin: " << pluginName << std::endl;
 
-  auto inserted = itsIPFilters.insert(std::make_pair(pluginName, theFilter));
+  auto inserted = itsIPFilters.insert(std::make_pair(filter_key(pluginName), theFilter));
   if (!inserted.second)
   {
     // Plugin name is not unique
