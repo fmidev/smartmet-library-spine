@@ -223,8 +223,11 @@ The server (`AsyncConnection`) then chooses a pool:
 **Public and private URIs.** `getURIMap()` lists only **public** handlers. The sputnik
 engine broadcasts that list to the frontends, and frontends only forward the URIs they
 have heard about. A **private** handler is therefore not routed **through a
-frontend**. Restrict administrative plugins with `plugins.<name>.ip_filters` (checked by
-the handler view).
+frontend**. A private handler whose plugin has no `plugins.<name>.ip_filters` accepts
+only localhost and the private networks 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16;
+`ip_filters` replaces this default. The filters are checked by the handler view, and
+the section name is matched to the plugin name ignoring case, dashes and underscores
+(`grid-gui` matches `GridGui`).
 
 ## 8. Admin and info requests
 
@@ -365,8 +368,10 @@ packages. The rules that keep them working together:
 
 ## 14. Known pitfalls
 
-* **Restrict administrative plugins with `ip_filters`.** "Private" only controls the URI
-  list and frontend routing.
+* **Restrict administrative plugins with `ip_filters`.** "Private" controls the URI list
+  and frontend routing; private handlers additionally default to localhost and the
+  private networks, which `ip_filters` replaces, so list every network that needs
+  access.
 * **`isAdminQuery()` is only a scheduling hint.** It picks the admin thread pool and skips
   the high-load check; it grants and denies nothing.
 * **`RequiresAuthentication` admin requests need `admin.user` and `admin.password`**
