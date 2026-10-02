@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.9.30
+Version: 26.10.2
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -50,7 +50,7 @@ BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 26.9.23
-BuildRequires: smartmet-library-macgyver-devel >= 26.9.23
+BuildRequires: smartmet-library-macgyver-devel >= 26.10.2
 BuildRequires: smartmet-library-newbase-devel >= 26.9.23
 BuildRequires: smartmet-utils-devel >= 26.9.3
 
@@ -99,7 +99,7 @@ Requires: libicu
 Requires: libbacktrace
 Requires: double-conversion
 Requires: smartmet-library-gis >= 26.9.23
-Requires: smartmet-library-macgyver >= 26.9.23
+Requires: smartmet-library-macgyver >= 26.10.2
 Requires: smartmet-library-newbase >= 26.9.23
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
@@ -122,7 +122,7 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 26.9.23
+Requires: smartmet-library-macgyver-devel >= 26.10.2
 Requires: smartmet-library-gis-devel >= 26.9.23
 Requires: smartmet-library-newbase-devel >= 26.9.23
 Requires: libconfig17-devel
@@ -168,6 +168,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Oct 02 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.2-1.fmi
+- Rebuilt against macgyver 26.10.2 where Fmi::Cache::Cache uses CLOCK eviction instead of LRU.
+  CLOCK is faster than LRU since a cache hit only takes a shared lock (ABI change)
+
 * Wed Sep 30 2026 Petteri Hintsanen <petteri.hintsanen@fmi.fi> - 26.9.30-1.fmi
 - Added FmiApiKey::shouldReturnApiKey function.
 
