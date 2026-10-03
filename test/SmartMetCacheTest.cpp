@@ -6,6 +6,7 @@
 // ======================================================================
 
 #include "SmartMetCache.h"
+#include <algorithm>
 #include <chrono>
 #include <macgyver/AsyncTask.h>
 #include <regression/tframe.h>
@@ -106,17 +107,20 @@ void find()
 
   auto content = cache.getContent();
 
-  for (unsigned int i = 0; i < content.size(); ++i)
+  // The memory cache uses CLOCK eviction, which reports its entries in ring order,
+  // not in recency order. Compare the cached keys regardless of their order.
+  std::vector<std::size_t> found;
+  for (const auto& item : content)
+    found.push_back(item.first);
+  std::sort(found.begin(), found.end());
+  std::sort(correct_order.begin(), correct_order.end());
+
+  if (found != correct_order)
   {
-    auto key = content[i].first;
-    if (key != correct_order[i])
-    {
-      auto keystr = tostr(key);
-      auto correctstr = tostr(correct_order[i]);
-      auto index = tostr(i);
-      TEST_FAILED("Incorrect content at index '" + index + "', expected '" + correctstr +
-                  "', got '" + keystr + "'");
-    }
+    std::string got;
+    for (auto key : found)
+      got += tostr(key) + " ";
+    TEST_FAILED("Incorrect cache content, got " + got);
   }
 
   TEST_PASSED();
