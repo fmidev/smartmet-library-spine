@@ -248,7 +248,7 @@ Requests are made as `<admin uri>?what=<name>` (default `/admin`). The access le
 |--------|---------|
 | `Public` | No authentication; also available at `/info?what=<name>`, and listed by `what=list`. |
 | `Private` | No authentication; not available through `/info`. |
-| `RequiresAuthentication` | HTTP Basic authentication with `admin.user` / `admin.password` from the server configuration. The request is available only when both are configured. |
+| `RequiresAuthentication` | HTTP Basic authentication with `admin.user` / `admin.password` from the server configuration. Without them the request is still registered, but it is refused with 403 unless the caller (such as the admin or frontend plugin) authenticates it itself. |
 
 The admin URI is set by `admin.uri`, and the allowed clients by `admin.ip_filters`.
 Always configure `admin.ip_filters` together with `admin.uri`.
@@ -375,7 +375,7 @@ packages. The rules that keep them working together:
 * **`isAdminQuery()` is only a scheduling hint.** It picks the admin thread pool and skips
   the high-load check; it grants and denies nothing.
 * **`RequiresAuthentication` admin requests need `admin.user` and `admin.password`**
-  in the server configuration.
+  in the server configuration; without them `/admin` answers them with 403.
 * **Configure `admin.ip_filters` whenever you configure `admin.uri`.**
 * **Initialisation is concurrent.** Engines' and plugins' `init()` run in parallel, and a
   plugin that calls an engine method before `getEngine<>()` has returned, or an engine
