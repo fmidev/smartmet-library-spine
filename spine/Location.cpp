@@ -103,24 +103,24 @@ std::string formatLocation(const Location& loc)
   {
     std::stringstream ss;
 
-    ss << "geoid:        " << formatLocation(loc, "geoid") << std::endl;
-    ss << "name:         " << formatLocation(loc, "name") << std::endl;
-    ss << "iso2:         " << formatLocation(loc, "iso2") << std::endl;
-    ss << "fmisid:       " << formatLocation(loc, "fmisid") << std::endl;
-    ss << "municipality: " << formatLocation(loc, "municipality") << std::endl;
-    ss << "region:       " << formatLocation(loc, "region") << std::endl;
-    ss << "feature:      " << formatLocation(loc, "feature") << std::endl;
-    ss << "country:      " << formatLocation(loc, "country") << std::endl;
-    ss << "longitude:    " << formatLocation(loc, "longitude") << std::endl;
-    ss << "latitude:     " << formatLocation(loc, "latitude") << std::endl;
-    ss << "radius:       " << loc.radius << std::endl;
-    ss << "timezone:     " << formatLocation(loc, "tz") << std::endl;
-    ss << "population:   " << formatLocation(loc, "population") << std::endl;
-    ss << "elevation:    " << formatLocation(loc, "elevation") << std::endl;
-    ss << "dem:          " << formatLocation(loc, "dem") << std::endl;
-    ss << "covertype:    " << formatLocation(loc, "covertype") << std::endl;
-    ss << "priority:     " << formatLocation(loc, "priority") << std::endl;
-    ss << "type:         " << formatLocation(loc, "type") << std::endl;
+    ss << "geoid:        " << formatLocation(loc, "geoid") << '\n';
+    ss << "name:         " << formatLocation(loc, "name") << '\n';
+    ss << "iso2:         " << formatLocation(loc, "iso2") << '\n';
+    ss << "fmisid:       " << formatLocation(loc, "fmisid") << '\n';
+    ss << "municipality: " << formatLocation(loc, "municipality") << '\n';
+    ss << "region:       " << formatLocation(loc, "region") << '\n';
+    ss << "feature:      " << formatLocation(loc, "feature") << '\n';
+    ss << "country:      " << formatLocation(loc, "country") << '\n';
+    ss << "longitude:    " << formatLocation(loc, "longitude") << '\n';
+    ss << "latitude:     " << formatLocation(loc, "latitude") << '\n';
+    ss << "radius:       " << loc.radius << '\n';
+    ss << "timezone:     " << formatLocation(loc, "tz") << '\n';
+    ss << "population:   " << formatLocation(loc, "population") << '\n';
+    ss << "elevation:    " << formatLocation(loc, "elevation") << '\n';
+    ss << "dem:          " << formatLocation(loc, "dem") << '\n';
+    ss << "covertype:    " << formatLocation(loc, "covertype") << '\n';
+    ss << "priority:     " << formatLocation(loc, "priority") << '\n';
+    ss << "type:         " << formatLocation(loc, "type") << '\n';
 
     return ss.str();
   }

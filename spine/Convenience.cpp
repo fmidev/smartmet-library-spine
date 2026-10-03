@@ -4,6 +4,7 @@
  */
 // ======================================================================
 
+#include <limits>
 #include "Convenience.h"
 #include <boost/algorithm/string.hpp>
 #include <macgyver/DateTime.h>
@@ -656,18 +657,20 @@ int duration_string_to_minutes(const std::string& interval)
       interval_string.resize(interval_string.size() - 1);
     }
 
-    int duration = Fmi::stoi(interval_string);
+    // The interval comes from the request, compute in 64 bits and check the range
+    const long long duration = Fmi::stoi(interval_string);
+    long long minutes = 0;
 
     switch (unit_char)
     {
       case 'm':
-        retval = duration;
+        minutes = duration;
         break;
       case 'h':
-        retval = duration * 60;
+        minutes = duration * 60;
         break;
       case 'd':
-        retval = duration * 1440;
+        minutes = duration * 1440;
         break;
       default:
       {
@@ -677,6 +680,10 @@ int duration_string_to_minutes(const std::string& interval)
         throw Fmi::Exception(BCP, err_str);
       }
     }
+
+    if (minutes > std::numeric_limits<int>::max() || minutes < std::numeric_limits<int>::min())
+      throw Fmi::Exception(BCP, "Duration '" + interval + "' is out of range");
+    retval = static_cast<int>(minutes);
 
     return retval;
   }

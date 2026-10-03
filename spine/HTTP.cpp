@@ -576,8 +576,8 @@ Request::Request(HeaderMap headerMap,
                  std::string resource,
                  RequestMethod method,
                  bool hasParsedPostData)
-    : Message(headerMap, version, false),  // Now only unchunked requests
-      itsContent(body),
+    : Message(std::move(headerMap), std::move(version), false),  // Now only unchunked requests
+      itsContent(std::move(body)),
       itsParameters(std::move(theParameters)),
       itsMethod(method),
       itsResource(std::move(resource)),
@@ -593,6 +593,11 @@ std::string Request::getContent() const
 void Request::setContent(const std::string& theContent)
 {
   itsContent = theContent;
+}
+
+void Request::setContent(std::string&& theContent)
+{
+  itsContent = std::move(theContent);
 }
 
 std::size_t Request::getContentLength() const
@@ -1140,6 +1145,18 @@ void Response::setContent(const std::string& theContent)
   try
   {
     itsContent = MessageContent(theContent);
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+void Response::setContent(std::string&& theContent)
+{
+  try
+  {
+    itsContent = MessageContent(std::move(theContent));
   }
   catch (...)
   {
@@ -2023,6 +2040,13 @@ MessageContent::MessageContent(const std::string& theContent)
 {
 }
 
+MessageContent::MessageContent(std::string&& theContent)
+    : stringContent(std::move(theContent)),
+      contentSize(stringContent.size()),
+      itsType(content_type::stringType)
+{
+}
+
 MessageContent::MessageContent(const std::shared_ptr<std::string>& theContent)
     : stringPtrContent(theContent),
       contentSize(theContent->size()),
@@ -2048,9 +2072,10 @@ MessageContent::MessageContent(std::shared_ptr<ContentStreamer> theContent)
 {
 }
 
-MessageContent::MessageContent(std::shared_ptr<ContentStreamer> theContent,
-                               std::size_t contentSize)
-    : streamContent(theContent), contentSize(contentSize), itsType(content_type::streamType)
+MessageContent::MessageContent(std::shared_ptr<ContentStreamer> theContent, std::size_t contentSize)
+    : streamContent(std::move(theContent)),
+      contentSize(contentSize),
+      itsType(content_type::streamType)
 {
 }
 

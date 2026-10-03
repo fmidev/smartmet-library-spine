@@ -197,6 +197,8 @@ class MessageContent
 
   MessageContent(const std::string& theContent);
 
+  MessageContent(std::string&& theContent);
+
   explicit MessageContent(const std::shared_ptr<std::string>& theContent);
 
   explicit MessageContent(const std::shared_ptr<std::vector<char>>& theContent);
@@ -364,6 +366,7 @@ class Request : public Message
    */
   // ----------------------------------------------------------------------
   void setContent(const std::string& theContent);
+  void setContent(std::string&& theContent);
 
   // ----------------------------------------------------------------------
   /*!
@@ -610,6 +613,7 @@ class Response : public Message
    */
   // ----------------------------------------------------------------------
   void setContent(const std::string& theContent);
+  void setContent(std::string&& theContent);
 
   // ----------------------------------------------------------------------
   /*!

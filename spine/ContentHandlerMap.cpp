@@ -1,4 +1,5 @@
 #include "ContentHandlerMap.h"
+#include <cctype>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/ThreadName.h>
@@ -167,6 +168,18 @@ namespace
   {
     return plugin ? plugin->getPluginName() : "<builtin>";
   }
+
+  // IP filters are configured under the plugin's section name (for example
+  // "grid-gui"), but found by the name the plugin reports ("GridGui"). Compare
+  // the names ignoring case, dashes and underscores.
+  std::string filter_key(const std::string& name)
+  {
+    std::string key;
+    for (char ch : name)
+      if (ch != '-' && ch != '_')
+        key += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    return key;
+  }
 }
 
 
@@ -225,13 +238,29 @@ try
   std::shared_ptr<IPFilter::IPFilter> filter;
   if (thePlugin)
   {
-    auto itsFilterIterator = itsIPFilters.find(Fmi::ascii_tolower_copy(pluginName));
+    auto itsFilterIterator = itsIPFilters.find(filter_key(pluginName));
     if (itsFilterIterator != itsIPFilters.end())
       filter = itsFilterIterator->second;
 
     std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
           << (isPrivate ? "private " : "") << "URI " << theUri << " for plugin "
           << pluginName << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+
+    // Private handlers are only left out of the service lists; without a filter
+    // any client reaching this server directly could use them. Unless the
+    // plugin has its own ip_filters, accept only local and private network
+    // addresses.
+    if (isPrivate && !filter)
+    {
+      static const std::vector<std::string> privateNetworks = {
+          "127.0.0.0/8", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"};
+      filter = std::make_shared<IPFilter::IPFilter>(privateNetworks);
+      std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_BLUE << " Private URI "
+                << theUri << " of plugin " << pluginName
+                << " accepts only local and private network addresses (set plugins."
+                << pluginName << ".ip_filters to change this)" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
+                << std::endl;
+    }
   }
   else
   {
@@ -422,7 +451,7 @@ try
   auto theFilter = std::make_shared<IPFilter::IPFilter>(filterTokens);
   std::cout << "IP Filter registered for plugin: " << pluginName << std::endl;
 
-  auto inserted = itsIPFilters.insert(std::make_pair(pluginName, theFilter));
+  auto inserted = itsIPFilters.insert(std::make_pair(filter_key(pluginName), theFilter));
   if (!inserted.second)
   {
     // Plugin name is not unique
@@ -502,7 +531,7 @@ void ContentHandlerMap::dumpURIs(std::ostream& output) const
   ReadLock lock(itsContentMutex);
   for (const auto& item : itsHandlers)
   {
-      output << item.first << " --> " << item.second->getPluginName() << std::endl;
+      output << item.first << " --> " << item.second->getPluginName() << '\n';
   }
 }
 
@@ -665,17 +694,18 @@ try
   handler->target = target;
   handler->requiresAuthentication = access == AdminRequestAccess::RequiresAuthentication;
   handler->isPublic = access == AdminRequestAccess::Public;
-  handler->handler = theHandler;
+  handler->handler = std::move(theHandler);
   handler->description = description;
 
+  // Register the request even if no authentication is configured: the caller
+  // is told the truth, the request is listed, and executeAdminRequest() answers
+  // it with 403 Forbidden unless an authentication callback is available.
   if (handler->requiresAuthentication && !itsAdminHandlerInfo->itsAdminAuthenticationCallback)
   {
     std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
-              << " Admin request '" << what << "' registration ignored - "
-              << "no authentication available"
+              << " Admin request '" << what << "' requires authentication, but "
+              << "admin.user and admin.password are not set: the request will be refused"
               << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
-    // No authentication callback available, ignore the request (do not report failure)
-    return true;
   }
 
   // Try adding plugin entry for admin requests. It does not matter whether
@@ -967,12 +997,12 @@ bool ContentHandlerMap::executeAdminRequest(
             *reactor,
             theRequest);
           ok = ok && currOk;
-          errors << (currOk ? "OK    : " : "ERROR  ") << id << std::endl;
+          errors << (currOk ? "OK    : " : "ERROR  ") << id << '\n';
         }
         catch (...)
         {
           ok = false;
-          errors << "ERROR : " << id << std::endl;
+          errors << "ERROR : " << id << '\n';
         }
       }
       else
@@ -1212,12 +1242,12 @@ try
 catch (const std::exception& err)
 {
   // FIXME: use Fmi::Exception
-  errors << "Exception: " << err.what() << std::endl;
+  errors << "Exception: " << err.what() << '\n';
   return false;
 }
 catch (...)
 {
-  errors << "Unknown exception" << std::endl;
+  errors << "Unknown exception" << '\n';
   return false;
 }
 
@@ -1358,7 +1388,7 @@ bool ContentHandlerMap::setLoggingRequest(
     if (!loggingFlag)
       throw Fmi::Exception(BCP, "Logging parameter value not set.");
 
-    std::string flag = *loggingFlag;
+    const std::string& flag = *loggingFlag;
     // Logging status change requested
     if (flag == "enable")
     {

@@ -470,6 +470,13 @@ bool PluginTest::process_query(const fs::path& fn,
 
   auto query = SmartMet::Spine::HTTP::parseRequest(input);
 
+  // The requests come from this local process. Without a client address the
+  // IP filters of the handlers, such as the default filter of private
+  // handlers, would reject them.
+  if (query.first == SmartMet::Spine::HTTP::ParsingStatus::COMPLETE && query.second &&
+      query.second->getClientIP().empty())
+    query.second->setClientIP("127.0.0.1");
+
   bool ok = true;
 
   if (query.first == SmartMet::Spine::HTTP::ParsingStatus::COMPLETE)
@@ -489,7 +496,7 @@ bool PluginTest::process_query(const fs::path& fn,
       else
       {
         auto ignores_it = ignores.find(fn.string());
-        bool filter_ok = not filter or std::regex_search(fn.string(), *filter);
+        bool filter_ok = not filter or boost::regex_search(fn.string(), *filter);
         if (ignores_it != ignores.end())
         {
           ignores_it->second.found = true;

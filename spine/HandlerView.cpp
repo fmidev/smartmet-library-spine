@@ -113,7 +113,15 @@ HandlerView::HandlerView(
 
 HandlerView::~HandlerView()
 {
-  flushLog();
+  try
+  {
+    flushLog();
+  }
+  catch (...)
+  {
+    // Throwing from a destructor would terminate the process
+    Fmi::Exception::Trace(BCP, "Failed to flush the access log").printError();
+  }
 }
 
 bool HandlerView::handle(Reactor& theReactor,
@@ -279,6 +287,13 @@ bool HandlerView::handle(Reactor& theReactor,
       auto apikey = FmiApiKey::getFmiApiKey(theRequest);
       const std::string apikeyStr = (apikey ? *apikey : "-");
 
+      // The server hands HEAD requests to the handlers as GET requests, and
+      // records the original method in an internal header (it strips the
+      // header from client requests).
+      const auto originalMethod = theRequest.getHeader("X-SmartMet-Original-Method");
+      const std::string logMethod =
+          (originalMethod ? *originalMethod : theRequest.getMethodString());
+
       if (theResponse.hasStreamContent())
       {
         // Streamed response: the body size and the true wall-clock duration
@@ -292,9 +307,8 @@ bool HandlerView::handle(Reactor& theReactor,
         // log in any case (it only feeds the admin servicestats metric).
         const std::string uri    = theRequest.getURI();
         const std::string ip     = theRequest.getClientIP();
-        const std::string method = theRequest.getMethodString();
         theResponse.setStreamCompletionHandler(
-            [this, uri, ip, method, apikeyStr, before, cpuDuration](const HTTP::Response& response,
+            [this, uri, ip, logMethod, apikeyStr, before, cpuDuration](const HTTP::Response& response,
                                                                     std::size_t bytesSent)
             {
               const auto totalDuration = Fmi::MicrosecClock::universal_time() - before;
@@ -304,7 +318,7 @@ bool HandlerView::handle(Reactor& theReactor,
                                   cpuDuration,
                                   response.getStatusString(),
                                   ip,
-                                  method,
+                                  logMethod,
                                   response.getVersion(),
                                   bytesSent,
                                   (etag ? *etag : "-"),
@@ -319,7 +333,7 @@ bool HandlerView::handle(Reactor& theReactor,
                             cpuDuration,
                             theResponse.getStatusString(),
                             theRequest.getClientIP(),
-                            theRequest.getMethodString(),
+                            logMethod,
                             theResponse.getVersion(),
                             theResponse.getContentLength(),
                             (etag ? *etag : "-"),

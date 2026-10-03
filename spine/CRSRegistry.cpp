@@ -299,7 +299,7 @@ void CRSRegistry::dump_info(std::ostream& output)
     for (const auto& item : crs_map)
     {
       output << "CRSRegistry: name='" << item.second.name << "' regex='" << item.second.regex
-             << "' proj4='" << get_proj4(item.second.name) << "'" << std::endl;
+             << "' proj4='" << get_proj4(item.second.name) << "'" << '\n';
     }
   }
   catch (...)
@@ -313,6 +313,7 @@ std::vector<std::string> CRSRegistry::get_crs_keys() const
   try
   {
     std::vector<std::string> result;
+    result.reserve(crs_map.size());
     for (const auto& item : crs_map)
     {
       result.push_back(item.first);
