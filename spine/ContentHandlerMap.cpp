@@ -67,6 +67,24 @@ namespace
       nm << " for " << targetName(target);
     return nm.str();
   }
+
+  // The longest URI prefix which the resource starts with, followed by a path separator or the
+  // end of the resource. Nested prefixes such as /edr and /edr/collections must select the
+  // longer one.
+  const std::string* longest_matching_prefix(const std::set<std::string>& thePrefixes,
+                                             const std::string& theResource)
+  {
+    const std::string* best = nullptr;
+    for (const auto& item : thePrefixes)
+    {
+      const std::size_t len = item.length();
+      if (theResource.compare(0, len, item) == 0 &&
+          (theResource.length() == len || theResource[len] == '/') &&
+          (best == nullptr || len > best->length()))
+        best = &item;
+    }
+    return best;
+  }
 }
 
 
@@ -385,19 +403,11 @@ try
 {
   ReadLock lock(itsContentMutex);
 
-  bool remapped = false;
   std::string resource = theRequest.getResource();
-
-  for (const auto& item : itsUriPrefixes)
-  {
-    std::size_t len = item.length();
-    if (resource.substr(0, len) == item && (resource.length() == len || resource[len] == '/'))
-    {
-      remapped = true;
-      resource = item;
-      break;
-    }
-  }
+  const std::string* prefix = longest_matching_prefix(itsUriPrefixes, resource);
+  const bool remapped = (prefix != nullptr);
+  if (remapped)
+    resource = *prefix;
 
   // Try to find a content handler
   auto it = itsHandlers.find(resource);
@@ -429,15 +439,8 @@ bool ContentHandlerMap::hasHandlerView(const std::string& resource_) const
 {
   std::string resource = resource_;
   ReadLock lock(itsContentMutex);
-  for (const auto& item : itsUriPrefixes)
-  {
-    std::size_t len = item.length();
-    if (resource.substr(0, len) == item && (resource.length() == len || resource[len] == '/'))
-    {
-      resource = item;
-      break;
-    }
-  }
+  if (const std::string* prefix = longest_matching_prefix(itsUriPrefixes, resource))
+    resource = *prefix;
 
   // Try to find a content handler
   return itsHandlers.find(resource) != itsHandlers.end();
