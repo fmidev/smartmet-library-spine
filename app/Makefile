@@ -16,6 +16,7 @@ LIBS +=	\
 	-lboost_thread \
 	-lboost_program_options \
 	-lboost_locale \
+	-lboost_regex \
 	-lctpp2 \
 	$(REQUIRED_LIBS) \
 	$(PREFIX_LDFLAGS) \
