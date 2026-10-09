@@ -9,6 +9,7 @@
 #include <thread>
 #include <csignal>
 #include <fontconfig/fontconfig.h>
+#include <gdal.h>
 
 using namespace std;
 
@@ -135,6 +136,8 @@ int main(int argc, char* argv[])
     namespace po = boost::program_options;
 
     po::options_description desc("Allowed options");
+
+    GDALAllRegister();
 
     // clang-format off
     desc.add_options()

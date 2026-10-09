@@ -1,5 +1,5 @@
 
-REQUIRES = configpp libpqxx
+REQUIRES = gdal configpp libpqxx
 
 include $(shell smartbuildcfg --prefix)/share/smartmet/devel/makefile.inc
 
