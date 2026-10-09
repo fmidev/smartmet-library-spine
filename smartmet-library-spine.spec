@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.10.3
-Release: 2%{?dist}.fmi
+Version: 26.10.9
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -168,6 +168,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Oct  9 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.9-1.fmi
+- smartmet-plugin-test: an X-Test-Headers request header adds the response status and the
+  listed response headers to the compared output
+
 * Sat Oct  3 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.3-2.fmi
 - Select the longest matching URI prefix handler, previously a handler for /edr would also have
   handled requests to a nested prefix handler such as /edr/collections

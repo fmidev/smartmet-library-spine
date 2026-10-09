@@ -535,6 +535,26 @@ bool PluginTest::process_query(const fs::path& fn,
               break;
           }
 
+          // Optionally validate the status and selected headers too: a request header
+          // "X-Test-Headers: Content-Type,Link" prepends the response status and the listed
+          // response headers to the result. An empty list prepends the status only.
+          //
+          if (const auto test_headers = query.second->getHeader("X-Test-Headers"))
+          {
+            std::string prefix = fmt::format("Status: {}\n", response.getStatusString());
+            std::vector<std::string> names;
+            boost::algorithm::split(names, *test_headers, boost::algorithm::is_any_of(","));
+            for (auto name : names)
+            {
+              boost::algorithm::trim(name);
+              if (name.empty())
+                continue;
+              const auto value = response.getHeader(name);
+              prefix += fmt::format("{}: {}\n", name, value ? *value : std::string("(none)"));
+            }
+            result = prefix + "\n" + result;
+          }
+
           // Run script/executable to process the result (e.g. convert binary to ascii) for
           // validation
           //
