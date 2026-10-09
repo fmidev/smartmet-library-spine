@@ -330,6 +330,16 @@ Most plugins produce tables of values:
 * **Active requests and access logs.** `ActiveRequests` tracks running requests
   (`what=activerequests`); a terminate handler prints them if the process dies.
   `AccessLogger` writes per-URI access logs when logging is on.
+* **OpenAPI** (`OpenApi.h`): plugins describe their APIs with generated OpenAPI 3.0
+  definitions. Build a `Spine::OpenAPI::Document` from code, configuration and metadata
+  (`addCommonComponents()` and `addCoreOperations()` add the OGC API - Common parts),
+  hand it to a `Publisher` whenever the metadata changes, and let `Publisher::handle()`
+  answer `<root>/api` (the JSON definition, or the documentation page for `f=html`),
+  `<root>/api/docs` (Swagger UI) and the Swagger UI files below it. The files come from a
+  local directory (package `smartmet-swagger-ui`), never from a CDN. The definition is
+  serialized once per `publish()`; requests only insert the server URL from
+  `OpenAPI::serverUrl()`. Settings are read from the plugin's `openapi` group with
+  `Settings::parse()`.
 * **OpenTelemetry** (`OTelOptions`, `OTelLogger`, `OTelMetricsExporter`) is optional.
   Tracing is compiled in with `SMARTMET_SPINE_OPENTELEMETRY`
   (see [build-opentelemetry.md](build-opentelemetry.md)), and cache statistics are
