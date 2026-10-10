@@ -28,10 +28,15 @@ const char* const REL_SERVICE_DOC = "service-doc";
 const char* const REL_CONFORMANCE = "http://www.opengis.net/def/rel/ogc/1.0/conformance";
 const char* const REL_DATA = "http://www.opengis.net/def/rel/ogc/1.0/data";
 
+// The request snippet plugin, see OpenApiSnippets.cpp
+extern const char* const SNIPPETS_JS;
+
 namespace
 {
 // Placeholder for the server URL in the serialized definition
 const char* const SERVER_URL_PLACEHOLDER = "__SMARTMET_OPENAPI_SERVER_URL__";
+
+const char* const SNIPPETS_FILE = "smartmet-snippets.js";
 
 // Swagger UI files served below <root>/api/docs/
 const std::vector<std::pair<std::string, std::string>> swagger_ui_files{
@@ -398,6 +403,7 @@ std::vector<std::string> documentationFiles()
   std::vector<std::string> ret;
   for (const auto& file : swagger_ui_files)
     ret.push_back(file.first);
+  ret.emplace_back(SNIPPETS_FILE);
   return ret;
 }
 
@@ -774,6 +780,15 @@ Publisher::Publisher(Settings settings) : itsSettings(std::move(settings))
     itsAssets.emplace(file.first, std::move(asset));
   }
 
+  itsSwaggerUi = missing.empty();
+
+  // The request snippets are built in
+  Asset snippets;
+  snippets.content = SNIPPETS_JS;
+  snippets.contentType = "text/javascript; charset=UTF-8";
+  snippets.etag = quotedETag(Fmi::hash_value(snippets.content), "asset");
+  itsAssets.emplace(SNIPPETS_FILE, std::move(snippets));
+
   if (!missing.empty())
     std::cerr << fmt::format(
         "{} {}Warning:{} OpenAPI documentation pages are unavailable, Swagger UI files missing "
@@ -920,7 +935,7 @@ void Publisher::handleDocs(const HTTP::Request& request,
                            const std::string& assetPrefix,
                            const std::shared_ptr<const Definition>& definition) const
 {
-  if (itsAssets.size() != swagger_ui_files.size())
+  if (!itsSwaggerUi)
   {
     problem(response,
             503,
@@ -947,6 +962,7 @@ void Publisher::handleDocs(const HTTP::Request& request,
 <body>
 <div id="swagger-ui"></div>
 <script src="{1}swagger-ui-bundle.js"></script>
+<script src="{1}smartmet-snippets.js"></script>
 <script>
 window.onload = function () {{
   window.ui = SwaggerUIBundle({{
@@ -955,7 +971,11 @@ window.onload = function () {{
     deepLinking: true,
     validatorUrl: null,
     queryConfigEnabled: false,
+    tryItOutEnabled: true,
+    requestSnippetsEnabled: true,
+    requestSnippets: SmartMetSnippets.snippetConfig,
     presets: [SwaggerUIBundle.presets.apis],
+    plugins: [SmartMetSnippets.plugin],
     layout: "BaseLayout"
   }});
 }};

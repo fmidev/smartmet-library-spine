@@ -17,7 +17,8 @@
  *                           preferring text/html
  *   <root>/api/docs         human-readable documentation (Swagger UI)
  *   <root>/api/docs/<file>  Swagger UI files, served from a local directory
- *                           (package smartmet-swagger-ui), never from a CDN
+ *                           (package smartmet-swagger-ui), never from a CDN,
+ *                           and the request snippet plugin smartmet-snippets.js
  *
  * Configuration (the same group in every plugin configuration file):
  *
@@ -66,7 +67,6 @@ extern const char* const OPENAPI_VERSION;  // "3.1.1"
 
 // Media type of the JSON encoded definition
 extern const char* const MEDIA_TYPE;  // "application/vnd.oai.openapi+json;version=3.1"
-
 
 // OGC link relation types used in landing pages
 extern const char* const REL_SERVICE_DESC;  // OpenAPI definition
@@ -283,7 +283,8 @@ class Publisher
   };
 
   Settings itsSettings;
-  std::map<std::string, Asset> itsAssets;           // Swagger UI files by name
+  bool itsSwaggerUi = false;                        // all Swagger UI files were found
+  std::map<std::string, Asset> itsAssets;           // documentation files by name
   std::shared_ptr<const Definition> itsDefinition;  // accessed atomically
 };
 

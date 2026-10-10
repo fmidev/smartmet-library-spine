@@ -8,6 +8,7 @@
 #include "HTTP.h"
 #include "OpenApi.h"
 #include <boost/test/included/unit_test.hpp>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <libconfig.h++>
@@ -330,6 +331,34 @@ BOOST_AUTO_TEST_CASE(assets)
   publisher->handle(makeRequest("/edr/api", {{"X-Request-ETag", "true"}}), probe, "/edr", "/edr");
   BOOST_TEST(probe.getStatus() == HTTP::Status::no_content);
   BOOST_TEST(!header(probe, "ETag").empty());
+}
+
+BOOST_AUTO_TEST_CASE(request_snippets)
+{
+  AssetDir assets;
+  auto publisher = makePublisher(assets.path.string());
+
+  HTTP::Response response;
+  publisher->handle(makeRequest("/edr/api/docs/smartmet-snippets.js"), response, "/edr", "/edr");
+  BOOST_TEST(response.getStatus() == HTTP::Status::ok);
+  BOOST_TEST(header(response, "Content-Type") == "text/javascript; charset=UTF-8");
+
+  HTTP::Response docs;
+  publisher->handle(makeRequest("/edr/api/docs"), docs, "/edr", "/edr");
+  const auto html = docs.getContent();
+  BOOST_TEST(html.find("<script src=\"docs/smartmet-snippets.js\"></script>") != std::string::npos);
+  BOOST_TEST(html.find("plugins: [SmartMetSnippets.plugin]") != std::string::npos);
+  BOOST_TEST(html.find("requestSnippetsEnabled: true") != std::string::npos);
+
+  // Run the generated scripts, see openapi-snippets-test.js
+  if (std::system("command -v node > /dev/null 2>&1") != 0)
+  {
+    BOOST_TEST_MESSAGE("node is not installed, the request snippets are not run");
+    return;
+  }
+  const auto file = assets.path / "smartmet-snippets.js";
+  std::ofstream(file) << response.getContent();
+  BOOST_TEST(std::system(("node openapi-snippets-test.js " + file.string()).c_str()) == 0);
 }
 
 BOOST_AUTO_TEST_CASE(missing_swagger_ui)
