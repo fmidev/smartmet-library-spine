@@ -61,7 +61,7 @@ void Table::set(std::size_t theColumn, std::size_t theRow, const std::string& th
 
     // Save the element
 
-    itsList.emplace_back(element(theColumn, theRow, theValue));
+    itsList.emplace_back(theColumn, theRow, theValue);
   }
   catch (...)
   {
