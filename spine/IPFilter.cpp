@@ -3,6 +3,7 @@
 #include <boost/algorithm/string.hpp>
 #include <macgyver/Exception.h>
 #include <algorithm>
+#include <ranges>
 #include <vector>
 
 namespace SmartMet
@@ -213,9 +214,9 @@ try
   boost::algorithm::split(hops, *forwardedFor, boost::is_any_of(","));
 
   std::string client = peerIP;
-  for (auto it = hops.rbegin(); it != hops.rend(); ++it)
+  for (auto& hop : std::ranges::reverse_view(hops))
   {
-    auto addr = parseAddress(*it);
+    auto addr = parseAddress(hop);
     if (!addr)
       return "unknown";
     client = addr->to_string();
