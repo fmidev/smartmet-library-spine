@@ -109,7 +109,7 @@ int is_file_readable(std::string& file_name)
   int handle;
   // Open appears to be the only practical solution
   // Use POSIX syscalls here for most efficient solution
-  if ((handle = open(file_name.c_str(), O_RDONLY)) >= 0)
+  if ((handle = open(file_name.c_str(), O_RDONLY | O_CLOEXEC)) >= 0)
   {
     // Open is not enough: directory might be opened but is not readable
     // On NFS: open(2) man page says reading might fail even if open succeeds
