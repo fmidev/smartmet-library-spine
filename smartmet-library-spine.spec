@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.10.3
-Release: 2%{?dist}.fmi
+Version: 26.10.10
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -51,7 +51,7 @@ BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 26.10.3
 BuildRequires: smartmet-library-macgyver-devel >= 26.10.3
-BuildRequires: smartmet-library-newbase-devel >= 26.10.3
+BuildRequires: smartmet-library-newbase-devel >= 26.10.10
 BuildRequires: smartmet-utils-devel >= 26.9.3
 
 # OpenTelemetry C++ SDK — optional; enables SMARTMET_SPINE_OPENTELEMETRY when present.
@@ -100,7 +100,7 @@ Requires: libbacktrace
 Requires: double-conversion
 Requires: smartmet-library-gis >= 26.10.3
 Requires: smartmet-library-macgyver >= 26.10.3
-Requires: smartmet-library-newbase >= 26.10.3
+Requires: smartmet-library-newbase >= 26.10.10
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -124,7 +124,7 @@ Requires: %{smartmet_boost}-devel
 Requires: dtl
 Requires: smartmet-library-macgyver-devel >= 26.10.3
 Requires: smartmet-library-gis-devel >= 26.10.3
-Requires: smartmet-library-newbase-devel >= 26.10.3
+Requires: smartmet-library-newbase-devel >= 26.10.10
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
@@ -168,6 +168,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sat Oct 10 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.10-1.fmi
+- RoadWW is a data derived parameter (BRAINSTORM-2786)
+
 * Sat Oct  3 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.3-2.fmi
 - Select the longest matching URI prefix handler, previously a handler for /edr would also have
   handled requests to a nested prefix handler such as /edr/collections
