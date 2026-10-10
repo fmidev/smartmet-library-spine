@@ -1201,6 +1201,43 @@ void response_decoded_content_no_encoding()
   }
 }
 
+void set_header_control_characters()
+{
+  // Control characters in header values must not be able to terminate the header line
+  SmartMet::Spine::HTTP::Response response;
+  response.setStatus(SmartMet::Spine::HTTP::Status::ok);
+  const char raw[] = "a\r\nSet-Cookie: x=1\0b\x7f\tc";
+  response.setHeader("X-Message", std::string(raw, sizeof(raw) - 1));
+  auto value = response.getHeader("X-Message");
+  if (!value)
+    TEST_FAILED("Header not set");
+  if (*value != std::string("a  Set-Cookie: x=1 b \tc"))
+    TEST_FAILED("Control characters not replaced: '" + *value + "'");
+  if (response.headersToString().find("\r\nSet-Cookie") != std::string::npos)
+    TEST_FAILED("Header injection in serialized headers");
+  TEST_PASSED();
+}
+
+void set_header_invalid_name()
+{
+  SmartMet::Spine::HTTP::Response response;
+  for (const auto* name : {"", "X Name", "X-Name\r\nX-Other", "X:Name", "X-Name\n"})
+  {
+    try
+    {
+      response.setHeader(name, "value");
+      TEST_FAILED(std::string("Invalid header name accepted: '") + name + "'");
+    }
+    catch (...)
+    {
+    }
+  }
+  response.setHeader("X-Valid_name.1~", "value");
+  if (!response.getHeader("X-Valid_name.1~"))
+    TEST_FAILED("Valid header name rejected");
+  TEST_PASSED();
+}
+
 void response_decoded_content_identity()
 {
   // Test getDecodedContent() when Content-Encoding is identity
@@ -1811,6 +1848,8 @@ class tests : public tframe::tests
     TEST(post_urlencoded_tostring);
     TEST(response_decoded_content_no_encoding);
     TEST(response_decoded_content_identity);
+    TEST(set_header_control_characters);
+    TEST(set_header_invalid_name);
     TEST(response_decoded_content_gzip);
     TEST(response_parse_full);
     TEST(response_parse_full_with_null_bytes);
