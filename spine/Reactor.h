@@ -95,7 +95,7 @@ class Reactor final : public ContentHandlerMap
   explicit Reactor(Options& options);
 
   // Destructor
-  ~Reactor();
+  ~Reactor() override;
 
   // No default construction, options must be given
   Reactor() = delete;
