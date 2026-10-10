@@ -118,7 +118,7 @@ class Resolver
     // Intentionally leaked: a process-lifetime singleton owning background
     // threads. Avoids static destruction-order hazards and a potential hang on
     // exit should a worker be parked in getnameinfo().
-    static Resolver* self = new Resolver();
+    static auto* self = new Resolver();
     return *self;
   }
 

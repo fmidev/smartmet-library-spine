@@ -1739,7 +1739,7 @@ RequestParseResult parseOneRequest(const std::string& buffer)
       return result;
     }
 
-    const std::size_t headEnd = static_cast<std::size_t>(std::distance(buffer.begin(), startIt));
+    const auto headEnd = static_cast<std::size_t>(std::distance(buffer.begin(), startIt));
 
     // ---- Framing headers -------------------------------------------------
     //
@@ -2233,7 +2233,7 @@ static const int B64index[256] = {
 
 static std::string base64decode(const std::string& input)
 {
-  const unsigned char* p = reinterpret_cast<const unsigned char* >(input.c_str());
+  const auto* p = reinterpret_cast<const unsigned char*>(input.c_str());
   std::size_t len = input.size();
 
   int pad = static_cast<int>(len > 0 && ((len % 4 != 0) || p[len - 1] == '='));

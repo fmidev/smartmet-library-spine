@@ -28,7 +28,7 @@ bool constantTimeEquals(const std::string& a, const std::string& b)
   const std::size_t na = a.size();
   const std::size_t nb = b.size();
   const std::size_t n = std::max(na, nb);
-  unsigned char diff = static_cast<unsigned char>((na ^ nb) != 0 ? 1 : 0);
+  auto diff = static_cast<unsigned char>((na ^ nb) != 0 ? 1 : 0);
   for (std::size_t i = 0; i < n; ++i)
   {
     const unsigned char ca = (i < na) ? static_cast<unsigned char>(a[i]) : 0;
