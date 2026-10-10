@@ -1,6 +1,6 @@
-// Tests of the Swagger UI request snippets (spine/OpenApiSnippets.js).
+// Tests of the request snippets of the SmartMet Swagger UI plugin (spine/OpenApiPlugin.cpp).
 //
-// Usage: node openapi-snippets-test.js <path of the snippets script>
+// Usage: node openapi-snippets-test.js <path of smartmet-swagger-ui.js>
 //
 // Generates the snippets for EDR, TimeSeries and Coverages style requests and runs them with
 // bash, Python, Node.js and R against a local HTTP server which records the requests. The

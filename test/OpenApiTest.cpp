@@ -339,15 +339,16 @@ BOOST_AUTO_TEST_CASE(request_snippets)
   auto publisher = makePublisher(assets.path.string());
 
   HTTP::Response response;
-  publisher->handle(makeRequest("/edr/api/docs/smartmet-snippets.js"), response, "/edr", "/edr");
+  publisher->handle(makeRequest("/edr/api/docs/smartmet-swagger-ui.js"), response, "/edr", "/edr");
   BOOST_TEST(response.getStatus() == HTTP::Status::ok);
   BOOST_TEST(header(response, "Content-Type") == "text/javascript; charset=UTF-8");
 
   HTTP::Response docs;
   publisher->handle(makeRequest("/edr/api/docs"), docs, "/edr", "/edr");
   const auto html = docs.getContent();
-  BOOST_TEST(html.find("<script src=\"docs/smartmet-snippets.js\"></script>") != std::string::npos);
-  BOOST_TEST(html.find("plugins: [SmartMetSnippets.plugin]") != std::string::npos);
+  BOOST_TEST(html.find("<script src=\"docs/smartmet-swagger-ui.js\"></script>") !=
+             std::string::npos);
+  BOOST_TEST(html.find("plugins: [SmartMetSwaggerUI.plugin]") != std::string::npos);
   BOOST_TEST(html.find("requestSnippetsEnabled: true") != std::string::npos);
 
   // Run the generated scripts, see openapi-snippets-test.js
@@ -356,9 +357,34 @@ BOOST_AUTO_TEST_CASE(request_snippets)
     BOOST_TEST_MESSAGE("node is not installed, the request snippets are not run");
     return;
   }
-  const auto file = assets.path / "smartmet-snippets.js";
+  const auto file = assets.path / "smartmet-swagger-ui.js";
   std::ofstream(file) << response.getContent();
   BOOST_TEST(std::system(("node openapi-snippets-test.js " + file.string()).c_str()) == 0);
+}
+
+BOOST_AUTO_TEST_CASE(response_viewer)
+{
+  // The page and the plugin as served, with the real Swagger UI files. SWAGGER_UI_DIR
+  // overrides the location of the installed smartmet-swagger-ui files.
+  if (std::system("command -v node > /dev/null 2>&1") != 0)
+  {
+    BOOST_TEST_MESSAGE("node is not installed, the response viewer is not tested");
+    return;
+  }
+  const char* env = std::getenv("SWAGGER_UI_DIR");
+  const std::string swagger_ui = (env ? env : "/usr/share/smartmet/swagger-ui");
+
+  AssetDir assets;
+  auto publisher = makePublisher(assets.path.string());
+  HTTP::Response docs;
+  publisher->handle(makeRequest("/edr/api/docs"), docs, "/edr", "/edr");
+  HTTP::Response plugin;
+  publisher->handle(makeRequest("/edr/api/docs/smartmet-swagger-ui.js"), plugin, "/edr", "/edr");
+  std::ofstream(assets.path / "docs.html") << docs.getContent();
+  std::ofstream(assets.path / "smartmet-swagger-ui.js") << plugin.getContent();
+
+  const auto command = "node openapi-viewer-test.js " + assets.path.string() + " " + swagger_ui;
+  BOOST_TEST(std::system(command.c_str()) == 0);
 }
 
 BOOST_AUTO_TEST_CASE(missing_swagger_ui)

@@ -18,7 +18,7 @@
  *   <root>/api/docs         human-readable documentation (Swagger UI)
  *   <root>/api/docs/<file>  Swagger UI files, served from a local directory
  *                           (package smartmet-swagger-ui), never from a CDN,
- *                           and the request snippet plugin smartmet-snippets.js
+ *                           and the SmartMet plugin smartmet-swagger-ui.js
  *
  * Configuration (the same group in every plugin configuration file):
  *

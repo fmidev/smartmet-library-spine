@@ -1,12 +1,16 @@
 // ======================================================================
 /*!
- * \brief Request snippets for the OpenAPI documentation pages
+ * \brief The SmartMet plugin of the OpenAPI documentation pages
  *
- * A Swagger UI plugin served as <root>/api/docs/smartmet-snippets.js. It adds
- * Python, R and JavaScript snippets of the executed request, and for bash,
- * Python, R and JavaScript a script which repeats the request for
- * consecutive days, weeks, months or years. test/openapi-snippets-test.js
- * runs the generated scripts.
+ * A Swagger UI plugin served as <root>/api/docs/smartmet-swagger-ui.js:
+ *
+ *  - Python, R and JavaScript snippets of the executed request, and for
+ *    bash, Python, R and JavaScript scripts which repeat the request for
+ *    consecutive days, weeks, months or years
+ *  - JSON and XML responses as a collapsible tree
+ *
+ * test/openapi-snippets-test.js runs the generated scripts, and
+ * test/openapi-viewer-test.js checks the viewer in a headless browser.
  */
 // ======================================================================
 
@@ -16,10 +20,10 @@ namespace Spine
 {
 namespace OpenAPI
 {
-extern const char* const SNIPPETS_JS;
+extern const char* const SWAGGER_UI_PLUGIN_JS;
 
-const char* const SNIPPETS_JS = R"JS(/*
- * SmartMet request snippets for Swagger UI
+const char* const SWAGGER_UI_PLUGIN_JS = R"JS(/*
+ * SmartMet plugin for Swagger UI: request snippets and a response viewer
  *
  * Swagger UI shows the executed request as code snippets. This plugin adds
  * generators for Python, R and JavaScript (Node.js), and for bash, Python, R
@@ -33,6 +37,9 @@ const char* const SNIPPETS_JS = R"JS(/*
  * as an interval start/end (EDR, Coverages), or starttime and endtime
  * (TimeSeries). Each period ends one second before the next one starts, so
  * the data at the period boundaries is fetched only once.
+ *
+ * JSON and XML responses are shown as a collapsible tree, with the original
+ * text view of Swagger UI available as an alternative.
  */
 (function (root) {
   "use strict";
@@ -400,6 +407,297 @@ const char* const SNIPPETS_JS = R"JS(/*
   }
 
   // ------------------------------------------------------------------
+  // Response viewer: JSON and XML responses as a collapsible tree.
+  //
+  // The tree is built with DOM nodes and text only, never from markup, so
+  // the response cannot inject anything into the page. Children are built
+  // when a node is first opened, and long arrays are shown in pages, so that
+  // large responses such as CoverageJSON value arrays stay responsive.
+  // ------------------------------------------------------------------
+
+  const PAGE = 200;       // array items and object members shown at a time
+  const OPEN_LEVELS = 2;  // levels opened initially
+
+  const css = `
+.sm-viewer-toolbar { margin: 4px 0; }
+.sm-viewer-toolbar button { margin-right: 6px; padding: 2px 10px; font-size: 12px; cursor: pointer;
+  border: 1px solid #888; border-radius: 3px; background: #fff; }
+.sm-viewer-toolbar button.sm-active { background: #333; color: #fff; }
+.sm-tree { background: #333; color: #fff; font: 12px/1.5 monospace; padding: 8px 10px 8px 1.6em;
+  border-radius: 4px; max-height: 600px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+.sm-tree details { margin-left: 1.2em; }
+.sm-tree > details { margin-left: 0; }
+.sm-tree summary { cursor: pointer; list-style-position: outside; }
+.sm-tree .sm-leaf, .sm-tree .sm-inline { margin-left: 2.4em; }
+.sm-tree > .sm-leaf { margin-left: 0; }
+.sm-tree .sm-key { color: #9cdcfe; }
+.sm-tree .sm-string { color: #ce9178; }
+.sm-tree .sm-number { color: #b5cea8; }
+.sm-tree .sm-literal { color: #569cd6; }
+.sm-tree .sm-tag { color: #4ec9b0; }
+.sm-tree .sm-attr { color: #9cdcfe; }
+.sm-tree .sm-note { color: #999; font-style: italic; }
+.sm-tree button.sm-more { margin: 2px 0 2px 2.4em; font-size: 11px; cursor: pointer; }
+.sm-tree .sm-inline button.sm-more { margin-left: 0.5em; }
+.sm-tree .sm-inline { word-break: normal; }
+.sm-tree .sm-item { white-space: nowrap; }
+`;
+
+  function addStyle(doc) {
+    if (doc.getElementById("sm-viewer-style")) return;
+    const style = doc.createElement("style");
+    style.id = "sm-viewer-style";
+    style.textContent = css;
+    doc.head.appendChild(style);
+  }
+
+  function span(doc, cls, text) {
+    const e = doc.createElement("span");
+    e.className = cls;
+    e.textContent = text;
+    return e;
+  }
+
+  // ---- JSON
+
+  function isPrimitiveArray(value) {
+    return value.every((v) => v === null || typeof v !== "object");
+  }
+
+  function jsonValue(doc, value) {
+    if (typeof value === "string") return span(doc, "sm-string", JSON.stringify(value));
+    if (typeof value === "number") return span(doc, "sm-number", String(value));
+    return span(doc, "sm-literal", String(value));
+  }
+
+  function jsonSummary(value) {
+    if (Array.isArray(value)) {
+      const n = value.length;
+      if (n > 0 && isPrimitiveArray(value)) {
+        const numbers = value.every((v) => typeof v === "number" || v === null);
+        const kind = numbers ? (n === 1 ? "number" : "numbers") : (n === 1 ? "value" : "values");
+        return `[ ${n} ${kind} ]`;
+      }
+      return `[ ${n} ${n === 1 ? "item" : "items"} ]`;
+    }
+    const n = Object.keys(value).length;
+    return `{ ${n} ${n === 1 ? "member" : "members"} }`;
+  }
+
+  function jsonLeaf(doc, key, value) {
+    const e = doc.createElement("div");
+    e.className = "sm-leaf";
+    if (key !== null) e.append(span(doc, "sm-key", JSON.stringify(key)), ": ");
+    e.append(jsonValue(doc, value));
+    return e;
+  }
+
+  // Append entries [start, start + PAGE) of a list built by makeNode, with a button for the rest
+  function appendPage(doc, parent, entries, start, makeNode) {
+    const end = Math.min(entries.length, start + PAGE);
+    for (let i = start; i < end; i++) parent.appendChild(makeNode(entries[i]));
+    if (end < entries.length) {
+      const more = doc.createElement("button");
+      more.className = "sm-more";
+      more.type = "button";
+      more.textContent = `show ${Math.min(PAGE, entries.length - end)} more of ${entries.length - end}`;
+      more.addEventListener("click", () => {
+        more.remove();
+        appendPage(doc, parent, entries, end, makeNode);
+      });
+      parent.appendChild(more);
+    }
+  }
+
+  function jsonNode(doc, key, value, level) {
+    if (value === null || typeof value !== "object") return jsonLeaf(doc, key, value);
+
+    const details = doc.createElement("details");
+    const summary = doc.createElement("summary");
+    if (key !== null) summary.append(span(doc, "sm-key", JSON.stringify(key)), ": ");
+    summary.append(span(doc, "sm-note", jsonSummary(value)));
+    details.appendChild(summary);
+
+    const entries = Array.isArray(value) ? value.map((v, i) => [i, v]) : Object.entries(value);
+    let built = false;
+    const build = () => {
+      if (built) return;
+      built = true;
+      if (Array.isArray(value) && isPrimitiveArray(value)) {
+        // Plain values side by side, wrapped
+        const box = doc.createElement("div");
+        box.className = "sm-inline";
+        details.appendChild(box);
+        appendPage(doc, box, entries, 0, ([i, v]) => {
+          // The value does not break, the lines break between the values
+          const item = doc.createElement("span");
+          item.className = "sm-item";
+          item.append(jsonValue(doc, v), i + 1 < entries.length ? "," : "");
+          const fragment = doc.createDocumentFragment();
+          fragment.append(item, " ");
+          return fragment;
+        });
+      } else
+        appendPage(doc, details, entries, 0, ([k, v]) =>
+          jsonNode(doc, Array.isArray(value) ? null : k, v, level + 1));
+    };
+    details.addEventListener("toggle", () => { if (details.open) build(); });
+    if (level < OPEN_LEVELS) {
+      details.open = true;
+      build();
+    }
+    return details;
+  }
+
+  // ---- XML
+
+  function xmlStartTag(doc, element, close) {
+    const e = doc.createElement("span");
+    e.append(span(doc, "sm-tag", "<" + element.nodeName));
+    for (const a of Array.from(element.attributes))
+      e.append(" ", span(doc, "sm-attr", a.name), "=", span(doc, "sm-string", JSON.stringify(a.value)));
+    e.append(span(doc, "sm-tag", close ? "/>" : ">"));
+    return e;
+  }
+
+  function xmlChildren(element) {
+    return Array.from(element.childNodes).filter((n) =>
+      n.nodeType === 1 || ((n.nodeType === 3 || n.nodeType === 4) && n.nodeValue.trim() !== ""));
+  }
+
+  function xmlNode(doc, node, level) {
+    if (node.nodeType !== 1) {
+      const e = doc.createElement("div");
+      e.className = "sm-leaf";
+      e.append(span(doc, "sm-string", node.nodeValue.trim()));
+      return e;
+    }
+    const children = xmlChildren(node);
+    // Elements without child elements on one line
+    if (children.every((c) => c.nodeType !== 1)) {
+      const e = doc.createElement("div");
+      e.className = "sm-leaf";
+      if (children.length === 0) e.append(xmlStartTag(doc, node, true));
+      else
+        e.append(xmlStartTag(doc, node, false), span(doc, "sm-string", node.textContent.trim()),
+                 span(doc, "sm-tag", "</" + node.nodeName + ">"));
+      return e;
+    }
+    const details = doc.createElement("details");
+    const summary = doc.createElement("summary");
+    const elements = children.filter((c) => c.nodeType === 1).length;
+    summary.append(xmlStartTag(doc, node, false), " ",
+                   span(doc, "sm-note", `${elements} ${elements === 1 ? "element" : "elements"}`));
+    details.appendChild(summary);
+    let built = false;
+    const build = () => {
+      if (built) return;
+      built = true;
+      appendPage(doc, details, children, 0, (c) => xmlNode(doc, c, level + 1));
+    };
+    details.addEventListener("toggle", () => { if (details.open) build(); });
+    if (level < OPEN_LEVELS) {
+      details.open = true;
+      build();
+    }
+    return details;
+  }
+
+  // Build the tree of a response into 'container'. Returns false if the content cannot be
+  // parsed, the caller then shows the text instead.
+  function renderTree(container, text, kind) {
+    const doc = container.ownerDocument;
+    let root;
+    if (kind === "json") {
+      let value;
+      try {
+        value = JSON.parse(text);
+      } catch (e) {
+        return false;
+      }
+      root = jsonNode(doc, null, value, 0);
+    } else {
+      const xml = new DOMParser().parseFromString(text, "application/xml");
+      if (xml.getElementsByTagName("parsererror").length > 0) return false;
+      root = xmlNode(doc, xml.documentElement, 0);
+    }
+    container.replaceChildren(root);
+    return true;
+  }
+
+  // Open (or close) all details elements down to the given depth below the container
+  function setOpen(container, open, depth) {
+    const walk = (node, level) => {
+      for (const child of Array.from(node.children)) {
+        if (child.tagName === "DETAILS") {
+          if (open && level < depth) {
+            child.open = true;
+            child.dispatchEvent(new Event("toggle"));
+            walk(child, level + 1);
+          } else if (!open) {
+            child.open = false;
+            walk(child, level + 1);
+          }
+        }
+      }
+    };
+    walk(container, 0);
+  }
+
+  function responseKind(contentType) {
+    const ct = String(contentType || "").toLowerCase();
+    if (/json/.test(ct)) return "json";
+    if (/xml/.test(ct) && !/svg/.test(ct)) return "xml";
+    return null;
+  }
+
+  // Wraps the Swagger UI response body: JSON and XML get a Tree/Text toggle
+  function wrapResponseBody(Original, system) {
+    const React = system.React;
+    const h = React.createElement;
+
+    function Tree(props) {
+      const ref = React.useRef(null);
+      const [failed, setFailed] = React.useState(false);
+      React.useEffect(() => {
+        let cancelled = false;
+        const show = (text) => {
+          if (cancelled || !ref.current) return;
+          addStyle(ref.current.ownerDocument);
+          setFailed(!renderTree(ref.current, text, props.kind));
+        };
+        const content = props.content;
+        if (typeof Blob !== "undefined" && content instanceof Blob) content.text().then(show);
+        else show(content == null ? "" : String(content));
+        return () => { cancelled = true; };
+      }, [props.content, props.kind]);
+      if (failed) return h(Original, props.original);
+      return h("div", { ref: ref, className: "sm-tree" });
+    }
+
+    return function SmartMetResponseBody(props) {
+      const kind = responseKind(props.contentType);
+      const [mode, setMode] = React.useState("tree");
+      const treeRef = React.useRef(null);
+      if (!kind || props.content == null || props.content === "") return h(Original, props);
+      const button = (label, active, onClick) =>
+        h("button", { type: "button", className: active ? "sm-active" : "", onClick: onClick }, label);
+      const levels = (open) => () => {
+        const tree = treeRef.current && treeRef.current.querySelector(".sm-tree");
+        if (tree) setOpen(tree, open, 4);
+      };
+      return h("div", { className: "sm-viewer", ref: treeRef },
+        h("div", { className: "sm-viewer-toolbar" },
+          button("Tree", mode === "tree", () => setMode("tree")),
+          button("Text", mode === "text", () => setMode("text")),
+          mode === "tree" ? button("Expand 4 levels", false, levels(true)) : null,
+          mode === "tree" ? button("Collapse", false, levels(false)) : null),
+        mode === "text" ? h(Original, props)
+                        : h(Tree, { content: props.content, kind: kind, original: props }));
+    };
+  }
+
+  // ------------------------------------------------------------------
   // The Swagger UI plugin
   // ------------------------------------------------------------------
 
@@ -436,6 +734,7 @@ const char* const SNIPPETS_JS = R"JS(/*
     plugin: function () {
       return {
         fn: generators,
+        wrapComponents: { responseBody: wrapResponseBody },
         // Swagger UI merges the snippets with its own into an unordered map, show them in order
         statePlugins: {
           requestSnippets: {
@@ -450,11 +749,14 @@ const char* const SNIPPETS_JS = R"JS(/*
     snippetConfig: snippetConfig,
     generators: generators,
     parseTime: parseTime,
-    timeWindow: timeWindow
+    timeWindow: timeWindow,
+    renderTree: renderTree,
+    setOpen: setOpen,
+    responseKind: responseKind
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
-  else root.SmartMetSnippets = api;
+  else root.SmartMetSwaggerUI = api;
 })(typeof window !== "undefined" ? window : this);
 )JS";
 

@@ -342,8 +342,9 @@ Most plugins produce tables of values:
   `Settings::parse()`. The documentation page shows the executed request as bash,
   Python, R and JavaScript snippets, and as scripts which repeat the request for
   consecutive days, weeks, months or years when it has a time window (`datetime=start/end`
-  or `starttime` and `endtime`). The snippet plugin is in `OpenApiSnippets.cpp`, and
-  `test/openapi-snippets-test.js` runs the generated scripts against a local server.
+  or `starttime` and `endtime`). JSON and XML responses are shown as a collapsible tree. The plugin is in
+  `OpenApiPlugin.cpp`; `test/openapi-snippets-test.js` runs the generated scripts against a local
+  server and `test/openapi-viewer-test.js` checks the tree in a headless browser.
 * **OpenTelemetry** (`OTelOptions`, `OTelLogger`, `OTelMetricsExporter`) is optional.
   Tracing is compiled in with `SMARTMET_SPINE_OPENTELEMETRY`
   (see [build-opentelemetry.md](build-opentelemetry.md)), and cache statistics are

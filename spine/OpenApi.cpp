@@ -28,15 +28,15 @@ const char* const REL_SERVICE_DOC = "service-doc";
 const char* const REL_CONFORMANCE = "http://www.opengis.net/def/rel/ogc/1.0/conformance";
 const char* const REL_DATA = "http://www.opengis.net/def/rel/ogc/1.0/data";
 
-// The request snippet plugin, see OpenApiSnippets.cpp
-extern const char* const SNIPPETS_JS;
+// The SmartMet Swagger UI plugin, see OpenApiPlugin.cpp
+extern const char* const SWAGGER_UI_PLUGIN_JS;
 
 namespace
 {
 // Placeholder for the server URL in the serialized definition
 const char* const SERVER_URL_PLACEHOLDER = "__SMARTMET_OPENAPI_SERVER_URL__";
 
-const char* const SNIPPETS_FILE = "smartmet-snippets.js";
+const char* const PLUGIN_FILE = "smartmet-swagger-ui.js";
 
 // Swagger UI files served below <root>/api/docs/
 const std::vector<std::pair<std::string, std::string>> swagger_ui_files{
@@ -403,7 +403,7 @@ std::vector<std::string> documentationFiles()
   std::vector<std::string> ret;
   for (const auto& file : swagger_ui_files)
     ret.push_back(file.first);
-  ret.emplace_back(SNIPPETS_FILE);
+  ret.emplace_back(PLUGIN_FILE);
   return ret;
 }
 
@@ -782,12 +782,12 @@ Publisher::Publisher(Settings settings) : itsSettings(std::move(settings))
 
   itsSwaggerUi = missing.empty();
 
-  // The request snippets are built in
+  // The SmartMet plugin is built in
   Asset snippets;
-  snippets.content = SNIPPETS_JS;
+  snippets.content = SWAGGER_UI_PLUGIN_JS;
   snippets.contentType = "text/javascript; charset=UTF-8";
   snippets.etag = quotedETag(Fmi::hash_value(snippets.content), "asset");
-  itsAssets.emplace(SNIPPETS_FILE, std::move(snippets));
+  itsAssets.emplace(PLUGIN_FILE, std::move(snippets));
 
   if (!missing.empty())
     std::cerr << fmt::format(
@@ -962,7 +962,7 @@ void Publisher::handleDocs(const HTTP::Request& request,
 <body>
 <div id="swagger-ui"></div>
 <script src="{1}swagger-ui-bundle.js"></script>
-<script src="{1}smartmet-snippets.js"></script>
+<script src="{1}smartmet-swagger-ui.js"></script>
 <script>
 window.onload = function () {{
   window.ui = SwaggerUIBundle({{
@@ -973,9 +973,9 @@ window.onload = function () {{
     queryConfigEnabled: false,
     tryItOutEnabled: true,
     requestSnippetsEnabled: true,
-    requestSnippets: SmartMetSnippets.snippetConfig,
+    requestSnippets: SmartMetSwaggerUI.snippetConfig,
     presets: [SwaggerUIBundle.presets.apis],
-    plugins: [SmartMetSnippets.plugin],
+    plugins: [SmartMetSwaggerUI.plugin],
     layout: "BaseLayout"
   }});
 }};
