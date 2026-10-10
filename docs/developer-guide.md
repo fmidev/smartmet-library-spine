@@ -343,9 +343,16 @@ Most plugins produce tables of values:
   parameters are entered, and the request as bash,
   Python, R and JavaScript snippets, and as scripts which repeat the request for
   consecutive days, weeks, months or years when it has a time window (`datetime=start/end`
-  or `starttime` and `endtime`). JSON and XML responses are shown as a collapsible tree. The plugin is in
-  `OpenApiPlugin.cpp`; `test/openapi-snippets-test.js` runs the generated scripts against a local
-  server and `test/openapi-browser-test.js` checks the tree in a headless browser.
+  or `starttime` and `endtime`). JSON and XML responses are shown as a collapsible tree.
+  A parameter with the `x-smartmet-locations` extension (`path`, `parameter`, `language`,
+  `query`) gets a button which shows the locations of its value on a map, with the details
+  of each location on mouseover; the EDR plugin adds it to the TimeSeries `keyword` and
+  `inkeyword` parameters. The map background is the Web Mercator tile layer of the
+  `map_tiles` setting (normally an OGC API - Tiles layer of the same server; an absolute
+  URL's origin is added to the page's `img-src` policy), or a longitude/latitude grid.
+  The plugin is in `OpenApiPlugin.cpp`; `test/openapi-snippets-test.js` runs the generated
+  scripts against a local server and `test/openapi-browser-test.js` checks the tree, the
+  request preview and the map in a headless browser.
 * **OpenTelemetry** (`OTelOptions`, `OTelLogger`, `OTelMetricsExporter`) is optional.
   Tracing is compiled in with `SMARTMET_SPINE_OPENTELEMETRY`
   (see [build-opentelemetry.md](build-opentelemetry.md)), and cache statistics are

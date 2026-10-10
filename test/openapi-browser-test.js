@@ -58,9 +58,26 @@ const definition = {
         { name: "datetime", in: "query", schema: { type: "string" } },
         { name: "parameter-name", in: "query", style: "form", explode: false,
           schema: { type: "array", items: { type: "string", enum: ["Temperature", "Humidity"] } } }],
+      responses: { 200: { description: "x", content: { "application/json": {} } } } } },
+    "/timeseries": { get: { operationId: "getTimeSeries",
+      parameters: [
+        { name: "keyword", in: "query", schema: { type: "string" },
+          "x-smartmet-locations": { path: "/timeseries", parameter: "keyword", language: "lang",
+            query: { param: "name,lat,lon,fmisid", timesteps: "1", format: "json" } } },
+        { name: "lang", in: "query", schema: { type: "string" } }],
       responses: { 200: { description: "x", content: { "application/json": {} } } } } }
-  }
+  },
+  "x-smartmet-map": { tiles: "/tiles/{z}/{y}/{x}?f=png", tileSize: 256, attribution: "Test <tiles>" }
 };
+
+const locations = [
+  { name: "Helsinki <b>", lat: 60.17, lon: 24.94, fmisid: 100971 },
+  { name: "Tampere", lat: 61.5, lon: 23.76, fmisid: null },
+  { name: "Oulu", lat: 65.01, lon: 25.47, fmisid: 101799 },
+  { name: "No coordinates", lat: null, lon: null }
+];
+// A 1x1 PNG
+const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 
 const types = { ".js": "text/javascript", ".css": "text/css", ".png": "image/png" };
 
@@ -82,6 +99,8 @@ const server = http.createServer((req, res) => {
   }
   if (url === "/edr/json") return send(200, "application/vnd.cov+json", JSON.stringify(json));
   if (url === "/edr/xml") return send(200, "application/xml", xml);
+  if (url === "/edr/timeseries") return send(200, "application/json", JSON.stringify(locations));
+  if (url.startsWith("/tiles/")) return send(200, "image/png", png);
   if (url === "/edr/data") return send(200, "application/json", JSON.stringify({ ok: true }));
   send(404, "text/plain", "not found");
 });
@@ -297,6 +316,105 @@ async function main() {
     await waitFor(b, `!!${dop}.querySelector(".sm-tree")`, "data response");
     const sent = requested.filter((u) => u.startsWith("/edr/data"));
     check("execute sends the previewed request", sent.length === 1 && base + sent[0] === expectedUrl, sent);
+
+    // The locations of a keyword on a map
+    const top = `document.querySelector('[id$="-getTimeSeries"]')`;
+    await waitFor(b, `!!${top}`, "getTimeSeries");
+    await b.evaluate(`window.ui.layoutActions.show(["operations", "default", "getTimeSeries"], true)`);
+    await waitFor(b, `!!${top}.querySelector(".sm-map-controls button")`, "map button");
+    await sleep(500);
+    const disabled = await b.evaluate(`${top}.querySelector(".sm-map-controls button").disabled`);
+    check("map button disabled without a keyword", disabled === true, disabled);
+    // One at a time: the inputs are debounced, and an update of one resets a pending other
+    for (const [name, value] of [["keyword", "synop fi"], ["lang", "sv"]]) {
+      await b.evaluate(`(() => {
+        const input = ${top}.querySelector('tr[data-param-name="${name}"] input');
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, "${value}");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      })()`);
+      await sleep(600);
+    }
+    await b.evaluate(`${top}.querySelector(".sm-map-controls button").click()`);
+    await waitFor(b, `${top}.querySelectorAll(".sm-map circle").length > 0`, "map points");
+    await sleep(300);
+    const mapState = await b.evaluate(`(() => {
+      const circles = [...${top}.querySelectorAll(".sm-map circle")];
+      return { circles: circles.length,
+               inside: circles.every((c) => +c.getAttribute("cx") > 0 && +c.getAttribute("cy") > 0 &&
+                                            +c.getAttribute("cx") < 2000 && +c.getAttribute("cy") < 420),
+               tiles: ${top}.querySelectorAll(".sm-map image").length,
+               count: ${top}.querySelector(".sm-map-controls").textContent,
+               attribution: (${top}.querySelector(".sm-map-attribution") || {}).textContent };
+    })()`);
+    const query = requested.filter((u) => u.startsWith("/edr/timeseries"));
+    const q = query.length ? new URL(query[0], base).searchParams : new URLSearchParams();
+    check("locations query", query.length === 1 && q.get("keyword") === "synop fi" && query[0].includes("keyword=synop%20fi") && q.get("lang") === "sv" &&
+          q.get("param") === "name,lat,lon,fmisid" && q.get("format") === "json", query);
+    check("locations without coordinates are left out", mapState.circles === 3, mapState);
+    check("locations inside the map", mapState.inside, mapState);
+    check("location count", mapState.count.includes("3 locations"), mapState);
+    check("attribution is text", mapState.attribution === "Test <tiles>", mapState);
+    const tiles = requested.filter((u) => u.startsWith("/tiles/"));
+    check("tiles drawn and fetched", mapState.tiles > 0 && tiles.length > 0, { mapState, tiles });
+
+    const hover = await b.evaluate(`(async () => {
+      const c = ${top}.querySelector(".sm-map circle");
+      c.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 100));
+      const t = ${top}.querySelector(".sm-map-tooltip");
+      const shown = { display: t.style.display, name: t.querySelector("b").textContent,
+                      rows: [...t.querySelectorAll("tr")].map((r) => r.textContent), html: t.querySelectorAll("b b").length };
+      c.dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 100));
+      shown.after = t.style.display;
+      return shown;
+    })()`);
+    if (process.env.OPENAPI_SCREENSHOT) {
+      await b.evaluate(`(() => { ${top}.querySelector(".sm-map").scrollIntoView();
+        ${top}.querySelector(".sm-map circle").dispatchEvent(new MouseEvent("mouseover", { bubbles: true })); })()`);
+      await sleep(300);
+      const shot = await b.send("Page.captureScreenshot", { format: "png" });
+      fs.writeFileSync(process.env.OPENAPI_SCREENSHOT, Buffer.from(shot.data, "base64"));
+      await b.evaluate(`${top}.querySelector(".sm-map circle").dispatchEvent(new MouseEvent("mouseout", { bubbles: true }))`);
+    }
+    check("tooltip shown", hover.display === "block" && hover.name === "Helsinki <b>" && hover.html === 0, hover);
+    check("tooltip rows", hover.rows.includes("fmisid100971") && hover.rows.includes("latitude60.17"), hover.rows);
+    check("tooltip hidden", hover.after === "none", hover);
+
+    const zoomed = await b.evaluate(`(async () => {
+      const zoom = ${top}.querySelector(".sm-map-zoom button");
+      const z = (src) => src.split("/")[2];
+      const before = z(${top}.querySelector(".sm-map image").getAttribute("href"));
+      zoom.click();
+      await new Promise((r) => setTimeout(r, 300));
+      return { before, after: z(${top}.querySelector(".sm-map image").getAttribute("href")) };
+    })()`);
+    check("zoom in", +zoomed.after === +zoomed.before + 1, zoomed);
+
+    await b.evaluate(`${top}.querySelector(".sm-map-controls button").click()`);
+    await sleep(300);
+    const hidden = await b.evaluate(`!${top}.querySelector(".sm-map")`);
+    check("hide map", hidden, hidden);
+
+    // Without a tile layer the background is a longitude/latitude grid
+    const grid = await b.evaluate(`(() => {
+      const div = document.createElement("div");
+      div.style.width = "600px";
+      document.body.appendChild(div);
+      const remove = SmartMetSwaggerUI.drawMap(div, [{ name: "a", lat: 60, lon: 20 }, { name: "b", lat: 70, lon: 30 }], null);
+      const result = { lines: div.querySelectorAll("line").length, images: div.querySelectorAll("image").length,
+                       labels: [...div.querySelectorAll("text")].map((t) => t.textContent),
+                       points: div.querySelectorAll("circle").length };
+      remove();
+      result.removed = div.childNodes.length === 0;
+      div.remove();
+      return result;
+    })()`);
+    check("grid background", grid.lines >= 6 && grid.images === 0 && grid.points === 2 && grid.labels.includes("20°") && grid.labels.includes("70°"), grid);
+    check("map removal", grid.removed, grid);
+    const roundTrip = await b.evaluate(`(() => { const [x, y] = SmartMetSwaggerUI.project(24.94, 60.17);
+      return SmartMetSwaggerUI.unproject(x, y); })()`);
+    check("projection round trip", Math.abs(roundTrip[0] - 24.94) < 1e-9 && Math.abs(roundTrip[1] - 60.17) < 1e-9, roundTrip);
 
     check("no page errors", b.errors.length === 0, b.errors);
   } finally {

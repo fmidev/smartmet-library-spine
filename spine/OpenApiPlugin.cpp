@@ -9,6 +9,8 @@
  *    consecutive days, weeks, months or years
  *  - JSON and XML responses as a collapsible tree
  *  - the URL and the snippets of the request before it is executed
+ *  - the locations of a keyword on a map, for parameters with the
+ *    x-smartmet-locations extension
  *
  * test/openapi-snippets-test.js runs the generated scripts, and
  * test/openapi-browser-test.js checks the viewer in a headless browser.
@@ -837,6 +839,345 @@ const char* const SWAGGER_UI_PLUGIN_JS = R"JS(/*
   }
 
   // ------------------------------------------------------------------
+  // Location map: the locations of a keyword, for parameters with the
+  // x-smartmet-locations extension. The background is the tile layer of
+  // x-smartmet-map in the definition, or a longitude/latitude grid. Hovering
+  // a location shows its details.
+  // ------------------------------------------------------------------
+
+  const SVG = "http://www.w3.org/2000/svg";
+  const MAP_HEIGHT = 420;
+  const MAX_ZOOM = 18;
+
+  const mapCss = `
+.sm-map-row td { padding: 0 0 12px 0 !important; }
+.sm-map-controls { display: flex; gap: 8px; align-items: center; font-size: 12px; margin: 4px 0; }
+.sm-map-controls button { font-size: 12px; padding: 2px 10px; cursor: pointer; }
+.sm-map { position: relative; height: ${MAP_HEIGHT}px; border: 1px solid #bbb; border-radius: 4px;
+  overflow: hidden; background: #e8eef3; cursor: grab; user-select: none; }
+.sm-map svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.sm-map .sm-point { fill: #d03030; stroke: #fff; stroke-width: 1.5; cursor: pointer; }
+.sm-map .sm-point:hover, .sm-map .sm-point.sm-hover { fill: #ff9800; }
+.sm-map .sm-grid { stroke: #b8c6d2; stroke-width: 1; fill: none; }
+.sm-map .sm-grid-label { fill: #7890a0; font: 10px sans-serif; }
+.sm-map-tooltip { position: absolute; pointer-events: none; background: rgba(255,255,255,0.96);
+  border: 1px solid #999; border-radius: 3px; padding: 4px 8px; font: 12px/1.4 sans-serif;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3); white-space: nowrap; z-index: 2; }
+.sm-map-tooltip table { border-collapse: collapse; }
+.sm-map-tooltip td { padding: 0 6px 0 0 !important; border: none !important; font-size: 12px; }
+.sm-map-tooltip td:first-child { color: #666; }
+.sm-map-zoom { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 2px; z-index: 1; }
+.sm-map-zoom button { width: 26px; height: 26px; font-size: 16px; line-height: 1; cursor: pointer; }
+.sm-map-attribution { position: absolute; right: 0; bottom: 0; background: rgba(255,255,255,0.8);
+  font: 10px sans-serif; padding: 1px 4px; z-index: 1; }
+`;
+
+  function addMapStyle(doc) {
+    if (doc.getElementById("sm-map-style")) return;
+    const style = doc.createElement("style");
+    style.id = "sm-map-style";
+    style.textContent = mapCss;
+    doc.head.appendChild(style);
+  }
+
+  // Web Mercator world coordinates in pixels at zoom 0 with a 256 pixel world
+  function project(lon, lat) {
+    const s = Math.sin((Math.max(-85.05, Math.min(85.05, lat)) * Math.PI) / 180);
+    return [((lon + 180) / 360) * 256, (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * 256];
+  }
+
+  function unproject(x, y) {
+    const lon = (x / 256) * 360 - 180;
+    const n = Math.PI - (2 * Math.PI * y) / 256;
+    return [lon, (180 / Math.PI) * Math.atan(Math.sinh(n))];
+  }
+
+  // The fields of a location in the tooltip, in this order
+  const locationFields = [
+    ["geoid", "geoid"], ["fmisid", "fmisid"], ["wmo", "WMO"], ["lat", "latitude"],
+    ["lon", "longitude"], ["elevation", "elevation"], ["region", "region"],
+    ["country", "country"], ["tz", "time zone"]
+  ];
+
+  // Draws the map of 'locations' into 'container'. Returns a function removing it.
+  function drawMap(container, locations, map) {
+    const doc = container.ownerDocument;
+    addMapStyle(doc);
+    container.replaceChildren();
+
+    const box = doc.createElement("div");
+    box.className = "sm-map";
+    container.appendChild(box);
+    const svg = doc.createElementNS(SVG, "svg");
+    const background = doc.createElementNS(SVG, "g");
+    const points = doc.createElementNS(SVG, "g");
+    svg.append(background, points);
+    box.appendChild(svg);
+    const tooltip = doc.createElement("div");
+    tooltip.className = "sm-map-tooltip";
+    tooltip.style.display = "none";
+    box.appendChild(tooltip);
+
+    const tileSize = (map && map.tileSize) || 256;
+    const width = () => box.clientWidth || 600;
+
+    // Fit the locations
+    const world = locations.map((l) => project(l.lon, l.lat));
+    let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+    for (const [x, y] of world) {
+      minx = Math.min(minx, x); maxx = Math.max(maxx, x);
+      miny = Math.min(miny, y); maxy = Math.max(maxy, y);
+    }
+    let zoom = 0;
+    while (zoom < 10 && (maxx - minx) * Math.pow(2, zoom + 1) < width() * 0.8 &&
+           (maxy - miny) * Math.pow(2, zoom + 1) < MAP_HEIGHT * 0.8)
+      zoom++;
+    let center = [(minx + maxx) / 2, (miny + maxy) / 2];
+
+    // Screen position of world coordinates
+    const scale = () => Math.pow(2, zoom);
+    const toScreen = ([x, y]) => [(x - center[0]) * scale() + width() / 2, (y - center[1]) * scale() + MAP_HEIGHT / 2];
+
+    function drawBackground() {
+      background.replaceChildren();
+      if (map && map.tiles) {
+        // Tiles of the zoom level whose pixel size is closest to the screen pixels
+        const z = Math.max(0, Math.min(MAX_ZOOM, Math.round(zoom + Math.log2(256 / tileSize))));
+        const n = Math.pow(2, z);
+        const tileWorld = 256 / n;  // tile size in zoom 0 world pixels
+        const [x0, y0] = [center[0] - width() / 2 / scale(), center[1] - MAP_HEIGHT / 2 / scale()];
+        const [x1, y1] = [center[0] + width() / 2 / scale(), center[1] + MAP_HEIGHT / 2 / scale()];
+        for (let ty = Math.max(0, Math.floor(y0 / tileWorld)); ty <= Math.min(n - 1, Math.floor(y1 / tileWorld)); ty++)
+          for (let tx = Math.floor(x0 / tileWorld); tx <= Math.floor(x1 / tileWorld); tx++) {
+            const wrapped = ((tx % n) + n) % n;
+            const image = doc.createElementNS(SVG, "image");
+            const [sx, sy] = toScreen([tx * tileWorld, ty * tileWorld]);
+            image.setAttribute("x", sx);
+            image.setAttribute("y", sy);
+            image.setAttribute("width", tileWorld * scale() + 0.5);
+            image.setAttribute("height", tileWorld * scale() + 0.5);
+            image.setAttribute("href", map.tiles.replace("{z}", z).replace("{x}", wrapped).replace("{y}", ty));
+            background.appendChild(image);
+          }
+        return;
+      }
+      // Longitude/latitude grid with a step suited to the zoom level
+      const steps = [90, 45, 30, 15, 10, 5, 2, 1, 0.5, 0.25, 0.1, 0.05];
+      const [lonW, latN] = unproject(center[0] - width() / 2 / scale(), center[1] - MAP_HEIGHT / 2 / scale());
+      const [lonE, latS] = unproject(center[0] + width() / 2 / scale(), center[1] + MAP_HEIGHT / 2 / scale());
+      const step = steps.find((s) => (lonE - lonW) / s >= 4) || steps[steps.length - 1];
+      const line = (x1, y1, x2, y2) => {
+        const l = doc.createElementNS(SVG, "line");
+        l.setAttribute("class", "sm-grid");
+        l.setAttribute("x1", x1); l.setAttribute("y1", y1); l.setAttribute("x2", x2); l.setAttribute("y2", y2);
+        background.appendChild(l);
+      };
+      const label = (x, y, text) => {
+        const t = doc.createElementNS(SVG, "text");
+        t.setAttribute("class", "sm-grid-label");
+        t.setAttribute("x", x); t.setAttribute("y", y);
+        t.textContent = text;
+        background.appendChild(t);
+      };
+      for (let lon = Math.ceil(lonW / step) * step; lon <= lonE; lon += step) {
+        const [sx] = toScreen(project(lon, 0));
+        line(sx, 0, sx, MAP_HEIGHT);
+        label(sx + 2, MAP_HEIGHT - 4, `${+lon.toFixed(2)}°`);
+      }
+      for (let lat = Math.ceil(latS / step) * step; lat <= latN; lat += step) {
+        const [, sy] = toScreen(project(0, lat));
+        line(0, sy, width(), sy);
+        label(2, sy - 2, `${+lat.toFixed(2)}°`);
+      }
+    }
+
+    function showTooltip(location, circle) {
+      tooltip.replaceChildren();
+      const name = doc.createElement("b");
+      name.textContent = location.name !== undefined && location.name !== null ? String(location.name) : "";
+      tooltip.appendChild(name);
+      const table = doc.createElement("table");
+      for (const [key, title] of locationFields) {
+        const value = location[key];
+        if (value === undefined || value === null || value === "") continue;
+        const tr = doc.createElement("tr");
+        const k = doc.createElement("td");
+        k.textContent = title;
+        const v = doc.createElement("td");
+        v.textContent = String(value);
+        tr.append(k, v);
+        table.appendChild(tr);
+      }
+      tooltip.appendChild(table);
+      tooltip.style.display = "block";
+      const cx = Number(circle.getAttribute("cx"));
+      const cy = Number(circle.getAttribute("cy"));
+      const left = cx + 12 + tooltip.offsetWidth > width() ? cx - 12 - tooltip.offsetWidth : cx + 12;
+      tooltip.style.left = `${Math.max(0, left)}px`;
+      tooltip.style.top = `${Math.max(0, Math.min(MAP_HEIGHT - tooltip.offsetHeight, cy - 10))}px`;
+      circle.classList.add("sm-hover");
+    }
+
+    function drawPoints() {
+      points.replaceChildren();
+      locations.forEach((location, i) => {
+        const [sx, sy] = toScreen(world[i]);
+        const c = doc.createElementNS(SVG, "circle");
+        c.setAttribute("class", "sm-point");
+        c.setAttribute("cx", sx);
+        c.setAttribute("cy", sy);
+        c.setAttribute("r", 5);
+        c.addEventListener("mouseover", () => showTooltip(location, c));
+        c.addEventListener("mouseout", () => {
+          tooltip.style.display = "none";
+          c.classList.remove("sm-hover");
+        });
+        points.appendChild(c);
+      });
+    }
+
+    const redraw = () => { drawBackground(); drawPoints(); };
+
+    // Zoom keeping the world position under (sx, sy) in place
+    function zoomTo(newZoom, sx, sy) {
+      newZoom = Math.max(0, Math.min(MAX_ZOOM, newZoom));
+      if (newZoom === zoom) return;
+      const wx = center[0] + (sx - width() / 2) / scale();
+      const wy = center[1] + (sy - MAP_HEIGHT / 2) / scale();
+      zoom = newZoom;
+      center = [wx - (sx - width() / 2) / scale(), wy - (sy - MAP_HEIGHT / 2) / scale()];
+      redraw();
+    }
+
+    const zoomBox = doc.createElement("div");
+    zoomBox.className = "sm-map-zoom";
+    for (const [text, delta] of [["+", 1], ["−", -1]]) {
+      const b = doc.createElement("button");
+      b.type = "button";
+      b.textContent = text;
+      b.addEventListener("click", (e) => { e.stopPropagation(); zoomTo(zoom + delta, width() / 2, MAP_HEIGHT / 2); });
+      zoomBox.appendChild(b);
+    }
+    box.appendChild(zoomBox);
+
+    if (map && map.attribution) {
+      const a = doc.createElement("div");
+      a.className = "sm-map-attribution";
+      a.textContent = map.attribution;
+      box.appendChild(a);
+    }
+
+    // Panning and wheel zoom
+    let drag = null;
+    box.addEventListener("mousedown", (e) => {
+      if (e.target.closest && e.target.closest(".sm-map-zoom")) return;
+      drag = { x: e.clientX, y: e.clientY, center: center.slice() };
+      box.style.cursor = "grabbing";
+    });
+    const move = (e) => {
+      if (!drag) return;
+      center = [drag.center[0] - (e.clientX - drag.x) / scale(), drag.center[1] - (e.clientY - drag.y) / scale()];
+      redraw();
+    };
+    const up = () => { drag = null; box.style.cursor = ""; };
+    doc.addEventListener("mousemove", move);
+    doc.addEventListener("mouseup", up);
+    box.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const r = box.getBoundingClientRect();
+      zoomTo(zoom + (e.deltaY < 0 ? 1 : -1), e.clientX - r.left, e.clientY - r.top);
+    }, { passive: false });
+
+    redraw();
+    return () => {
+      doc.removeEventListener("mousemove", move);
+      doc.removeEventListener("mouseup", up);
+      container.replaceChildren();
+    };
+  }
+
+  // The locations query of a parameter with the x-smartmet-locations extension
+  function locationsUrl(system, extension, path, method, value) {
+    const oas3 = system.oas3Selectors;
+    const server = oas3.selectedServer(`${path}:${method}`) || oas3.selectedServer() || "";
+    const base = new URL(server || "/", window.location.href);
+    const query = Object.assign({}, extension.query || {});
+    query[extension.parameter] = value;
+    // The language of the location names follows the request
+    if (extension.language) {
+      const op = system.specSelectors.operationWithMeta(path, method);
+      const params = op && op.get("parameters");
+      const lang = params && params.find((p) => p.get("in") === "query" && p.get("name") === extension.language);
+      const value = lang && lang.get("value");
+      if (typeof value === "string" && value !== "") query[extension.language] = value;
+    }
+    // encodeURIComponent rather than URLSearchParams, which encodes spaces as '+'
+    const url = new URL(base.toString().replace(/\/$/, "") + (extension.path || path), window.location.href);
+    url.search = Object.entries(query)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&");
+    return url.toString();
+  }
+
+  // Wraps the parameter rows: parameters with x-smartmet-locations get a location map
+  function wrapParameterRow(Original, system) {
+    const React = system.React;
+    const h = React.createElement;
+
+    function MapRow(props) {
+      const [state, setState] = React.useState({ status: "closed" });
+      const ref = React.useRef(null);
+      const remove = React.useRef(null);
+      const [path, method] = props.pathMethod;
+      const extension = props.extension;
+      const meta = system.specSelectors.parameterWithMetaByIdentity(props.pathMethod, props.rawParam);
+      const value = meta ? meta.get("value") : "";
+      const text = value && typeof value.toJS === "function" ? value.toJS().join(",") : value || "";
+
+      React.useEffect(() => {
+        if (state.status !== "shown" || !ref.current) return undefined;
+        const map = system.specSelectors.specJson().get("x-smartmet-map");
+        remove.current = drawMap(ref.current, state.locations, map ? map.toJS() : null);
+        return () => { if (remove.current) remove.current(); };
+      }, [state]);
+
+      const show = () => {
+        setState({ status: "loading" });
+        fetch(locationsUrl(system, extension, path, method, text), { headers: { accept: "application/json" } })
+          .then((r) => (r.ok ? r.json() : r.text().then((t) => Promise.reject(new Error(`${r.status}: ${t.slice(0, 200)}`)))))
+          .then((rows) => {
+            const locations = (Array.isArray(rows) ? rows : []).filter((l) =>
+              l && typeof l.lat === "number" && typeof l.lon === "number");
+            if (locations.length === 0) setState({ status: "empty" });
+            else setState({ status: "shown", locations: locations });
+          })
+          .catch((e) => setState({ status: "error", message: e.message }));
+      };
+      const hide = () => setState({ status: "closed" });
+
+      const controls = h("div", { className: "sm-map-controls" },
+        state.status === "shown" || state.status === "loading"
+          ? h("button", { type: "button", onClick: hide }, "Hide map")
+          : h("button", { type: "button", disabled: !text, onClick: show }, `Show the locations of ${props.name} on a map`),
+        state.status === "loading" ? "Loading…" : null,
+        state.status === "shown" ? `${state.locations.length} locations` : null,
+        state.status === "empty" ? "No locations" : null,
+        state.status === "error" ? `Failed: ${state.message}` : null);
+      return h("tr", { className: "sm-map-row" },
+        h("td", { colSpan: 2 }, controls, state.status === "shown" ? h("div", { ref: ref }) : null));
+    }
+
+    return function SmartMetParameterRow(props) {
+      const param = props.param || props.rawParam;
+      const extension = param && param.get ? param.get("x-smartmet-locations") : null;
+      if (!extension) return h(Original, props);
+      if (typeof document !== "undefined") addMapStyle(document);
+      return h(React.Fragment, null,
+        h(Original, props),
+        h(MapRow, Object.assign({}, props, { extension: extension.toJS(), name: param.get("name") })));
+    };
+  }
+
+  // ------------------------------------------------------------------
   // The Swagger UI plugin
   // ------------------------------------------------------------------
 
@@ -873,7 +1214,8 @@ const char* const SWAGGER_UI_PLUGIN_JS = R"JS(/*
     plugin: function () {
       return {
         fn: generators,
-        wrapComponents: { responseBody: wrapResponseBody, execute: wrapExecute },
+        wrapComponents: { responseBody: wrapResponseBody, execute: wrapExecute,
+                          parameterRow: wrapParameterRow },
         // Swagger UI merges the snippets with its own into an unordered map, show them in order
         statePlugins: {
           requestSnippets: {
@@ -891,7 +1233,10 @@ const char* const SWAGGER_UI_PLUGIN_JS = R"JS(/*
     timeWindow: timeWindow,
     renderTree: renderTree,
     setOpen: setOpen,
-    responseKind: responseKind
+    responseKind: responseKind,
+    project: project,
+    unproject: unproject,
+    drawMap: drawMap
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;

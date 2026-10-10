@@ -29,6 +29,9 @@
  *     swagger_ui_dir     = "/usr/share/smartmet/swagger-ui";
  *     expand_collections = true;
  *     max_enum           = 1000;
+ *     map_tiles          = "/tiles/collections/<layer>/tiles/EPSG:3857/{z}/{y}/{x}?f=png";
+ *     map_tile_size      = 256;
+ *     map_attribution    = "...";
  *     contact            = { name = "..."; url = "..."; email = "..."; };
  *     license            = { name = "..."; url = "..."; };
  *   };
@@ -87,6 +90,12 @@ struct Settings
   bool expand_collections = true;  // per-collection paths with exact enums
   std::size_t max_enum = 1000;     // larger value sets are not listed
   std::string swagger_ui_dir = "/usr/share/smartmet/swagger-ui";
+  // Background map of the location maps of the documentation pages: a Web Mercator
+  // (EPSG:3857) tile URL template with {z}, {x} and {y}, normally an OGC API - Tiles layer
+  // of the same server. Empty for no background.
+  std::string map_tiles;
+  int map_tile_size = 256;
+  std::string map_attribution;
   Json::Value contact;  // OpenAPI contact object, null if not set
   Json::Value license;  // OpenAPI license object, null if not set
 

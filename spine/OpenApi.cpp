@@ -9,6 +9,7 @@
 #include <macgyver/Hash.h>
 #include <macgyver/StringConversion.h>
 #include <atomic>
+#include <cctype>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -57,6 +58,29 @@ const char* const DOCS_CONTENT_SECURITY_POLICY =
     "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data:; font-src 'self' data:; connect-src 'self'; base-uri 'none'; "
     "form-action 'self'; frame-ancestors 'self'";
+
+// The origin of an absolute tile URL for the Content-Security-Policy, or an empty string if
+// the URL is relative or the origin contains anything but host name and port characters
+std::string tileOrigin(const std::string& url)
+{
+  std::size_t start = 0;
+  if (url.compare(0, 8, "https://") == 0)
+    start = 8;
+  else if (url.compare(0, 7, "http://") == 0)
+    start = 7;
+  else
+    return {};
+  const auto end = url.find('/', start);
+  if (end == std::string::npos || end == start)
+    return {};
+  for (std::size_t i = start; i < end; i++)
+  {
+    const char ch = url[i];
+    if (!(std::isalnum(static_cast<unsigned char>(ch)) || ch == '.' || ch == '-' || ch == ':'))
+      return {};
+  }
+  return url.substr(0, end);
+}
 
 std::string toJsonText(const Json::Value& value)
 {
@@ -284,6 +308,17 @@ Settings Settings::parse(const libconfig::Config& config, const std::string& pat
     group.lookupValue("ui", settings.ui);
     group.lookupValue("expand_collections", settings.expand_collections);
     group.lookupValue("swagger_ui_dir", settings.swagger_ui_dir);
+    group.lookupValue("map_tiles", settings.map_tiles);
+    group.lookupValue("map_tile_size", settings.map_tile_size);
+    group.lookupValue("map_attribution", settings.map_attribution);
+    if (settings.map_tile_size < 64 || settings.map_tile_size > 4096)
+      throw Fmi::Exception(BCP, "openapi.map_tile_size must be in the range 64...4096");
+    if (!settings.map_tiles.empty() && settings.map_tiles[0] != '/' &&
+        tileOrigin(settings.map_tiles).empty())
+      throw Fmi::Exception(BCP,
+                           "openapi.map_tiles must be a path or an http(s) URL with a plain "
+                           "host name")
+          .addParameter("map_tiles", settings.map_tiles);
 
     int max_enum = 0;
     if (group.lookupValue("max_enum", max_enum))
@@ -440,6 +475,16 @@ Document::Document(const std::string& title,
   Json::Value server;
   server["url"] = SERVER_URL_PLACEHOLDER;
   itsDoc["servers"].append(server);
+
+  // The background map of the location maps of the documentation page
+  if (!settings.map_tiles.empty())
+  {
+    auto& map = itsDoc["x-smartmet-map"];
+    map["tiles"] = settings.map_tiles;
+    map["tileSize"] = settings.map_tile_size;
+    if (!settings.map_attribution.empty())
+      map["attribution"] = settings.map_attribution;
+  }
 
   itsDoc["tags"] = Json::Value(Json::arrayValue);
   itsDoc["paths"] = Json::Value(Json::objectValue);
@@ -995,7 +1040,11 @@ window.onload = function () {{
 
   response.setStatus(HTTP::Status::ok);
   response.setHeader("Content-Type", "text/html; charset=UTF-8");
-  response.setHeader("Content-Security-Policy", DOCS_CONTENT_SECURITY_POLICY);
+  std::string policy = DOCS_CONTENT_SECURITY_POLICY;
+  const auto origin = tileOrigin(itsSettings.map_tiles);
+  if (!origin.empty())
+    boost::algorithm::replace_first(policy, "img-src 'self'", "img-src 'self' " + origin);
+  response.setHeader("Content-Security-Policy", policy);
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setContent(html);
 }

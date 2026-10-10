@@ -80,10 +80,12 @@ OpenAPI::Document makeDocument(const OpenAPI::Settings& settings)
   return doc;
 }
 
-std::shared_ptr<OpenAPI::Publisher> makePublisher(const std::string& assetDir)
+std::shared_ptr<OpenAPI::Publisher> makePublisher(const std::string& assetDir,
+                                                  const std::string& mapTiles = "")
 {
   OpenAPI::Settings settings;
   settings.swagger_ui_dir = assetDir;
+  settings.map_tiles = mapTiles;
   auto publisher = std::make_shared<OpenAPI::Publisher>(settings);
   publisher->publish(makeDocument(settings));
   return publisher;
@@ -118,9 +120,38 @@ BOOST_AUTO_TEST_CASE(settings_defaults_and_parsing)
   BOOST_TEST(!settings.contact.isMember("url"));
   BOOST_TEST(settings.license["name"].asString() == "MIT");
 
+  libconfig::Config map;
+  map.readString(
+      "openapi: { map_tiles = \"/tiles/collections/x/tiles/EPSG:3857/{z}/{y}/{x}?f=png\"; "
+      "map_tile_size = 512; map_attribution = \"FMI\"; };");
+  auto map_settings = OpenAPI::Settings::parse(map);
+  OpenAPI::Document map_doc("T", "", "1", map_settings);
+  BOOST_TEST(map_doc.json()["x-smartmet-map"]["tiles"].asString() ==
+             "/tiles/collections/x/tiles/EPSG:3857/{z}/{y}/{x}?f=png");
+  BOOST_TEST(map_doc.json()["x-smartmet-map"]["tileSize"].asInt() == 512);
+  BOOST_TEST(map_doc.json()["x-smartmet-map"]["attribution"].asString() == "FMI");
+  BOOST_TEST(!OpenAPI::Document("T", "", "1", defaults).json().isMember("x-smartmet-map"));
+
   libconfig::Config bad;
   bad.readString("openapi: { max_enum = -1; };");
   BOOST_CHECK_THROW(OpenAPI::Settings::parse(bad), std::exception);
+
+  // Tiles are a path or an http(s) URL with a plain host name
+  for (const char* tiles : {"tiles/{z}/{y}/{x}",
+                            "ftp://example.org/{z}/{y}/{x}",
+                            "https://exa mple.org/{z}/{y}/{x}",
+                            "https://example.org;script-src *"})
+  {
+    libconfig::Config c;
+    c.readString(std::string("openapi: { map_tiles = \"") + tiles + "\"; };");
+    BOOST_CHECK_THROW(OpenAPI::Settings::parse(c), std::exception);
+  }
+  libconfig::Config absolute;
+  absolute.readString("openapi: { map_tiles = \"https://tiles.example.org:8443/{z}/{y}/{x}\"; };");
+  BOOST_CHECK_NO_THROW(OpenAPI::Settings::parse(absolute));
+  libconfig::Config small;
+  small.readString("openapi: { map_tile_size = 32; };");
+  BOOST_CHECK_THROW(OpenAPI::Settings::parse(small), std::exception);
 }
 
 BOOST_AUTO_TEST_CASE(enum_schema_is_capped)
@@ -275,6 +306,22 @@ BOOST_AUTO_TEST_CASE(browsers_get_the_documentation_page)
              std::string::npos);
   BOOST_TEST(header(response, "X-Content-Type-Options") == "nosniff");
   BOOST_TEST(html.find("https://") == std::string::npos);  // no external resources
+}
+
+BOOST_AUTO_TEST_CASE(documentation_page_allows_the_tile_origin)
+{
+  AssetDir assets;
+  const auto policy = [&](const std::string& tiles)
+  {
+    HTTP::Response response;
+    makePublisher(assets.path.string(), tiles)
+        ->handle(makeRequest("/edr/api/docs"), response, "/edr", "https://example.org/edr");
+    return header(response, "Content-Security-Policy");
+  };
+  BOOST_TEST(policy("").find("img-src 'self' data:;") != std::string::npos);
+  BOOST_TEST(policy("/tiles/{z}/{y}/{x}").find("img-src 'self' data:;") != std::string::npos);
+  BOOST_TEST(policy("https://tiles.example.org:8443/{z}/{y}/{x}")
+                 .find("img-src 'self' https://tiles.example.org:8443 data:;") != std::string::npos);
 }
 
 BOOST_AUTO_TEST_CASE(documentation_page_relative_links)
