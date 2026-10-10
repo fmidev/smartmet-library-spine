@@ -152,7 +152,7 @@ BOOST_AUTO_TEST_CASE(definition_inserts_escaped_server_url)
   OpenAPI::Definition definition(makeDocument(settings));
 
   auto doc = parse(definition.json("https://example.org/edr"));
-  BOOST_TEST(doc["openapi"].asString() == "3.0.3");
+  BOOST_TEST(doc["openapi"].asString() == "3.1.1");
   BOOST_TEST(doc["servers"][0]["url"].asString() == "https://example.org/edr");
   BOOST_TEST(doc["paths"].isMember("/"));
   BOOST_TEST(doc["paths"].isMember("/conformance"));

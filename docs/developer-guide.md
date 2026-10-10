@@ -330,7 +330,7 @@ Most plugins produce tables of values:
 * **Active requests and access logs.** `ActiveRequests` tracks running requests
   (`what=activerequests`); a terminate handler prints them if the process dies.
   `AccessLogger` writes per-URI access logs when logging is on.
-* **OpenAPI** (`OpenApi.h`): plugins describe their APIs with generated OpenAPI 3.0
+* **OpenAPI** (`OpenApi.h`): plugins describe their APIs with generated OpenAPI 3.1
   definitions. Build a `Spine::OpenAPI::Document` from code, configuration and metadata
   (`addCommonComponents()` and `addCoreOperations()` add the OGC API - Common parts),
   hand it to a `Publisher` whenever the metadata changes, and let `Publisher::handle()`

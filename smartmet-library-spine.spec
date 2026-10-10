@@ -169,7 +169,7 @@ make %{_smp_mflags}
 
 %changelog
 * Fri Oct  9 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.9-2.fmi
-- Added Spine::OpenAPI: generated OpenAPI 3.0 definitions and Swagger UI documentation pages
+- Added Spine::OpenAPI: generated OpenAPI 3.1 definitions and Swagger UI documentation pages
   (<root>/api, <root>/api/docs) for the plugin APIs. Definitions requested with an apikey are
   sent with Cache-Control: private, and the documentation page with a Content-Security-Policy
 

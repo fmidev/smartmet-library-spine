@@ -21,9 +21,8 @@ namespace Spine
 {
 namespace OpenAPI
 {
-const char* const OPENAPI_VERSION = "3.0.3";
-const char* const MEDIA_TYPE = "application/vnd.oai.openapi+json;version=3.0";
-const char* const CONF_COMMON_OAS30 = "http://www.opengis.net/spec/ogcapi-common-1/1.0/conf/oas30";
+const char* const OPENAPI_VERSION = "3.1.1";
+const char* const MEDIA_TYPE = "application/vnd.oai.openapi+json;version=3.1";
 const char* const REL_SERVICE_DESC = "service-desc";
 const char* const REL_SERVICE_DOC = "service-doc";
 const char* const REL_CONFORMANCE = "http://www.opengis.net/def/rel/ogc/1.0/conformance";
@@ -404,7 +403,7 @@ std::vector<std::string> documentationFiles()
 
 Json::Value serviceDescLink(const std::string& root)
 {
-  return link(root + "/api", REL_SERVICE_DESC, MEDIA_TYPE, "The API definition (OpenAPI 3.0)");
+  return link(root + "/api", REL_SERVICE_DESC, MEDIA_TYPE, "The API definition (OpenAPI 3.1)");
 }
 
 Json::Value serviceDocLink(const std::string& root)
@@ -676,7 +675,7 @@ void Document::addApiOperations(const std::string& tag, const std::string& prefi
     api["parameters"].append(parameter(
         "f", "query", "The format of the response: json (the default) or html.", f_schema));
     auto& api_ok = api["responses"]["200"];
-    api_ok["description"] = "The OpenAPI 3.0 definition of the API.";
+    api_ok["description"] = "The OpenAPI 3.1 definition of the API.";
     Json::Value object_schema;
     object_schema["type"] = "object";
     api_ok["content"][MEDIA_TYPE]["schema"] = object_schema;

@@ -2,7 +2,7 @@
 /*!
  * \brief OpenAPI definitions for SmartMet Server APIs
  *
- * Shared building blocks for the OpenAPI 3.0 definitions that the plugins
+ * Shared building blocks for the OpenAPI 3.1 definitions that the plugins
  * serve for their APIs (OGC API - EDR, Tiles, Coverages, WMTS, TimeSeries).
  *
  * Every definition is generated from code, configuration and metadata. The
@@ -62,13 +62,11 @@ class Response;
 namespace OpenAPI
 {
 // The OpenAPI version of all generated definitions
-extern const char* const OPENAPI_VERSION;  // "3.0.3"
+extern const char* const OPENAPI_VERSION;  // "3.1.1"
 
 // Media type of the JSON encoded definition
-extern const char* const MEDIA_TYPE;  // "application/vnd.oai.openapi+json;version=3.0"
+extern const char* const MEDIA_TYPE;  // "application/vnd.oai.openapi+json;version=3.1"
 
-// OGC API - Common Part 1 conformance class for OpenAPI 3.0 definitions
-extern const char* const CONF_COMMON_OAS30;
 
 // OGC link relation types used in landing pages
 extern const char* const REL_SERVICE_DESC;  // OpenAPI definition
