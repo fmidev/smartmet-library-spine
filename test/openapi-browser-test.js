@@ -1,10 +1,12 @@
-// Tests of the response viewer of the SmartMet Swagger UI plugin (spine/OpenApiPlugin.cpp).
+// Browser tests of the SmartMet Swagger UI plugin (spine/OpenApiPlugin.cpp): the request
+// preview and the response viewer.
 //
-// Usage: node openapi-viewer-test.js <dir> <swagger-ui dir>
+// Usage: node openapi-browser-test.js <dir> <swagger-ui dir>
 //
 // <dir> contains the documentation page (docs.html) and the plugin (smartmet-swagger-ui.js)
 // as spine serves them. The test serves them with the Swagger UI files and a test definition,
-// executes requests in a headless Chromium and checks the tree of the JSON and XML responses.
+// enters parameters and executes requests in a headless Chromium, and checks the request
+// preview and the tree of the JSON and XML responses.
 // The test is skipped if Chromium or the Swagger UI files are not available.
 
 "use strict";
@@ -25,7 +27,7 @@ function findBrowser() {
 
 const browser = findBrowser();
 if (!browser || !fs.existsSync(path.join(swaggerDir || "", "swagger-ui-bundle.js"))) {
-  console.log("Chromium or the Swagger UI files are not available, the viewer is not tested");
+  console.log("Chromium or the Swagger UI files are not available, the browser tests are not run");
   process.exit(0);
 }
 
@@ -49,13 +51,22 @@ const definition = {
   servers: [{ url: "/edr" }],
   paths: {
     "/json": { get: { operationId: "getJson", responses: { 200: { description: "x", content: { "application/vnd.cov+json": {} } } } } },
-    "/xml": { get: { operationId: "getXml", responses: { 200: { description: "x", content: { "application/xml": {} } } } } }
+    "/xml": { get: { operationId: "getXml", responses: { 200: { description: "x", content: { "application/xml": {} } } } } },
+    "/data": { get: { operationId: "getData",
+      parameters: [
+        { name: "coords", in: "query", required: true, schema: { type: "string" } },
+        { name: "datetime", in: "query", schema: { type: "string" } },
+        { name: "parameter-name", in: "query", style: "form", explode: false,
+          schema: { type: "array", items: { type: "string", enum: ["Temperature", "Humidity"] } } }],
+      responses: { 200: { description: "x", content: { "application/json": {} } } } } }
   }
 };
 
 const types = { ".js": "text/javascript", ".css": "text/css", ".png": "image/png" };
 
+const requested = [];
 const server = http.createServer((req, res) => {
+  requested.push(req.url);
   const send = (status, type, body) => {
     res.writeHead(status, { "Content-Type": type, "Cache-Control": "no-store" });
     res.end(body);
@@ -71,6 +82,7 @@ const server = http.createServer((req, res) => {
   }
   if (url === "/edr/json") return send(200, "application/vnd.cov+json", JSON.stringify(json));
   if (url === "/edr/xml") return send(200, "application/xml", xml);
+  if (url === "/edr/data") return send(200, "application/json", JSON.stringify({ ok: true }));
   send(404, "text/plain", "not found");
 });
 
@@ -234,6 +246,58 @@ async function main() {
     check("xml attributes", x.summaries.includes('<Layer name="a"> 2 elements'), x.summaries);
     check("xml leaf", x.leaves.includes("<Title>B</Title>"), x.leaves);
 
+    // Request preview
+    const dop = `document.querySelector('[id$="-getData"]')`;
+    await waitFor(b, `!!${dop}`, "getData");
+    await b.evaluate(`window.ui.layoutActions.show(["operations", "default", "getData"], true)`);
+    await waitFor(b, `!!${dop}.querySelector(".sm-preview code")`, "preview");
+    const empty = await b.evaluate(`(() => ({ url: ${dop}.querySelector(".sm-preview code").textContent,
+      missing: (${dop}.querySelector(".sm-preview-missing") || {}).textContent }))()`);
+    check("preview without values", /\/edr\/data$/.test(empty.url), empty);
+    check("missing required", empty.missing === "Required parameters without a value: coords", empty);
+
+    await b.evaluate(`(() => {
+      const set = (name, value) => {
+        const input = ${dop}.querySelector('tr[data-param-name="' + name + '"] input');
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, value);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      };
+      set("coords", "POINT(24.94 60.17)");
+      set("datetime", "2026-01-01T00:00:00Z/2026-01-31T23:59:59Z");
+      const select = ${dop}.querySelector('tr[data-param-name="parameter-name"] select');
+      for (const o of select.options) o.selected = true;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    })()`);
+    await sleep(500);
+    const filled = await b.evaluate(`(async () => {
+      const preview = ${dop}.querySelector(".sm-preview");
+      const details = preview.querySelector("details");
+      details.open = true;
+      await new Promise((r) => setTimeout(r, 300));
+      const tabs = [...preview.querySelectorAll(".request-snippets .btn")].map((x) => x.textContent.trim());
+      const python = [...preview.querySelectorAll(".request-snippets .btn")].find((x) => x.textContent.trim() === "Python loop");
+      if (python) python.click();
+      await new Promise((r) => setTimeout(r, 200));
+      const code = preview.querySelector(".request-snippets pre, .request-snippets code");
+      return { url: preview.querySelector("code").textContent,
+               missing: !!preview.querySelector(".sm-preview-missing"), tabs,
+               code: code ? code.textContent : null,
+               copy: !![...preview.querySelectorAll("button")].find((x) => x.textContent === "Copy") };
+    })()`);
+    const expectedUrl = `${base}/edr/data?coords=POINT%2824.94%2060.17%29&datetime=2026-01-01T00%3A00%3A00Z%2F2026-01-31T23%3A59%3A59Z&parameter-name=Temperature,Humidity`;
+    check("preview url", filled.url === expectedUrl, filled.url);
+    check("no missing after input", !filled.missing, filled);
+    check("copy button", filled.copy, filled);
+    check("preview snippets", filled.tabs.length === 8 && filled.tabs[0] === "bash", filled.tabs);
+    check("preview loop snippet", filled.code && filled.code.includes('STEP = "week"') && filled.code.includes("/edr/data?coords="), filled.code);
+    check("nothing sent before execute", !requested.some((u) => u.startsWith("/edr/data")), requested);
+
+    // Execute sends the previewed URL
+    await b.evaluate(`${dop}.querySelector("button.execute").click()`);
+    await waitFor(b, `!!${dop}.querySelector(".sm-tree")`, "data response");
+    const sent = requested.filter((u) => u.startsWith("/edr/data"));
+    check("execute sends the previewed request", sent.length === 1 && base + sent[0] === expectedUrl, sent);
+
     check("no page errors", b.errors.length === 0, b.errors);
   } finally {
     const exited = new Promise((r) => b.child.once("exit", r));
@@ -246,7 +310,7 @@ async function main() {
       // A browser process may still be writing the profile, the system removes it later
     }
   }
-  console.log(`${checks} viewer checks passed, ${failures} failed`);
+  console.log(`${checks} browser checks passed, ${failures} failed`);
   process.exit(failures ? 1 : 0);
 }
 

@@ -339,12 +339,13 @@ Most plugins produce tables of values:
   local directory (package `smartmet-swagger-ui`), never from a CDN. The definition is
   serialized once per `publish()`; requests only insert the server URL from
   `OpenAPI::serverUrl()`. Settings are read from the plugin's `openapi` group with
-  `Settings::parse()`. The documentation page shows the executed request as bash,
+  `Settings::parse()`. The documentation page shows the URL of the request while the
+  parameters are entered, and the request as bash,
   Python, R and JavaScript snippets, and as scripts which repeat the request for
   consecutive days, weeks, months or years when it has a time window (`datetime=start/end`
   or `starttime` and `endtime`). JSON and XML responses are shown as a collapsible tree. The plugin is in
   `OpenApiPlugin.cpp`; `test/openapi-snippets-test.js` runs the generated scripts against a local
-  server and `test/openapi-viewer-test.js` checks the tree in a headless browser.
+  server and `test/openapi-browser-test.js` checks the tree in a headless browser.
 * **OpenTelemetry** (`OTelOptions`, `OTelLogger`, `OTelMetricsExporter`) is optional.
   Tracing is compiled in with `SMARTMET_SPINE_OPENTELEMETRY`
   (see [build-opentelemetry.md](build-opentelemetry.md)), and cache statistics are

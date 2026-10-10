@@ -8,9 +8,10 @@
  *    bash, Python, R and JavaScript scripts which repeat the request for
  *    consecutive days, weeks, months or years
  *  - JSON and XML responses as a collapsible tree
+ *  - the URL and the snippets of the request before it is executed
  *
  * test/openapi-snippets-test.js runs the generated scripts, and
- * test/openapi-viewer-test.js checks the viewer in a headless browser.
+ * test/openapi-browser-test.js checks the viewer in a headless browser.
  */
 // ======================================================================
 
@@ -40,6 +41,9 @@ const char* const SWAGGER_UI_PLUGIN_JS = R"JS(/*
  *
  * JSON and XML responses are shown as a collapsible tree, with the original
  * text view of Swagger UI available as an alternative.
+ *
+ * The URL and the snippets of the request are shown while the parameters are
+ * entered, before the request is executed.
  */
 (function (root) {
   "use strict";
@@ -698,6 +702,141 @@ const char* const SWAGGER_UI_PLUGIN_JS = R"JS(/*
   }
 
   // ------------------------------------------------------------------
+  // Request preview: the URL and the snippets of the request as the
+  // parameters are entered, before it is executed. The request is built
+  // exactly as Swagger UI builds it when the request is executed.
+  // ------------------------------------------------------------------
+
+  const previewCss = `
+.sm-preview { margin: 10px 0; padding: 8px 10px; border: 1px solid #c8d7e6; border-radius: 4px; background: #f5f9fc;
+  text-align: left; }
+.sm-preview * { text-align: left; }
+.sm-preview-title { font-weight: bold; font-size: 13px; margin-bottom: 4px; }
+.sm-preview-url { display: flex; gap: 6px; align-items: flex-start; }
+.sm-preview-url code { flex: 1; font: 12px/1.5 monospace; word-break: break-all; background: #fff;
+  border: 1px solid #ddd; border-radius: 3px; padding: 4px 6px; }
+.sm-preview-url button { font-size: 12px; padding: 3px 10px; cursor: pointer; }
+.sm-preview-missing { color: #b3261e; font-size: 12px; margin-top: 4px; }
+.sm-preview details { margin-top: 6px; }
+.sm-preview summary { cursor: pointer; font-size: 12px; }
+`;
+
+  function addPreviewStyle(doc) {
+    if (doc.getElementById("sm-preview-style")) return;
+    const style = doc.createElement("style");
+    style.id = "sm-preview-style";
+    style.textContent = previewCss;
+    doc.head.appendChild(style);
+  }
+
+  // The plain object of the definition, converted again only when the definition changes
+  let specCache = { immutable: null, plain: null };
+  function plainSpec(immutable) {
+    if (specCache.immutable !== immutable) specCache = { immutable: immutable, plain: immutable.toJS() };
+    return specCache.plain;
+  }
+
+  // The request Swagger UI would send, as in its executeRequest action
+  function previewRequest(system, path, method) {
+    const specSelectors = system.specSelectors;
+    const oas3Selectors = system.oas3Selectors;
+    const fullSpec = plainSpec(specSelectors.specJsonWithResolvedSubtrees());
+    const operation = ((fullSpec.paths || {})[path] || {})[method] || {};
+
+    // buildRequest refuses a request without its required parameters, the preview shows it
+    // anyway and lists the missing ones. Execute validates the parameters as usual.
+    const optional = Object.assign({}, operation, {
+      parameters: (operation.parameters || []).map((p) => (p && p.required ? Object.assign({}, p, { required: false }) : p))
+    });
+    const pathItem = Object.assign({}, fullSpec.paths[path], { [method]: optional });
+    const spec = Object.assign({}, fullSpec, { paths: Object.assign({}, fullSpec.paths, { [path]: pathItem }) });
+    const contentTypes = specSelectors.contentTypeValues([path, method]).toJS();
+    const parameters = specSelectors.parameterValues([path, method], /xml/i.test(contentTypes.requestContentType || "")).toJS();
+    const namespace = `${path}:${method}`;
+    const server = oas3Selectors.selectedServer(namespace) || oas3Selectors.selectedServer();
+    const local = oas3Selectors.serverVariables({ server: server, namespace: namespace }).toJS();
+    const request = {
+      spec: spec,
+      pathName: path,
+      method: method,
+      parameters: parameters,
+      operationId: operation.operationId || system.fn.opId(operation, path, method),
+      contextUrl: new URL(specSelectors.url(), window.location.href).toString(),
+      server: server,
+      serverVariables: Object.keys(local).length ? local : oas3Selectors.serverVariables({ server: server }).toJS(),
+      requestContentType: oas3Selectors.requestContentType(path, method),
+      responseContentType: oas3Selectors.responseContentType(path, method) || "*/*"
+    };
+    const built = system.fn.buildRequest(request);
+
+    // Required parameters without a value
+    const missing = [];
+    for (const p of operation.parameters || []) {
+      if (!p || !p.required) continue;
+      const value = parameters[`${p.in}.${p.name}`] !== undefined ? parameters[`${p.in}.${p.name}`] : parameters[p.name];
+      if (value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0))
+        missing.push(p.name);
+    }
+    return { request: built, missing: missing };
+  }
+
+  // Wraps the Execute button: the preview is shown above it when the operation is in input mode
+  function wrapExecute(Original, system) {
+    const React = system.React;
+    const h = React.createElement;
+
+    return function SmartMetExecute(props) {
+      // Follow the parameter values in the store
+      const [, setTick] = React.useState(0);
+      React.useEffect(() => {
+        const store = system.getStore();
+        let last = null;
+        return store.subscribe(() => {
+          const state = store.getState();
+          if (state !== last) {
+            last = state;
+            setTick((t) => t + 1);
+          }
+        });
+      }, []);
+      const [copied, setCopied] = React.useState(false);
+
+      let preview = null;
+      try {
+        preview = previewRequest(system, props.path, props.method);
+      } catch (e) {
+        // The parameters may not be resolved yet
+      }
+      if (!preview || !preview.request || !preview.request.url) return h(Original, props);
+      if (typeof document !== "undefined") addPreviewStyle(document);
+
+      const url = preview.request.url;
+      const copy = () => {
+        navigator.clipboard.writeText(url).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        });
+      };
+      const RequestSnippets = system.getComponent("RequestSnippets", true);
+      return h(React.Fragment, null,
+        h("div", { className: "sm-preview" },
+          h("div", { className: "sm-preview-title" }, "Request URL"),
+          h("div", { className: "sm-preview-url" },
+            h("code", null, url),
+            h("button", { type: "button", onClick: copy }, copied ? "Copied" : "Copy")),
+          preview.missing.length
+            ? h("div", { className: "sm-preview-missing" }, "Required parameters without a value: " + preview.missing.join(", "))
+            : null,
+          RequestSnippets
+            ? h("details", null,
+                h("summary", null, "Code for this request"),
+                h(RequestSnippets, { request: system.Im.fromJS(preview.request) }))
+            : null),
+        h(Original, props));
+    };
+  }
+
+  // ------------------------------------------------------------------
   // The Swagger UI plugin
   // ------------------------------------------------------------------
 
@@ -734,7 +873,7 @@ const char* const SWAGGER_UI_PLUGIN_JS = R"JS(/*
     plugin: function () {
       return {
         fn: generators,
-        wrapComponents: { responseBody: wrapResponseBody },
+        wrapComponents: { responseBody: wrapResponseBody, execute: wrapExecute },
         // Swagger UI merges the snippets with its own into an unordered map, show them in order
         statePlugins: {
           requestSnippets: {

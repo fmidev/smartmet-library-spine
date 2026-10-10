@@ -362,13 +362,13 @@ BOOST_AUTO_TEST_CASE(request_snippets)
   BOOST_TEST(std::system(("node openapi-snippets-test.js " + file.string()).c_str()) == 0);
 }
 
-BOOST_AUTO_TEST_CASE(response_viewer)
+BOOST_AUTO_TEST_CASE(browser_tests)
 {
   // The page and the plugin as served, with the real Swagger UI files. SWAGGER_UI_DIR
   // overrides the location of the installed smartmet-swagger-ui files.
   if (std::system("command -v node > /dev/null 2>&1") != 0)
   {
-    BOOST_TEST_MESSAGE("node is not installed, the response viewer is not tested");
+    BOOST_TEST_MESSAGE("node is not installed, the browser tests are not run");
     return;
   }
   const char* env = std::getenv("SWAGGER_UI_DIR");
@@ -383,7 +383,7 @@ BOOST_AUTO_TEST_CASE(response_viewer)
   std::ofstream(assets.path / "docs.html") << docs.getContent();
   std::ofstream(assets.path / "smartmet-swagger-ui.js") << plugin.getContent();
 
-  const auto command = "node openapi-viewer-test.js " + assets.path.string() + " " + swagger_ui;
+  const auto command = "node openapi-browser-test.js " + assets.path.string() + " " + swagger_ui;
   BOOST_TEST(std::system(command.c_str()) == 0);
 }
 

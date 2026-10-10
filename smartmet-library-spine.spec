@@ -173,8 +173,8 @@ make %{_smp_mflags}
   (<root>/api, <root>/api/docs) for the plugin APIs. Definitions requested with an apikey are
   sent with Cache-Control: private, and the documentation page with a Content-Security-Policy.
   The documentation page shows the executed request as bash, Python, R and JavaScript
-  snippets, and as scripts looping over days, weeks, months or years. JSON and XML responses
-  are shown as a collapsible tree
+  snippets, and as scripts looping over days, weeks, months or years, already while the
+  parameters are entered. JSON and XML responses are shown as a collapsible tree
 
 * Fri Oct  9 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.9-1.fmi
 - smartmet-plugin-test: an X-Test-Headers request header adds the response status and the
