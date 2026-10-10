@@ -159,7 +159,7 @@ TcpMultiQuery::Query::Query(TcpMultiQuery& client,
 {
 }
 
-TcpMultiQuery::Query::~Query() {}
+TcpMultiQuery::Query::~Query() = default;
 
 void TcpMultiQuery::Query::on_endpoint_resolved(
     boost::system::error_code error, const boost::asio::ip::tcp::resolver::results_type& result)

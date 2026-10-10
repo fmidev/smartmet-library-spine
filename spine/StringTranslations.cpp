@@ -11,9 +11,7 @@ namespace SmartMet
 namespace Spine
 {
 
-StringTranslations::StringTranslations()
-{
-}
+StringTranslations::StringTranslations() = default;
 
 StringTranslations::StringTranslations(const libconfig::Config& config)
 {

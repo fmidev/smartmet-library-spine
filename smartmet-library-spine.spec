@@ -172,6 +172,7 @@ make %{_smp_mflags}
 - Open the plugin/engine readability test file with O_CLOEXEC
 - Use auto and return {} where clang-tidy suggests it, no functional changes
 - Mark overriding methods override and use nullptr, no functional changes
+- Use = default and using declarations where clang-tidy suggests it, no functional changes
 
 * Sat Oct  3 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.3-2.fmi
 - Select the longest matching URI prefix handler, previously a handler for /edr would also have

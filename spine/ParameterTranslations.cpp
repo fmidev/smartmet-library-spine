@@ -10,9 +10,7 @@ namespace SmartMet
 namespace Spine
 {
 
-ParameterTranslations::ParameterTranslations()
-{
-}
+ParameterTranslations::ParameterTranslations() = default;
 
 ParameterTranslations::ParameterTranslations(const libconfig::Config& config)
 {

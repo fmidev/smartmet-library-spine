@@ -13,7 +13,7 @@ class MultiLanguageString
 {
  public:
   MultiLanguageString(const std::string& default_language, libconfig::Setting& setting);
-  MultiLanguageString() {}
+  MultiLanguageString() = default;
 
   static std::shared_ptr<MultiLanguageString> create(const std::string& default_language,
                                                      libconfig::Setting& setting);

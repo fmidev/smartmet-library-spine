@@ -14,7 +14,7 @@ class MultiLanguageStringArray
 {
  public:
   MultiLanguageStringArray(std::string default_language, libconfig::Setting& setting);
-  MultiLanguageStringArray() {}
+  MultiLanguageStringArray() = default;
 
   static std::shared_ptr<MultiLanguageStringArray> create(const std::string& default_language,
                                                           libconfig::Setting& setting);
