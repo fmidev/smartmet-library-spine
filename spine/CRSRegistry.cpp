@@ -2,10 +2,11 @@
 #include "CRSRegistry.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/spirit/include/qi.hpp>
+#include <fmt/printf.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TypeName.h>
-#include <fmt/printf.h>
+#include <memory>
 #include <ogr_geometry.h>
 #include <ogr_spatialref.h>
 #include <ogr_srs_api.h>
@@ -206,11 +207,11 @@ std::shared_ptr<CRSRegistry::Transformation> CRSRegistry::create_transformation(
 
     if (&e_from == &e_to)
     {
-      result.reset(new IdentityTransformation(e_from.name));
+      result = std::make_shared<IdentityTransformation>(e_from.name);
     }
     else
     {
-      result.reset(new TransformationImpl(e_from, e_to));
+      result = std::make_shared<TransformationImpl>(e_from, e_to);
     }
 
     return result;

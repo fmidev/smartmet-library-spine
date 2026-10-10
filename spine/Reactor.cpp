@@ -925,7 +925,7 @@ bool Reactor::loadEngine(const std::string& sectionName,
       // Error occurred while opening the dynamic library
       const char* err_msg_c = dlerror();  // NOLINT
       const std::string err_msg = err_msg_c ? err_msg_c : "";
-      static const boost::regex r_sym("undefined\\ symbol:\\ (_Z[^\\s]*)");
+      static const boost::regex r_sym(R"(undefined\ symbol:\ (_Z[^\s]*))");
       Fmi::Exception error(
           BCP,
           "Unable to load dynamic engine class library: " + err_msg);  // NOLINT not thread safe

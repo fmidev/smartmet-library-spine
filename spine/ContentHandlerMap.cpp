@@ -1,20 +1,21 @@
 #include "ContentHandlerMap.h"
-#include <cctype>
-#include <macgyver/Exception.h>
-#include <macgyver/StringConversion.h>
-#include <macgyver/ThreadName.h>
-#include <macgyver/AnsiEscapeCodes.h>
-#include <macgyver/TimeFormatter.h>
-#include <iostream>
-#include <sstream>
 #include "ConfigTools.h"
 #include "Convenience.h"
-#include "HostInfo.h"
 #include "HTTP.h"
 #include "HTTPAuthentication.h"
+#include "HostInfo.h"
 #include "Reactor.h"
 #include "TableFormatterFactory.h"
 #include "TableFormatterOptions.h"
+#include <macgyver/AnsiEscapeCodes.h>
+#include <macgyver/Exception.h>
+#include <macgyver/StringConversion.h>
+#include <macgyver/ThreadName.h>
+#include <macgyver/TimeFormatter.h>
+#include <cctype>
+#include <iostream>
+#include <memory>
+#include <sstream>
 
 using SmartMet::Spine::ContentHandler;
 using SmartMet::Spine::ContentHandlerMap;
@@ -564,12 +565,12 @@ try
     kill_cleaner_thread();
 
     // Launch log cleaner thread
-    itsLogCleanerThread.reset(new boost::thread(
+    itsLogCleanerThread = std::make_shared<boost::thread>(
         [this]()
         {
           Fmi::set_thread_name("upd-logclean");
           cleanLog();
-        }));
+        });
 
     // Set log cleanup time
     itsLogLastCleaned = Fmi::SecondClock::local_time();
@@ -1512,7 +1513,7 @@ try
     }
 
     if (!filterTokens.empty())
-      itsIPFilter.reset(new IPFilter::IPFilter(filterTokens));
+      itsIPFilter = std::make_shared<IPFilter::IPFilter>(filterTokens);
 
     if (!admin_uri_configured)
     {

@@ -98,9 +98,8 @@ std::string getMallocStats(const std::string& opts)
 
   // No supported allocator. Return a JSON-shaped error so the
   // smtop client can parse the result uniformly.
-  return std::string{"{\"error\": \"no malloc_stats_print() symbol "}
-         + "found in this process; allocator detected as "
-         + getMallocAllocator() + "\"}";
+  return std::string{R"({"error": "no malloc_stats_print() symbol )"} +
+         "found in this process; allocator detected as " + getMallocAllocator() + "\"}";
 }
 
 }  // namespace Spine
