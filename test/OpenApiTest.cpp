@@ -220,6 +220,39 @@ BOOST_AUTO_TEST_CASE(definition_for_ogc_api_browser)
   BOOST_TEST(header(response, "ETag") != header(response2, "ETag"));
 }
 
+BOOST_AUTO_TEST_CASE(caller_supplied_definition)
+{
+  AssetDir assets;
+  auto publisher = makePublisher(assets.path.string());
+
+  OpenAPI::Settings settings;
+  OpenAPI::Document other("Other API", "", "2.0", settings);
+  auto definition = std::make_shared<const OpenAPI::Definition>(other);
+
+  HTTP::Response response;
+  publisher->handle(makeRequest("/edr/api"), response, "/edr", "/edr", definition);
+  BOOST_TEST(parse(response.getContent())["info"]["title"].asString() == "Other API");
+
+  HTTP::Response html;
+  publisher->handle(makeRequest("/edr/api/docs"), html, "/edr", "/edr", definition);
+  BOOST_TEST(html.getContent().find("<title>Other API - API documentation</title>") !=
+             std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(apikey_definitions_are_private)
+{
+  AssetDir assets;
+  auto publisher = makePublisher(assets.path.string());
+
+  HTTP::Response anonymous;
+  publisher->handle(makeRequest("/edr/api"), anonymous, "/edr", "/edr");
+  BOOST_TEST(header(anonymous, "Cache-Control") == "public, max-age=60");
+
+  HTTP::Response with_key;
+  publisher->handle(makeRequest("/edr/api", {{"fmi-apikey", "abc"}}), with_key, "/edr", "/edr");
+  BOOST_TEST(header(with_key, "Cache-Control") == "private, max-age=60");
+}
+
 BOOST_AUTO_TEST_CASE(browsers_get_the_documentation_page)
 {
   AssetDir assets;
@@ -236,6 +269,10 @@ BOOST_AUTO_TEST_CASE(browsers_get_the_documentation_page)
   BOOST_TEST(html.find("new URL(\"api\"") != std::string::npos);
   BOOST_TEST(html.find("<title>Test API - API documentation</title>") != std::string::npos);
   BOOST_TEST(html.find("validatorUrl: null") != std::string::npos);
+  BOOST_TEST(html.find("queryConfigEnabled: false") != std::string::npos);
+  BOOST_TEST(header(response, "Content-Security-Policy").find("default-src 'none'") !=
+             std::string::npos);
+  BOOST_TEST(header(response, "X-Content-Type-Options") == "nosniff");
   BOOST_TEST(html.find("https://") == std::string::npos);  // no external resources
 }
 

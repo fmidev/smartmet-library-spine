@@ -170,7 +170,8 @@ make %{_smp_mflags}
 %changelog
 * Fri Oct  9 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.9-2.fmi
 - Added Spine::OpenAPI: generated OpenAPI 3.0 definitions and Swagger UI documentation pages
-  (<root>/api, <root>/api/docs) for the plugin APIs
+  (<root>/api, <root>/api/docs) for the plugin APIs. Definitions requested with an apikey are
+  sent with Cache-Control: private, and the documentation page with a Content-Security-Policy
 
 * Fri Oct  9 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.9-1.fmi
 - smartmet-plugin-test: an X-Test-Headers request header adds the response status and the

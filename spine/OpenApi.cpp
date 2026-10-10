@@ -47,6 +47,13 @@ const std::vector<std::pair<std::string, std::string>> swagger_ui_files{
 const char* const DEFINITION_CACHE_CONTROL = "public, max-age=60";
 const char* const ASSET_CACHE_CONTROL = "public, max-age=86400";
 
+// The documentation page loads only its own files and the definition. 'unsafe-inline' is
+// needed for the initializer script and the styles Swagger UI sets on elements.
+const char* const DOCS_CONTENT_SECURITY_POLICY =
+    "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data:; font-src 'self' data:; connect-src 'self'; base-uri 'none'; "
+    "form-action 'self'; frame-ancestors 'self'";
+
 std::string toJsonText(const Json::Value& value)
 {
   Json::StreamWriterBuilder builder;
@@ -90,6 +97,15 @@ std::string htmlEscape(const std::string& text)
     }
   }
   return ret;
+}
+
+// The definition embeds the apikey of the client in the server URL, and may list only what
+// the apikey has access to, so it must not be stored in shared caches
+std::string cacheControl(const HTTP::Request& request)
+{
+  if (FmiApiKey::getFmiApiKey(request, true))
+    return "private, max-age=60";
+  return DEFINITION_CACHE_CONTROL;
 }
 
 std::string quotedETag(std::size_t hash, const char* kind)
@@ -802,6 +818,15 @@ bool Publisher::handle(const HTTP::Request& request,
                        const std::string& rootPath,
                        const std::string& serverUrl) const
 {
+  return handle(request, response, rootPath, serverUrl, definition());
+}
+
+bool Publisher::handle(const HTTP::Request& request,
+                       HTTP::Response& response,
+                       const std::string& rootPath,
+                       const std::string& serverUrl,
+                       const std::shared_ptr<const Definition>& definition) const
+{
   try
   {
     if (!itsSettings.enabled)
@@ -822,18 +847,24 @@ bool Publisher::handle(const HTTP::Request& request,
     if (rest.empty() || rest == "/")
     {
       if (prefersHtml(request) && itsSettings.ui)
-        handleDocs(
-            request, response, relativeHref(resource, api), relativeHref(resource, docs + "/"));
+        handleDocs(request,
+                   response,
+                   relativeHref(resource, api),
+                   relativeHref(resource, docs + "/"),
+                   definition);
       else
-        handleDefinition(request, response, serverUrl, relativeHref(resource, docs));
+        handleDefinition(request, response, serverUrl, definition);
     }
     else if (rest == "/docs" || rest == "/docs/")
     {
       if (!itsSettings.ui)
         problem(response, 404, "Not Found", "API documentation is disabled");
       else
-        handleDocs(
-            request, response, relativeHref(resource, api), relativeHref(resource, docs + "/"));
+        handleDocs(request,
+                   response,
+                   relativeHref(resource, api),
+                   relativeHref(resource, docs + "/"),
+                   definition);
     }
     else
     {
@@ -850,7 +881,7 @@ bool Publisher::handle(const HTTP::Request& request,
 void Publisher::handleDefinition(const HTTP::Request& request,
                                  HTTP::Response& response,
                                  const std::string& serverUrl,
-                                 const std::string& /* docsHref */) const
+                                 const std::shared_ptr<const Definition>& definition) const
 {
   const auto f = request.getParameter("f");
   if (f && *f != "json" && *f != "html")
@@ -864,7 +895,6 @@ void Publisher::handleDefinition(const HTTP::Request& request,
     return;
   }
 
-  auto definition = this->definition();
   if (!definition)
   {
     problem(response, 503, "Service Unavailable", "The API definition is not available yet");
@@ -873,7 +903,7 @@ void Publisher::handleDefinition(const HTTP::Request& request,
 
   response.setHeader("Access-Control-Allow-Origin", "*");
   response.setHeader("Vary", "Accept");
-  response.setHeader("Cache-Control", DEFINITION_CACHE_CONTROL);
+  response.setHeader("Cache-Control", cacheControl(request));
 
   std::size_t hash = definition->hash();
   Fmi::hash_combine(hash, Fmi::hash_value(serverUrl));
@@ -888,7 +918,8 @@ void Publisher::handleDefinition(const HTTP::Request& request,
 void Publisher::handleDocs(const HTTP::Request& request,
                            HTTP::Response& response,
                            const std::string& definitionHref,
-                           const std::string& assetPrefix) const
+                           const std::string& assetPrefix,
+                           const std::shared_ptr<const Definition>& definition) const
 {
   if (itsAssets.size() != swagger_ui_files.size())
   {
@@ -899,7 +930,6 @@ void Publisher::handleDocs(const HTTP::Request& request,
     return;
   }
 
-  auto definition = this->definition();
   const std::string title = (definition ? definition->title() : std::string("API"));
 
   const auto a = htmlEscape(assetPrefix);
@@ -925,6 +955,7 @@ window.onload = function () {{
     dom_id: "#swagger-ui",
     deepLinking: true,
     validatorUrl: null,
+    queryConfigEnabled: false,
     presets: [SwaggerUIBundle.presets.apis],
     layout: "BaseLayout"
   }});
@@ -945,6 +976,8 @@ window.onload = function () {{
 
   response.setStatus(HTTP::Status::ok);
   response.setHeader("Content-Type", "text/html; charset=UTF-8");
+  response.setHeader("Content-Security-Policy", DOCS_CONTENT_SECURITY_POLICY);
+  response.setHeader("X-Content-Type-Options", "nosniff");
   response.setContent(html);
 }
 
@@ -967,6 +1000,7 @@ void Publisher::handleAsset(const HTTP::Request& request,
 
   response.setStatus(HTTP::Status::ok);
   response.setHeader("Content-Type", asset.contentType);
+  response.setHeader("X-Content-Type-Options", "nosniff");
   response.setContent(asset.content);
 }
 

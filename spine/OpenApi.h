@@ -255,15 +255,24 @@ class Publisher
               const std::string& rootPath,
               const std::string& serverUrl) const;
 
+  // The same with a definition of the caller's own, for example one generated for the
+  // access rights of the client, instead of the published one
+  bool handle(const HTTP::Request& request,
+              HTTP::Response& response,
+              const std::string& rootPath,
+              const std::string& serverUrl,
+              const std::shared_ptr<const Definition>& definition) const;
+
  private:
   void handleDefinition(const HTTP::Request& request,
                         HTTP::Response& response,
                         const std::string& serverUrl,
-                        const std::string& docsHref) const;
+                        const std::shared_ptr<const Definition>& definition) const;
   void handleDocs(const HTTP::Request& request,
                   HTTP::Response& response,
                   const std::string& definitionHref,
-                  const std::string& assetPrefix) const;
+                  const std::string& assetPrefix,
+                  const std::shared_ptr<const Definition>& definition) const;
   void handleAsset(const HTTP::Request& request,
                    HTTP::Response& response,
                    const std::string& name) const;
