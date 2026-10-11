@@ -169,6 +169,8 @@ make %{_smp_mflags}
 
 %changelog
 * Sun Oct 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.11-1.fmi
+- /robots.txt is served from the file named by the new robots_txt setting, read at startup;
+  without the setting nothing is served
 - Added Spine::OpenAPI: generated OpenAPI 3.1 definitions and Swagger UI documentation pages
   (<root>/api, <root>/api/docs) for the plugin APIs. Definitions requested with an apikey are
   sent with Cache-Control: private, and the documentation page with a Content-Security-Policy.

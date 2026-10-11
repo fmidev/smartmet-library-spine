@@ -202,6 +202,11 @@ class Reactor final : public ContentHandlerMap
   static void initDone();
 
   /**
+   *  @brief Serve the file named by the robots_txt setting as /robots.txt
+   */
+  void addRobotsHandler();
+
+  /**
    *  @brief Actual reactor shutdown implementation
    */
   void shutdown_impl();

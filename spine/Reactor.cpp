@@ -42,6 +42,7 @@
 #include <macgyver/ThreadName.h>
 #include <macgyver/TimeFormatter.h>
 #include <filesystem>
+#include <fstream>
 
 #include <algorithm>
 #include <condition_variable>
@@ -123,6 +124,7 @@ int is_file_readable(std::string& file_name)
   }
   return errno;
 }
+
 }  // namespace
 
 namespace SmartMet
@@ -367,6 +369,8 @@ void Reactor::init()
                 << ANSI_FG_DEFAULT;
       throw Fmi::Exception(BCP, "At least one of initialization tasks failed");
     }
+    addRobotsHandler();
+
     // Set ContentEngine default logging. Do this after plugins are loaded so handlers are
     // recognized
 
@@ -389,6 +393,50 @@ void Reactor::init()
   {
     reportFailure("SmartMet::Spine::Reactor initialization failed");
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Serve the file named by the robots_txt setting as /robots.txt
+ *
+ * Nothing is served without the setting. The file is read at startup.
+ */
+// ----------------------------------------------------------------------
+
+void Reactor::addRobotsHandler()
+{
+  try
+  {
+    const auto& config = itsOptions.itsConfig;
+    if (!config.exists("robots_txt"))
+      return;
+
+    const std::string file = config.lookup("robots_txt");
+    std::ifstream in(file);
+    if (!in)
+      throw Fmi::Exception(BCP, "Failed to read the robots_txt file").addParameter("File", file);
+    const std::string content{std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+
+    const std::string uri = "/robots.txt";
+    if (hasHandlerView(uri))
+      throw Fmi::Exception(BCP, "robots_txt is set but a plugin already serves " + uri);
+
+    addPrivateContentHandler(nullptr,
+                             uri,
+                             [content](Reactor& /* theReactor */,
+                                       const HTTP::Request& /* theRequest */,
+                                       HTTP::Response& theResponse)
+                             {
+                               theResponse.setStatus(HTTP::Status::ok);
+                               theResponse.setHeader("Content-Type", "text/plain; charset=UTF-8");
+                               theResponse.setHeader("Cache-Control", "public, max-age=86400");
+                               theResponse.setContent(content);
+                             });
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to set up /robots.txt");
   }
 }
 
