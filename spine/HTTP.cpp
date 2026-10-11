@@ -12,6 +12,8 @@
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <algorithm>
+#include <cctype>
+#include <cstring>
 #include <cstdlib>
 #include <iostream>
 #include <list>
@@ -527,16 +529,37 @@ void Message::setHeader(const std::string& headerName, const std::string& header
 {
   try
   {
+    // RFC 9110: field names are tokens, field values may not contain control characters
+    // other than horizontal tab. Values often contain parts of the request (e.g. error
+    // messages), hence control characters are replaced by spaces so that a value can never
+    // terminate the header line.
+
+    const auto is_tchar = [](unsigned char c)
+    { return (std::isalnum(c) != 0) || (std::strchr("!#$%&'*+-.^_`|~", c) != nullptr); };
+
+    if (headerName.empty() || !std::all_of(headerName.begin(),
+                                           headerName.end(),
+                                           [&](char c) { return c != '\0' && is_tchar(c); }))
+      throw Fmi::Exception(BCP, "Invalid HTTP header name").addParameter("Name", headerName);
+
+    std::string value = headerValue;
+    for (auto& c : value)
+    {
+      const auto uc = static_cast<unsigned char>(c);
+      if ((uc < 0x20 && uc != '\t') || uc == 0x7f)
+        c = ' ';
+    }
+
     auto it = itsHeaders.find(headerName);
     if (it == itsHeaders.end())
     {
       // Not in headers, insert
-      itsHeaders.insert(std::make_pair(headerName, headerValue));
+      itsHeaders.insert(std::make_pair(headerName, std::move(value)));
     }
     else
     {
       // Already exists, overwrite
-      it->second = headerValue;
+      it->second = std::move(value);
     }
   }
   catch (...)

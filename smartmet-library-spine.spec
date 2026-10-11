@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.10.10
+Version: 26.10.11
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -168,6 +168,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sun Oct 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.11-1.fmi
+- HTTP::Message::setHeader replaces control characters in header values with spaces and
+  rejects header names which are not RFC 9110 tokens
+
 * Sat Oct 10 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.10-1.fmi
 - Open the plugin/engine readability test file with O_CLOEXEC
 - Use auto and return {} where clang-tidy suggests it, no functional changes
@@ -176,6 +180,10 @@ make %{_smp_mflags}
 - Use emplace and C++ standard library headers where clang-tidy suggests it, no functional changes
 - Use raw string literals and std::make_shared where clang-tidy suggests it, no functional changes
 - Use range-based for loops where clang-tidy suggests it, no functional changes
+
+* Fri Oct  9 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.9-1.fmi
+- smartmet-plugin-test: an X-Test-Headers request header adds the response status and the
+  listed response headers to the compared output
 
 * Sat Oct  3 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.3-2.fmi
 - Select the longest matching URI prefix handler, previously a handler for /edr would also have

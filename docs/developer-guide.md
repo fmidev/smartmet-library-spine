@@ -72,6 +72,11 @@ make format              # clang-format (unlike the grid repositories, spine is 
   until initialisation is done, runs every request file in the input directory, and
   compares the responses with the expected outputs. It writes mismatches to the failures
   directory. A `.testignore` file lists tests to skip. Every plugin's `make test` uses it.
+  Only the response body is compared, except for OPTIONS requests. To check the HTTP status
+  and selected response headers too, add a request header such as
+  `X-Test-Headers: Content-Type,Link`: the result then starts with `Status: <code>` and one
+  `Name: value` line per listed header (`(none)` if missing), followed by an empty line and
+  the body. An empty header value checks the status only.
 
 ## 3. Source overview
 
