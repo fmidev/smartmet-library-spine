@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.11
-Release: 3%{?dist}.fmi
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -49,9 +49,9 @@ BuildRequires: make
 BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
-BuildRequires: smartmet-library-gis-devel >= 26.10.3
-BuildRequires: smartmet-library-macgyver-devel >= 26.10.3
-BuildRequires: smartmet-library-newbase-devel >= 26.10.11-2
+BuildRequires: smartmet-library-gis-devel >= 26.10.11
+BuildRequires: smartmet-library-macgyver-devel >= 26.10.11
+BuildRequires: smartmet-library-newbase-devel >= 26.10.11
 BuildRequires: smartmet-utils-devel >= 26.9.3
 
 # OpenTelemetry C++ SDK — optional; enables SMARTMET_SPINE_OPENTELEMETRY when present.
@@ -98,9 +98,9 @@ Requires: libconfig17 >= 1.7.3
 Requires: libicu
 Requires: libbacktrace
 Requires: double-conversion
-Requires: smartmet-library-gis >= 26.10.3
-Requires: smartmet-library-macgyver >= 26.10.3
-Requires: smartmet-library-newbase >= 26.10.11-2
+Requires: smartmet-library-gis >= 26.10.11
+Requires: smartmet-library-macgyver >= 26.10.11
+Requires: smartmet-library-newbase >= 26.10.11
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -110,7 +110,7 @@ Requires: smartmet-timezones >= 24.5.27
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 26.10.3
+#TestRequires: smartmet-library-macgyver-devel >= 26.10.11
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -122,9 +122,9 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 26.10.3
-Requires: smartmet-library-gis-devel >= 26.10.3
-Requires: smartmet-library-newbase-devel >= 26.10.11-2
+Requires: smartmet-library-macgyver-devel >= 26.10.11
+Requires: smartmet-library-gis-devel >= 26.10.11
+Requires: smartmet-library-newbase-devel >= 26.10.11
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
@@ -168,7 +168,7 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
-* Sun Oct 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.11-3.fmi
+* Sun Oct 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.11-1.fmi
 - Added Spine::OpenAPI: generated OpenAPI 3.1 definitions and Swagger UI documentation pages
   (<root>/api, <root>/api/docs) for the plugin APIs. Definitions requested with an apikey are
   sent with Cache-Control: private, and the documentation page with a Content-Security-Policy.
@@ -176,16 +176,10 @@ make %{_smp_mflags}
   snippets, and as scripts looping over days, weeks, months or years, already while the
   parameters are entered. JSON and XML responses are shown as a collapsible tree, and the
   locations of a keyword on a map (openapi.map_tiles, map_tile_size, map_attribution)
-
-* Sun Oct 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.11-2.fmi
 - RoadWW is a data derived parameter (BRAINSTORM-2786)
-- Requires smartmet-library-newbase >= 26.10.11-2 for RoadWW
-
-* Sun Oct 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.11-1.fmi
+- Requires smartmet-library-newbase >= 26.10.11 for RoadWW
 - HTTP::Message::setHeader replaces control characters in header values with spaces and
   rejects header names which are not RFC 9110 tokens
-
-* Sat Oct 10 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.10-1.fmi
 - Open the plugin/engine readability test file with O_CLOEXEC
 - Use auto and return {} where clang-tidy suggests it, no functional changes
 - Mark overriding methods override and use nullptr, no functional changes
@@ -193,8 +187,6 @@ make %{_smp_mflags}
 - Use emplace and C++ standard library headers where clang-tidy suggests it, no functional changes
 - Use raw string literals and std::make_shared where clang-tidy suggests it, no functional changes
 - Use range-based for loops where clang-tidy suggests it, no functional changes
-
-* Fri Oct  9 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.9-1.fmi
 - smartmet-plugin-test: an X-Test-Headers request header adds the response status and the
   listed response headers to the compared output
 
