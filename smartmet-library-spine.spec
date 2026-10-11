@@ -169,6 +169,8 @@ make %{_smp_mflags}
 
 %changelog
 * Sun Oct 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.11-1.fmi
+- OPTIONS (CORS preflight) handling, the POST Content-Type check and the rejection of
+  unsupported methods no longer depend on access logging being enabled (Mikko Rauhala)
 - /robots.txt is served from the file named by the new robots_txt setting, read at startup;
   without the setting nothing is served
 - Added Spine::OpenAPI: generated OpenAPI 3.1 definitions and Swagger UI documentation pages
