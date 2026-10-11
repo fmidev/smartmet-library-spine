@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.11
-Release: 2%{?dist}.fmi
+Release: 3%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -168,6 +168,15 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sun Oct 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.11-3.fmi
+- Added Spine::OpenAPI: generated OpenAPI 3.1 definitions and Swagger UI documentation pages
+  (<root>/api, <root>/api/docs) for the plugin APIs. Definitions requested with an apikey are
+  sent with Cache-Control: private, and the documentation page with a Content-Security-Policy.
+  The documentation page shows the executed request as bash, Python, R and JavaScript
+  snippets, and as scripts looping over days, weeks, months or years, already while the
+  parameters are entered. JSON and XML responses are shown as a collapsible tree, and the
+  locations of a keyword on a map (openapi.map_tiles, map_tile_size, map_attribution)
+
 * Sun Oct 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.11-2.fmi
 - RoadWW is a data derived parameter (BRAINSTORM-2786)
 - Requires smartmet-library-newbase >= 26.10.11-2 for RoadWW

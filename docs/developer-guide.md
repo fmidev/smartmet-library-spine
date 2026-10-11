@@ -330,6 +330,29 @@ Most plugins produce tables of values:
 * **Active requests and access logs.** `ActiveRequests` tracks running requests
   (`what=activerequests`); a terminate handler prints them if the process dies.
   `AccessLogger` writes per-URI access logs when logging is on.
+* **OpenAPI** (`OpenApi.h`): plugins describe their APIs with generated OpenAPI 3.1
+  definitions. Build a `Spine::OpenAPI::Document` from code, configuration and metadata
+  (`addCommonComponents()` and `addCoreOperations()` add the OGC API - Common parts),
+  hand it to a `Publisher` whenever the metadata changes, and let `Publisher::handle()`
+  answer `<root>/api` (the JSON definition, or the documentation page for `f=html`),
+  `<root>/api/docs` (Swagger UI) and the Swagger UI files below it. The files come from a
+  local directory (package `smartmet-swagger-ui`), never from a CDN. The definition is
+  serialized once per `publish()`; requests only insert the server URL from
+  `OpenAPI::serverUrl()`. Settings are read from the plugin's `openapi` group with
+  `Settings::parse()`. The documentation page shows the URL of the request while the
+  parameters are entered, and the request as bash,
+  Python, R and JavaScript snippets, and as scripts which repeat the request for
+  consecutive days, weeks, months or years when it has a time window (`datetime=start/end`
+  or `starttime` and `endtime`). JSON and XML responses are shown as a collapsible tree.
+  A parameter with the `x-smartmet-locations` extension (`path`, `parameter`, `language`,
+  `query`) gets a button which shows the locations of its value on a map, with the details
+  of each location on mouseover; the EDR plugin adds it to the TimeSeries `keyword` and
+  `inkeyword` parameters. The map background is the Web Mercator tile layer of the
+  `map_tiles` setting (normally an OGC API - Tiles layer of the same server; an absolute
+  URL's origin is added to the page's `img-src` policy), or a longitude/latitude grid.
+  The plugin is in `OpenApiPlugin.cpp`; `test/openapi-snippets-test.js` runs the generated
+  scripts against a local server and `test/openapi-browser-test.js` checks the tree, the
+  request preview and the map in a headless browser.
 * **OpenTelemetry** (`OTelOptions`, `OTelLogger`, `OTelMetricsExporter`) is optional.
   Tracing is compiled in with `SMARTMET_SPINE_OPENTELEMETRY`
   (see [build-opentelemetry.md](build-opentelemetry.md)), and cache statistics are
