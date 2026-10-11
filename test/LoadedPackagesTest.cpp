@@ -9,6 +9,8 @@
 #include <filesystem>
 #include <link.h>
 #include <optional>
+#include <set>
+#include <stdexcept>
 #include <string>
 #include <unistd.h>
 #include <vector>
@@ -260,8 +262,10 @@ void deleted()
   if (libz.empty())
     TEST_FAILED("libz not loaded, cannot test deleted libraries");
 
-  const auto copy = std::filesystem::temp_directory_path() /
-                    ("LoadedPackagesTest-" + std::to_string(getpid()) + "-libz.so");
+  // Not in /tmp, which may be mounted noexec. The test directory must allow
+  // execution since the test itself runs from there.
+  const auto copy =
+      std::filesystem::absolute("LoadedPackagesTest-" + std::to_string(getpid()) + "-libz.so");
   std::filesystem::copy_file(libz, copy, std::filesystem::copy_options::overwrite_existing);
 
   void* handle = dlopen(copy.c_str(), RTLD_NOW | RTLD_LOCAL);
@@ -298,19 +302,76 @@ void deleted()
   TEST_PASSED();
 }
 
+// Column index by name
+std::size_t column(const SmartMet::Spine::Table& theTable, const std::string& theName)
+{
+  const auto& names = theTable.getNames();
+  for (std::size_t i = 0; i < names.size(); i++)
+    if (names[i] == theName)
+      return i;
+  throw std::runtime_error("Column " + theName + " missing");
+}
+
+// Check the table contents, returning an error message or an empty string
+std::string check_table(const SmartMet::Spine::Table& theTable, bool theAll)
+{
+  const std::vector<std::string> expected{
+      "Package", "Version", "Installed", "Commit", "Status", "Origin", "Build-id", "File"};
+  if (theTable.getNames() != expected)
+    return "Unexpected column names";
+  if (theTable.empty())
+    return "Table is empty";
+
+  const auto file_col = column(theTable, "File");
+  const auto status_col = column(theTable, "Status");
+  const auto package_col = column(theTable, "Package");
+  const std::set<std::string> statuses{
+      "ok", "restart needed", "mismatch", "dirty", "local build", "unpackaged"};
+
+  bool found_spine = false;
+  bool found_libc = false;
+  for (std::size_t row = theTable.minj(); row <= theTable.maxj(); row++)
+  {
+    const auto file = theTable.get(file_col, row, "");
+    const auto status = theTable.get(status_col, row, "");
+    const auto package = theTable.get(package_col, row, "");
+    if (file.empty() || file[0] != '/')
+      return "Row " + std::to_string(row) + " has no absolute file name";
+    if (statuses.count(status) == 0)
+      return "Unknown status '" + status + "' for " + file;
+    if (!theAll && file.find("smartmet") == std::string::npos &&
+        package.find("smartmet") == std::string::npos)
+      return "Non-SmartMet object " + file + " listed without all=1";
+    found_spine |= (file.find("libsmartmet-spine.so") != std::string::npos);
+    found_libc |= (file.find("/libc.so") != std::string::npos);
+  }
+
+  if (!found_spine)
+    return "libsmartmet-spine.so missing";
+  if (theAll && !found_libc)
+    return "libc missing with all=1";
+  if (!theAll && found_libc)
+    return "libc listed without all=1";
+  return {};
+}
+
 void request()
 {
-  SmartMet::Spine::HTTP::Request req;
-  req.addParameter("all", "1");
-  auto all = LP::requestPackages(req);
+  SmartMet::Spine::HTTP::Request all_req;
+  all_req.addParameter("all", "1");
+  const auto all = LP::requestPackages(all_req);
 
-  SmartMet::Spine::HTTP::Request req2;
-  auto smartmet = LP::requestPackages(req2);
+  SmartMet::Spine::HTTP::Request default_req;
+  const auto smartmet = LP::requestPackages(default_req);
 
-  if (all->empty())
-    TEST_FAILED("all=1 should list the loaded objects");
-  if (smartmet->maxj() >= all->maxj() && !all->empty())
-    TEST_FAILED("Default listing should be a subset of all=1");
+  auto err = check_table(*all, true);
+  if (!err.empty())
+    TEST_FAILED("all=1: " + err);
+  err = check_table(*smartmet, false);
+  if (!err.empty())
+    TEST_FAILED("default: " + err);
+  if (smartmet->maxj() >= all->maxj())
+    TEST_FAILED("Default listing should be shorter than all=1");
 
   TEST_PASSED();
 }
