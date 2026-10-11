@@ -569,7 +569,40 @@ bool PluginTest::process_query(const fs::path& fn,
                   << fg_red << "(result processing failed)" << fg_default;
           }
 
-          if (ok)
+          // Responses which vary by environment (versions, paths, timestamps) can be
+          // validated with a regular expression instead: output/<test>.regex must match
+          // the full result. Perl syntax in free-spacing mode, so the pattern may span
+          // several lines and contain # comments, and literal spaces must be escaped.
+          //
+          const path regexfile = path(mOutputDir) / (fn.native() + ".regex");
+
+          if (ok && exists(regexfile))
+          {
+            const path failure_fn = path(mFailDir) / fn;
+            try
+            {
+              const boost::regex pattern(get_file_contents(regexfile),
+                                         boost::regex::perl | boost::regex::mod_x);
+              if (boost::regex_match(result, pattern))
+                out << fg_green << "OK  " << fg_default << "  " << time_str << "s";
+              else
+              {
+                ok = false;
+                std::filesystem::create_directories(failure_fn.parent_path());
+                put_file_contents(failure_fn, result);
+                out << fg_red << "FAIL" << fg_default << "  " << time_str
+                    << "s  (result does not match '" << regexfile.string() << "', see '"
+                    << failure_fn.string() << "')";
+              }
+            }
+            catch (const boost::regex_error& e)
+            {
+              ok = false;
+              out << fg_red << "FAIL" << fg_default << "  " << time_str << "s  (invalid regex in '"
+                  << regexfile.string() << "': " << e.what() << ")";
+            }
+          }
+          else if (ok)
           {
             path outputfile = path(mOutputDir) / fn;
             path failure_fn = path(mFailDir) / fn;

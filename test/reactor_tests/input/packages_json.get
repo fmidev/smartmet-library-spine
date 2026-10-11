@@ -1,0 +1,1 @@
+GET /admin?what=packages&format=json HTTP/1.0

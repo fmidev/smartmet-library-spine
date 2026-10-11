@@ -1,0 +1,27 @@
+# what=packages&all=1 lists all loaded objects. Versions, build-ids and
+# paths depend on the environment, so only the structure is validated.
+
+(?(DEFINE)
+  (?<str>    "(?:[^"\\]|\\.)*" )
+  (?<value>  null | (?&str) )
+  (?<status> "(?:ok|restart\ needed|mismatch|dirty|local\ build|unpackaged)" )
+  (?<origin> "(?:[a-z]+\ note|rpm|dpkg|unknown)" )
+  (?<row>
+    \{
+    "Package":(?&value),
+    "Version":(?&value),
+    "Installed":(?&value),
+    "Commit":(?&value),
+    "Status":(?&status),
+    "Origin":(?&origin),
+    "Build-id":(?:null|"[0-9a-f]+"),
+    "File":"/(?:[^"\\]|\\.)*"
+    \}
+  )
+)
+
+# Both the library under test and libc must be listed
+(?=.*"File":"[^"]*/libsmartmet-spine\.so")
+(?=.*"File":"[^"]*/libc\.so)
+
+\[ (?&row) (?:,(?&row))* \]

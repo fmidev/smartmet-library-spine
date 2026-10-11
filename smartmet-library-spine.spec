@@ -174,6 +174,8 @@ make %{_smp_mflags}
   SmartMet note from smartmet-utils 26.10.11) instead of the package database, together with
   the installed version from rpm or dpkg-query, the git commit, the GNU build-id and whether a
   restart is needed because the file was replaced on disk. all=1 lists all libraries.
+- smartmet-plugin-test: an expected output file <test>.regex validates environment dependent
+  responses with a regular expression (Perl syntax, free-spacing mode) matching the whole result
 
 * Sun Oct 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.11-1.fmi
 - OPTIONS (CORS preflight) handling, the POST Content-Type check and the rejection of

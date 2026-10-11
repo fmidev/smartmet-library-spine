@@ -1,0 +1,28 @@
+# what=packages lists the loaded SmartMet objects. Versions, build-ids and
+# paths depend on the environment, so only the structure is validated.
+
+(?(DEFINE)
+  (?<str>    "(?:[^"\\]|\\.)*" )
+  (?<value>  null | (?&str) )
+  (?<status> "(?:ok|restart\ needed|mismatch|dirty|local\ build|unpackaged)" )
+  (?<origin> "(?:[a-z]+\ note|rpm|dpkg|unknown)" )
+  # Every row of the default listing mentions smartmet in the package or file name
+  (?<row>
+    \{ (?=[^}]*smartmet)
+    "Package":(?&value),
+    "Version":(?&value),
+    "Installed":(?&value),
+    "Commit":(?&value),
+    "Status":(?&status),
+    "Origin":(?&origin),
+    "Build-id":(?:null|"[0-9a-f]+"),
+    "File":"/(?:[^"\\]|\\.)*"
+    \}
+  )
+)
+
+# The library under test must be listed, libc only with all=1
+(?=.*"File":"[^"]*/libsmartmet-spine\.so")
+(?!.*"File":"[^"]*/libc\.so)
+
+\[ (?&row) (?:,(?&row))* \]

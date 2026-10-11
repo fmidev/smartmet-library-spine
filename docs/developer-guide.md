@@ -77,6 +77,11 @@ make format              # clang-format (unlike the grid repositories, spine is 
   `X-Test-Headers: Content-Type,Link`: the result then starts with `Status: <code>` and one
   `Name: value` line per listed header (`(none)` if missing), followed by an empty line and
   the body. An empty header value checks the status only.
+  Responses that depend on the environment (versions, paths, build-ids) can be validated
+  with an expected output `<test>.regex` instead: the whole result must match it. The
+  pattern uses Perl syntax in free-spacing mode, so it may span several lines and contain
+  `#` comments, literal spaces must be escaped, and `(?(DEFINE)...)` with `(?&name)` keeps
+  repeated sub-patterns readable. See `test/reactor_tests/output/packages_json.get.regex`.
 
 ## 3. Source overview
 
