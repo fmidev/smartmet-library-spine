@@ -51,7 +51,7 @@ BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 26.10.3
 BuildRequires: smartmet-library-macgyver-devel >= 26.10.3
-BuildRequires: smartmet-library-newbase-devel >= 26.10.10
+BuildRequires: smartmet-library-newbase-devel >= 26.10.11-2
 BuildRequires: smartmet-utils-devel >= 26.9.3
 
 # OpenTelemetry C++ SDK — optional; enables SMARTMET_SPINE_OPENTELEMETRY when present.
@@ -100,7 +100,7 @@ Requires: libbacktrace
 Requires: double-conversion
 Requires: smartmet-library-gis >= 26.10.3
 Requires: smartmet-library-macgyver >= 26.10.3
-Requires: smartmet-library-newbase >= 26.10.10
+Requires: smartmet-library-newbase >= 26.10.11-2
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -124,7 +124,7 @@ Requires: %{smartmet_boost}-devel
 Requires: dtl
 Requires: smartmet-library-macgyver-devel >= 26.10.3
 Requires: smartmet-library-gis-devel >= 26.10.3
-Requires: smartmet-library-newbase-devel >= 26.10.10
+Requires: smartmet-library-newbase-devel >= 26.10.11-2
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
@@ -170,6 +170,7 @@ make %{_smp_mflags}
 %changelog
 * Sun Oct 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.11-2.fmi
 - RoadWW is a data derived parameter (BRAINSTORM-2786)
+- Requires smartmet-library-newbase >= 26.10.11-2 for RoadWW
 
 * Sun Oct 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.11-1.fmi
 - HTTP::Message::setHeader replaces control characters in header values with spaces and
