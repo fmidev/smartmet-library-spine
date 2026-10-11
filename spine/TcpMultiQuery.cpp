@@ -197,7 +197,7 @@ void TcpMultiQuery::Query::on_request_sent(boost::system::error_code error,
   else
   {
     boost::system::error_code ignored;
-    socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ignored);
+    (void)socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ignored);
     request_input();
   }
 }
@@ -208,7 +208,7 @@ void TcpMultiQuery::Query::on_data_received(boost::system::error_code error,
   if (error == boost::asio::error::eof)
   {
     boost::system::error_code ignored;
-    socket.close(ignored);
+    (void)socket.close(ignored);
     finished = true;
     client.report_request_complete();
     // Input done
