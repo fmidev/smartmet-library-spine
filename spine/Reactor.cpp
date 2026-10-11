@@ -11,6 +11,7 @@
 #include "DynamicPlugin.h"
 #include "FmiApiKey.h"
 #include "HostInfo.h"
+#include "LoadedPackages.h"
 #include "MallocStats.h"
 #include "Names.h"
 #include "Options.h"
@@ -297,6 +298,14 @@ Reactor::Reactor(Options& options)
         AdminRequestAccess::Private,
         std::bind(&Reactor::requestPluginInfo, this, std::placeholders::_2),
         "Request plugin info");
+
+    addAdminTableRequestHandler(
+        NoTarget{},
+        "packages",
+        AdminRequestAccess::Private,
+        [](Reactor& /* theReactor */, const HTTP::Request& theRequest)
+        { return LoadedPackages::requestPackages(theRequest); },
+        "Versions of the loaded packages (all=1 lists all libraries)");
 
     addAdminStringRequestHandler(
         NoTarget{},

@@ -6,6 +6,7 @@
 "lastrequests","<builtin>","no","no","yes","Get last requests"
 "list","<builtin>","no","yes","yes","List all admin requests"
 "mallocstats","<builtin>","no","no","yes","Allocator stats (jemalloc / mimalloc). Optional `opts` query parameter is passed verbatim to jemalloc's malloc_stats_print (default \"J\" = JSON output)"
+"packages","<builtin>","no","no","yes","Versions of the loaded packages (all=1 lists all libraries)"
 "plugininfo","<builtin>","no","no","yes","Request plugin info"
 "serviceinfo","<builtin>","no","yes","yes","Get info about available services"
 "servicestats","<builtin>","no","no","yes","Request service stats"

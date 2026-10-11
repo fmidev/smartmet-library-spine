@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.11
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -168,6 +168,13 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sun Oct 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.11-2.fmi
+- New private admin request what=packages lists the versions of the packages loaded into the
+  running process, read from the ELF notes of the mapped binaries (.note.package and the
+  SmartMet note from smartmet-utils 26.10.11) instead of the package database, together with
+  the installed version from rpm or dpkg-query, the git commit, the GNU build-id and whether a
+  restart is needed because the file was replaced on disk. all=1 lists all libraries.
+
 * Sun Oct 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.11-1.fmi
 - OPTIONS (CORS preflight) handling, the POST Content-Type check and the rejection of
   unsupported methods no longer depend on access logging being enabled (Mikko Rauhala)
