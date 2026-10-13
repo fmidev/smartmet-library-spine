@@ -254,7 +254,7 @@ class Value
   BoundingBox get_bbox() const;
 
   inline Fmi::DateTime get_ptime_ext() const { return get_ptime(true); }
-  static Value from_config(libconfig::Setting& setting);
+  static Value from_config(const libconfig::Setting& setting);
 
   static Value from_config(libconfig::Config& config, const std::string& path);
 

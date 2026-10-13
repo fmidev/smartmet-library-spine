@@ -106,7 +106,7 @@ void absolutize_path(std::string& file_name)
   }
 }
 
-int is_file_readable(std::string& file_name)
+int is_file_readable(const std::string& file_name)
 {
   int handle;
   // Open appears to be the only practical solution
@@ -167,7 +167,7 @@ Reactor::~Reactor()
  */
 // ----------------------------------------------------------------------
 
-Reactor::Reactor(Options& options)
+Reactor::Reactor(const Options& options)
     : ContentHandlerMap(options), itsOptions(options), itsInitTasks(new Fmi::AsyncTaskGroup)
 {
   if (instance.exchange(this))

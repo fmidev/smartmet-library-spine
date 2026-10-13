@@ -455,17 +455,12 @@ private:
             const HTTP::Request& request,
             HTTP::Response& response);
 
-    std::unique_ptr<Table> getLoggingRequest(
-            Reactor& reactor,
-            const HTTP::Request& theRequest) const;
+    std::unique_ptr<Table> getLoggingRequest(const Reactor& reactor,
+                                             const HTTP::Request& theRequest) const;
 
-    bool setLoggingRequest(
-            Reactor& reactor,
-            const HTTP::Request& theRequest);
+    bool setLoggingRequest(const Reactor& reactor, const HTTP::Request& theRequest);
 
-    std::unique_ptr<Table> serviceInfoRequest(
-            Reactor&,
-            const HTTP::Request&);
+    std::unique_ptr<Table> serviceInfoRequest(const Reactor&, const HTTP::Request&);
 
 private:
 

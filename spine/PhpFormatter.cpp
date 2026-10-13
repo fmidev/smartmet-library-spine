@@ -142,7 +142,7 @@ std::string format_attributes(const Table& theTable,
                               const TableFormatter::Names& theNames,
                               const HTTP::Request& theReq,
                               Table::Indexes& theCols,
-                              Table::Indexes& theRows,
+                              const Table::Indexes& theRows,
                               std::list<std::string>& theAttributes)
 {
   try

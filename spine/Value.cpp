@@ -407,7 +407,7 @@ std::string Value::get_string() const
   }
 }
 
-Value Value::from_config(libconfig::Setting& setting)
+Value Value::from_config(const libconfig::Setting& setting)
 {
   try
   {

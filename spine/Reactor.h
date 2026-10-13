@@ -92,7 +92,7 @@ class Reactor final : public ContentHandlerMap
   ActiveBackends::Status getBackendRequestStatus() const;
 
   // Only construct with options
-  explicit Reactor(Options& options);
+  explicit Reactor(const Options& options);
 
   // Destructor
   ~Reactor() override;

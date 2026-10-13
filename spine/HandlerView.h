@@ -63,10 +63,10 @@ class HandlerView
   bool isPrivate() const { return itsPrivate; }
 
   // See if querying this plugin is fast
-  bool queryIsFast(HTTP::Request& theRequest) const;
+  bool queryIsFast(const HTTP::Request& theRequest) const;
 
   // See if making an admin query
-  bool isAdminQuery(HTTP::Request& theRequest) const;
+  bool isAdminQuery(const HTTP::Request& theRequest) const;
 
   // Get the name of the associated plugin
   std::string getPluginName() const;

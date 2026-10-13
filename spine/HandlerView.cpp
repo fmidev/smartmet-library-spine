@@ -436,7 +436,7 @@ bool HandlerView::isCatchNoMatch() const
   return itsIsCatchNoMatch;
 }
 
-bool HandlerView::queryIsFast(HTTP::Request& theRequest) const
+bool HandlerView::queryIsFast(const HTTP::Request& theRequest) const
 {
   try
   {
@@ -450,7 +450,7 @@ bool HandlerView::queryIsFast(HTTP::Request& theRequest) const
   }
 }
 
-bool HandlerView::isAdminQuery(HTTP::Request& theRequest) const
+bool HandlerView::isAdminQuery(const HTTP::Request& theRequest) const
 {
   try
   {

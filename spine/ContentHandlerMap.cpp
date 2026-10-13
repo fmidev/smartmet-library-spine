@@ -1361,10 +1361,8 @@ catch (...)
   response.setContent(msg.str());
 }
 
-
-std::unique_ptr<Table> ContentHandlerMap::getLoggingRequest(
-    Reactor& reactor,
-    const HTTP::Request& theRequest) const
+std::unique_ptr<Table> ContentHandlerMap::getLoggingRequest(const Reactor& reactor,
+                                                            const HTTP::Request& theRequest) const
 try
 {
   std::unique_ptr<Table> result(new SmartMet::Spine::Table);
@@ -1383,9 +1381,7 @@ catch (...)
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
 
-bool ContentHandlerMap::setLoggingRequest(
-    Reactor& reactor,
-    const HTTP::Request& theRequest)
+bool ContentHandlerMap::setLoggingRequest(const Reactor& reactor, const HTTP::Request& theRequest)
 {
     // First parse if logging status change is requested
     auto loggingFlag = theRequest.getParameter("status");
@@ -1407,9 +1403,7 @@ bool ContentHandlerMap::setLoggingRequest(
     throw Fmi::Exception(BCP, "Invalid logging parameter value: " + flag);
 }
 
-std::unique_ptr<Table> ContentHandlerMap::serviceInfoRequest(
-    Reactor&,
-    const HTTP::Request&)
+std::unique_ptr<Table> ContentHandlerMap::serviceInfoRequest(const Reactor&, const HTTP::Request&)
 try
 {
   std::unique_ptr<Table> result(new SmartMet::Spine::Table);
