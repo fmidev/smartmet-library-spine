@@ -169,14 +169,14 @@ class ContentStreamer
   // ----------------------------------------------------------------------
   virtual std::string getChunk() = 0;
 
-  ContentStreamer() : itsStatus(StreamerStatus::OK) {}
+  ContentStreamer() {}
   virtual ~ContentStreamer();
 
   void setStatus(StreamerStatus theStatus) { itsStatus = theStatus; }
   StreamerStatus getStatus() const { return itsStatus; }
 
  private:
-  StreamerStatus itsStatus;
+  StreamerStatus itsStatus = StreamerStatus::OK;
 };
 
 // Helper class to hold different kinds of message contents

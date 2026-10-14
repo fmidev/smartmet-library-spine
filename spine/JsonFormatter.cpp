@@ -17,6 +17,7 @@
 #include <iomanip>
 #include <iostream>
 #include <list>
+#include <cmath>
 #include <set>
 
 namespace SmartMet
@@ -59,7 +60,7 @@ bool looks_number(const std::string& theValue)
 {
   try
   {
-    double result;
+    double result = NAN;
     auto begin = theValue.cbegin();
     auto end = theValue.cend();
     if (boost::spirit::qi::parse(begin, end, boost::spirit::qi::double_, result))

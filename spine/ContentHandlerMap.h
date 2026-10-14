@@ -101,7 +101,6 @@ public:
         RequiresAuthentication // Authentication required, not visible through /info
     };
 
-public:
     ContentHandlerMap(const Options& options);
 
     virtual ~ContentHandlerMap();
@@ -134,11 +133,11 @@ public:
      *
      * Handlers added by this method are included in the response of URIMap
      */
-    inline bool addContentHandler(SmartMetPlugin* thePlugin,
-                                  const std::string& theUri,
-                                  const ContentHandler& theHandler,
-                                  const std::set<std::string>& supportedPostContentTypes = {},
-                                  bool handlesUriPrefix = false)
+    bool addContentHandler(SmartMetPlugin* thePlugin,
+                           const std::string& theUri,
+                           const ContentHandler& theHandler,
+                           const std::set<std::string>& supportedPostContentTypes = {},
+                           bool handlesUriPrefix = false)
     {
         return addContentHandlerImpl(
             thePlugin,
@@ -164,11 +163,11 @@ public:
      * Handlers added by this method are not included in the response of URIMap and as result
      * not advertized to the frontend
      */
-    inline bool addPrivateContentHandler(SmartMetPlugin* thePlugin,
-                                         const std::string& theUri,
-                                         const ContentHandler& theHandler,
-                                         const std::set<std::string>& supportedPostContentTypes = {},
-                                         bool handlesUriPrefix = false)
+    bool addPrivateContentHandler(SmartMetPlugin* thePlugin,
+                                  const std::string& theUri,
+                                  const ContentHandler& theHandler,
+                                  const std::set<std::string>& supportedPostContentTypes = {},
+                                  bool handlesUriPrefix = false)
     {
         return addContentHandlerImpl(
             thePlugin,
@@ -262,10 +261,7 @@ public:
     /**
      * @brief Get current logging status
      */
-    inline bool getLogging() const
-    {
-        return itsLoggingEnabled;
-    }
+    bool getLogging() const { return itsLoggingEnabled; }
 
     /**
      * @brief Check whether provided value should be considered as URI prefix
@@ -461,8 +457,6 @@ private:
     bool setLoggingRequest(const Reactor& reactor, const HTTP::Request& theRequest);
 
     std::unique_ptr<Table> serviceInfoRequest(const Reactor&, const HTTP::Request&);
-
-private:
 
     Reactor* getReactor();
 

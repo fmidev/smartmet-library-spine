@@ -132,6 +132,8 @@ namespace Spine
  */
 // ----------------------------------------------------------------------
 
+namespace
+{
 bool fixPathSetting(const libconfig::Config& theConfig,
                     std::string& theValue,
                     const std::string& theVariable)
@@ -151,6 +153,7 @@ bool fixPathSetting(const libconfig::Config& theConfig,
 
   return true;
 }
+}  // namespace
 
 // ----------------------------------------------------------------------
 /*!

@@ -16,6 +16,7 @@
 #include <macgyver/StringConversion.h>
 #include <macgyver/TimeParser.h>
 #include <iostream>
+#include <cmath>
 #include <stdexcept>
 
 namespace SmartMet
@@ -40,7 +41,7 @@ bool looks_number(const std::string& theValue)
       return true;
     }
 
-    double result;
+    double result = NAN;
     auto begin = theValue.cbegin();
     auto end = theValue.cend();
     if (boost::spirit::qi::parse(begin, end, boost::spirit::qi::double_, result))
@@ -62,7 +63,7 @@ bool looks_number(const std::string& theValue)
 
 bool looks_time(const std::string& theValue)
 {
-  bool utc;
+  bool utc = false;
   Fmi::DateTime t = Fmi::TimeParser::try_parse_iso(theValue, &utc);
   return !t.is_not_a_date_time();
 }

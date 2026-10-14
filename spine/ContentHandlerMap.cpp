@@ -924,7 +924,7 @@ bool ContentHandlerMap::executeAdminRequest(
           bool authPassed = authCallback(theRequest, theResponse);
           if (not authPassed)
           {
-            if (theResponse.getContent() == "")
+            if (theResponse.getContent().empty())
             {
               theResponse.setStatus(HTTP::Status::unauthorized);
               theResponse.setContent("Unauthorized");
@@ -1267,13 +1267,11 @@ bool ContentHandlerMap::addAdminTableRequestHandler(
       AdminRequestHandler(theHandler), description);
 }
 
-
-void ContentHandlerMap::handleAdminTableRequest(
-    std::ostream& errors,
-    const AdminTableRequestHandler& handler,
-    Reactor& reactor,
-    const HTTP::Request& request,
-    HTTP::Response& response)
+void ContentHandlerMap::handleAdminTableRequest(std::ostream& /*errors*/,
+                                                const AdminTableRequestHandler& handler,
+                                                Reactor& reactor,
+                                                const HTTP::Request& request,
+                                                HTTP::Response& response)
 try
 {
   using namespace SmartMet::Spine;
@@ -1308,13 +1306,11 @@ bool ContentHandlerMap::addAdminStringRequestHandler(
     AdminRequestHandler(theHandler), description);
 }
 
-
-void ContentHandlerMap::handleAdminStringRequest(
-    std::ostream& errors,
-    const AdminStringRequestHandler& handler,
-    Reactor& reactor,
-    const HTTP::Request& request,
-    HTTP::Response& response)
+void ContentHandlerMap::handleAdminStringRequest(std::ostream& /*errors*/,
+                                                 const AdminStringRequestHandler& handler,
+                                                 Reactor& reactor,
+                                                 const HTTP::Request& request,
+                                                 HTTP::Response& response)
 try
 {
   std::string result = handler(reactor, request);
@@ -1342,13 +1338,11 @@ bool ContentHandlerMap::addAdminCustomRequestHandler(
     AdminRequestHandler(theHandler), description);
 }
 
-
-void ContentHandlerMap::handleAdminCustomRequest(
-    std::ostream& errors,
-    const AdminCustomRequestHandler& handler,
-    Reactor& reactor,
-    const HTTP::Request& request,
-    HTTP::Response& response)
+void ContentHandlerMap::handleAdminCustomRequest(std::ostream& /*errors*/,
+                                                 const AdminCustomRequestHandler& handler,
+                                                 Reactor& reactor,
+                                                 const HTTP::Request& request,
+                                                 HTTP::Response& response)
 try
 {
   handler(reactor, request, response);
@@ -1361,8 +1355,8 @@ catch (...)
   response.setContent(msg.str());
 }
 
-std::unique_ptr<Table> ContentHandlerMap::getLoggingRequest(const Reactor& reactor,
-                                                            const HTTP::Request& theRequest) const
+std::unique_ptr<Table> ContentHandlerMap::getLoggingRequest(
+    const Reactor& /*reactor*/, const HTTP::Request& /*theRequest*/) const
 try
 {
   std::unique_ptr<Table> result(new SmartMet::Spine::Table);
@@ -1381,7 +1375,8 @@ catch (...)
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
 
-bool ContentHandlerMap::setLoggingRequest(const Reactor& reactor, const HTTP::Request& theRequest)
+bool ContentHandlerMap::setLoggingRequest(const Reactor& /*reactor*/,
+                                          const HTTP::Request& theRequest)
 {
     // First parse if logging status change is requested
     auto loggingFlag = theRequest.getParameter("status");
@@ -1454,17 +1449,19 @@ try
 
     // Cannot handle admin requests here is no URI is provided
     // One can do this however by registering content handler in some plugin
-    if (uri == "")
-      return;
+  if (uri.empty())
+    return;
 
-    itsAdminUri = uri;
+  itsAdminUri = uri;
 
-    if (options.itsConfig.exists("admin.user") ^ options.itsConfig.exists("admin.password"))
-    {
-      throw Fmi::Exception(BCP, "Config error in " + options.configfile
-        + ": Both admin.user and admin.password or none of them must be provided together with admin.uri");
-      return;
-    }
+  if (options.itsConfig.exists("admin.user") ^ options.itsConfig.exists("admin.password"))
+  {
+    throw Fmi::Exception(BCP,
+                         "Config error in " + options.configfile +
+                             ": Both admin.user and admin.password or none of them must be "
+                             "provided together with admin.uri");
+    return;
+  }
 
     if (options.itsConfig.exists("admin.user") && options.itsConfig.exists("admin.password"))
     {

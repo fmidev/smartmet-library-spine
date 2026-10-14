@@ -75,7 +75,7 @@ void ParameterTranslations::readTranslations(const libconfig::Config& config)
     // Read all parameter translations. We assume JSON encoded strings to avoid config file
     // encoding ambiguities. libconfig itself provides no extra Unicode support.
 
-	auto translations_tag = "parameter_translations";
+    const auto* translations_tag = "parameter_translations";
     if (!config.exists(translations_tag))
 	  {
 		// For backward compatibility also 'translations' tag is accepted
@@ -113,7 +113,7 @@ void ParameterTranslations::readTranslations(const libconfig::Config& config)
                                "translations for parameter " + param_name +
                                    " must be a list of translations for individual values");
 
-        int param_value;
+        int param_value = 0;
         if (!value_translations.lookupValue("value", param_value))
           throw Fmi::Exception(BCP,
                                "translation setting for " + param_name + " at position " +

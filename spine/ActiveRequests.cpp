@@ -114,7 +114,7 @@ std::ostream& operator << (std::ostream& os, const ActiveRequests::Requests& req
     os << "    URL            : " << url << '\n';
     if (decoded_url != url)
       os << "    decoded URL    : " << decoded_url << '\n';
-    if (client_ip != "")
+    if (!client_ip.empty())
       os << "    client_ip      : " << client_ip << '\n';
     if (apikey)
       os << "    apikey         : " << *apikey << '\n';

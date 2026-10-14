@@ -76,7 +76,7 @@ std::string tileOrigin(const std::string& url)
   for (std::size_t i = start; i < end; i++)
   {
     const char ch = url[i];
-    if (!(std::isalnum(static_cast<unsigned char>(ch)) || ch == '.' || ch == '-' || ch == ':'))
+    if (!std::isalnum(static_cast<unsigned char>(ch)) && ch != '.' && ch != '-' && ch != ':')
       return {};
   }
   return url.substr(0, end);

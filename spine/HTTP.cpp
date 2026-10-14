@@ -163,6 +163,8 @@ const std::string expectation_failed = "Expectation Failed";
 const std::string high_load = "High Load in Backend Server";
 const std::string shutdown = "Shutdown in progress";
 
+namespace
+{
 std::string statusCodeToString(Status theStatus)
 {
   try
@@ -230,6 +232,7 @@ std::string statusCodeToString(Status theStatus)
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
+}  // namespace
 }  // namespace StatusStrings
 
 namespace StockReplies
@@ -370,6 +373,8 @@ const std::string shutdown =
     "<body><h1>3210 Shutdown In Progress</h1></body>"
     "</html>";
 
+namespace
+{
 std::string getStockReply(Status theStatus)
 {
   try
@@ -435,8 +440,11 @@ std::string getStockReply(Status theStatus)
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
+}  // namespace
 }  // namespace StockReplies
 
+namespace
+{
 Status stringToStatusCode(const std::string& theCode)
 {
   if (theCode == "200")
@@ -491,6 +499,7 @@ Status stringToStatusCode(const std::string& theCode)
   // Unrecognized throws
   throw Fmi::Exception(BCP, "Attempting to set Unsupported status code: " + theCode);
 }
+}  // namespace
 
 Message::Message(HeaderMap headerMap, std::string version, bool isChunked)
     : itsHeaders(std::move(headerMap)), itsVersion(std::move(version)), itsIsChunked(isChunked)
@@ -1039,8 +1048,7 @@ Response::Response(HeaderMap headerMap,
       itsContent(std::move(body)),
       itsStatus(status),
       itsReasonPhrase(std::move(reason)),
-      itsHasStreamContent(hasStream),
-      isGatewayResponse(false)
+      itsHasStreamContent(hasStream)
 {
 }
 
@@ -1539,7 +1547,7 @@ std::pair<ParsingStatus, std::unique_ptr<Request>> parseRequest(const std::strin
       auto contentHeader = headerMap.find("Content-Length");
       if (contentHeader != headerMap.end())
       {
-        unsigned long decLen;
+        unsigned long decLen = 0;
         std::string declaredLength = contentHeader->second;
         try
         {
@@ -1681,7 +1689,7 @@ ParsingStatus decodeChunkedBody(const std::string& buffer,
     std::size_t chunkSize = 0;
     for (const char c : field)
     {
-      int digit;
+      int digit = 0;
       if (c >= '0' && c <= '9')
         digit = c - '0';
       else if (c >= 'a' && c <= 'f')
@@ -2254,7 +2262,9 @@ static const int B64index[256] = {
     19, 20, 21, 22, 23, 24, 25, 0,  0,  0,  0,  63, 0,  26, 27, 28, 29, 30, 31, 32, 33,
     34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51};
 
-static std::string base64decode(const std::string& input)
+namespace
+{
+std::string base64decode(const std::string& input)
 {
   const auto* p = reinterpret_cast<const unsigned char*>(input.c_str());
   std::size_t len = input.size();
@@ -2285,6 +2295,7 @@ static std::string base64decode(const std::string& input)
   }
   return str;
 }
+}  // namespace
 
 // Decode percent encoded characters. Ignores failed conversions so control characters
 // can be sent onwards.
@@ -2294,7 +2305,7 @@ std::string urldecode(std::string const& url)
   try
   {
     std::string::size_type pos = 0;
-    std::string::size_type next;
+    std::string::size_type next = 0;
     std::string result;
     result.reserve(url.length());
 
@@ -2350,7 +2361,7 @@ std::string urldecode(std::string const& url)
             break;
           }
           char hex[3] = {url[next + 1], url[next + 2], '\0'};
-          char* end_ptr;
+          char* end_ptr = nullptr;
           char res = static_cast<char>(std::strtol(hex, &end_ptr, 16));
           if (*end_ptr != 0)
           {
@@ -2381,6 +2392,8 @@ std::string urldecode(std::string const& url)
   }
 #endif
 
+namespace
+{
 std::string char2hex(int dec)
 {
   try
@@ -2395,6 +2408,7 @@ std::string char2hex(int dec)
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
+}  // namespace
 
 std::string urlencode(const std::string& url)
 {

@@ -268,8 +268,7 @@ bool Options::parseOptions(int argc, char* argv[])
       return false;
     }
 
-    if (throttle.start_limit > throttle.limit)
-      throttle.start_limit = throttle.limit;
+    throttle.start_limit = std::min(throttle.start_limit, throttle.limit);
 
     if (!adminthreads_str.empty())
       adminpool.minsize = parse_threads(adminthreads_str);

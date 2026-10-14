@@ -21,15 +21,12 @@ class MultiLanguageStringArray
 
   virtual ~MultiLanguageStringArray();
 
-  inline std::string get_default_language() const { return default_language; }
-  inline const std::vector<std::string>& get() const { return get(default_language); }
+  std::string get_default_language() const { return default_language; }
+  const std::vector<std::string>& get() const { return get(default_language); }
 
   const std::vector<std::string>& get(const std::string& language) const;
 
-  inline const std::map<std::string, std::vector<std::string> >& get_content() const
-  {
-    return data;
-  }
+  const std::map<std::string, std::vector<std::string> >& get_content() const { return data; }
 
   using Ptr = std::shared_ptr<MultiLanguageStringArray>;
 

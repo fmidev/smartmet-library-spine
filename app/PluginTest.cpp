@@ -283,7 +283,7 @@ bool get_processed_response(const std::filesystem::path& scriptfile, std::string
 
       const int buflen = 1024;
       char buf[buflen];
-      size_t nbytes;
+      size_t nbytes = 0;
 
       std::ostringstream os;
 
@@ -487,7 +487,7 @@ bool PluginTest::process_query(const fs::path& fn,
 
       const auto start_time = std::chrono::system_clock::now();
 
-      auto view = reactor.getHandlerView(*query.second);
+      auto* view = reactor.getHandlerView(*query.second);
       if (!view)
       {
         ok = false;
@@ -705,7 +705,7 @@ std::vector<std::string> PluginTest::read_ignore_file(const std::string& fn)
     {
       ba::trim_if(line, ba::is_any_of(" \t\r\n"));
       std::string prefix = "      ";
-      if (line.length() > 0)
+      if (!line.empty())
       {
         if (line[0] != ';' and line[0] != '#')
         {

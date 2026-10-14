@@ -8,11 +8,14 @@
 #include <macgyver/Exception.h>
 #include <stdexcept>
 
-static const char* default_wxml_version = "2.00";
-static const char* default_wxml_schema =
+namespace
+{
+const char* default_wxml_version = "2.00";
+const char* default_wxml_schema =
     "http://services.weatherproof.fi/schemas/pointweather_{version}.xsd";
-static const char* default_wxml_timestring = "%Y-%b-%dT%H:%M:%S";
-static const char* default_xml_tag = "result";
+const char* default_wxml_timestring = "%Y-%b-%dT%H:%M:%S";
+const char* default_xml_tag = "result";
+}  // namespace
 
 namespace SmartMet
 {

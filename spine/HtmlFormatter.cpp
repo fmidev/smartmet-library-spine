@@ -25,6 +25,8 @@ namespace Spine
  */
 // ----------------------------------------------------------------------
 
+namespace
+{
 std::set<std::string> parse_html_attributes(const std::string& theStr)
 {
   try
@@ -38,6 +40,7 @@ std::set<std::string> parse_html_attributes(const std::string& theStr)
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
+}  // namespace
 
 // ----------------------------------------------------------------------
 /*!

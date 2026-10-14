@@ -74,9 +74,9 @@ struct Point
   double y = 0.0;
   std::string crs;
 
-  inline Point() = default;
-  explicit inline Point(const std::string& src) { parse_string(src); }
-  inline Point(double x, double y, const std::string& crs = "EPSG:4326") : x(x), y(y), crs(crs) {}
+  Point() = default;
+  explicit Point(const std::string& src) { parse_string(src); }
+  Point(double x, double y, const std::string& crs = "EPSG:4326") : x(x), y(y), crs(crs) {}
   void parse_string(const std::string& src);
 
   std::string as_string() const;
@@ -95,10 +95,9 @@ struct BoundingBox
   double yMax = 0.0;
   std::string crs;
 
-  inline BoundingBox() = default;
-  explicit inline BoundingBox(const std::string& src) { parse_string(src); }
-  inline BoundingBox(
-      double xMin, double yMin, double xMax, double yMax, std::string crs = "EPSG:4326")
+  BoundingBox() = default;
+  explicit BoundingBox(const std::string& src) { parse_string(src); }
+  BoundingBox(double xMin, double yMin, double xMax, double yMax, std::string crs = "EPSG:4326")
       : xMin(xMin), yMin(yMin), xMax(xMax), yMax(yMax), crs(std::move(crs))
   {
   }
@@ -137,7 +136,7 @@ class Value
 
   struct Empty
   {
-    inline bool operator==(const Empty&) const { return true; }
+    bool operator==(const Empty&) const { return true; }
   };
 
   /**
@@ -166,51 +165,51 @@ class Value
  public:
   Value() = default;
 
-  inline explicit Value(bool x) { set_bool(x); }
-  inline explicit Value(signed char x) { set_int(x); }
-  inline explicit Value(signed short int x) { set_int(x); }
-  inline explicit Value(signed int x) { set_int(x); }
-  inline explicit Value(signed long int x) { set_int(x); }
-  inline explicit Value(signed long long int x) { set_int(x); }
-  inline explicit Value(unsigned char x) { set_uint(x); }
-  inline explicit Value(unsigned short int x) { set_uint(x); }
-  inline explicit Value(unsigned int x) { set_uint(x); }
-  inline explicit Value(unsigned long int x) { set_uint(x); }
-  inline explicit Value(unsigned long long int x) { set_uint(x); }
-  inline explicit Value(float x) { set_double(static_cast<double>(x)); }
-  inline explicit Value(double x) { set_double(x); }
-  inline explicit Value(long double x) { set_double(static_cast<double>(x)); }
-  inline explicit Value(const char* x) { set_string(x); }
-  inline explicit Value(const std::string& x) { set_string(x); }
-  inline explicit Value(const Fmi::DateTime& x) { set_ptime(x); }
+  explicit Value(bool x) { set_bool(x); }
+  explicit Value(signed char x) { set_int(x); }
+  explicit Value(signed short int x) { set_int(x); }
+  explicit Value(signed int x) { set_int(x); }
+  explicit Value(signed long int x) { set_int(x); }
+  explicit Value(signed long long int x) { set_int(x); }
+  explicit Value(unsigned char x) { set_uint(x); }
+  explicit Value(unsigned short int x) { set_uint(x); }
+  explicit Value(unsigned int x) { set_uint(x); }
+  explicit Value(unsigned long int x) { set_uint(x); }
+  explicit Value(unsigned long long int x) { set_uint(x); }
+  explicit Value(float x) { set_double(static_cast<double>(x)); }
+  explicit Value(double x) { set_double(x); }
+  explicit Value(long double x) { set_double(static_cast<double>(x)); }
+  explicit Value(const char* x) { set_string(x); }
+  explicit Value(const std::string& x) { set_string(x); }
+  explicit Value(const Fmi::DateTime& x) { set_ptime(x); }
   Value(const Point& x) : data(x) {}
-  inline explicit Value(const BoundingBox& x) : data(x) {}
+  explicit Value(const BoundingBox& x) : data(x) {}
   ~Value() = default;
   Value(const Value& other) = default;
 
-  inline bool operator==(const Value& x) const { return data == x.data; }
-  inline bool operator!=(const Value& x) const { return !(data == x.data); }
+  bool operator==(const Value& x) const { return data == x.data; }
+  bool operator!=(const Value& x) const { return !(data == x.data); }
   void reset();
 
-  inline bool is_empty() const { return data.index() == 0; }
-  inline const std::type_info& type() const
+  bool is_empty() const { return data.index() == 0; }
+  const std::type_info& type() const
   {
     const std::type_info& ti = std::visit(TypeInfoVisitor(data), data);
     return ti == typeid(PointWrapper) ? typeid(Point) : ti;
   }
 
-  inline void set_bool(bool value) { data = value; }
-  inline void set_int(int64_t value) { data = value; }
-  inline void set_uint(uint64_t value) { data = value; }
-  inline void set_double(double value) { data = value; }
-  inline void set_ptime(const Fmi::DateTime value) { data = value; }
-  inline void set_string(const std::string& value) { data = value; }
-  inline void set_point(const Point& value)
+  void set_bool(bool value) { data = value; }
+  void set_int(int64_t value) { data = value; }
+  void set_uint(uint64_t value) { data = value; }
+  void set_double(double value) { data = value; }
+  void set_ptime(const Fmi::DateTime value) { data = value; }
+  void set_string(const std::string& value) { data = value; }
+  void set_point(const Point& value)
   {
     PointWrapper tmp = value;
     data = tmp;
   }
-  inline void set_bbox(const BoundingBox& value) { data = value; }
+  void set_bbox(const BoundingBox& value) { data = value; }
   /**
    *   @brief Verifies that the value is in required ranges
    *
@@ -222,8 +221,8 @@ class Value
       const std::optional<Value>& lower_limit = std::optional<Value>(),
       const std::optional<Value>& upper_limit = std::optional<Value>()) const;
 
-  inline Value& check_limits(const std::optional<Value>& lower_limit = std::optional<Value>(),
-                             const std::optional<Value>& upper_limit = std::optional<Value>())
+  Value& check_limits(const std::optional<Value>& lower_limit = std::optional<Value>(),
+                      const std::optional<Value>& upper_limit = std::optional<Value>())
   {
     const Value* v = this;
     v->check_limits(lower_limit, upper_limit);
@@ -253,7 +252,7 @@ class Value
 
   BoundingBox get_bbox() const;
 
-  inline Fmi::DateTime get_ptime_ext() const { return get_ptime(true); }
+  Fmi::DateTime get_ptime_ext() const { return get_ptime(true); }
   static Value from_config(const libconfig::Setting& setting);
 
   static Value from_config(libconfig::Config& config, const std::string& path);
@@ -262,13 +261,13 @@ class Value
                            const std::string& path,
                            const Value& default_value);
 
-  inline Value to_bool() const { return Value(get_bool()); }
-  inline Value to_int() const { return Value(get_int()); }
-  inline Value to_uint() const { return Value(get_uint()); }
-  inline Value to_double() const { return Value(get_double()); }
-  inline Value to_ptime() const { return Value(get_ptime(true)); }
-  inline Value to_point() const { return Value(get_point()); }
-  inline Value to_bbox() const { return Value(get_bbox()); }
+  Value to_bool() const { return Value(get_bool()); }
+  Value to_int() const { return Value(get_int()); }
+  Value to_uint() const { return Value(get_uint()); }
+  Value to_double() const { return Value(get_double()); }
+  Value to_ptime() const { return Value(get_ptime(true)); }
+  Value to_point() const { return Value(get_point()); }
+  Value to_bbox() const { return Value(get_bbox()); }
   template <typename ValueType>
   ValueType get() const
   {
@@ -276,7 +275,7 @@ class Value
   }
 
   template <typename ValueType>
-  inline bool is() const
+  bool is() const
   {
     return typeid(ValueType) == type();
   }

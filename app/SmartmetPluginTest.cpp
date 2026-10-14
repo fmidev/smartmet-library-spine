@@ -13,6 +13,8 @@
 
 using namespace std;
 
+namespace
+{
 void prelude(
   SmartMet::Spine::Reactor& reactor,
   const std::optional<std::string>& handler_path)
@@ -89,6 +91,7 @@ void alarm_handler(int)
   std::cerr << std::endl << "Timeout: test terminated" << std::endl << std::endl;
   abort();
 }
+}  // namespace
 
 struct FontConfigInit
 {
@@ -103,7 +106,10 @@ struct FontConfigInit
     }
 };
 
+namespace
+{
 FontConfigInit fcInit;
+}  // namespace
 
 #define nm_help "help"
 #define nm_config "reactor-config"

@@ -20,11 +20,11 @@ class MultiLanguageString
 
   virtual ~MultiLanguageString();
 
-  inline std::string get_default_language() const { return default_language; }
-  inline std::string get() const { return get(default_language); }
+  std::string get_default_language() const { return default_language; }
+  std::string get() const { return get(default_language); }
   std::string get(const std::string& language) const;
 
-  inline const std::map<std::string, std::string>& get_content() const { return data; }
+  const std::map<std::string, std::string>& get_content() const { return data; }
 
  private:
   std::string default_language;

@@ -104,7 +104,7 @@ bool QCConverter::convert(std::string& newCode, const std::string& oldCode)
     if (isdigit(oldCode[0]) == 0)
       return false;
 
-    if (m_keys.at(oldCodeLength)[(oldCode[0] - '0')].length() == 0)
+    if (m_keys.at(oldCodeLength)[(oldCode[0] - '0')].empty())
       return false;
 
     newCode = m_keys.at(oldCodeLength)[(oldCode[0] - '0')];

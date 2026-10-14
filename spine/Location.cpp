@@ -10,6 +10,8 @@ namespace Spine
 {
 // ----------------------------------------------------------------------
 
+namespace
+{
 std::string type_string(const Location::LocationType& type)
 {
   try
@@ -39,6 +41,7 @@ std::string type_string(const Location::LocationType& type)
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
+}  // namespace
 
 std::string formatLocation(const Location& loc, const std::string& key)
 {

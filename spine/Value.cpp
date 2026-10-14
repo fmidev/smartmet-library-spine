@@ -198,7 +198,7 @@ int64_t Value::get_int() const
 {
   try
   {
-    uint64_t tmp;
+    uint64_t tmp = 0;
     switch (data.index())
     {
       case TI_INT:
@@ -241,7 +241,7 @@ uint64_t Value::get_uint() const
 {
   try
   {
-    int64_t tmp;
+    int64_t tmp = 0;
 
     switch (data.index())
     {

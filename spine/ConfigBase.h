@@ -49,12 +49,12 @@ class ConfigBase
 
   virtual ~ConfigBase();
 
-  inline const std::string& get_file_name() const { return file_name; }
-  inline const std::string& get_name() const { return config_name; }
-  inline libconfig::Config& get_config() { return *itsConfig; }
-  inline libconfig::Setting& get_root() { return itsConfig->getRoot(); }
+  const std::string& get_file_name() const { return file_name; }
+  const std::string& get_name() const { return config_name; }
+  libconfig::Config& get_config() { return *itsConfig; }
+  libconfig::Setting& get_root() { return itsConfig->getRoot(); }
   template <typename Type>
-  inline bool get_config_param(const std::string& theName, Type* result)
+  bool get_config_param(const std::string& theName, Type* result)
   {
     return get_config_param(itsConfig->getRoot(), theName, result);
   }
@@ -91,7 +91,7 @@ class ConfigBase
    *   Other template parameter types (except these mentioned above) are not supported.
    */
   template <typename Type>
-  inline Type get_mandatory_config_param(const std::string& theName)
+  Type get_mandatory_config_param(const std::string& theName)
   {
     try
     {
@@ -155,7 +155,7 @@ class ConfigBase
    *   Other template parameter types (except these mentioned above) are not supported.
    */
   template <typename Type>
-  inline Type get_optional_config_param(const std::string& theName, Type default_value)
+  Type get_optional_config_param(const std::string& theName, Type default_value)
   {
     try
     {
@@ -231,10 +231,10 @@ class ConfigBase
    *   except than <b>libconfig::Setting&</b> is not supported.
    */
   template <typename MemberType>
-  inline bool get_config_array(const std::string& path,
-                               std::vector<MemberType>& result,
-                               int min_size = 0,
-                               int max_size = std::numeric_limits<int>::max())
+  bool get_config_array(const std::string& path,
+                        std::vector<MemberType>& result,
+                        int min_size = 0,
+                        int max_size = std::numeric_limits<int>::max())
   {
     try
     {
@@ -338,8 +338,9 @@ class ConfigBase
   }
 
   template <typename MemberType>
-  inline std::vector<MemberType> get_mandatory_config_array(
-      const std::string& path, int min_size = 0, int max_size = std::numeric_limits<int>::max())
+  std::vector<MemberType> get_mandatory_config_array(const std::string& path,
+                                                     int min_size = 0,
+                                                     int max_size = std::numeric_limits<int>::max())
   {
     try
     {

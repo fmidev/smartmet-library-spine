@@ -244,6 +244,8 @@ void JSON::preprocess(Json::Value& theJson,
  */
 // ----------------------------------------------------------------------
 
+namespace
+{
 void deref(Json::Value& theJson, Json::Value& theRoot)
 {
   try
@@ -284,6 +286,7 @@ void deref(Json::Value& theJson, Json::Value& theRoot)
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
+}  // namespace
 
 void JSON::dereference(Json::Value& theJson)
 {
@@ -380,6 +383,8 @@ void JSON::extract_set(const std::string& theName,
  */
 // ----------------------------------------------------------------------
 
+namespace
+{
 void replaceFromJsonMap(Json::Value& theJson,
                         const std::map<std::string, Json::Value>& theParams,
                         const std::string& /* thePrefix */,
@@ -465,6 +470,7 @@ void replaceFromJsonMap(Json::Value& theJson,
     throw Fmi::Exception::Trace(BCP, "JSON expansion failed!");
   }
 }
+}  // namespace
 
 // ----------------------------------------------------------------------
 /*!

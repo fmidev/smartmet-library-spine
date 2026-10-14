@@ -133,7 +133,7 @@ struct TypeInfoVisitor
   const Obj& x;
 
   template <typename Type>
-  const std::type_info& operator () (const Type& x) const
+  const std::type_info& operator()(const Type& /*x*/) const
   {
     const std::type_info &ti = typeid(Type);
     return ti;

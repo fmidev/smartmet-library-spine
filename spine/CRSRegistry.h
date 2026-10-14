@@ -94,7 +94,7 @@ class CRSRegistry
 
   std::string get_proj4(const std::string& name);
 
-  inline std::size_t size() const { return crs_map.size(); }
+  std::size_t size() const { return crs_map.size(); }
   void dump_info(std::ostream& output);
 
   std::vector<std::string> get_crs_keys() const;

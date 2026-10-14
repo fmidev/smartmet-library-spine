@@ -154,8 +154,7 @@ TcpMultiQuery::Query::Query(TcpMultiQuery& client,
       service(std::move(service)),
       request_body(std::move(request_body)),
       resolver(client.impl->io_service),
-      socket(client.impl->io_service),
-      finished(false)
+      socket(client.impl->io_service)
 {
 }
 

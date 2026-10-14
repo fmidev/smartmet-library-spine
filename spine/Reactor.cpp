@@ -108,7 +108,7 @@ void absolutize_path(std::string& file_name)
 
 int is_file_readable(const std::string& file_name)
 {
-  int handle;
+  int handle = 0;
   // Open appears to be the only practical solution
   // Use POSIX syscalls here for most efficient solution
   if ((handle = open(file_name.c_str(), O_RDONLY | O_CLOEXEC)) >= 0)
@@ -562,6 +562,8 @@ ActiveRequests::Requests Reactor::getActiveRequests() const
  */
 // ----------------------------------------------------------------------
 
+namespace
+{
 void print_requests(const Spine::ActiveRequests::Requests& requests)
 {
   // Based on Admin::Plugin::requestActiveRequests
@@ -595,6 +597,7 @@ void print_requests(const Spine::ActiveRequests::Requests& requests)
   }
   std::cout << std::flush;
 }
+}  // namespace
 
 // ----------------------------------------------------------------------
 /*!
@@ -1017,10 +1020,7 @@ bool Reactor::loadEngine(const std::string& sectionName,
 
     // Create a permanent string out of engines human readable name
 
-    if (!itsEngines
-             .insert(EngineList::value_type((*itsNamePointer)(),
-                                            static_cast<EngineInstanceCreator>(itsCreatorPointer)))
-             .second)
+    if (!itsEngines.insert(EngineList::value_type((*itsNamePointer)(), itsCreatorPointer)).second)
       return false;
 
     // Begin constructing the engine
@@ -2183,8 +2183,7 @@ catch (...)
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
 
-
-std::unique_ptr<Table> Reactor::requestEngineInfo(const HTTP::Request& theRequest) const
+std::unique_ptr<Table> Reactor::requestEngineInfo(const HTTP::Request& /*theRequest*/) const
 try
 {
   const std::vector<std::string> headers{"Engine", "Ready", "Class name"};
@@ -2212,8 +2211,7 @@ catch (...)
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
 
-
-std::unique_ptr<Table> Reactor::requestPluginInfo(const HTTP::Request& theRequest) const
+std::unique_ptr<Table> Reactor::requestPluginInfo(const HTTP::Request& /*theRequest*/) const
 try
 {
   const std::vector<std::string> headers{"Plugin", "Ready", "Class name", "File name", "Config file"};
@@ -2411,7 +2409,7 @@ try
   }
 
   const std::string backtrace = Backtrace::make_backtrace();
-  if (backtrace != "")
+  if (!backtrace.empty())
   {
     std::cout << log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED << " Backtrace\n"
               << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << backtrace << '\n'

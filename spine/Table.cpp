@@ -86,7 +86,7 @@ const std::string& Table::get(std::size_t theColumn, std::size_t theRow) const
 
     // We expect user to use mini() etc in loops to make sure loops are OK
 
-    if (not((theColumn >= itsMinI) and (theColumn <= itsMaxI)))
+    if ((theColumn < itsMinI) || (theColumn > itsMaxI))
     {
       Fmi::Exception exception(BCP, "Column index is out of the range!");
       exception.addParameter("Column index", std::to_string(theColumn));
@@ -94,7 +94,7 @@ const std::string& Table::get(std::size_t theColumn, std::size_t theRow) const
       throw exception;
     }
 
-    if (not((theRow >= itsMinJ) and (theRow <= itsMaxJ)))
+    if ((theRow < itsMinJ) || (theRow > itsMaxJ))
     {
       Fmi::Exception exception(BCP, "Row index is out of the range!");
       exception.addParameter("Row index", std::to_string(theRow));
@@ -134,7 +134,7 @@ std::string Table::get(std::size_t theColumn,
 {
   try
   {
-    if (not itsList.empty() and not((theColumn >= itsMinI) and (theColumn <= itsMaxI)))
+    if (not itsList.empty() and ((theColumn < itsMinI) || (theColumn > itsMaxI)))
     {
       return missing_text;
     }
