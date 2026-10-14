@@ -41,11 +41,11 @@ namespace
     {
       return std::get<SmartMetPlugin*>(target)->getPluginName() + " plugin";
     }
-    else if (std::holds_alternative<SmartMetEngine *>(target))
+    if (std::holds_alternative<SmartMetEngine*>(target))
     {
       return std::get<SmartMetEngine*>(target)->getEngineName() + " engine";
     }
-    else if (std::holds_alternative<ContentHandlerMap::NoTarget>(target))
+    if (std::holds_alternative<ContentHandlerMap::NoTarget>(target))
     {
       return "<builtin>";
     }
@@ -1398,7 +1398,8 @@ bool ContentHandlerMap::setLoggingRequest(const Reactor& /*reactor*/,
     throw Fmi::Exception(BCP, "Invalid logging parameter value: " + flag);
 }
 
-std::unique_ptr<Table> ContentHandlerMap::serviceInfoRequest(const Reactor&, const HTTP::Request&)
+std::unique_ptr<Table> ContentHandlerMap::serviceInfoRequest(const Reactor& /*unused*/,
+                                                             const HTTP::Request& /*unused*/)
 try
 {
   std::unique_ptr<Table> result(new SmartMet::Spine::Table);
@@ -1465,7 +1466,8 @@ try
 
     if (options.itsConfig.exists("admin.user") && options.itsConfig.exists("admin.password"))
     {
-      std::string user, password;
+      std::string user;
+      std::string password;
       options.itsConfig.lookupValue("admin.user", user);
       options.itsConfig.lookupValue("admin.password", password);
 

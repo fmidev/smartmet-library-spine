@@ -86,7 +86,7 @@ void prelude(
   }
 }
 
-void alarm_handler(int)
+void alarm_handler(int /*unused*/)
 {
   std::cerr << std::endl << "Timeout: test terminated" << std::endl << std::endl;
   abort();

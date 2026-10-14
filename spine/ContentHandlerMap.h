@@ -456,7 +456,8 @@ private:
 
     bool setLoggingRequest(const Reactor& reactor, const HTTP::Request& theRequest);
 
-    std::unique_ptr<Table> serviceInfoRequest(const Reactor&, const HTTP::Request&);
+    std::unique_ptr<Table> serviceInfoRequest(const Reactor& /*unused*/,
+                                              const HTTP::Request& /*unused*/);
 
     Reactor* getReactor();
 

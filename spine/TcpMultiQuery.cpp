@@ -32,12 +32,12 @@ struct TcpMultiQuery::Query
 
   virtual ~Query();
 
-  void on_endpoint_resolved(boost::system::error_code,
+  void on_endpoint_resolved(boost::system::error_code /*error*/,
                             const boost::asio::ip::tcp::resolver::results_type& result);
 
-  void on_connected(boost::system::error_code);
+  void on_connected(boost::system::error_code /*error*/);
 
-  void on_request_sent(boost::system::error_code, std::size_t bytes_transfered);
+  void on_request_sent(boost::system::error_code /*error*/, std::size_t bytes_transfered);
 
   void request_input();
 

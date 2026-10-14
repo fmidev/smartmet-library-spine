@@ -19,28 +19,6 @@ namespace SmartMet
 {
 namespace Spine
 {
-// ----------------------------------------------------------------------
-/*!
- * \brief Convert a comma separated string into a set of strings
- */
-// ----------------------------------------------------------------------
-
-namespace
-{
-std::set<std::string> parse_html_attributes(const std::string& theStr)
-{
-  try
-  {
-    std::set<std::string> ret;
-    boost::algorithm::split(ret, theStr, boost::algorithm::is_any_of(","));
-    return ret;
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
-  }
-}
-}  // namespace
 
 // ----------------------------------------------------------------------
 /*!

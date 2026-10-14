@@ -286,7 +286,7 @@ std::string SerialFormatter::format_attributes(const Table& theTable,
 std::string SerialFormatter::format(const Table& theTable,
                                     const TableFormatter::Names& theNames,
                                     const HTTP::Request& theReq,
-                                    const TableFormatterOptions&) const
+                                    const TableFormatterOptions& /*theConfig*/) const
 {
   try
   {

@@ -136,7 +136,7 @@ class Value
 
   struct Empty
   {
-    bool operator==(const Empty&) const { return true; }
+    bool operator==(const Empty& /*unused*/) const { return true; }
   };
 
   /**

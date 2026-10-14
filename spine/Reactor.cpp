@@ -558,49 +558,6 @@ ActiveRequests::Requests Reactor::getActiveRequests() const
 
 // ----------------------------------------------------------------------
 /*!
- * \brief Print the given request list
- */
-// ----------------------------------------------------------------------
-
-namespace
-{
-void print_requests(const Spine::ActiveRequests::Requests& requests)
-{
-  // Based on Admin::Plugin::requestActiveRequests
-
-  auto now = Fmi::MicrosecClock::universal_time();
-
-  std::cout << "Printing active requests due to high load:\n"
-            << "Number\tID\tTime\tDuration\tIP\tAPIKEY\t\tURI\n";
-
-  std::size_t row = 0;
-  for (const auto& id_info : requests)
-  {
-    const auto id = id_info.first;
-    const auto& time = id_info.second.time;
-    const auto& req = id_info.second.request;
-
-    auto duration = now - time;
-
-    const bool check_access_token = false;
-    auto apikey = FmiApiKey::getFmiApiKey(req, check_access_token);
-
-    // clang-format off
-    std::cout << row++ << "\t"
-              << Fmi::to_string(id) << "\t"
-              << Fmi::to_iso_extended_string(time.time_of_day()) << "\t"
-              << Fmi::to_string(duration.total_milliseconds() / 1000.0) << "\t"
-              << req.getClientIP() << "\t"
-              << (apikey ? *apikey : "-\t") << "\t"
-              << req.getURI() << "\n";
-    // clang-format on
-  }
-  std::cout << std::flush;
-}
-}  // namespace
-
-// ----------------------------------------------------------------------
-/*!
  * \brief Add a new active request
  */
 // ----------------------------------------------------------------------
@@ -1449,7 +1406,8 @@ void Reactor::destroy_engines()
   for (int cnt = 0; cnt < 20; cnt++)
   {
     unsigned num_deleted = 0;
-    decltype(itsSingletons)::iterator it1 = itsSingletons.begin(), it2;
+    decltype(itsSingletons)::iterator it1 = itsSingletons.begin();
+    decltype(itsSingletons)::iterator it2;
     while (it1 != itsSingletons.end())
     {
       it2 = it1;
@@ -1469,10 +1427,10 @@ void Reactor::destroy_engines()
                   << std::endl;
         const auto name = it1->first;
         const auto begin = Fmi::MicrosecClock::universal_time();
-        do {
+        {
           boost::this_thread::disable_interruption do_not_disturb;
           itsSingletons.erase(it1);
-        } while (false);
+        }
         const auto end = Fmi::MicrosecClock::universal_time();
         const double duration = (end - begin).total_milliseconds() / 1000.0;
         std::ostringstream tmp;
