@@ -307,11 +307,11 @@ Reactor::Reactor(Options& options)
         { return LoadedPackages::requestPackages(theRequest); },
         "Versions of the loaded packages (all=1 lists all libraries)");
 
-    addAdminStringRequestHandler(
+    addAdminCustomRequestHandler(
         NoTarget{},
         "waitforready",
         AdminRequestAccess::Private,
-        std::bind(&Reactor::waitForReady, this, std::placeholders::_2),
+        std::bind(&Reactor::waitForReady, this, std::placeholders::_2, std::placeholders::_3),
         "Wait until initialization is done (parameters timeout in seconds, default 60)");
 
     addAdminStringRequestHandler(
@@ -1560,14 +1560,16 @@ void Reactor::reportFailure(const std::string& message)
 
 bool Reactor::requestShutdown()
 {
-  {
-    boost::unique_lock<boost::mutex> lock(initDoneMutex);
-    initDoneCond.notify_all();
-  }
-
   boost::unique_lock<boost::mutex> lock(shutdownRequestedMutex);
   // Ignore call if shutdown was already requested
   bool alreadyRequested = gIsShuttingDown.exchange(true);
+
+  // Wake up pending waitforready requests (flag must be set before notifying)
+  {
+    boost::unique_lock<boost::mutex> initLock(initDoneMutex);
+    initDoneCond.notify_all();
+  }
+
   if (!alreadyRequested)
   {
     Fmi::Database::PostgreSQLConnection::shutdownAll();
@@ -2247,14 +2249,34 @@ catch (...)
 }
 
 
-std::string Reactor::waitForReady(const HTTP::Request& request)
+void Reactor::waitForReady(const HTTP::Request& request, HTTP::Response& response)
 try
 {
+  const auto reply = [&response](HTTP::Status status, const std::string& content)
+  {
+    response.setStatus(status);
+    response.setHeader("Content-Type", "text/plain; charset=UTF-8");
+    response.setContent(content);
+  };
+
+  int timeout = 60;
+  const auto timeoutParam = request.getParameter("timeout");
+  if (timeoutParam)
+  {
+    try
+    {
+      timeout = std::max(0, std::min(300, Fmi::stoi(*timeoutParam)));
+    }
+    catch (...)
+    {
+      reply(HTTP::Status::bad_request, "invalid timeout '" + *timeoutParam + "'\r\n");
+      return;
+    }
+  }
+
   bool wait_ok = false;
   bool shuttingDown = false;
   Fmi::DateTime start;
-  const std::string format = Spine::optional_string(request.getParameter("timeout"), "60");
-  const int timeout = std::min(0, std::max(300, Fmi::stoi(format)));
 
   // Restrict number of concurrent waitForReady calls to avoid DoS attack.
   // This is not a perfect solution, but it is better than nothing.
@@ -2268,16 +2290,18 @@ try
     if (nUses.fetch_add(1) >= 5)
     {
       nUses.fetch_sub(1);
-      return "Too many concurrent waitForReady calls, try again later\r\n";
+      reply(HTTP::Status::service_unavailable,
+            "Too many concurrent waitForReady calls, try again later\r\n");
+      return;
     }
 
-    start = Fmi::SecondClock::universal_time();
+    start = Fmi::MicrosecClock::universal_time();
 
     boost::unique_lock<boost::mutex> lock(initDoneMutex);
     wait_ok = initDoneCond.wait_for(
       lock,
       boost::chrono::seconds(timeout),
-      [] { return gInitDone.load() && !gIsShuttingDown.load(); });
+      [] { return gInitDone.load() || gIsShuttingDown.load(); });
 
     shuttingDown = gIsShuttingDown.load();
     lock.unlock();
@@ -2289,16 +2313,23 @@ try
     throw;
   }
 
-  if (wait_ok)
+  if (shuttingDown)
   {
-    auto end = Fmi::SecondClock::universal_time();
-    if (shuttingDown)
-      return "interrupted (shutting down)\r\n";
-
-    return "ready in " + Fmi::to_string(0.001 * (end - start).total_milliseconds()) + " seconds\r\n";
+    reply(HTTP::Status::service_unavailable, "interrupted (shutting down)\r\n");
+    return;
   }
 
-  return "timeout in " + Fmi::to_string(timeout) + " seconds\r\n";
+  if (!wait_ok)
+  {
+    reply(HTTP::Status::service_unavailable,
+          "timeout in " + Fmi::to_string(timeout) + " seconds\r\n");
+    return;
+  }
+
+  auto end = Fmi::MicrosecClock::universal_time();
+  reply(HTTP::Status::ok,
+        "ready in " + Fmi::to_string(0.001 * (end - start).total_milliseconds()) +
+            " seconds\r\n");
 }
 catch (...)
 {

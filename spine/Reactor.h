@@ -234,7 +234,9 @@ class Reactor final : public ContentHandlerMap
 
   std::unique_ptr<Table> requestPluginInfo(const HTTP::Request& theRequest) const;
 
-  std::string waitForReady(const HTTP::Request& theRequest);
+  // Responds 200 when ready, 503 on timeout, shutdown or too many concurrent
+  // waiters, and 400 for an invalid timeout parameter
+  void waitForReady(const HTTP::Request& theRequest, HTTP::Response& theResponse);
 
   // Allocator stats (jemalloc / mimalloc). Returned verbatim as the
   // string body of the admin response; the operator-side smtop "Heap"
