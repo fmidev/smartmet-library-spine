@@ -753,7 +753,7 @@ std::string Request::toString() const
             throw Fmi::Exception(
                 BCP, "HTTP::Request: Attempting to serialize GET Request with body content");
         }
-        // fall through
+        [[fallthrough]];
         case RequestMethod::POST:
           body = itsContent;
           break;
