@@ -498,7 +498,6 @@ std::string Value::dump_to_string() const
 
       case TI_BOOL:
         return fmt::format("(bool {})", (std::get<bool>(data) ? "true" : "false"));
-        break;
 
       case TI_INT:
         return fmt::format("(int {})", std::get<int64_t>(data));
@@ -781,7 +780,6 @@ Fmi::DateTime parse_xml_time(const std::string& value)
      auto error = Fmi::Exception::Trace(BCP, "Failed to parse XML time");
      error.addParameter("Argument", value);
      throw error;
-    throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
 

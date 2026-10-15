@@ -267,5 +267,4 @@ int main(int argc, char* argv[])
     throw Fmi::Exception(BCP, "Operation failed!", nullptr);
   }
 
-  return 1;
 }

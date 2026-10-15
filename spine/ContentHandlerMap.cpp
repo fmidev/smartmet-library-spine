@@ -1454,7 +1454,6 @@ try
                          "Config error in " + options.configfile +
                              ": Both admin.user and admin.password or none of them must be "
                              "provided together with admin.uri");
-    return;
   }
 
     if (options.itsConfig.exists("admin.user") && options.itsConfig.exists("admin.password"))
