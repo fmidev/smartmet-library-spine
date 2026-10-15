@@ -2154,7 +2154,8 @@ try
   {
     const std::string name = item.first;
     const bool ready = item.second->ready();
-    const std::string className = Fmi::demangle_cpp_type_name(typeid(*item.second).name());
+    const auto& singleton = *item.second;
+    const std::string className = Fmi::demangle_cpp_type_name(typeid(singleton).name());
     std::size_t column = 0;
     table->set(column++, row, name);
     table->set(column++, row, ready ? "yes" : "no");
