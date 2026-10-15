@@ -25,6 +25,7 @@ class Table
   Table(Table&& other) = delete;
   Table& operator=(const Table& other) = delete;
   Table& operator=(Table&& other) = delete;
+  ~Table() = default;
 
   void set(std::size_t theColumn, std::size_t theRow, const std::string& theValue);
   const std::string& get(std::size_t theColumn, std::size_t theRow) const;

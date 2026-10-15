@@ -50,6 +50,8 @@ class TcpMultiQuery
 
   explicit TcpMultiQuery(int timeout_sec);
   virtual ~TcpMultiQuery();
+  TcpMultiQuery(const TcpMultiQuery&) = delete;
+  TcpMultiQuery& operator=(const TcpMultiQuery&) = delete;
 
   void add_query(const std::string& id,
                  const std::string& host,

@@ -86,7 +86,7 @@ void prelude(
   }
 }
 
-void alarm_handler(int /*unused*/)
+[[noreturn]] void alarm_handler(int /*unused*/)
 {
   std::cerr << std::endl << "Timeout: test terminated" << std::endl << std::endl;
   abort();
@@ -129,6 +129,7 @@ int main(int argc, char* argv[])
 
   Fmi::StaticCleanup::AtExit cleanup;
 
+  // NOLINTNEXTLINE(concurrency-mt-unsafe): set at startup before any threads are started
   if (std::setlocale(LC_ALL, "en_US.UTF-8") == nullptr)
   {
     std::cerr << "Failed to set locale en_US.UTF-8\n";

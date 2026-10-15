@@ -146,7 +146,7 @@ class Value
    */
   struct PointWrapper : public Point
   {
-    char unused[16];
+    char unused[16]{};
 
     PointWrapper(const Point& p) : Point(p) {}
   };
@@ -186,6 +186,7 @@ class Value
   explicit Value(const BoundingBox& x) : data(x) {}
   ~Value() = default;
   Value(const Value& other) = default;
+  Value& operator=(const Value&) = default;
 
   bool operator==(const Value& x) const { return data == x.data; }
   bool operator!=(const Value& x) const { return !(data == x.data); }

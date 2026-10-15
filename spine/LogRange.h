@@ -21,6 +21,7 @@ class LogRange
 
   LogRange(const LogRange& theOther);
   LogRange() = delete;
+  LogRange& operator=(const LogRange&) = default;
 
   using const_iterator = LogListType::const_iterator;
 

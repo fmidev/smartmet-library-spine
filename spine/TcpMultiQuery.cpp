@@ -26,7 +26,7 @@ struct TcpMultiQuery::Query
   std::string error_desc;
   boost::system::error_code error_code;
   bool finished = false;
-  char current_input[buffer_size];
+  char current_input[buffer_size]{};
 
   Query(TcpMultiQuery& client, std::string host, std::string service, std::string request_body);
 

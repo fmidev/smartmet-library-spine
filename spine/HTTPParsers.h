@@ -63,7 +63,7 @@ struct RawResponse
 {
   VersionPair version;
 
-  unsigned int code;
+  unsigned int code = 0;
 
   std::string reason;
 

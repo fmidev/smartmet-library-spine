@@ -515,7 +515,7 @@ try
 
     return std::make_tuple(false, LoggedRequests(), Fmi::DateTime());
 }
-catch(const std::exception& e)
+catch(const std::exception&)
 {
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
@@ -723,7 +723,6 @@ try
     if (itsUniqueAdminRequests.count(what))
     {
       // Already defined and some earlier request required to be unique : report error
-      const std::string name = targetName(target);
       std::ostringstream err;
       err << "Failed to add " << adminRequestName(target, what) << " (already defined and required to be unique)";
       throw Fmi::Exception(BCP, err.str());
@@ -734,7 +733,6 @@ try
     if (unique)
     {
       // Already defined and required to be unique : report error
-      const std::string name = targetName(target);
       std::ostringstream err;
       err << "Failed to add " << adminRequestName(target, what) << " (already defined and required to be unique)";
       throw Fmi::Exception(BCP, err.str());
@@ -746,7 +744,6 @@ try
   const auto result = dest_map.emplace(target, std::move(handler));
   if (not result.second)
   {
-    const std::string name = targetName(target);
     std::ostringstream err;
     err << "Failed to add " << adminRequestName(target, what) << " (already defined)";
     throw Fmi::Exception(BCP, err.str());
@@ -1116,7 +1113,7 @@ bool ContentHandlerMap::executeAdminRequest(
     std::string firstMessage = exception.what();
     boost::algorithm::replace_all(firstMessage, "\n", " ");
     if (firstMessage.size() > 300)
-    firstMessage.resize(300);
+      firstMessage.resize(300);
     theResponse.setHeader("X-Admin-Error", firstMessage);
     return false;
   }

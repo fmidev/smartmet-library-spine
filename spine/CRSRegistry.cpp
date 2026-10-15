@@ -62,6 +62,8 @@ class CRSRegistry::TransformationImpl : public CRSRegistry::Transformation
   TransformationImpl(const CRSRegistry::MapEntry& from, const CRSRegistry::MapEntry& to);
 
   ~TransformationImpl() override;
+  TransformationImpl(const TransformationImpl&) = delete;
+  TransformationImpl& operator=(const TransformationImpl&) = delete;
 
   std::string get_src_name() const override;
 
@@ -536,7 +538,7 @@ std::array<double, 3> CRSRegistry::TransformationImpl::transform(
     double z = src[2];
     if (conv->Transform(1, &x, &y, &z))
     {
-      std::array<double, 3> result;
+      std::array<double, 3> result{};
       result[0] = swap2 ? y : x;
       result[1] = swap2 ? x : y;
       result[2] = z;

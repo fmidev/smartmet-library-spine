@@ -27,6 +27,8 @@ class DynamicPlugin
 
   // Destructor
   ~DynamicPlugin();
+  DynamicPlugin(const DynamicPlugin&) = delete;
+  DynamicPlugin& operator=(const DynamicPlugin&) = delete;
 
   // Get the filename of the plugin
   const std::string& filename() const { return itsFilename; }
@@ -63,11 +65,11 @@ class DynamicPlugin
 
  private:
   // Pointer to dynamic library
-  void* itsHandle;
+  void* itsHandle = nullptr;
 
   // Create and Destroy function pointers
-  plugin_create_t* plugin_create_func;
-  plugin_destroy_t* plugin_destroy_func;
+  plugin_create_t* plugin_create_func = nullptr;
+  plugin_destroy_t* plugin_destroy_func = nullptr;
 
   // Method to open the dynamic module, resolve create/destroy symbols,
   // and create an instance of the dynamic class.

@@ -804,9 +804,25 @@ boost::asio::const_buffer Request::headersToBuffer()
 
 std::string Request::headersToString() const
 {
-  // TODO(mheiskan)
-  throw Fmi::Exception(BCP, "Request::headersToBuffer not implemented");
-  // return std::string();
+  try
+  {
+    // Use a string instead of a stringstream to avoid global locale locks!
+    std::string out;
+    for (const auto& name_value : itsHeaders)
+    {
+      out += name_value.first;
+      out += ": ";
+      out += name_value.second;
+      out += "\r\n";
+    }
+    // Header-body delimiter
+    out += "\r\n";
+    return out;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
 }
 
 std::string Request::getClientIP() const
@@ -2373,6 +2389,8 @@ std::string urldecode(std::string const& url)
           pos = next + 3;
           break;
         }
+        default:
+          break;
       }
     }
 

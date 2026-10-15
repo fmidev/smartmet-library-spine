@@ -65,7 +65,7 @@ std::unique_ptr<std::ofstream> makeAccessLogFile(const std::string& resource,
     {
       file->open(path, std::ofstream::out | std::ofstream::app);
     }
-    catch (const std::system_error& e)
+    catch (const std::system_error&)
     {
       char err_msg[128];
       Fmi::Exception error(BCP, "Could not open access log file: " + path);

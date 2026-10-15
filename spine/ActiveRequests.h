@@ -37,6 +37,7 @@ class ActiveRequests
   ActiveRequests(ActiveRequests&& other) = delete;
   ActiveRequests& operator=(ActiveRequests&& other) = delete;
   ActiveRequests& operator=(const ActiveRequests& other) = delete;
+  ~ActiveRequests() = default;
 
   std::size_t insert(const HTTP::Request& theRequest);
   void remove(std::size_t theKey);

@@ -99,6 +99,8 @@ class Reactor final : public ContentHandlerMap
 
   // No default construction, options must be given
   Reactor() = delete;
+  Reactor(const Reactor&) = delete;
+  Reactor& operator=(const Reactor&) = delete;
 
   void init();
 

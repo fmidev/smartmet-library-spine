@@ -173,6 +173,8 @@ make %{_smp_mflags}
 - Requires 26.10.13 versions of newbase due to their ABI changes
 - Fixed mechanical clang-tidy findings (internal linkage, unused parameters, initialization, redundant code), no functional changes
 - Fixed clang-tidy style findings (loops, nested conditionals, dead code)
+- Fixed clang-tidy correctness findings (member initialization, rule of five, printf formats, dead stores)
+- Implemented Request::headersToString
 
 * Sun Oct 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.11-2.fmi
 - New private admin request what=packages lists the versions of the packages loaded into the

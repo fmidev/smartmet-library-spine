@@ -125,6 +125,7 @@ class Location
       : name(theArea), area(theArea), radius(theRadius), timezone("localtime"), type(Place)
   {
   }
+  ~Location() = default;
 };  // class Location
 
 using LocationPtr = std::shared_ptr<const Location>;

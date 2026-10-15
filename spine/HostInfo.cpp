@@ -85,7 +85,7 @@ std::string blockingLookup(const std::string& theIP)
   char node[NI_MAXHOST];
 
   // Try IPv4 first, then IPv6. An unparseable address degrades to "no host name".
-  struct sockaddr_in sa4;
+  struct sockaddr_in sa4{};
   memset(&sa4, 0, sizeof(sa4));
   sa4.sin_family = AF_INET;
   if (inet_pton(AF_INET, theIP.c_str(), &sa4.sin_addr) == 1)
@@ -96,7 +96,7 @@ std::string blockingLookup(const std::string& theIP)
     return node;
   }
 
-  struct sockaddr_in6 sa6;
+  struct sockaddr_in6 sa6{};
   memset(&sa6, 0, sizeof(sa6));
   sa6.sin6_family = AF_INET6;
   if (inet_pton(AF_INET6, theIP.c_str(), &sa6.sin6_addr) == 1)

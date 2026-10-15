@@ -15,6 +15,8 @@ class AccessLogger
   AccessLogger(std::string resource, std::string accessLogDir);
 
   ~AccessLogger();
+  AccessLogger(const AccessLogger&) = delete;
+  AccessLogger& operator=(const AccessLogger&) = delete;
 
   void log(const LoggedRequest& theRequest);
 

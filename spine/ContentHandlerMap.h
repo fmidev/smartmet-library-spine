@@ -104,6 +104,8 @@ public:
     ContentHandlerMap(const Options& options);
 
     virtual ~ContentHandlerMap();
+    ContentHandlerMap(const ContentHandlerMap&) = delete;
+    ContentHandlerMap& operator=(const ContentHandlerMap&) = delete;
 
     /**
      * @brief Set handler fir cases when provided URI does not match any of available handlers
@@ -465,8 +467,8 @@ private:
     {
         std::string what;
         HandlerTarget target;
-        bool requiresAuthentication;
-        bool isPublic;
+        bool requiresAuthentication = false;
+        bool isPublic = false;
         AdminRequestHandler handler;
         std::string description;
 

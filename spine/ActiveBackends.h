@@ -21,6 +21,7 @@ class ActiveBackends
   ActiveBackends(ActiveBackends&& other) = delete;
   ActiveBackends& operator=(const ActiveBackends& other) = delete;
   ActiveBackends& operator=(ActiveBackends&& other) = delete;
+  ~ActiveBackends() = default;
 
   using PortCounter = std::map<int, int>;
   using Status = std::map<std::string, PortCounter>;

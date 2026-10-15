@@ -354,6 +354,7 @@ Point Value::get_point() const
   {
     int ind = data.index();
     if (ind == TI_POINT)
+      // NOLINTNEXTLINE(cppcoreguidelines-slicing): the wrapper only exists for the variant
       return std::get<PointWrapper>(data);
 
     if (ind == TI_STRING)

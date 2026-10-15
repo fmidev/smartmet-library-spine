@@ -32,7 +32,7 @@ class CRSRegistry
     boost::basic_regex<char> regex;
     std::shared_ptr<OGRSpatialReference> cs;
     std::map<std::string, std::any> attrib_map;
-    bool swap_coord;
+    bool swap_coord = false;
 
     MapEntry(std::string theName, const std::optional<std::string>& text);
   };

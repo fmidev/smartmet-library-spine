@@ -37,7 +37,7 @@ private:
 
     struct Data
     {
-        std::size_t level;
+        std::size_t level = 0;
         std::ostringstream out;
     };
 

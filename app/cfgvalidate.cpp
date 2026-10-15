@@ -134,7 +134,7 @@ int run(int argc, char* argv[])
       throw std::runtime_error(std::string("Configuration error ' ") + e.getError() + "' on line " +
                                std::to_string(e.getLine()));
     }
-    catch (libconfig::FileIOException& e)
+    catch (libconfig::FileIOException&)
     {
       throw std::runtime_error("I/O error while reading file");
     }

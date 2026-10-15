@@ -1630,7 +1630,7 @@ void Reactor::waitForShutdownComplete()
           {
             shutdownTimedOutCallback();
           }
-          catch(const std::exception& e)
+          catch(const std::exception&)
           {
             std::cerr << Fmi::Exception::Trace(BCP, "Unexpected exception in shutdown timeout callback")
                       << std::endl;
@@ -2345,7 +2345,7 @@ try
     {
       std::rethrow_exception(eptr);
     }
-    catch (Fmi::Exception& e)
+    catch (Fmi::Exception&)
     {
       std::cout << Fmi::Exception::Trace(BCP, "Uncaught exception") << std::endl;
     }
