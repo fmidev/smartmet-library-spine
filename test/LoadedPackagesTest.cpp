@@ -20,6 +20,13 @@ namespace LoadedPackagesTest
 {
 namespace LP = SmartMet::Spine::LoadedPackages;
 
+// glibc before 2.34 (RHEL8) installs libc as libc-<version>.so, later ones as libc.so.6
+bool is_libc(const std::string& theFile)
+{
+  return theFile.find("/libc.so") != std::string::npos ||
+         theFile.find("/libc-") != std::string::npos;
+}
+
 // Append a note to a PT_NOTE style buffer with the given alignment
 void add_note(std::vector<unsigned char>& theBuffer,
               const std::string& theOwner,
@@ -234,7 +241,7 @@ void collect()
       if (obj.deleted)
         TEST_FAILED("libsmartmet-spine.so should not be marked deleted");
     }
-    if (obj.file.find("/libc.so") != std::string::npos)
+    if (is_libc(obj.file))
       found_libc = true;
   }
 
@@ -343,7 +350,7 @@ std::string check_table(const SmartMet::Spine::Table& theTable, bool theAll)
         package.find("smartmet") == std::string::npos)
       return "Non-SmartMet object " + file + " listed without all=1";
     found_spine |= (file.find("libsmartmet-spine.so") != std::string::npos);
-    found_libc |= (file.find("/libc.so") != std::string::npos);
+    found_libc |= is_libc(file);
   }
 
   if (!found_spine)
