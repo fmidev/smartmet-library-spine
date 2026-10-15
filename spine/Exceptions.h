@@ -7,7 +7,7 @@ namespace Spine
 {
 namespace Exceptions
 {
-void handle(const std::string& name);
+[[noreturn]] void handle(const std::string& name);
 }
 }  // namespace Spine
 }  // namespace SmartMet
