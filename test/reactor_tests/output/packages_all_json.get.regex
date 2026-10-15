@@ -22,6 +22,6 @@
 
 # Both the library under test and libc must be listed
 (?=.*"File":"[^"]*/libsmartmet-spine\.so")
-(?=.*"File":"[^"]*/libc\.so)
+(?=.*"File":"[^"]*/libc(?:\.so|-[0-9.]+\.so))
 
 \[ (?&row) (?:,(?&row))* \]
