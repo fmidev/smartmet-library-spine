@@ -140,6 +140,9 @@ struct TypeInfoVisitor
   }
 };
 
+template <typename Obj>
+TypeInfoVisitor(const Obj&) -> TypeInfoVisitor<Obj>;
+
 }  // namespace Spine
 }  // namespace SmartMet
 
