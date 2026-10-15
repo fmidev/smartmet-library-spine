@@ -25,8 +25,8 @@ class LoggedRequest
   // handlers at a glance.
   LoggedRequest(std::string theRequestString,
                 const Fmi::DateTime& requestEndTime,
-                Fmi::TimeDuration accessDuration,
-                Fmi::TimeDuration cpuDuration,
+                const Fmi::TimeDuration& accessDuration,
+                const Fmi::TimeDuration& cpuDuration,
                 std::string theStatus,
                 std::string theIP,
                 std::string theMethod,
@@ -40,7 +40,7 @@ class LoggedRequest
   // gets cpuDuration = 0. Delegates to the canonical form.
   LoggedRequest(std::string theRequestString,
                 const Fmi::DateTime& requestEndTime,
-                Fmi::TimeDuration accessDuration,
+                const Fmi::TimeDuration& accessDuration,
                 std::string theStatus,
                 std::string theIP,
                 std::string theMethod,

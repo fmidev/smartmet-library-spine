@@ -325,7 +325,9 @@ namespace Spine
 {
 
 // Deprecated
-int PluginTest::test(SmartMet::Spine::Options& options, PreludeFunction prelude, int num_threads)
+int PluginTest::test(SmartMet::Spine::Options& options,
+                     const PreludeFunction& prelude,
+                     int num_threads)
 {
   (void)printRequest; // Silence compiler warning
 

@@ -118,7 +118,7 @@ public:
      *       Example:
      *          specify std::string("frontend") to get log file named "frontend-access-log"
      **/
-    void setNoMatchHandler(ContentHandler theHandler,
+    void setNoMatchHandler(const ContentHandler& theHandler,
         const std::optional<std::string>& accessLogName = std::nullopt);
 
     /**
@@ -384,7 +384,7 @@ public:
     bool executeAdminRequest(
             const HTTP::Request& theRequest,
             HTTP::Response& theResponse,
-            std::function<bool(const HTTP::Request&, HTTP::Response&)> authCallback);
+            const std::function<bool(const HTTP::Request&, HTTP::Response&)>& authCallback);
 
     std::set<std::string> getAdminRequestNames(
         bool includeBuiltin = false,

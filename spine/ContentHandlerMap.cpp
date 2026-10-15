@@ -49,10 +49,8 @@ namespace
     {
       return "<builtin>";
     }
-    else
-    {
-      throw Fmi::Exception(BCP, "INTERNAL ERROR: Unknown admin request target");
-    }
+
+    throw Fmi::Exception(BCP, "INTERNAL ERROR: Unknown admin request target");
   }
 
   /**
@@ -201,10 +199,8 @@ namespace
   }
 }
 
-
-void ContentHandlerMap::setNoMatchHandler(
-  ContentHandler theHandler,
-  const std::optional<std::string>& accessLogName)
+void ContentHandlerMap::setNoMatchHandler(const ContentHandler& theHandler,
+                                          const std::optional<std::string>& accessLogName)
 try
 {
   WriteLock lock(itsContentMutex);
@@ -819,7 +815,7 @@ void ContentHandlerMap::addNoMatchAdminRequestHandler(NoMatchAdminRequestHandler
 bool ContentHandlerMap::executeAdminRequest(
     const HTTP::Request& theRequest,
     HTTP::Response& theResponse,
-    std::function<bool(const HTTP::Request&, HTTP::Response&)> authCallback)
+    const std::function<bool(const HTTP::Request&, HTTP::Response&)>& authCallback)
 {
   try
   {
@@ -909,7 +905,7 @@ bool ContentHandlerMap::executeAdminRequest(
         requiresAuth = true;
         break;
       }
-    };
+    }
 
     if (requiresAuth)
     {

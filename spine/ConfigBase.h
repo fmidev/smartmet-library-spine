@@ -1,14 +1,15 @@
 #pragma once
 
 #include <boost/current_function.hpp>
-#include <memory>
 #include <macgyver/Exception.h>
 #include <macgyver/TypeName.h>
 #include <libconfig.h++>
 #include <limits>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace SmartMet
@@ -187,7 +188,7 @@ class ConfigBase
   {
     try
     {
-      Type result = default_value;
+      Type result = std::move(default_value);
 
       libconfig::Setting* item = find_setting(setting, path, false);
       if (item)

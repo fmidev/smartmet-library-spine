@@ -32,7 +32,9 @@ class PluginTest
   int run(SmartMet::Spine::Options& options, const PreludeFunction& prelude) const;
 
   // Deprecated function, switched from using a namespace to a class
-  static int test(SmartMet::Spine::Options& options, PreludeFunction prelude, int num_threads = 1);
+  static int test(SmartMet::Spine::Options& options,
+                  const PreludeFunction& prelude,
+                  int num_threads = 1);
 
   // Run tests in parallel?
   void setNumberOfThreads(int num_threads) { mNumThreads = num_threads; }

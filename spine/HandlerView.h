@@ -107,8 +107,8 @@ class HandlerView
   // logging path and, deferred, for streamed responses once the connection
   // layer reports the actual number of body bytes streamed.
   void appendLoggedRequest(const std::string& uri,
-                           Fmi::TimeDuration accessDuration,
-                           Fmi::TimeDuration cpuDuration,
+                           const Fmi::TimeDuration& accessDuration,
+                           const Fmi::TimeDuration& cpuDuration,
                            const std::string& status,
                            const std::string& ip,
                            const std::string& method,

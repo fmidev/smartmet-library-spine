@@ -189,7 +189,9 @@ class Reactor final : public ContentHandlerMap
    * Default (empty std::function) will cause abort() to be called on timeout
    * abort() will also be called if provided callback throws an exception or exits.
    */
-  void onShutdownTimedOut(std::function<void()> callback) { shutdownTimedOutCallback = callback; }
+  void onShutdownTimedOut(std::function<void()> callback) {
+    shutdownTimedOutCallback = std::move(callback);
+  }
 
  private:
 

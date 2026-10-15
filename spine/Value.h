@@ -203,7 +203,7 @@ class Value
   void set_int(int64_t value) { data = value; }
   void set_uint(uint64_t value) { data = value; }
   void set_double(double value) { data = value; }
-  void set_ptime(const Fmi::DateTime value) { data = value; }
+  void set_ptime(const Fmi::DateTime& value) { data = value; }
   void set_string(const std::string& value) { data = value; }
   void set_point(const Point& value)
   {

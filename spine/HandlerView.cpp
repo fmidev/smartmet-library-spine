@@ -569,8 +569,8 @@ void HandlerView::cleanLog(const Fmi::DateTime& minTime, bool flush)
 }
 
 void HandlerView::appendLoggedRequest(const std::string& uri,
-                                      Fmi::TimeDuration accessDuration,
-                                      Fmi::TimeDuration cpuDuration,
+                                      const Fmi::TimeDuration& accessDuration,
+                                      const Fmi::TimeDuration& cpuDuration,
                                       const std::string& status,
                                       const std::string& ip,
                                       const std::string& method,
