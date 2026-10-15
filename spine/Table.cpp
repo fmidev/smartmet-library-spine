@@ -360,7 +360,7 @@ void Table::setDefaultFormat(const std::string& format)
   getMutableMetadata().format = format;
 }
 
-const std::string Table::getDefaultFormat() const
+std::string Table::getDefaultFormat() const
 {
   if (!itsMetadata || !itsMetadata->format)
     return "debug";

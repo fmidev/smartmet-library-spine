@@ -550,7 +550,7 @@ try
 
   const auto kill_cleaner_thread = [&]()
   {
-    if (itsLogCleanerThread.get() != nullptr && itsLogCleanerThread->joinable())
+    if (itsLogCleanerThread != nullptr && itsLogCleanerThread->joinable())
     {
       itsLogCleanerThread->interrupt();
       itsLogCleanerThread->join();

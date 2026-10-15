@@ -768,7 +768,7 @@ bool Reactor::loadPlugin(const std::string& sectionName,
 
     std::shared_ptr<DynamicPlugin> plugin(new DynamicPlugin(theFilename, configfile, *this));
 
-    if (plugin.get() != nullptr)
+    if (plugin != nullptr)
     {
       // Start to initialize the plugin
 

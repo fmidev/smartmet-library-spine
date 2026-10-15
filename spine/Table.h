@@ -58,7 +58,7 @@ class Table
 
   void setDefaultFormat(const std::string& format);
 
-  const std::string getDefaultFormat() const;
+  std::string getDefaultFormat() const;
 
  private:
   void build_array() const;
