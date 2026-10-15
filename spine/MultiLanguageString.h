@@ -19,6 +19,7 @@ class MultiLanguageString
                                                      libconfig::Setting& setting);
 
   virtual ~MultiLanguageString();
+  MultiLanguageString& operator=(const MultiLanguageString&) = default;
 
   std::string get_default_language() const { return default_language; }
   std::string get() const { return get(default_language); }

@@ -318,6 +318,8 @@ class Message
   virtual boost::asio::const_buffer contentToBuffer() = 0;
 
   virtual ~Message();
+  Message(const Message&) = default;
+  Message& operator=(const Message&) = default;
 
  protected:
   // Only called from derived classes
@@ -537,6 +539,7 @@ class Request : public Message
   boost::asio::const_buffer contentToBuffer() override;
 
   ~Request() override;
+  Request(const Request&) = default;
 
  protected:
   std::string itsContent;
@@ -784,6 +787,8 @@ class Response : public Message
                                                                                   "GET"});
 
   ~Response() override;
+  Response(const Response&) = default;
+  Response& operator=(const Response&) = default;
 
  protected:
   ContentStreamer::StreamerStatus getStreamingStatus() const;
