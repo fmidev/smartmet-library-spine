@@ -436,6 +436,7 @@ Json::Value link(const std::string& href,
 std::vector<std::string> documentationFiles()
 {
   std::vector<std::string> ret;
+  ret.reserve(swagger_ui_files.size());
   for (const auto& file : swagger_ui_files)
     ret.push_back(file.first);
   ret.emplace_back(PLUGIN_FILE);
