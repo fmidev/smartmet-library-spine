@@ -126,6 +126,88 @@ std::list<std::string> parse_attributes(const std::string& theStr)
   }
 }
 
+// Append a table value as a JSON value
+void append_json_value(std::string& out, const std::string& value)
+{
+  const std::string miss = "null";
+  if (value.empty())
+    out += miss;
+  else if (value == "nan" || value == "NaN")  // nan is not allowed in JSON
+    out += "null";
+  else if (looks_number(value))
+    out += value;
+  else
+    out += escape_json(value);
+}
+
+// Format the rows as a JSON array of objects
+std::string format_rows(const Table& theTable,
+                        const TableFormatter::Names& theNames,
+                        const Table::Indexes& theCols,
+                        const Table::Indexes& theRows)
+{
+  std::string out;
+  out += '[';
+  std::size_t row = 0;
+  for (std::size_t j : theRows)
+  {
+    if (row++ > 0)
+      out += ',';
+
+    out += "{";
+
+    std::size_t col = 0;
+    for (std::size_t i : theCols)
+    {
+      if (col++ > 0)
+        out += ',';
+
+      const std::string& name = theNames[i];
+      out += '"';
+      out += name;
+      out += '"';
+
+      out += ':';
+
+      append_json_value(out, theTable.get(i, j));
+    }
+    out += '}';
+  }
+
+  out += ']';
+  return out;
+}
+
+// Unique non-empty values in the column
+std::set<std::string> unique_values(const Table& theTable,
+                                    std::size_t theColumn,
+                                    const Table::Indexes& theRows)
+{
+  std::set<std::string> values;
+  for (std::size_t j : theRows)
+  {
+    const auto& value = theTable.get(theColumn, j);
+    if (!value.empty())
+      values.insert(value);
+  }
+  return values;
+}
+
+// The rows with the given value in the column
+Table::Indexes rows_with_value(const Table& theTable,
+                               std::size_t theColumn,
+                               const Table::Indexes& theRows,
+                               const std::string& theValue)
+{
+  Table::Indexes rows;
+  for (std::size_t j : theRows)
+  {
+    if (theTable.get(theColumn, j) == theValue)
+      rows.insert(j);
+  }
+  return rows;
+}
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Format recursion
@@ -144,46 +226,10 @@ std::string format_recursively(const Table& theTable,
     std::string out;
     out.reserve(TableFormatter::default_minimum_size);
 
-    const std::string miss = "null";
     if (theAttributes.empty())
     {
       // Format the json always as an array
-      out += '[';
-      std::size_t row = 0;
-      for (std::size_t j : theRows)
-      {
-        if (row++ > 0)
-          out += ',';
-
-        out += "{";
-
-        std::size_t col = 0;
-        for (std::size_t i : theCols)
-        {
-          if (col++ > 0)
-            out += ',';
-
-          const std::string& name = theNames[i];
-          out += '"';
-          out += name;
-          out += '"';
-
-          out += ':';
-
-          const auto& value = theTable.get(i, j);
-          if (value.empty())
-            out += miss;
-          else if (value == "nan" || value == "NaN")  // nan is not allowed in JSON
-            out += "null";
-          else if (looks_number(value))
-            out += value;
-          else
-            out += escape_json(value);
-        }
-        out += '}';
-      }
-
-      out += ']';
+      out += format_rows(theTable, theNames, theCols, theRows);
     }
     else
     {
@@ -194,13 +240,7 @@ std::string format_recursively(const Table& theTable,
 
       // Collect unique values in the attribute column
 
-      std::set<std::string> values;
-      for (std::size_t j : theRows)
-      {
-        const auto& value = theTable.get(nam, j);
-        if (!value.empty())
-          values.insert(value);
-      }
+      std::set<std::string> values = unique_values(theTable, nam, theRows);
 
       // Remove the attribute column temporarily
 
@@ -216,12 +256,7 @@ std::string format_recursively(const Table& theTable,
       {
         if (att++ > 0)
           out += ',';
-        Table::Indexes rows;
-        for (std::size_t j : theRows)
-        {
-          if (theTable.get(nam, j) == v)
-            rows.insert(j);
-        }
+        Table::Indexes rows = rows_with_value(theTable, nam, theRows, v);
         out += '"';
         out += v;
         out += "\":";
