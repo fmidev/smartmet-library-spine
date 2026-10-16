@@ -138,6 +138,40 @@ std::map<std::string, Json::Value> parse_substitutions(const HTTP::ParamMap& the
   return substitutes;
 }
 
+// Resolve the path of a json: include, relative paths are searched first from the path
+std::string resolve_json_include(std::string filename,
+                                 const std::string& theRootPath,
+                                 const std::string& thePath)
+{
+  std::string json_file;
+  // Check from thePath
+  if (filename[0] != '/')
+  {
+    // 1) Check from path
+    json_file = thePath + "/" + filename;
+    // If file not found, check from theRootPath
+    if (!std::filesystem::exists(json_file))
+      filename.insert(filename.begin(), '/');
+  }
+  // Check from theRootPath
+  if (filename[0] == '/')
+  {
+    // 1) Check from root-path
+    json_file = theRootPath + filename;
+    if (!std::filesystem::exists(json_file))
+    {
+      // 2) Check from root-path/resources/layers
+      json_file = theRootPath + "/resources/layers" + filename;
+      if (!std::filesystem::exists(json_file))
+      {
+        // 3) Check from root-path/resources
+        json_file = theRootPath + "/resources" + filename;
+      }
+    }
+  }
+  return json_file;
+}
+
 }  // namespace
 
 // ----------------------------------------------------------------------
@@ -171,32 +205,7 @@ void JSON::preprocess(Json::Value& theJson,
       if (boost::algorithm::starts_with(tmp, "json:"))
       {
         std::string filename = tmp.substr(5, std::string::npos);
-        std::string json_file;
-        // Check from thePath
-        if (filename[0] != '/')
-        {
-          // 1) Check from path
-          json_file = thePath + "/" + filename;
-          // If file not found, check from theRootPath
-          if (!std::filesystem::exists(json_file))
-            filename.insert(filename.begin(), '/');
-        }
-        // Check from theRootPath
-        if (filename[0] == '/')
-        {
-          // 1) Check from root-path
-          json_file = theRootPath + filename;
-          if (!std::filesystem::exists(json_file))
-          {
-            // 2) Check from root-path/resources/layers
-            json_file = theRootPath + "/resources/layers" + filename;
-            if (!std::filesystem::exists(json_file))
-            {
-              // 3) Check from root-path/resources
-              json_file = theRootPath + "/resources" + filename;
-            }
-          }
-        }
+        std::string json_file = resolve_json_include(filename, theRootPath, thePath);
 
         // Replace old contents
         theJson = theJsonCache.get(json_file);
