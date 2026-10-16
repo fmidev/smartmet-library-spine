@@ -37,6 +37,57 @@ SmartMet::Spine::LogListType::iterator firstUnflushed(
   return std::next(marker);
 }
 
+// Set the CORS headers of an OPTIONS response if the request is a CORS preflight request
+void setCorsPreflightHeaders(const SmartMet::Spine::HTTP::Request& theRequest,
+                             SmartMet::Spine::HTTP::Response& theResponse)
+{
+  // Checking for CORS preflight headers
+  // https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
+  if (theRequest.getHeader("Access-Control-Request-Method"))
+  {
+    // Clone header 'Allow' to 'Access-Control-Allow-Methods' for CORS
+    auto h1 = theResponse.getHeader("Allow");
+    assert(bool(h1));  // HTTP::Response::stockOptionsResponse should have set this header
+    theResponse.setHeader("Access-Control-Allow-Methods", *h1);
+
+    auto opt_origin = theRequest.getHeader("Origin");
+    if (opt_origin)
+    {
+      theResponse.setHeader("Access-Control-Allow-Origin", *opt_origin);
+    }
+
+    auto opt_req_headers = theRequest.getHeader("Access-Control-Request-Headers");
+    if (opt_req_headers)
+    {
+      // FIXME: Should be use actually supported headers here.
+      //        Let us copy requested headers to the response for now
+      theResponse.setHeader("Access-Control-Allow-Headers", *opt_req_headers);
+    }
+
+    theResponse.setHeader("Access-Control-Max-Age", "86400");
+  }
+}
+
+// The CPU time between two CLOCK_THREAD_CPUTIME_ID readings
+Fmi::TimeDuration cpuDurationBetween(const struct timespec& cpu_before,
+                                     const struct timespec& cpu_after)
+{
+  // Convert the timespec delta to a Fmi::TimeDuration. Carry the
+  // nanosecond field if it went negative across a second
+  // boundary; split into seconds + microseconds to avoid the
+  // 32-bit overflow of Fmi::Microseconds(int) on long-running
+  // requests.
+  long cpu_secs = cpu_after.tv_sec - cpu_before.tv_sec;
+  long cpu_nsec = cpu_after.tv_nsec - cpu_before.tv_nsec;
+  if (cpu_nsec < 0)
+  {
+    --cpu_secs;
+    cpu_nsec += 1'000'000'000L;
+  }
+  return Fmi::Seconds(static_cast<int>(cpu_secs)) +
+         Fmi::Microseconds(static_cast<int>(cpu_nsec / 1000));
+}
+
 }  // namespace
 
 namespace p = std::placeholders;
@@ -145,75 +196,8 @@ bool HandlerView::handle(Reactor& theReactor,
     // Method handling (OPTIONS/CORS preflight, POST content type check,
     // unsupported method rejection) must not depend on whether logging is
     // enabled, so it is done before choosing the fast or logging path.
-    const auto method = theRequest.getMethod();
-    if (method == HTTP::RequestMethod::OPTIONS)
-    {
-      theResponse = HTTP::Response::stockOptionsResponse({"GET", "POST", "OPTIONS"});
-
-      // Checking for CORS preflight headers
-      // https://developer.mozilla.org/en-US/docs/Glossary/Preflight_request
-      if (theRequest.getHeader("Access-Control-Request-Method"))
-      {
-        // Clone header 'Allow' to 'Access-Control-Allow-Methods' for CORS
-        auto h1 = theResponse.getHeader("Allow");
-        assert(bool(h1));  // HTTP::Response::stockOptionsResponse should have set this header
-        theResponse.setHeader("Access-Control-Allow-Methods", *h1);
-
-        auto opt_origin = theRequest.getHeader("Origin");
-        if (opt_origin)
-        {
-          theResponse.setHeader("Access-Control-Allow-Origin", *opt_origin);
-        }
-
-        auto opt_req_headers = theRequest.getHeader("Access-Control-Request-Headers");
-        if (opt_req_headers)
-        {
-          // FIXME: Should be use actually supported headers here.
-          //        Let us copy requested headers to the response for now
-          theResponse.setHeader("Access-Control-Allow-Headers", *opt_req_headers);
-        }
-
-        theResponse.setHeader("Access-Control-Max-Age", "86400");
-      }
+    if (answerMethod(theRequest, theResponse))
       return true;
-    }
-
-    if (method == HTTP::RequestMethod::POST)
-    {
-      // Check that content type is supported
-      auto opt_content_type = theRequest.getHeader("Content-Type");
-      if (!opt_content_type)
-      {
-        // No content type, reject the request
-        theResponse.setStatus(HTTP::bad_request);
-        theResponse.setContent("Content-Type header is required for POST requests.\n"
-          "Allowed: " + itsSupportedPostContentsString);
-        return true;
-      }
-
-      // Normalize content type (remove parameters)
-      std::string content_type = Fmi::ascii_tolower_copy(*opt_content_type);
-      const std::size_t sep = content_type.find(';');
-      if (sep != std::string::npos)
-        content_type = content_type.substr(0, sep);
-
-      if (checkPostContentType
-         && itsSupportedPostContents.find(content_type) == itsSupportedPostContents.end())
-      {
-        // Unsupported content type
-        theResponse.setStatus(HTTP::not_implemented);
-        theResponse.setContent("Unsupported Content-Type '" + content_type + "',\n"
-          "Allowed: " + itsSupportedPostContentsString + "\n");
-        return true;
-      }
-    }
-    else if (method != HTTP::RequestMethod::GET)
-    {
-      // Unsupported method
-      theResponse.setStatus(HTTP::not_implemented);
-      theResponse.setHeader("Allow", "GET, POST, OPTIONS");
-      return true;
-    }
 
     if ((!isLogging || !itsAccessLog) && !itsOTelLog)
     {
@@ -232,119 +216,7 @@ bool HandlerView::handle(Reactor& theReactor,
     }
     else
     {
-      auto key = theReactor.insertActiveRequest(theRequest);
-      // CPU-time bracketing via CLOCK_THREAD_CPUTIME_ID. The clock
-      // advances only while THIS thread is on-CPU, so the resulting
-      // duration measures actual compute time (user + kernel) and
-      // excludes off-CPU stalls (lock waits, I/O, sleeps) that the
-      // wall-clock difference would include. ?what=servicestats
-      // surfaces the average as AverageCPUMs alongside the existing
-      // wall-clock AverageDuration so operators can read CPU-bound
-      // vs wait-bound handlers at a glance. The clock_gettime call
-      // itself resolves through the vDSO on modern kernels (~10 ns)
-      // so the per-request overhead is unmeasurable next to the
-      // existing wall-clock bracketing.
-      struct timespec cpu_before
-      {
-      };
-      struct timespec cpu_after
-      {
-      };
-      ::clock_gettime(CLOCK_THREAD_CPUTIME_ID, &cpu_before);
-      auto before = Fmi::MicrosecClock::universal_time();
-
-      std::exception_ptr error;
-      try
-      {
-        itsHandler(theReactor, theRequest, theResponse);
-      }
-      catch (boost::thread_interrupted&)
-      {
-        // Let thread interruption exceptions pass through
-        throw;
-      }
-      catch (...)
-      {
-        error = std::current_exception();
-      }
-      auto accessDuration = Fmi::MicrosecClock::universal_time() - before;
-      ::clock_gettime(CLOCK_THREAD_CPUTIME_ID, &cpu_after);
-      theReactor.removeActiveRequest(key, theResponse.getStatus());
-
-      // Convert the timespec delta to a Fmi::TimeDuration. Carry the
-      // nanosecond field if it went negative across a second
-      // boundary; split into seconds + microseconds to avoid the
-      // 32-bit overflow of Fmi::Microseconds(int) on long-running
-      // requests.
-      long cpu_secs = cpu_after.tv_sec - cpu_before.tv_sec;
-      long cpu_nsec = cpu_after.tv_nsec - cpu_before.tv_nsec;
-      if (cpu_nsec < 0)
-      {
-        --cpu_secs;
-        cpu_nsec += 1'000'000'000L;
-      }
-      const auto cpuDuration =
-          Fmi::Seconds(static_cast<int>(cpu_secs)) +
-          Fmi::Microseconds(static_cast<int>(cpu_nsec / 1000));
-
-      auto apikey = FmiApiKey::getFmiApiKey(theRequest);
-      const std::string apikeyStr = (apikey ? *apikey : "-");
-
-      // The server hands HEAD requests to the handlers as GET requests, and
-      // records the original method in an internal header (it strips the
-      // header from client requests).
-      const auto originalMethod = theRequest.getHeader("X-SmartMet-Original-Method");
-      const std::string logMethod =
-          (originalMethod ? *originalMethod : theRequest.getMethodString());
-
-      if (theResponse.hasStreamContent())
-      {
-        // Streamed response: the body size and the true wall-clock duration
-        // are not known yet — the data is produced and sent chunk by chunk by
-        // the connection layer after this returns. Defer the access-log write
-        // to stream completion. Capture the request-derived fields and the
-        // handler-start instant (before) by value; the connection invokes the
-        // handler with the actual bytes streamed, and the total duration is
-        // measured to that moment. cpuDuration is the handler-thread CPU time
-        // as measured before — unchanged here, and not part of the file access
-        // log in any case (it only feeds the admin servicestats metric).
-        const std::string uri    = theRequest.getURI();
-        const std::string ip     = theRequest.getClientIP();
-        theResponse.setStreamCompletionHandler(
-            [this, uri, ip, logMethod, apikeyStr, before, cpuDuration](const HTTP::Response& response,
-                                                                    std::size_t bytesSent)
-            {
-              const auto totalDuration = Fmi::MicrosecClock::universal_time() - before;
-              auto etag = response.getHeader("ETag");
-              appendLoggedRequest(uri,
-                                  totalDuration,
-                                  cpuDuration,
-                                  response.getStatusString(),
-                                  ip,
-                                  logMethod,
-                                  response.getVersion(),
-                                  bytesSent,
-                                  (etag ? *etag : "-"),
-                                  apikeyStr);
-            });
-      }
-      else
-      {
-        auto etag = theResponse.getHeader("ETag");
-        appendLoggedRequest(theRequest.getURI(),
-                            accessDuration,
-                            cpuDuration,
-                            theResponse.getStatusString(),
-                            theRequest.getClientIP(),
-                            logMethod,
-                            theResponse.getVersion(),
-                            theResponse.getContentLength(),
-                            (etag ? *etag : "-"),
-                            apikeyStr);
-      }
-
-      if (error)
-        std::rethrow_exception(error);
+      handleWithLogging(theReactor, theRequest, theResponse);
     }
 
     return true;
@@ -354,6 +226,170 @@ bool HandlerView::handle(Reactor& theReactor,
     std::cerr << Fmi::Exception::Trace(BCP, "Operation failed! HandlerView::handle aborted") << std::endl;
     return true;
   }
+}
+
+// Answer OPTIONS requests, POST requests with an unsupported content type and requests with an
+// unsupported method. Returns false if the request should be passed to the handler.
+bool HandlerView::answerMethod(const HTTP::Request& theRequest, HTTP::Response& theResponse) const
+{
+  const auto method = theRequest.getMethod();
+  if (method == HTTP::RequestMethod::OPTIONS)
+  {
+    theResponse = HTTP::Response::stockOptionsResponse({"GET", "POST", "OPTIONS"});
+    setCorsPreflightHeaders(theRequest, theResponse);
+    return true;
+  }
+
+  if (method == HTTP::RequestMethod::POST)
+    return rejectPostContentType(theRequest, theResponse);
+
+  if (method != HTTP::RequestMethod::GET)
+  {
+    // Unsupported method
+    theResponse.setStatus(HTTP::not_implemented);
+    theResponse.setHeader("Allow", "GET, POST, OPTIONS");
+    return true;
+  }
+  return false;
+}
+
+// Reject a POST request with a missing or an unsupported content type, false if accepted
+bool HandlerView::rejectPostContentType(const HTTP::Request& theRequest,
+                                        HTTP::Response& theResponse) const
+{
+  // Check that content type is supported
+  auto opt_content_type = theRequest.getHeader("Content-Type");
+  if (!opt_content_type)
+  {
+    // No content type, reject the request
+    theResponse.setStatus(HTTP::bad_request);
+    theResponse.setContent("Content-Type header is required for POST requests.\n"
+      "Allowed: " + itsSupportedPostContentsString);
+    return true;
+  }
+
+  // Normalize content type (remove parameters)
+  std::string content_type = Fmi::ascii_tolower_copy(*opt_content_type);
+  const std::size_t sep = content_type.find(';');
+  if (sep != std::string::npos)
+    content_type = content_type.substr(0, sep);
+
+  if (checkPostContentType
+     && itsSupportedPostContents.find(content_type) == itsSupportedPostContents.end())
+  {
+    // Unsupported content type
+    theResponse.setStatus(HTTP::not_implemented);
+    theResponse.setContent("Unsupported Content-Type '" + content_type + "',\n"
+      "Allowed: " + itsSupportedPostContentsString + "\n");
+    return true;
+  }
+  return false;
+}
+
+// Run the handler measuring its duration and log the request
+void HandlerView::handleWithLogging(Reactor& theReactor,
+                                    const HTTP::Request& theRequest,
+                                    HTTP::Response& theResponse)
+{
+  auto key = theReactor.insertActiveRequest(theRequest);
+  // CPU-time bracketing via CLOCK_THREAD_CPUTIME_ID. The clock
+  // advances only while THIS thread is on-CPU, so the resulting
+  // duration measures actual compute time (user + kernel) and
+  // excludes off-CPU stalls (lock waits, I/O, sleeps) that the
+  // wall-clock difference would include. ?what=servicestats
+  // surfaces the average as AverageCPUMs alongside the existing
+  // wall-clock AverageDuration so operators can read CPU-bound
+  // vs wait-bound handlers at a glance. The clock_gettime call
+  // itself resolves through the vDSO on modern kernels (~10 ns)
+  // so the per-request overhead is unmeasurable next to the
+  // existing wall-clock bracketing.
+  struct timespec cpu_before
+  {
+  };
+  struct timespec cpu_after
+  {
+  };
+  ::clock_gettime(CLOCK_THREAD_CPUTIME_ID, &cpu_before);
+  auto before = Fmi::MicrosecClock::universal_time();
+
+  std::exception_ptr error;
+  try
+  {
+    itsHandler(theReactor, theRequest, theResponse);
+  }
+  catch (boost::thread_interrupted&)
+  {
+    // Let thread interruption exceptions pass through
+    throw;
+  }
+  catch (...)
+  {
+    error = std::current_exception();
+  }
+  auto accessDuration = Fmi::MicrosecClock::universal_time() - before;
+  ::clock_gettime(CLOCK_THREAD_CPUTIME_ID, &cpu_after);
+  theReactor.removeActiveRequest(key, theResponse.getStatus());
+
+  const auto cpuDuration = cpuDurationBetween(cpu_before, cpu_after);
+
+  auto apikey = FmiApiKey::getFmiApiKey(theRequest);
+  const std::string apikeyStr = (apikey ? *apikey : "-");
+
+  // The server hands HEAD requests to the handlers as GET requests, and
+  // records the original method in an internal header (it strips the
+  // header from client requests).
+  const auto originalMethod = theRequest.getHeader("X-SmartMet-Original-Method");
+  const std::string logMethod =
+      (originalMethod ? *originalMethod : theRequest.getMethodString());
+
+  if (theResponse.hasStreamContent())
+  {
+    // Streamed response: the body size and the true wall-clock duration
+    // are not known yet — the data is produced and sent chunk by chunk by
+    // the connection layer after this returns. Defer the access-log write
+    // to stream completion. Capture the request-derived fields and the
+    // handler-start instant (before) by value; the connection invokes the
+    // handler with the actual bytes streamed, and the total duration is
+    // measured to that moment. cpuDuration is the handler-thread CPU time
+    // as measured before — unchanged here, and not part of the file access
+    // log in any case (it only feeds the admin servicestats metric).
+    const std::string uri    = theRequest.getURI();
+    const std::string ip     = theRequest.getClientIP();
+    theResponse.setStreamCompletionHandler(
+        [this, uri, ip, logMethod, apikeyStr, before, cpuDuration](const HTTP::Response& response,
+                                                                std::size_t bytesSent)
+        {
+          const auto totalDuration = Fmi::MicrosecClock::universal_time() - before;
+          auto etag = response.getHeader("ETag");
+          appendLoggedRequest(uri,
+                              totalDuration,
+                              cpuDuration,
+                              response.getStatusString(),
+                              ip,
+                              logMethod,
+                              response.getVersion(),
+                              bytesSent,
+                              (etag ? *etag : "-"),
+                              apikeyStr);
+        });
+  }
+  else
+  {
+    auto etag = theResponse.getHeader("ETag");
+    appendLoggedRequest(theRequest.getURI(),
+                        accessDuration,
+                        cpuDuration,
+                        theResponse.getStatusString(),
+                        theRequest.getClientIP(),
+                        logMethod,
+                        theResponse.getVersion(),
+                        theResponse.getContentLength(),
+                        (etag ? *etag : "-"),
+                        apikeyStr);
+  }
+
+  if (error)
+    std::rethrow_exception(error);
 }
 
 void HandlerView::setLogging(bool newStatus)

@@ -101,6 +101,12 @@ class HandlerView
   const std::string& getResource() const;
 
  private:
+  bool answerMethod(const HTTP::Request& theRequest, HTTP::Response& theResponse) const;
+  bool rejectPostContentType(const HTTP::Request& theRequest, HTTP::Response& theResponse) const;
+  void handleWithLogging(Reactor& theReactor,
+                         const HTTP::Request& theRequest,
+                         HTTP::Response& theResponse);
+
   // Assemble a LoggedRequest from its fields and append it to the in-memory
   // request log (when logging is enabled) and the OTel trace export. Takes
   // itsLoggingMutex internally. Used both for the immediate (non-streamed)
