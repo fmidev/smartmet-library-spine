@@ -667,7 +667,7 @@ std::string boost_any_to_string(const std::any& anyvalue,
     }
 
     if (type == typeid(char*))
-      retval = std::any_cast<const char*>(anyvalue);
+      retval = std::any_cast<char*>(anyvalue);
     else if (!integral_any_to_string(anyvalue, retval) &&
              !floating_any_to_string(anyvalue, vf, precision, retval))
       retval = other_any_to_string(anyvalue, vf, precision);
