@@ -68,6 +68,48 @@ bool looks_time(const std::string& theValue)
   return !t.is_not_a_date_time();
 }
 
+
+// Latest origintime in the given column
+std::string latest_origintime(const Table& theTable,
+                              std::size_t col_origintime,
+                              const Table::Indexes& rows)
+{
+  std::string origintime;
+  for (std::size_t j : rows)
+  {
+    const auto& t = theTable.get(col_origintime, j);
+    if (looks_time(t) && t > origintime)
+      origintime = t;
+  }
+  return origintime;
+}
+
+// Append the wxml 2.00 param elements of a row
+void append_params_200(std::string& out,
+                       const Table& theTable,
+                       const TableFormatter::Names& theNames,
+                       const std::vector<std::size_t>& wcols,
+                       std::size_t j)
+{
+  for (std::size_t i : wcols)
+  {
+    const std::string& name = theNames[i];
+    const auto& value = theTable.get(i, j);
+    out += "<param name=\"";
+    out += name;
+    out += "\"";
+    if (!value.empty())
+    {
+      if (looks_number(value))
+        out += " value=\"";
+      else
+        out += " text=\"";
+      out += value;
+      out += "\"";
+    }
+    out += "/>\n";
+  }
+}
 }  // namespace
 
 // ----------------------------------------------------------------------
@@ -268,13 +310,7 @@ std::string WxmlFormatter::format_200(const Table& theTable,
     std::size_t col_origintime = wcols.back();
     wcols.pop_back();
     // Establish latest origintime
-    std::string origintime;
-    for (std::size_t j : rows)
-    {
-      const auto& t = theTable.get(col_origintime, j);
-      if (looks_time(t) && t > origintime)
-        origintime = t;
-    }
+    std::string origintime = latest_origintime(theTable, col_origintime, rows);
     out += "<meta>\n";
     out += "<updated>";
     out += origintime;
@@ -321,24 +357,7 @@ std::string WxmlFormatter::format_200(const Table& theTable,
 
       out += ">\n";
 
-      for (std::size_t i : wcols)
-      {
-        const std::string& name = theNames[i];
-        const auto& value = theTable.get(i, j);
-        out += "<param name=\"";
-        out += name;
-        out += "\"";
-        if (!value.empty())
-        {
-          if (looks_number(value))
-            out += " value=\"";
-          else
-            out += " text=\"";
-          out += value;
-          out += "\"";
-        }
-        out += "/>\n";
-      }
+      append_params_200(out, theTable, theNames, wcols, j);
       if (formatType == "observation")
       {
         out += "</observation>\n";
