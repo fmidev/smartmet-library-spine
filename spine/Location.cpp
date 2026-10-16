@@ -41,14 +41,47 @@ std::string type_string(const Location::LocationType& type)
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
+
+const std::string nanstring = "nan";
+
+// The value as a string, or "nan" for NaN values
+template <typename T>
+std::string nan_or_string(T value)
+{
+  return (std::isnan(value) ? nanstring : Fmi::to_string(value));
+}
+
+// Format a numeric location parameter, false if the key is not a numeric parameter
+bool format_numeric_location(const Location& loc, const std::string& key, std::string& result)
+{
+  if (key == "latitude")
+    result = nan_or_string(loc.latitude);
+  else if (key == "longitude")
+    result = nan_or_string(loc.longitude);
+  else if (key == "geoid")
+    result = Fmi::to_string(loc.geoid);
+  else if (key == "municipality")
+    result = Fmi::to_string(loc.municipality);
+  else if (key == "population")
+    result = nan_or_string(loc.population);
+  else if (key == "elevation")
+    result = nan_or_string(loc.elevation);
+  else if (key == "dem")
+    result = nan_or_string(loc.dem);
+  else if (key == "covertype")
+    result = Fmi::to_string(static_cast<int>(loc.covertype));
+  else if (key == "priority")
+    result = nan_or_string(loc.priority);
+  else
+    return false;
+  return true;
+}
 }  // namespace
 
 std::string formatLocation(const Location& loc, const std::string& key)
 {
   try
   {
-    static std::string nanstring = "nan";
-
     if (key == "name")
       return loc.name;
     if (key == "iso2")
@@ -66,24 +99,9 @@ std::string formatLocation(const Location& loc, const std::string& key)
       return loc.country;
     if (key == "tz")
       return loc.timezone;
-    if (key == "latitude")
-      return (std::isnan(loc.latitude) ? nanstring : Fmi::to_string(loc.latitude));
-    if (key == "longitude")
-      return (std::isnan(loc.longitude) ? nanstring : Fmi::to_string(loc.longitude));
-    if (key == "geoid")
-      return Fmi::to_string(loc.geoid);
-    if (key == "municipality")
-      return Fmi::to_string(loc.municipality);
-    if (key == "population")
-      return (std::isnan(loc.population) ? nanstring : Fmi::to_string(loc.population));
-    if (key == "elevation")
-      return (std::isnan(loc.elevation) ? nanstring : Fmi::to_string(loc.elevation));
-    if (key == "dem")
-      return (std::isnan(loc.dem) ? nanstring : Fmi::to_string(loc.dem));
-    if (key == "covertype")
-      return Fmi::to_string(static_cast<int>(loc.covertype));
-    if (key == "priority")
-      return (std::isnan(loc.priority) ? nanstring : Fmi::to_string(loc.priority));
+    std::string result;
+    if (format_numeric_location(loc, key, result))
+      return result;
     if (key == "type")
       return type_string(loc.type);
     if (key == "fmisid")
