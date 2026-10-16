@@ -153,7 +153,69 @@ bool fixPathSetting(const libconfig::Config& theConfig,
 
   return true;
 }
+// Value of a variable from the configuration or the environment
+std::string variable_value(const libconfig::Config& theConfig,
+                           const std::string& var,
+                           const std::string& varname)
+{
+  std::string varValue;
+
+  // Searching a value for the variable but do not allow USER=$(USER)
+  if (var != varname && theConfig.exists(var))
+  {
+    const auto& setting = theConfig.lookup(var);
+    if (setting.getType() != libconfig::Setting::TypeString)
+      throw Fmi::Exception(BCP, "Value for setting " + varValue + " must be a string");
+    varValue = setting.c_str();
+  }
+  else
+  {
+    // Variable not defined in the configuration file. Maybe it is an environment variable
+
+    // This is too secure for developers wanting for example access to $HOME to use their
+    // own configuration files. Static analyzers may complain about this.
+    // char* env = secure_getenv(var.c_str());
+
+    char* env = getenv(var.c_str());
+    if (env == nullptr)
+    {
+      throw Fmi::Exception(BCP, "Unknown variable name!").addParameter("VariableName", var);
+    }
+
+    varValue = env;
+  }
+  return varValue;
+}
+
+// Expand the $(name) variables in the value of the named setting
+std::string expand_string_variables(const libconfig::Config& theConfig,
+                                    const std::string& varname,
+                                    std::string val)
+{
+  std::size_t p1 = 0;
+  while (p1 != std::string::npos)
+  {
+    p1 = val.find("$(");
+    if (p1 == std::string::npos)
+      break;
+
+    std::size_t p2 = val.find(')', p1 + 1);
+    if (p2 == std::string::npos)
+    {
+      throw Fmi::Exception(BCP, "Expecting the character ')' at the end of the variable name!")
+          .addParameter("Value", val);
+    }
+
+    std::string var = val.substr(p1 + 2, p2 - p1 - 2);
+    std::string varValue = variable_value(theConfig, var, varname);
+
+    std::string newVal = val.substr(0, p1) + varValue + val.substr(p2 + 1);
+    val = newVal;
+  }
+  return val;
+}
 }  // namespace
+
 
 // ----------------------------------------------------------------------
 /*!
@@ -254,57 +316,8 @@ void expandVariables(libconfig::Config& theConfig, libconfig::Setting& theSettin
     {
       // Copypast from grid-files ConfigurationFile::parseValue
       std::string val = theSetting;
-
-      std::size_t p1 = 0;
-      while (p1 != std::string::npos)
-      {
-        p1 = val.find("$(");
-        if (p1 != std::string::npos)
-        {
-          std::size_t p2 = val.find(')', p1 + 1);
-          if (p2 != std::string::npos)
-          {
-            std::string var = val.substr(p1 + 2, p2 - p1 - 2);
-            std::string varValue;
-
-            // Searching a value for the variable but do not allow USER=$(USER)
-            std::string varname = (theSetting.getName() != nullptr ? theSetting.getName() : "");
-            if (var != varname && theConfig.exists(var))
-            {
-              const auto& setting = theConfig.lookup(var);
-              if (setting.getType() != libconfig::Setting::TypeString)
-                throw Fmi::Exception(BCP, "Value for setting " + varValue + " must be a string");
-              varValue = setting.c_str();
-            }
-            else
-            {
-              // Variable not defined in the configuration file. Maybe it is an environment variable
-
-              // This is too secure for developers wanting for example access to $HOME to use their
-              // own configuration files. Static analyzers may complain about this.
-              // char* env = secure_getenv(var.c_str());
-
-              char* env = getenv(var.c_str());
-              if (env == nullptr)
-              {
-                throw Fmi::Exception(BCP, "Unknown variable name!")
-                    .addParameter("VariableName", var);
-              }
-
-              varValue = env;
-            }
-
-            std::string newVal = val.substr(0, p1) + varValue + val.substr(p2 + 1);
-            val = newVal;
-          }
-          else
-          {
-            throw Fmi::Exception(BCP,
-                                 "Expecting the character ')' at the end of the variable name!")
-                .addParameter("Value", val);
-          }
-        }
-      }
+      std::string varname = (theSetting.getName() != nullptr ? theSetting.getName() : "");
+      val = expand_string_variables(theConfig, varname, val);
       theSetting = val;  // Replace original value with expanded value
 
       break;
