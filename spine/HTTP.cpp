@@ -499,6 +499,107 @@ Status stringToStatusCode(const std::string& theCode)
   // Unrecognized throws
   throw Fmi::Exception(BCP, "Attempting to set Unsupported status code: " + theCode);
 }
+
+// Append the parameters URL encoded as name=value pairs separated by '&'
+void appendUrlEncodedParameters(std::string& out, const ParamMap& theParameters)
+{
+  auto nextToLast = theParameters.end();
+  std::advance(nextToLast, -1);
+
+  std::string paramValue;
+  for (auto it = theParameters.begin(); it != nextToLast; ++it)
+  {
+    paramValue = it->second;
+    paramValue = urlencode(paramValue);
+    out += it->first;
+    out += '=';
+    out += paramValue;
+    out += '&';
+  }
+
+  paramValue = nextToLast->second;
+  paramValue = urlencode(paramValue);
+  out += nextToLast->first;
+  out += '=';
+  out += paramValue;
+}
+
+// True if the Content-Type header is application/x-www-form-urlencoded
+bool isFormUrlEncodedContent(const HeaderMap& theHeaders)
+{
+  auto contentTypeIt = theHeaders.find("Content-Type");
+  if (contentTypeIt == theHeaders.end())
+    return false;
+
+  static const boost::regex formHeaderRegex("application/x-www-form-urlencoded(;.*)?",
+                                            boost::regex::icase);
+  return boost::regex_match(contentTypeIt->second, formHeaderRegex);
+}
+
+// URL decode the query parameters, ignoring parameters with an empty name
+ParamMap decodeQueryParameters(const std::vector<StringPair>& theParams)
+{
+  ParamMap theParameters;
+  for (const auto& pair : theParams)
+  {
+    std::string first = urldecode(pair.first);
+    if (!first.empty())  // Ignore any empty parameters
+    {
+      std::string second = pair.second;
+      boost::algorithm::replace_all(second, "+", " ");  // replace plusses with spaces
+      second = urldecode(second);
+      theParameters.insert(std::make_pair(first, second));
+    }
+  }
+  return theParameters;
+}
+
+// Request method of the method name, or nothing if the method is not supported
+std::optional<RequestMethod> requestMethod(const std::string& theType, bool theHeadAllowed)
+{
+  if (theType == "GET")
+    return RequestMethod::GET;
+  if (theType == "POST")
+    return RequestMethod::POST;
+  if (theType == "OPTIONS")
+    return RequestMethod::OPTIONS;
+  if (theHeadAllowed && theType == "HEAD")
+    return RequestMethod::HEAD;
+  return {};
+}
+
+// Check the received body length against a declared Content-Length, COMPLETE if they match
+ParsingStatus checkDeclaredContentLength(const HeaderMap& headerMap, std::size_t theBodySize)
+{
+  // If content is declared, see that length matches the received length
+  auto contentHeader = headerMap.find("Content-Length");
+  if (contentHeader == headerMap.end())
+    return ParsingStatus::COMPLETE;
+
+  unsigned long decLen = 0;
+  std::string declaredLength = contentHeader->second;
+  try
+  {
+    decLen = Fmi::stoul(declaredLength);
+  }
+  catch (...)
+  {
+    // Garbled content length, return fail
+    return ParsingStatus::FAILED;
+  }
+
+  if (theBodySize < decLen)
+  {
+    // Message is incomplete, return unfinished status
+    return ParsingStatus::INCOMPLETE;
+  }
+  if (theBodySize > decLen)
+  {
+    // More data than declared, return fail
+    return ParsingStatus::FAILED;
+  }
+  return ParsingStatus::COMPLETE;
+}
 }  // namespace
 
 Message::Message(HeaderMap headerMap, std::string version, bool isChunked)
@@ -652,76 +753,27 @@ std::string Request::toString() const
 
     if (!itsParameters.empty())
     {
-      std::string paramValue;
-
       switch (itsMethod)
       {
         case RequestMethod::HEAD:  // HEAD is a GET that asks for the headers only
         case RequestMethod::GET:
         {
           // In GET-requests parameters go to URL
-
-          auto nextToLast = itsParameters.end();
-          std::advance(nextToLast, -1);
-
           ret += '?';
-
-          for (auto it = itsParameters.begin(); it != nextToLast; ++it)
-          {
-            paramValue = it->second;
-            paramValue = urlencode(paramValue);
-            ret += it->first;
-            ret += '=';
-            ret += paramValue;
-            ret += '&';
-          }
-
-          paramValue = nextToLast->second;
-          paramValue = urlencode(paramValue);
-          ret += nextToLast->first;
-          ret += '=';
-          ret += paramValue;
+          appendUrlEncodedParameters(ret, itsParameters);
           break;
         }
 
         case RequestMethod::POST:
         {
           // Check if Content-Type is application/x-www-form-urlencoded
-          auto contentTypeIt = itsHeaders.find("Content-Type");
-          bool isFormUrlEncoded = false;
-
-          if (contentTypeIt != itsHeaders.end())
-          {
-            static const boost::regex formHeaderRegex("application/x-www-form-urlencoded(;.*)?",
-                                                       boost::regex::icase);
-            if (boost::regex_match(contentTypeIt->second, formHeaderRegex))
-            {
-              isFormUrlEncoded = true;
-            }
-          }
+          bool isFormUrlEncoded = isFormUrlEncodedContent(itsHeaders);
 
           // Generate body content if form encoded and content not explicitly given
           if (isFormUrlEncoded && !itsContent.empty())
           {
             // Serialize parameters as URL-encoded form data
-            auto nextToLast = itsParameters.end();
-            std::advance(nextToLast, -1);
-
-            for (auto it = itsParameters.begin(); it != nextToLast; ++it)
-            {
-              paramValue = it->second;
-              paramValue = urlencode(paramValue);
-              body += it->first;
-              body += '=';
-              body += paramValue;
-              body += '&';
-            }
-
-            paramValue = nextToLast->second;
-            paramValue = urlencode(paramValue);
-            body += nextToLast->first;
-            body += '=';
-            body += paramValue;
+            appendUrlEncodedParameters(body, itsParameters);
           }
           else
           {
@@ -1528,17 +1580,7 @@ std::pair<ParsingStatus, std::unique_ptr<Request>> parseRequest(const std::strin
     if (success && (startIt == stopIt))  // Parse was succesfull and entire input was consumed
     {
       // Build header and param maps
-      for (const auto& pair : target.params)
-      {
-        std::string first = urldecode(pair.first);
-        if (!first.empty())  // Ignore any empty parameters
-        {
-          std::string second = pair.second;
-          boost::algorithm::replace_all(second, "+", " ");  // replace plusses with spaces
-          second = urldecode(second);
-          theParameters.insert(std::make_pair(first, second));
-        }
-      }
+      theParameters = decodeQueryParameters(target.params);
 
       // Build header and param maps
       for (const auto& pair : target.headers)
@@ -1546,61 +1588,27 @@ std::pair<ParsingStatus, std::unique_ptr<Request>> parseRequest(const std::strin
         headerMap.insert(pair);
       }
 
-      if (target.type == "GET")
-        enumMethod = RequestMethod::GET;
-      else if (target.type == "POST")
-        enumMethod = RequestMethod::POST;
-      else if (target.type == "OPTIONS")
-        enumMethod = RequestMethod::OPTIONS;
-      else
+      auto method = requestMethod(target.type, false);
+      if (!method)
       {
         // Unknown request type
         // Message is not GET or POST, return failed status
         return std::make_pair(ParsingStatus::FAILED, std::unique_ptr<Request>());
       }
+      enumMethod = *method;
 
-      // If content is declared, see that length matches the received length
-      auto contentHeader = headerMap.find("Content-Length");
-      if (contentHeader != headerMap.end())
-      {
-        unsigned long decLen = 0;
-        std::string declaredLength = contentHeader->second;
-        try
-        {
-          decLen = Fmi::stoul(declaredLength);
-        }
-        catch (...)
-        {
-          // Garbled content length, return fail
-          return std::make_pair(ParsingStatus::FAILED, std::unique_ptr<Request>());
-        }
-
-        if (target.body.size() < decLen)
-        {
-          // Message is incomplete, return unfinished status
-          return std::make_pair(ParsingStatus::INCOMPLETE, std::unique_ptr<Request>());
-        }
-        if (target.body.size() > decLen)
-        {
-          // More data than declared, return fail
-          return std::make_pair(ParsingStatus::FAILED, std::unique_ptr<Request>());
-        }
-      }
+      const auto lengthStatus = checkDeclaredContentLength(headerMap, target.body.size());
+      if (lengthStatus != ParsingStatus::COMPLETE)
+        return std::make_pair(lengthStatus, std::unique_ptr<Request>());
 
       // Parse known entity content if applicable
       // x-www-form-urlencoded
-      auto formHeader = headerMap.find("Content-Type");
-      if (formHeader != headerMap.end())
+      if (isFormUrlEncodedContent(headerMap))
       {
-        static const boost::regex formHeaderRegex("application/x-www-form-urlencoded(;.*)?",
-                                           boost::regex::icase);
-        if (boost::regex_match(formHeader->second, formHeaderRegex))
-        {
-          // Content is x-www-form-urlencoded
-          ::parseTokens(theParameters, target.body, "&", true);
+        // Content is x-www-form-urlencoded
+        ::parseTokens(theParameters, target.body, "&", true);
 
-          hasParsedPostData = true;
-        }
+        hasParsedPostData = true;
       }
 
       // Make version string
@@ -1672,6 +1680,49 @@ bool parseContentLength(const std::string& value, std::size_t& result)
   return true;
 }
 
+// Parse a hexadecimal chunk size, false if it is not a valid size
+bool parseChunkSize(const std::string& field, std::size_t& chunkSize)
+{
+  chunkSize = 0;
+  for (const char c : field)
+  {
+    int digit = 0;
+    if (c >= '0' && c <= '9')
+      digit = c - '0';
+    else if (c >= 'a' && c <= 'f')
+      digit = c - 'a' + 10;
+    else if (c >= 'A' && c <= 'F')
+      digit = c - 'A' + 10;
+    else
+      return false;
+
+    if (chunkSize > max_chunk_size)
+      return false;
+    chunkSize = chunkSize * 16 + static_cast<std::size_t>(digit);
+  }
+
+  return chunkSize <= max_chunk_size;
+}
+
+// Skip the trailer field lines of a chunked body up to the blank line that ends the message
+ParsingStatus skipChunkedTrailer(const std::string& buffer, std::size_t pos, std::size_t& consumed)
+{
+  while (true)
+  {
+    const std::size_t eol = buffer.find("\r\n", pos);
+    if (eol == std::string::npos)
+      return ParsingStatus::INCOMPLETE;
+
+    if (eol == pos)
+    {
+      consumed = pos + 2;
+      return ParsingStatus::COMPLETE;
+    }
+
+    pos = eol + 2;
+  }
+}
+
 // Decode a chunked message body starting at `start`.
 //
 // On COMPLETE, `body` holds the concatenated chunk data with the framing
@@ -1703,24 +1754,7 @@ ParsingStatus decodeChunkedBody(const std::string& buffer,
       return ParsingStatus::FAILED;
 
     std::size_t chunkSize = 0;
-    for (const char c : field)
-    {
-      int digit = 0;
-      if (c >= '0' && c <= '9')
-        digit = c - '0';
-      else if (c >= 'a' && c <= 'f')
-        digit = c - 'a' + 10;
-      else if (c >= 'A' && c <= 'F')
-        digit = c - 'A' + 10;
-      else
-        return ParsingStatus::FAILED;
-
-      if (chunkSize > max_chunk_size)
-        return ParsingStatus::FAILED;
-      chunkSize = chunkSize * 16 + static_cast<std::size_t>(digit);
-    }
-
-    if (chunkSize > max_chunk_size)
+    if (!parseChunkSize(field, chunkSize))
       return ParsingStatus::FAILED;
 
     pos = eol + 2;
@@ -1742,20 +1776,74 @@ ParsingStatus decodeChunkedBody(const std::string& buffer,
   // The fields themselves are dropped - nothing downstream reads trailers, and
   // silently merging them into the header map would let a sender append headers
   // that the framing checks above have already been made on.
-  while (true)
+  return skipChunkedTrailer(buffer, pos, consumed);
+}
+
+// Find the framing headers, false if they are repeated with conflicting values
+bool findFramingHeaders(const std::vector<StringPair>& theHeaders,
+                        std::optional<std::string>& contentLengthField,
+                        std::optional<std::string>& transferEncodingField)
+{
+  for (const auto& field : theHeaders)
   {
-    const std::size_t eol = buffer.find("\r\n", pos);
-    if (eol == std::string::npos)
+    const std::string value = trim_ows(field.second);
+
+    if (boost::algorithm::iequals(field.first, "Content-Length"))
+    {
+      if (contentLengthField && *contentLengthField != value)
+        return false;  // conflicting lengths
+      contentLengthField = value;
+    }
+    else if (boost::algorithm::iequals(field.first, "Transfer-Encoding"))
+    {
+      if (transferEncodingField && *transferEncodingField != value)
+        return false;  // conflicting transfer codings
+      transferEncodingField = value;
+    }
+  }
+  return true;
+}
+
+// Read the body of a request framed by the given headers. On COMPLETE `body` holds the body
+// and `consumed` points just past it.
+ParsingStatus readRequestBody(const std::string& buffer,
+                              std::size_t headEnd,
+                              const std::optional<std::string>& contentLengthField,
+                              const std::optional<std::string>& transferEncodingField,
+                              std::string& body,
+                              std::size_t& consumed)
+{
+  if (transferEncodingField)
+  {
+    // Only the chunked coding can be decoded here. Anything else (gzip, or a
+    // coding list ending in something other than chunked) would leave a body
+    // this parser cannot delimit, so the message is rejected rather than
+    // guessed at.
+    std::string coding = *transferEncodingField;
+    boost::algorithm::to_lower(coding);
+    if (coding != "chunked")
+      return ParsingStatus::FAILED;
+
+    return decodeChunkedBody(buffer, headEnd, body, consumed);
+  }
+
+  if (contentLengthField)
+  {
+    std::size_t declaredLength = 0;
+    if (!parseContentLength(*contentLengthField, declaredLength))
+      return ParsingStatus::FAILED;  // not a plain decimal number
+
+    if (buffer.size() - headEnd < declaredLength)
       return ParsingStatus::INCOMPLETE;
 
-    if (eol == pos)
-    {
-      consumed = pos + 2;
-      return ParsingStatus::COMPLETE;
-    }
-
-    pos = eol + 2;
+    body = buffer.substr(headEnd, declaredLength);
+    consumed = headEnd + declaredLength;
   }
+  // else: no framing header, so the request has no body (RFC 9112 6). Note
+  // that this is where parseRequest() would have taken the whole rest of the
+  // buffer instead, swallowing any pipelined request that followed.
+
+  return ParsingStatus::COMPLETE;
 }
 }  // namespace
 
@@ -1798,23 +1886,8 @@ RequestParseResult parseOneRequest(const std::string& buffer)
     std::optional<std::string> contentLengthField;
     std::optional<std::string> transferEncodingField;
 
-    for (const auto& field : target.headers)
-    {
-      const std::string value = trim_ows(field.second);
-
-      if (boost::algorithm::iequals(field.first, "Content-Length"))
-      {
-        if (contentLengthField && *contentLengthField != value)
-          return result;  // FAILED: conflicting lengths
-        contentLengthField = value;
-      }
-      else if (boost::algorithm::iequals(field.first, "Transfer-Encoding"))
-      {
-        if (transferEncodingField && *transferEncodingField != value)
-          return result;  // FAILED: conflicting transfer codings
-        transferEncodingField = value;
-      }
-    }
+    if (!findFramingHeaders(target.headers, contentLengthField, transferEncodingField))
+      return result;  // FAILED: conflicting lengths or transfer codings
 
     if (contentLengthField && transferEncodingField)
       return result;  // FAILED: both framings present
@@ -1823,85 +1896,32 @@ RequestParseResult parseOneRequest(const std::string& buffer)
     std::string body;
     std::size_t consumed = headEnd;
 
-    if (transferEncodingField)
+    const ParsingStatus status = readRequestBody(
+        buffer, headEnd, contentLengthField, transferEncodingField, body, consumed);
+    if (status != ParsingStatus::COMPLETE)
     {
-      // Only the chunked coding can be decoded here. Anything else (gzip, or a
-      // coding list ending in something other than chunked) would leave a body
-      // this parser cannot delimit, so the message is rejected rather than
-      // guessed at.
-      std::string coding = *transferEncodingField;
-      boost::algorithm::to_lower(coding);
-      if (coding != "chunked")
-        return result;
-
-      const ParsingStatus status = decodeChunkedBody(buffer, headEnd, body, consumed);
-      if (status != ParsingStatus::COMPLETE)
-      {
-        result.status = status;
-        return result;
-      }
+      result.status = status;
+      return result;
     }
-    else if (contentLengthField)
-    {
-      std::size_t declaredLength = 0;
-      if (!parseContentLength(*contentLengthField, declaredLength))
-        return result;  // FAILED: not a plain decimal number
-
-      if (buffer.size() - headEnd < declaredLength)
-      {
-        result.status = ParsingStatus::INCOMPLETE;
-        return result;
-      }
-
-      body = buffer.substr(headEnd, declaredLength);
-      consumed = headEnd + declaredLength;
-    }
-    // else: no framing header, so the request has no body (RFC 9112 6). Note
-    // that this is where parseRequest() would have taken the whole rest of the
-    // buffer instead, swallowing any pipelined request that followed.
 
     // ---- Method ----------------------------------------------------------
-    RequestMethod method;
-    if (target.type == "GET")
-      method = RequestMethod::GET;
-    else if (target.type == "POST")
-      method = RequestMethod::POST;
-    else if (target.type == "OPTIONS")
-      method = RequestMethod::OPTIONS;
-    else if (target.type == "HEAD")
-      method = RequestMethod::HEAD;
-    else
+    auto requested_method = requestMethod(target.type, true);
+    if (!requested_method)
       return result;  // FAILED: method not supported
+    RequestMethod method = *requested_method;
 
     // ---- Parameters and headers ------------------------------------------
-    ParamMap theParameters;
-    for (const auto& pair : target.params)
-    {
-      std::string first = urldecode(pair.first);
-      if (!first.empty())  // Ignore any empty parameters
-      {
-        std::string second = pair.second;
-        boost::algorithm::replace_all(second, "+", " ");  // replace plusses with spaces
-        second = urldecode(second);
-        theParameters.insert(std::make_pair(first, second));
-      }
-    }
+    ParamMap theParameters = decodeQueryParameters(target.params);
 
     HeaderMap headerMap;
     for (const auto& pair : target.headers)
       headerMap.insert(std::make_pair(pair.first, trim_ows(pair.second)));
 
     bool hasParsedPostData = false;
-    auto formHeader = headerMap.find("Content-Type");
-    if (formHeader != headerMap.end())
+    if (isFormUrlEncodedContent(headerMap))
     {
-      static const boost::regex formHeaderRegex("application/x-www-form-urlencoded(;.*)?",
-                                                boost::regex::icase);
-      if (boost::regex_match(formHeader->second, formHeaderRegex))
-      {
-        ::parseTokens(theParameters, body, "&", true);
-        hasParsedPostData = true;
-      }
+      ::parseTokens(theParameters, body, "&", true);
+      hasParsedPostData = true;
     }
 
     // A decoded chunked body is delivered as an ordinary one, so the handler
