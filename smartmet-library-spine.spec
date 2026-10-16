@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.16
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -168,6 +168,14 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Oct 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.16-2.fmi
+- API catalog (RFC 9727): Spine::OpenAPI::Publisher::addToCatalog() lists an API in the
+  catalog of the server, served by the reactor at /api, /.well-known/api-catalog and
+  /api/docs (Swagger UI with all APIs in a selector) when some plugin has added an API.
+  Settings in the api_catalog group of the server configuration. Spine::OpenAPI::Catalog
+  and parseCatalog() let the frontend serve the merged catalog of the backends.
+  No ABI change: only new functions and classes
+
 * Fri Oct 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.16-1.fmi
 - Fixed compiler warnings and clang-tidy findings (unused code, unreachable code, empty statements, member initialization, parameter passing, noexcept), no functional changes
 - ABI change: parameters passed by const reference or by value, removed unused members and defaulted copy operations, dependent packages must be rebuilt

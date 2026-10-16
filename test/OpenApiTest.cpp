@@ -430,6 +430,16 @@ BOOST_AUTO_TEST_CASE(browser_tests)
   std::ofstream(assets.path / "docs.html") << docs.getContent();
   std::ofstream(assets.path / "smartmet-swagger-ui.js") << plugin.getContent();
 
+  // The documentation page of the API catalog
+  libconfig::Config config;
+  config.readString("api_catalog: { swagger_ui_dir = \"" + assets.path.string() + "\"; };");
+  OpenAPI::Catalog catalog(OpenAPI::CatalogSettings::parse(config));
+  HTTP::Response catalog_docs;
+  catalog.handle(makeRequest("/api/docs"),
+                 catalog_docs,
+                 {{"/edr", "Viewer test", "", true}, {"/other", "Other API", "", true}});
+  std::ofstream(assets.path / "catalog.html") << catalog_docs.getContent();
+
   const auto command = "node openapi-browser-test.js " + assets.path.string() + " " + swagger_ui;
   BOOST_TEST(std::system(command.c_str()) == 0);
 }
@@ -535,4 +545,212 @@ BOOST_AUTO_TEST_CASE(prefers_html)
       !OpenAPI::prefersHtml(makeRequest("/x", {{"Accept", "text/html;q=0.5, application/json"}})));
   BOOST_TEST(OpenAPI::prefersHtml(makeRequest("/x", {}, {{"f", "html"}})));
   BOOST_TEST(!OpenAPI::prefersHtml(makeRequest("/x", {{"Accept", "text/html"}}, {{"f", "json"}})));
+}
+
+// ----------------------------------------------------------------------
+// The API catalog
+// ----------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(catalog_registry)
+{
+  AssetDir assets;
+  BOOST_TEST(OpenAPI::localCatalogEntries().empty());
+  {
+    auto edr = makePublisher(assets.path.string());
+    edr->addToCatalog("/edr/");  // the title comes from the definition
+    auto tiles = makePublisher(assets.path.string());
+    tiles->addToCatalog("/tiles", "Tiles", "Map tiles");
+
+    OpenAPI::Settings disabled;
+    disabled.enabled = false;
+    OpenAPI::Publisher off(disabled);
+    off.addToCatalog("/off", "Off");
+
+    BOOST_CHECK_THROW(tiles->addToCatalog("relative"), std::exception);
+    BOOST_CHECK_THROW(tiles->addToCatalog("/a/../b"), std::exception);
+    BOOST_CHECK_THROW(tiles->addToCatalog("/a b"), std::exception);
+    tiles->addToCatalog("/tiles", "Tiles", "Map tiles");
+
+    auto entries = OpenAPI::localCatalogEntries();
+    BOOST_REQUIRE(entries.size() == 2U);
+    BOOST_TEST(entries[0].root == "/edr");
+    BOOST_TEST(entries[0].title == "Test API");
+    BOOST_TEST(entries[0].docs);
+    BOOST_TEST(entries[1].root == "/tiles");
+    BOOST_TEST(entries[1].description == "Map tiles");
+
+    // A plugin reload creates the new publisher before the old one is destroyed
+    auto reloaded = makePublisher(assets.path.string());
+    reloaded->addToCatalog("/edr", "Reloaded");
+    entries = OpenAPI::localCatalogEntries();
+    BOOST_REQUIRE(entries.size() == 2U);
+    BOOST_TEST(entries[0].title == "Reloaded");
+    edr.reset();
+    BOOST_TEST(OpenAPI::localCatalogEntries()[0].title == "Reloaded");
+
+    // Without the Swagger UI files there is no documentation page
+    auto nodocs = makePublisher("/nonexistent/swagger-ui");
+    nodocs->addToCatalog("/coverages");
+    BOOST_TEST(!OpenAPI::localCatalogEntries()[0].docs);
+  }
+  BOOST_TEST(OpenAPI::localCatalogEntries().empty());
+}
+
+BOOST_AUTO_TEST_CASE(catalog_linkset)
+{
+  std::vector<OpenAPI::CatalogEntry> entries{{"/edr", "EDR", "Environmental data", true},
+                                             {"/wmts", "WMTS", "", false}};
+
+  auto doc = OpenAPI::Catalog::linkset(
+      makeRequest("/api", {{"Host", "smartmet.fmi.fi"}, {"X-Forwarded-Proto", "https"}}), entries);
+  const auto& linkset = doc["linkset"];
+  BOOST_REQUIRE(linkset.size() == 3U);
+  BOOST_TEST(linkset[0]["anchor"].asString() == "https://smartmet.fmi.fi/.well-known/api-catalog");
+  BOOST_TEST(linkset[0]["item"].size() == 2U);
+  BOOST_TEST(linkset[0]["item"][0]["href"].asString() == "https://smartmet.fmi.fi/edr");
+  BOOST_TEST(linkset[0]["item"][0]["title"].asString() == "EDR");
+  BOOST_TEST(linkset[0]["item"][0]["description"].asString() == "Environmental data");
+  BOOST_TEST(!linkset[0]["item"][1].isMember("description"));
+  BOOST_TEST(linkset[1]["anchor"].asString() == "https://smartmet.fmi.fi/edr");
+  BOOST_TEST(linkset[1]["service-desc"][0]["href"].asString() == "https://smartmet.fmi.fi/edr/api");
+  BOOST_TEST(linkset[1]["service-desc"][0]["type"].asString() == OpenAPI::MEDIA_TYPE);
+  BOOST_TEST(linkset[1]["service-doc"][0]["href"].asString() ==
+             "https://smartmet.fmi.fi/edr/api/docs");
+  BOOST_TEST(!linkset[2].isMember("service-doc"));
+
+  // Without a Host the URLs are relative, which is what the frontend asks for
+  auto relative = OpenAPI::Catalog::linkset(makeRequest("/api"), entries);
+  BOOST_TEST(relative["linkset"][0]["item"][0]["href"].asString() == "/edr");
+
+  // Parsing gives the entries back, also from absolute URLs and apikey paths
+  BOOST_TEST((OpenAPI::parseCatalog(doc) == entries));
+  BOOST_TEST((OpenAPI::parseCatalog(relative) == entries));
+  auto keyed = OpenAPI::Catalog::linkset(
+      makeRequest("/api", {{"Host", "smartmet.fmi.fi"}, {"fmi-apikey", "abc-123"}}), entries);
+  BOOST_TEST((OpenAPI::parseCatalog(keyed) == entries));
+
+  // Anything but plain paths is skipped
+  Json::Value bad;
+  for (const char* href : {"javascript:alert(1)",
+                           "http://host",
+                           "/a/../b",
+                           "/a?b=1",
+                           "/a\"><script>",
+                           "//other.host/x",
+                           "/fmi-apikey/x"})
+  {
+    Json::Value item;
+    item["href"] = href;
+    bad["linkset"][0]["item"].append(item);
+  }
+  Json::Value ok;
+  ok["href"] = "/ok";
+  bad["linkset"][0]["item"].append(ok);
+  bad["linkset"][0]["item"].append(ok);  // duplicates are merged
+  auto parsed = OpenAPI::parseCatalog(bad);
+  BOOST_REQUIRE(parsed.size() == 1U);
+  BOOST_TEST(parsed[0].root == "/ok");
+  BOOST_TEST(parsed[0].title == "/ok");
+  BOOST_TEST(!parsed[0].docs);
+  BOOST_TEST(OpenAPI::parseCatalog(parse("[1,2]")).empty());
+}
+
+BOOST_AUTO_TEST_CASE(catalog_requests)
+{
+  AssetDir assets;
+  libconfig::Config config;
+  config.readString(
+      "api_catalog: { title = \"FMI <APIs>\"; description = \"All APIs\"; swagger_ui_dir = \"" +
+      assets.path.string() + "\"; };");
+  OpenAPI::Catalog catalog(OpenAPI::CatalogSettings::parse(config));
+  BOOST_TEST(catalog.settings().title == "FMI <APIs>");
+
+  std::vector<OpenAPI::CatalogEntry> entries{{"/edr", "EDR <script>", "Data", true},
+                                             {"/timeseries", "TimeSeries", "", true}};
+
+  const auto get = [&](const std::string& resource,
+                       const HTTP::HeaderMap& headers = {},
+                       const HTTP::ParamMap& params = {})
+  {
+    HTTP::Response response;
+    BOOST_TEST(catalog.handle(makeRequest(resource, headers, params), response, entries));
+    return response;
+  };
+
+  // The well-known catalog
+  auto wk = get("/.well-known/api-catalog", {{"Host", "example.org"}});
+  BOOST_TEST(wk.getStatus() == HTTP::Status::ok);
+  BOOST_TEST(header(wk, "Content-Type") ==
+             "application/linkset+json; profile=\"https://www.rfc-editor.org/info/rfc9727\"");
+  BOOST_TEST(header(wk, "Link") ==
+             "<http://example.org/.well-known/api-catalog>; rel=\"api-catalog\"");
+  BOOST_TEST(header(wk, "Access-Control-Allow-Origin") == "*");
+  BOOST_TEST(parse(wk.getContent())["linkset"][0]["item"].size() == 2U);
+
+  // /api is the same, or an HTML page
+  BOOST_TEST(get("/api").getContent() == get("/.well-known/api-catalog").getContent());
+  auto page = get("/api", {{"Accept", "text/html,application/xhtml+xml,*/*;q=0.8"}});
+  BOOST_TEST(header(page, "Content-Type") == "text/html; charset=UTF-8");
+  const auto html = page.getContent();
+  BOOST_TEST(html.find("<title>FMI &lt;APIs&gt;</title>") != std::string::npos);
+  BOOST_TEST(html.find("EDR &lt;script&gt;") != std::string::npos);
+  BOOST_TEST(html.find("<script") == std::string::npos);
+  BOOST_TEST(html.find("href=\"edr/api/docs\"") != std::string::npos);
+  BOOST_TEST(html.find("href=\"timeseries/api\"") != std::string::npos);
+  BOOST_TEST(html.find("href=\"api/docs\"") != std::string::npos);
+  BOOST_TEST(html.find("href=\".well-known/api-catalog\"") != std::string::npos);
+  BOOST_TEST(header(page, "Content-Security-Policy").find("default-src 'none'") !=
+             std::string::npos);
+  BOOST_TEST(get("/api", {}, {{"f", "html"}}).getContent() == html);
+  BOOST_TEST(get("/api", {{"Accept", "text/html"}}, {{"f", "json"}}).getContent() ==
+             get("/api").getContent());
+  BOOST_TEST(get("/api", {}, {{"f", "xml"}}).getStatus() == HTTP::Status::bad_request);
+
+  // The documentation page lists every definition in the selector
+  auto docs = get("/api/docs");
+  BOOST_TEST(docs.getStatus() == HTTP::Status::ok);
+  const auto docs_html = docs.getContent();
+  BOOST_TEST(docs_html.find("SwaggerUIStandalonePreset") != std::string::npos);
+  BOOST_TEST(docs_html.find("\"url\":\"../edr/api\"") != std::string::npos);
+  BOOST_TEST(docs_html.find("\"name\":\"EDR \\u003cscript>") != std::string::npos);
+  BOOST_TEST(docs_html.find("<script>\"") == std::string::npos);
+  BOOST_TEST(docs_html.find("href=\"docs/swagger-ui.css\"") != std::string::npos);
+  BOOST_TEST(header(docs, "Content-Security-Policy").find("script-src 'self'") !=
+             std::string::npos);
+
+  // The Swagger UI files
+  auto css = get("/api/docs/swagger-ui.css");
+  BOOST_TEST(css.getStatus() == HTTP::Status::ok);
+  BOOST_TEST(css.getContent() == "content of swagger-ui.css");
+  BOOST_TEST(get("/api/docs/smartmet-swagger-ui.js").getStatus() == HTTP::Status::ok);
+  BOOST_TEST(get("/api/docs/../../etc/passwd").getStatus() == HTTP::Status::not_found);
+
+  // ETags
+  auto probe = get("/api", {{"X-Request-ETag", "true"}});
+  BOOST_TEST(probe.getStatus() == HTTP::Status::no_content);
+  BOOST_TEST(get("/api", {{"If-None-Match", header(probe, "ETag")}}).getStatus() ==
+             HTTP::Status::not_modified);
+
+  // Not catalog resources
+  HTTP::Response other;
+  BOOST_TEST(!catalog.handle(makeRequest("/edr/api"), other, entries));
+  BOOST_TEST(!catalog.handle(makeRequest("/api/docsx"), other, entries));
+
+  // No documentation page without the Swagger UI or with ui = false
+  libconfig::Config noui;
+  noui.readString("api_catalog: { ui = false; };");
+  OpenAPI::Catalog plain(OpenAPI::CatalogSettings::parse(noui));
+  HTTP::Response r1;
+  BOOST_TEST(plain.handle(makeRequest("/api/docs"), r1, entries));
+  BOOST_TEST(r1.getStatus() == HTTP::Status::not_found);
+  HTTP::Response r2;
+  BOOST_TEST(plain.handle(makeRequest("/api"), r2, entries));
+  BOOST_TEST(r2.getStatus() == HTTP::Status::ok);
+
+  // Disabled
+  libconfig::Config off;
+  off.readString("api_catalog: { enabled = false; };");
+  OpenAPI::Catalog disabled(OpenAPI::CatalogSettings::parse(off));
+  HTTP::Response r3;
+  BOOST_TEST(!disabled.handle(makeRequest("/api"), r3, entries));
 }

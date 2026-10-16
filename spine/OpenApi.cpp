@@ -8,12 +8,17 @@
 #include <macgyver/Exception.h>
 #include <macgyver/Hash.h>
 #include <macgyver/StringConversion.h>
+#include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <iterator>
 #include <libconfig.h++>
+#include <map>
+#include <mutex>
+#include <set>
 #include <sstream>
 
 namespace SmartMet
@@ -28,6 +33,8 @@ const char* const REL_SERVICE_DESC = "service-desc";
 const char* const REL_SERVICE_DOC = "service-doc";
 const char* const REL_CONFORMANCE = "http://www.opengis.net/def/rel/ogc/1.0/conformance";
 const char* const REL_DATA = "http://www.opengis.net/def/rel/ogc/1.0/data";
+const char* const CATALOG_MEDIA_TYPE =
+    "application/linkset+json; profile=\"https://www.rfc-editor.org/info/rfc9727\"";
 
 // The SmartMet Swagger UI plugin, see OpenApiPlugin.cpp
 extern const char* const SWAGGER_UI_PLUGIN_JS;
@@ -284,6 +291,86 @@ Json::Value objectSetting(const libconfig::Setting& group,
       ret[field] = value;
   }
   return ret;
+}
+
+// The content security policy of the documentation pages. The origin of an absolute tile
+// URL is allowed for the location maps.
+std::string docsPolicy(const Settings& settings)
+{
+  std::string policy = DOCS_CONTENT_SECURITY_POLICY;
+  const auto origin = tileOrigin(settings.map_tiles);
+  if (!origin.empty())
+    boost::algorithm::replace_first(policy, "img-src 'self'", "img-src 'self' " + origin);
+  return policy;
+}
+
+// ----------------------------------------------------------------------
+// The API catalog registry
+// ----------------------------------------------------------------------
+
+struct CatalogRegistration
+{
+  std::uint64_t order = 0;  // later registrations win for the same root
+  CatalogEntry entry;
+};
+
+struct CatalogRegistry
+{
+  std::mutex mutex;
+  std::uint64_t counter = 0;
+  std::map<const Publisher*, CatalogRegistration> entries;
+};
+
+// Never destroyed, since publishers may be destroyed during static destruction
+CatalogRegistry& catalogRegistry()
+{
+  static auto* registry = new CatalogRegistry;  // NOLINT(cppcoreguidelines-owning-memory)
+  return *registry;
+}
+
+// A plain absolute path usable as an API root
+bool validRootPath(const std::string& path)
+{
+  if (path.size() < 2 || path.size() > 256 || path[0] != '/' || path.back() == '/')
+    return false;
+  if (path.find("//") != std::string::npos || path.find("/./") != std::string::npos ||
+      path.find("/../") != std::string::npos || boost::algorithm::ends_with(path, "/..") ||
+      boost::algorithm::ends_with(path, "/."))
+    return false;
+  for (char c : path)
+  {
+    const bool ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+                    c == '/' || c == '-' || c == '_' || c == '.' || c == '~';
+    if (!ok)
+      return false;
+  }
+  return true;
+}
+
+// The path of a catalog URL: the origin of an absolute URL and an apikey prefix are removed.
+// Returns an empty string for anything else than a plain path.
+std::string catalogPath(const std::string& href)
+{
+  std::string path = href;
+  for (const char* scheme : {"https://", "http://"})
+  {
+    if (boost::algorithm::starts_with(path, scheme))
+    {
+      const auto pos = path.find('/', std::strlen(scheme));
+      if (pos == std::string::npos)
+        return {};
+      path = path.substr(pos);
+      break;
+    }
+  }
+  if (boost::algorithm::starts_with(path, "/fmi-apikey/"))
+  {
+    const auto pos = path.find('/', 12);
+    if (pos == std::string::npos)
+      return {};
+    path = path.substr(pos);
+  }
+  return validRootPath(path) ? path : std::string();
 }
 
 }  // namespace
@@ -846,7 +933,43 @@ Publisher::Publisher(Settings settings) : itsSettings(std::move(settings))
         missing);
 }
 
-Publisher::~Publisher() = default;
+Publisher::~Publisher()
+{
+  auto& registry = catalogRegistry();
+  std::lock_guard<std::mutex> lock(registry.mutex);
+  registry.entries.erase(this);
+}
+
+void Publisher::addToCatalog(const std::string& rootPath,
+                             const std::string& title,
+                             const std::string& description)
+{
+  try
+  {
+    if (!itsSettings.enabled)
+      return;
+
+    std::string root = rootPath;
+    while (!root.empty() && root.back() == '/')
+      root.pop_back();
+    if (!validRootPath(root))
+      throw Fmi::Exception(BCP, "Invalid API root path for the API catalog")
+          .addParameter("Path", rootPath);
+
+    auto& registry = catalogRegistry();
+    std::lock_guard<std::mutex> lock(registry.mutex);
+    auto& registration = registry.entries[this];
+    registration.order = ++registry.counter;
+    registration.entry.root = root;
+    registration.entry.title = title;
+    registration.entry.description = description;
+    registration.entry.docs = (itsSettings.ui && itsSwaggerUi);
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to add an API to the API catalog");
+  }
+}
 
 void Publisher::publish(const Document& doc)
 {
@@ -1041,11 +1164,7 @@ window.onload = function () {{
 
   response.setStatus(HTTP::Status::ok);
   response.setHeader("Content-Type", "text/html; charset=UTF-8");
-  std::string policy = DOCS_CONTENT_SECURITY_POLICY;
-  const auto origin = tileOrigin(itsSettings.map_tiles);
-  if (!origin.empty())
-    boost::algorithm::replace_first(policy, "img-src 'self'", "img-src 'self' " + origin);
-  response.setHeader("Content-Security-Policy", policy);
+  response.setHeader("Content-Security-Policy", docsPolicy(itsSettings));
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setContent(html);
 }
@@ -1140,6 +1259,434 @@ bool prefersHtml(const HTTP::Request& request)
   }
 
   return (html_q > json_q);
+}
+
+// ----------------------------------------------------------------------
+// The API catalog
+// ----------------------------------------------------------------------
+
+CatalogSettings CatalogSettings::parse(const libconfig::Config& config, const std::string& path)
+{
+  try
+  {
+    CatalogSettings settings;
+    settings.openapi = Settings::parse(config, path);
+    if (config.exists(path))
+    {
+      const auto& group = config.lookup(path);
+      group.lookupValue("title", settings.title);
+      group.lookupValue("description", settings.description);
+    }
+    return settings;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to parse the API catalog settings");
+  }
+}
+
+std::vector<CatalogEntry> localCatalogEntries()
+{
+  try
+  {
+    // The latest registration of each root
+    std::map<std::string, std::pair<std::uint64_t, CatalogEntry>> latest;
+    {
+      auto& registry = catalogRegistry();
+      std::lock_guard<std::mutex> lock(registry.mutex);
+      for (const auto& item : registry.entries)
+      {
+        auto entry = item.second.entry;
+        if (entry.title.empty())
+        {
+          auto definition = item.first->definition();
+          entry.title =
+              (definition && !definition->title().empty() ? definition->title() : entry.root);
+        }
+        auto& current = latest[entry.root];
+        if (item.second.order > current.first)
+          current = std::make_pair(item.second.order, std::move(entry));
+      }
+    }
+
+    std::vector<CatalogEntry> ret;
+    ret.reserve(latest.size());
+    for (auto& item : latest)
+      ret.push_back(std::move(item.second.second));
+    return ret;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to list the API catalog");
+  }
+}
+
+std::vector<CatalogEntry> parseCatalog(const Json::Value& linkset)
+{
+  try
+  {
+    std::vector<CatalogEntry> ret;
+    if (!linkset.isObject())
+      return ret;
+    const auto& contexts = linkset["linkset"];
+    if (!contexts.isArray())
+      return ret;
+
+    // The APIs with documentation pages
+    std::set<std::string> documented;
+    for (const auto& context : contexts)
+    {
+      if (!context.isObject() || !context["anchor"].isString() || !context["service-doc"].isArray())
+        continue;
+      const auto root = catalogPath(context["anchor"].asString());
+      if (!root.empty())
+        documented.insert(root);
+    }
+
+    std::set<std::string> seen;
+    for (const auto& context : contexts)
+    {
+      if (!context.isObject() || !context["item"].isArray())
+        continue;
+      for (const auto& item : context["item"])
+      {
+        if (!item.isObject() || !item["href"].isString())
+          continue;
+        CatalogEntry entry;
+        entry.root = catalogPath(item["href"].asString());
+        if (entry.root.empty() || !seen.insert(entry.root).second)
+          continue;
+        entry.title = (item["title"].isString() ? item["title"].asString() : entry.root);
+        if (item["description"].isString())
+          entry.description = item["description"].asString();
+        entry.docs = (documented.count(entry.root) > 0);
+        ret.push_back(std::move(entry));
+      }
+    }
+    std::sort(ret.begin(),
+              ret.end(),
+              [](const CatalogEntry& a, const CatalogEntry& b) { return a.root < b.root; });
+    return ret;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to parse an API catalog");
+  }
+}
+
+Catalog::Catalog(CatalogSettings settings) : itsSettings(std::move(settings))
+{
+  if (itsSettings.openapi.enabled && itsSettings.openapi.ui)
+    itsFiles = std::make_unique<Publisher>(itsSettings.openapi);
+}
+
+Catalog::~Catalog() = default;
+
+bool Catalog::isCatalogResource(const std::string& resource)
+{
+  return (resource == "/.well-known/api-catalog" || resource == "/api" || resource == "/api/" ||
+          resource == "/api/docs" || resource == "/api/docs/" ||
+          boost::algorithm::starts_with(resource, "/api/docs/"));
+}
+
+Json::Value Catalog::linkset(const HTTP::Request& request, const std::vector<CatalogEntry>& entries)
+{
+  try
+  {
+    const auto base = serverUrl(request, "");
+
+    Json::Value catalog;
+    catalog["anchor"] = base + "/.well-known/api-catalog";
+    catalog["item"] = Json::Value(Json::arrayValue);
+
+    Json::Value contexts(Json::arrayValue);
+    for (const auto& entry : entries)
+    {
+      const auto root = base + entry.root;
+
+      Json::Value item;
+      item["href"] = root;
+      item["title"] = entry.title;
+      if (!entry.description.empty())
+        item["description"] = entry.description;
+      catalog["item"].append(item);
+
+      Json::Value context;
+      context["anchor"] = root;
+      Json::Value desc;
+      desc["href"] = root + "/api";
+      desc["type"] = MEDIA_TYPE;
+      desc["title"] = entry.title + " - OpenAPI definition";
+      context[REL_SERVICE_DESC].append(desc);
+      if (entry.docs)
+      {
+        Json::Value doc;
+        doc["href"] = root + "/api/docs";
+        doc["type"] = "text/html";
+        doc["title"] = entry.title + " - API documentation";
+        context[REL_SERVICE_DOC].append(doc);
+      }
+      contexts.append(context);
+    }
+
+    Json::Value ret;
+    ret["linkset"].append(catalog);
+    for (const auto& context : contexts)
+      ret["linkset"].append(context);
+    return ret;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to build the API catalog");
+  }
+}
+
+bool Catalog::handle(const HTTP::Request& request,
+                     HTTP::Response& response,
+                     const std::vector<CatalogEntry>& entries) const
+{
+  try
+  {
+    if (!itsSettings.openapi.enabled)
+      return false;
+
+    const auto& resource = request.getResource();
+    if (!isCatalogResource(resource))
+      return false;
+
+    // Every response links to the catalog, which is how RFC 9727 answers HEAD requests
+    response.setHeader(
+        "Link", "<" + serverUrl(request, "") + "/.well-known/api-catalog>; rel=\"api-catalog\"");
+
+    const bool ui = (itsSettings.openapi.ui && itsFiles);
+
+    if (resource == "/.well-known/api-catalog")
+    {
+      handleLinkset(request, response, entries);
+    }
+    else if (resource == "/api" || resource == "/api/")
+    {
+      const auto f = request.getParameter("f");
+      if (f && *f != "json" && *f != "html")
+        problem(response, 400, "Bad Request", "Unsupported format '" + *f + "', use json or html");
+      else if (prefersHtml(request))
+        handlePage(request, response, entries);
+      else
+        handleLinkset(request, response, entries);
+    }
+    else if (!ui)
+    {
+      problem(response, 404, "Not Found", "API documentation is disabled");
+    }
+    else if (resource == "/api/docs" || resource == "/api/docs/")
+    {
+      handleDocs(request, response, entries);
+    }
+    else
+    {
+      itsFiles->handleAsset(request, response, resource.substr(10));
+    }
+    return true;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to serve the API catalog");
+  }
+}
+
+void Catalog::handleLinkset(const HTTP::Request& request,
+                            HTTP::Response& response,
+                            const std::vector<CatalogEntry>& entries) const
+{
+  const auto text = toJsonText(linkset(request, entries));
+
+  response.setHeader("Access-Control-Allow-Origin", "*");
+  response.setHeader("Vary", "Accept");
+  response.setHeader("Cache-Control", cacheControl(request));
+  if (etagOnly(request, response, quotedETag(Fmi::hash_value(text), "catalog")))
+    return;
+
+  response.setStatus(HTTP::Status::ok);
+  response.setHeader("Content-Type", CATALOG_MEDIA_TYPE);
+  response.setContent(text);
+}
+
+void Catalog::handlePage(const HTTP::Request& request,
+                         HTTP::Response& response,
+                         const std::vector<CatalogEntry>& entries) const
+{
+  const auto& resource = request.getResource();
+  const bool ui = (itsSettings.openapi.ui && itsFiles);
+
+  std::string rows;
+  for (const auto& entry : entries)
+  {
+    const auto definition = htmlEscape(relativeHref(resource, entry.root + "/api"));
+    const auto docs = htmlEscape(relativeHref(resource, entry.root + "/api/docs"));
+    rows += fmt::format(
+        "<tr><td><a href=\"{}\">{}</a><div class=\"root\">{}</div></td><td>{}</td>"
+        "<td class=\"links\"><a href=\"{}\">OpenAPI definition</a>{}</td></tr>\n",
+        entry.docs ? docs : definition,
+        htmlEscape(entry.title),
+        htmlEscape(entry.root),
+        htmlEscape(entry.description),
+        definition,
+        entry.docs ? fmt::format("<br><a href=\"{}\">Documentation</a>", docs) : "");
+  }
+  if (entries.empty())
+    rows = "<tr><td colspan=\"3\">No APIs are available.</td></tr>\n";
+
+  std::string links = fmt::format("<a href=\"{}\">API catalog (RFC 9727 linkset)</a>",
+                                  htmlEscape(relativeHref(resource, "/.well-known/api-catalog")));
+  if (ui && !entries.empty())
+    links = fmt::format("<a href=\"{}\">All APIs in one documentation page</a> · {}",
+                        htmlEscape(relativeHref(resource, "/api/docs")),
+                        links);
+
+  const auto html = fmt::format(
+      R"HTML(<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{0}</title>
+<style>
+:root {{ color-scheme: light dark; --fg: #1b1f23; --muted: #57606a; --line: #d0d7de; --bg: #ffffff; --head: #f6f8fa; --link: #0969da; }}
+@media (prefers-color-scheme: dark) {{ :root {{ --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --bg: #0d1117; --head: #151b23; --link: #4493f8; }} }}
+body {{ margin: 0; padding: 24px 16px; font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); }}
+main {{ max-width: 960px; margin: 0 auto; }}
+h1 {{ font-size: 1.6em; margin: 0 0 4px; }}
+p {{ color: var(--muted); margin: 0 0 16px; }}
+a {{ color: var(--link); }}
+table {{ width: 100%; border-collapse: collapse; margin: 16px 0; }}
+th, td {{ text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }}
+th {{ background: var(--head); font-weight: 600; }}
+.root {{ font-family: ui-monospace, monospace; font-size: 0.85em; color: var(--muted); }}
+.links {{ white-space: nowrap; }}
+@media (max-width: 600px) {{ .links {{ white-space: normal; }} th, td {{ padding: 6px; }} }}
+</style>
+</head>
+<body>
+<main>
+<h1>{0}</h1>
+<p>{1}</p>
+<table>
+<thead><tr><th>API</th><th>Description</th><th>Links</th></tr></thead>
+<tbody>
+{2}</tbody>
+</table>
+<p>{3}</p>
+</main>
+</body>
+</html>
+)HTML",
+      htmlEscape(itsSettings.title),
+      htmlEscape(itsSettings.description),
+      rows,
+      links);
+
+  response.setHeader("Access-Control-Allow-Origin", "*");
+  response.setHeader("Vary", "Accept");
+  response.setHeader("Cache-Control", cacheControl(request));
+  if (etagOnly(request, response, quotedETag(Fmi::hash_value(html), "cataloghtml")))
+    return;
+
+  response.setStatus(HTTP::Status::ok);
+  response.setHeader("Content-Type", "text/html; charset=UTF-8");
+  response.setHeader("Content-Security-Policy",
+                     "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; "
+                     "form-action 'none'; frame-ancestors 'self'");
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setContent(html);
+}
+
+void Catalog::handleDocs(const HTTP::Request& request,
+                         HTTP::Response& response,
+                         const std::vector<CatalogEntry>& entries) const
+{
+  if (!itsFiles->itsSwaggerUi)
+  {
+    problem(response,
+            503,
+            "Service Unavailable",
+            "The API documentation is not available: Swagger UI is not installed");
+    return;
+  }
+  if (entries.empty())
+  {
+    problem(response, 404, "Not Found", "No APIs are available");
+    return;
+  }
+
+  const auto& resource = request.getResource();
+
+  // The definitions in the selector of the top bar
+  Json::Value urls(Json::arrayValue);
+  for (const auto& entry : entries)
+  {
+    Json::Value url;
+    url["url"] = relativeHref(resource, entry.root + "/api");
+    url["name"] = entry.title + " (" + entry.root + ")";
+    urls.append(url);
+  }
+  // Escape '<' so that no text can close the script element
+  auto urls_text = toJsonText(urls);
+  boost::algorithm::replace_all(urls_text, "<", "\\u003c");
+
+  const auto a = htmlEscape(relativeHref(resource, "/api/docs/"));
+  const auto html = fmt::format(
+      R"HTML(<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{0} - API documentation</title>
+<link rel="icon" type="image/png" href="{1}favicon-32x32.png" sizes="32x32">
+<link rel="icon" type="image/png" href="{1}favicon-16x16.png" sizes="16x16">
+<link rel="stylesheet" href="{1}swagger-ui.css">
+<style>body {{ margin: 0; }} .swagger-ui .topbar .link {{ display: none; }}</style>
+</head>
+<body>
+<div id="swagger-ui"></div>
+<script src="{1}swagger-ui-bundle.js"></script>
+<script src="{1}swagger-ui-standalone-preset.js"></script>
+<script src="{1}smartmet-swagger-ui.js"></script>
+<script>
+window.onload = function () {{
+  var urls = {2};
+  urls.forEach(function (u) {{ u.url = new URL(u.url, window.location.href).href; }});
+  window.ui = SwaggerUIBundle({{
+    urls: urls,
+    dom_id: "#swagger-ui",
+    deepLinking: true,
+    validatorUrl: null,
+    queryConfigEnabled: false,
+    tryItOutEnabled: true,
+    requestSnippetsEnabled: true,
+    requestSnippets: SmartMetSwaggerUI.snippetConfig,
+    presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+    plugins: [SmartMetSwaggerUI.plugin],
+    layout: "StandaloneLayout"
+  }});
+}};
+</script>
+</body>
+</html>
+)HTML",
+      htmlEscape(itsSettings.title),
+      a,
+      urls_text);
+
+  response.setHeader("Access-Control-Allow-Origin", "*");
+  response.setHeader("Cache-Control", cacheControl(request));
+  if (etagOnly(request, response, quotedETag(Fmi::hash_value(html), "catalogdocs")))
+    return;
+
+  response.setStatus(HTTP::Status::ok);
+  response.setHeader("Content-Type", "text/html; charset=UTF-8");
+  response.setHeader("Content-Security-Policy", docsPolicy(itsSettings.openapi));
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setContent(html);
 }
 
 }  // namespace OpenAPI

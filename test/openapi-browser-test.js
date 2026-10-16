@@ -70,6 +70,14 @@ const definition = {
   "x-smartmet-map": { tiles: "/tiles/{z}/{y}/{x}?f=png", tileSize: 256, attribution: "Test <tiles>" }
 };
 
+// The second definition of the catalog page
+const other = {
+  openapi: '3.1.1',
+  info: {title: 'Other API', version: '1.0'},
+  servers: [{url: '/other'}],
+  paths: {'/things': {get: {operationId: 'getThings', responses: {200: {description: 'x'}}}}}
+};
+
 const locations = [
   { name: "Helsinki <b>", lat: 60.17, lon: 24.94, fmisid: 100971 },
   { name: "Tampere", lat: 61.5, lon: 23.76, fmisid: null },
@@ -90,6 +98,19 @@ const server = http.createServer((req, res) => {
   };
   const url = req.url.split("?")[0];
   if (url === "/edr/api") return send(200, "application/vnd.oai.openapi+json;version=3.1", JSON.stringify(definition));
+  if (url === '/other/api')
+    return send(200, 'application/vnd.oai.openapi+json;version=3.1', JSON.stringify(other));
+  if (url === '/api/docs')
+    return send(200, 'text/html; charset=UTF-8', fs.readFileSync(path.join(dir, 'catalog.html')));
+  if (url === '/api/docs/smartmet-swagger-ui.js')
+    return send(200, 'text/javascript', fs.readFileSync(path.join(dir, 'smartmet-swagger-ui.js')));
+  if (url.startsWith('/api/docs/'))
+  {
+    const file = path.join(swaggerDir, path.basename(url));
+    if (fs.existsSync(file))
+      return send(
+          200, types[path.extname(file)] || 'application/octet-stream', fs.readFileSync(file));
+  }
   if (url === "/edr/api/docs") return send(200, "text/html; charset=UTF-8", fs.readFileSync(path.join(dir, "docs.html")));
   if (url === "/edr/api/docs/smartmet-swagger-ui.js")
     return send(200, "text/javascript", fs.readFileSync(path.join(dir, "smartmet-swagger-ui.js")));
@@ -415,6 +436,28 @@ async function main() {
     const roundTrip = await b.evaluate(`(() => { const [x, y] = SmartMetSwaggerUI.project(24.94, 60.17);
       return SmartMetSwaggerUI.unproject(x, y); })()`);
     check("projection round trip", Math.abs(roundTrip[0] - 24.94) < 1e-9 && Math.abs(roundTrip[1] - 60.17) < 1e-9, roundTrip);
+
+    // The documentation page of the API catalog: all definitions in the top bar selector
+    await b.send('Page.navigate', {url: `${base}/api/docs`});
+    await waitFor(
+        b, `!!document.querySelector('[id$="-getJson"]')`, 'first definition of the catalog');
+    const selector = await b.evaluate(`(() => {
+      const select = document.querySelector(".topbar select");
+      return select ? [...select.options].map((o) => o.textContent) : null;
+    })()`);
+    check(
+        'catalog selector',
+        JSON.stringify(selector) === JSON.stringify(['Viewer test (/edr)', 'Other API (/other)']),
+        selector);
+    await b.evaluate(`(() => {
+      const select = document.querySelector(".topbar select");
+      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set;
+      setter.call(select, select.options[1].value);
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    })()`);
+    await waitFor(
+        b, `!!document.querySelector('[id$="-getThings"]')`, 'second definition of the catalog');
+    check('catalog plugin loaded', await b.evaluate(`typeof SmartMetSwaggerUI === "object"`), null);
 
     check("no page errors", b.errors.length === 0, b.errors);
   } finally {

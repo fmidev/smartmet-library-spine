@@ -208,6 +208,11 @@ class Reactor final : public ContentHandlerMap
   void addRobotsHandler();
 
   /**
+   *  @brief Serve the API catalog (/api, /.well-known/api-catalog) of the local APIs
+   */
+  void addApiCatalogHandler();
+
+  /**
    *  @brief Actual reactor shutdown implementation
    */
   void shutdown_impl();

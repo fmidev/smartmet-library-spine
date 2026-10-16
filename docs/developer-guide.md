@@ -355,9 +355,24 @@ Most plugins produce tables of values:
   `inkeyword` parameters. The map background is the Web Mercator tile layer of the
   `map_tiles` setting (normally an OGC API - Tiles layer of the same server; an absolute
   URL's origin is added to the page's `img-src` policy), or a longitude/latitude grid.
+  Only the EDR plugin's TimeSeries pages have such parameters, so the `map_*` settings
+  have no effect in the other plugins.
   The plugin is in `OpenApiPlugin.cpp`; `test/openapi-snippets-test.js` runs the generated
   scripts against a local server and `test/openapi-browser-test.js` checks the tree, the
   request preview and the map in a headless browser.
+* **API catalog** (`OpenApi.h`, RFC 9727): `Publisher::addToCatalog(root, title,
+  description)` lists an API in the catalog of the server for as long as the publisher
+  exists (a reload's new publisher replaces the old one for the same root). After the
+  plugins are initialized, the Reactor serves the catalog of these APIs if there are any
+  and no plugin serves it already: `/.well-known/api-catalog` and `/api` (a linkset,
+  `application/linkset+json` with the RFC 9727 profile; `/api` gives an HTML page for
+  `f=html` or browsers), and `/api/docs` (Swagger UI with every definition in the top bar
+  selector). The handlers are public, so sputnik tells the frontends which backends have a
+  catalog; the frontend serves the merged catalog of the cluster with `OpenAPI::Catalog`
+  and `parseCatalog()`. URLs are absolute when the request has a valid `Host`, relative
+  otherwise (the frontend asks the backends without one). Settings are read from the
+  `api_catalog` group of the server configuration (`enabled`, `ui`, `swagger_ui_dir`,
+  `title`, `description`).
 * **OpenTelemetry** (`OTelOptions`, `OTelLogger`, `OTelMetricsExporter`) is optional.
   Tracing is compiled in with `SMARTMET_SPINE_OPENTELEMETRY`
   (see [build-opentelemetry.md](build-opentelemetry.md)), and cache statistics are
