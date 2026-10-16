@@ -70,6 +70,44 @@ std::list<std::string> parse_attributes(const std::string& theStr)
   }
 }
 
+// Unique non-empty values in the column
+std::set<std::string> unique_values(const Table& theTable,
+                                    std::size_t theColumn,
+                                    const Table::Indexes& theRows)
+{
+  std::set<std::string> values;
+  for (std::size_t j : theRows)
+  {
+    const std::string& value = theTable.get(theColumn, j);
+    if (!value.empty())
+      values.insert(value);
+  }
+  return values;
+}
+
+// The rows with the given value in the column
+Table::Indexes rows_with_value(const Table& theTable,
+                               std::size_t theColumn,
+                               const Table::Indexes& theRows,
+                               const std::string& theValue)
+{
+  Table::Indexes rows;
+  for (std::size_t j : theRows)
+  {
+    if (theTable.get(theColumn, j) == theValue)
+      rows.insert(j);
+  }
+  return rows;
+}
+
+// The missingtext option, "nan" by default
+std::string missing_text(const HTTP::Request& theReq)
+{
+  auto missing = theReq.getParameter("missingtext");
+  if (!missing)
+    return "nan";
+  return *missing;
+}
 }  // namespace
 
 // ----------------------------------------------------------------------
@@ -89,13 +127,7 @@ std::string SerialFormatter::format_plain(const Table& theTable,
     std::string out;
     out.reserve(TableFormatter::default_minimum_size);
 
-    std::string miss;
-    auto missing = theReq.getParameter("missingtext");
-
-    if (!missing)
-      miss = "nan";
-    else
-      miss = *missing;
+    std::string miss = missing_text(theReq);
 
     const auto& names = theTable.getNames(theNames, false);
 
@@ -144,6 +176,61 @@ std::string SerialFormatter::format_plain(const Table& theTable,
   }
 }
 
+// Format the rows as serialized PHP arrays
+std::string SerialFormatter::format_rows(const Table& theTable,
+                                         const TableFormatter::Names& theNames,
+                                         const Table::Indexes& theCols,
+                                         const Table::Indexes& theRows,
+                                         const std::string& miss) const
+{
+  std::string out;
+  if (theRows.size() > 1)
+  {
+    out += "a:";
+    appendNumber(out, theRows.size());
+    out += ":{";
+  }
+
+  std::size_t row = 0;
+  for (std::size_t j : theRows)
+  {
+    if (theRows.size() > 1)
+    {
+      out += "i:";
+      appendNumber(out, row++);
+      out += ';';
+    }
+
+    out += "a:";
+    appendNumber(out, theCols.size());
+    out += ":{";
+
+    for (std::size_t i : theCols)
+    {
+      const std::string& name = theNames[i];
+      out += "s:";
+      appendNumber(out, name.size());
+      out += ":\"";
+      out += name;
+      out += "\";";
+
+      const std::string& value = theTable.get(i, j);
+      out += "s:";
+      appendNumber(out, value.empty() ? miss.size() : value.size());
+      out += ":\"";
+      if (value.empty())
+        out += miss;
+      else
+        out += value;
+      out += "\";";
+    }
+    out += "}";
+  }
+  if (theRows.size() > 1)
+    out += "}";
+  return out;
+}
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Format recursion
@@ -162,60 +249,11 @@ std::string SerialFormatter::format_attributes(const Table& theTable,
     std::string out;
     out.reserve(TableFormatter::default_minimum_size);
 
-    std::string miss;
-    auto missing = theReq.getParameter("missingtext");
-
-    if (!missing)
-      miss = "nan";
-    else
-      miss = *missing;
+    std::string miss = missing_text(theReq);
 
     if (theAttributes.empty())
     {
-      if (theRows.size() > 1)
-      {
-        out += "a:";
-        appendNumber(out, theRows.size());
-        out += ":{";
-      }
-
-      std::size_t row = 0;
-      for (std::size_t j : theRows)
-      {
-        if (theRows.size() > 1)
-        {
-          out += "i:";
-          appendNumber(out, row++);
-          out += ';';
-        }
-
-        out += "a:";
-        appendNumber(out, theCols.size());
-        out += ":{";
-
-        for (std::size_t i : theCols)
-        {
-          const std::string& name = theNames[i];
-          out += "s:";
-          appendNumber(out, name.size());
-          out += ":\"";
-          out += name;
-          out += "\";";
-
-          const std::string& value = theTable.get(i, j);
-          out += "s:";
-          appendNumber(out, value.empty() ? miss.size() : value.size());
-          out += ":\"";
-          if (value.empty())
-            out += miss;
-          else
-            out += value;
-          out += "\";";
-        }
-        out += "}";
-      }
-      if (theRows.size() > 1)
-        out += "}";
+      out += format_rows(theTable, theNames, theCols, theRows, miss);
     }
     else
     {
@@ -226,13 +264,7 @@ std::string SerialFormatter::format_attributes(const Table& theTable,
 
       // Collect unique values in the attribute column
 
-      std::set<std::string> values;
-      for (std::size_t j : theRows)
-      {
-        const std::string& value = theTable.get(nam, j);
-        if (!value.empty())
-          values.insert(value);
-      }
+      std::set<std::string> values = unique_values(theTable, nam, theRows);
 
       // Remove the attribute column temporarily
 
@@ -247,12 +279,7 @@ std::string SerialFormatter::format_attributes(const Table& theTable,
 
       for (const std::string& value : values)
       {
-        Table::Indexes rows;
-        for (std::size_t j : theRows)
-        {
-          if (theTable.get(nam, j) == value)
-            rows.insert(j);
-        }
+        Table::Indexes rows = rows_with_value(theTable, nam, theRows, value);
         out += "s:";
         appendNumber(out, value.size());
         out += ":\"";

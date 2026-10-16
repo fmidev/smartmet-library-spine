@@ -70,6 +70,44 @@ std::list<std::string> parse_attributes(const std::string& theStr)
   }
 }
 
+// Unique non-empty values in the column
+std::set<std::string> unique_values(const Table& theTable,
+                                    std::size_t theColumn,
+                                    const Table::Indexes& theRows)
+{
+  std::set<std::string> values;
+  for (std::size_t j : theRows)
+  {
+    const std::string& value = theTable.get(theColumn, j);
+    if (!value.empty())
+      values.insert(value);
+  }
+  return values;
+}
+
+// The rows with the given value in the column
+Table::Indexes rows_with_value(const Table& theTable,
+                               std::size_t theColumn,
+                               const Table::Indexes& theRows,
+                               const std::string& theValue)
+{
+  Table::Indexes rows;
+  for (std::size_t j : theRows)
+  {
+    if (theTable.get(theColumn, j) == theValue)
+      rows.insert(j);
+  }
+  return rows;
+}
+
+// The missingtext option, "nan" by default
+std::string missing_text(const HTTP::Request& theReq)
+{
+  auto missing = theReq.getParameter("missingtext");
+  if (!missing)
+    return "nan";
+  return *missing;
+}
 // ----------------------------------------------------------------------
 /*!
  * \brief Format without attributes
@@ -84,13 +122,7 @@ std::string format_plain(const Table& theTable,
 {
   try
   {
-    std::string miss;
-    auto missing = theReq.getParameter("missingtext");
-
-    if (!missing)
-      miss = "nan";
-    else
-      miss = *missing;
+    std::string miss = missing_text(theReq);
 
     std::string out;
     out.reserve(TableFormatter::default_minimum_size);
@@ -132,6 +164,45 @@ std::string format_plain(const Table& theTable,
   }
 }
 
+// Format the rows as PHP arrays
+std::string format_rows(const Table& theTable,
+                        const TableFormatter::Names& theNames,
+                        const Table::Indexes& theCols,
+                        const Table::Indexes& theRows,
+                        const std::string& miss)
+{
+  std::string out;
+  if (theRows.size() > 1)
+    out += "array(";
+  bool jfirst = true;
+
+  for (std::size_t j : theRows)
+  {
+    if (!jfirst)
+      out += "),\narray(\n";
+    jfirst = false;
+
+    bool ifirst = true;
+    for (std::size_t i : theCols)
+    {
+      if (!ifirst)
+        out += ",\n";
+      ifirst = false;
+
+      const std::string& name = theNames[i];
+      std::string value = theTable.get(i, j);
+      out += '"';
+      out += name;
+      out += "\" => \"";
+      out += (value.empty() ? miss : value);
+      out += "\"";
+    }
+  }
+  if (theRows.size() > 1)
+    out += ')';
+  return out;
+}
+
 // ----------------------------------------------------------------------
 /*!
  * \brief Format recursion
@@ -150,44 +221,11 @@ std::string format_attributes(const Table& theTable,
     std::string out;
     out.reserve(TableFormatter::default_minimum_size);
 
-    std::string miss;
-    auto missing = theReq.getParameter("missingtext");
-
-    if (!missing)
-      miss = "nan";
-    else
-      miss = *missing;
+    std::string miss = missing_text(theReq);
 
     if (theAttributes.empty())
     {
-      if (theRows.size() > 1)
-        out += "array(";
-      bool jfirst = true;
-
-      for (std::size_t j : theRows)
-      {
-        if (!jfirst)
-          out += "),\narray(\n";
-        jfirst = false;
-
-        bool ifirst = true;
-        for (std::size_t i : theCols)
-        {
-          if (!ifirst)
-            out += ",\n";
-          ifirst = false;
-
-          const std::string& name = theNames[i];
-          std::string value = theTable.get(i, j);
-          out += '"';
-          out += name;
-          out += "\" => \"";
-          out += (value.empty() ? miss : value);
-          out += "\"";
-        }
-      }
-      if (theRows.size() > 1)
-        out += ')';
+      out += format_rows(theTable, theNames, theCols, theRows, miss);
     }
     else
     {
@@ -198,13 +236,7 @@ std::string format_attributes(const Table& theTable,
 
       // Collect unique values in the attribute column
 
-      std::set<std::string> values;
-      for (std::size_t j : theRows)
-      {
-        const std::string& value = theTable.get(nam, j);
-        if (!value.empty())
-          values.insert(value);
-      }
+      std::set<std::string> values = unique_values(theTable, nam, theRows);
 
       // Remove the attribute column temporarily
 
@@ -222,12 +254,7 @@ std::string format_attributes(const Table& theTable,
           out += ",\n";
         vfirst = false;
 
-        Table::Indexes rows;
-        for (std::size_t j : theRows)
-        {
-          if (theTable.get(nam, j) == value)
-            rows.insert(j);
-        }
+        Table::Indexes rows = rows_with_value(theTable, nam, theRows, value);
         out += '"';
         out += value;
         out += "\" => ";

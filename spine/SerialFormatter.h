@@ -38,6 +38,12 @@ class SerialFormatter : public TableFormatter
                                 const Table::Indexes& theRows,
                                 std::list<std::string>& theAttributes) const;
 
+  std::string format_rows(const Table& theTable,
+                          const TableFormatter::Names& theNames,
+                          const Table::Indexes& theCols,
+                          const Table::Indexes& theRows,
+                          const std::string& miss) const;
+
   void appendNumber(std::string& theOutput, std::size_t theNumber) const;
 };
 
