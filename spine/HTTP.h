@@ -540,6 +540,7 @@ class Request : public Message
 
   ~Request() override;
   Request(const Request&) = default;
+  Request& operator=(const Request&) = default;
 
  protected:
   std::string itsContent;

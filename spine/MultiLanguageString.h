@@ -20,6 +20,7 @@ class MultiLanguageString
 
   virtual ~MultiLanguageString();
   MultiLanguageString& operator=(const MultiLanguageString&) = default;
+  MultiLanguageString(const MultiLanguageString&) = default;
 
   std::string get_default_language() const { return default_language; }
   std::string get() const { return get(default_language); }

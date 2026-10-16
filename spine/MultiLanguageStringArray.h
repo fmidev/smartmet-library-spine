@@ -21,6 +21,7 @@ class MultiLanguageStringArray
 
   virtual ~MultiLanguageStringArray();
   MultiLanguageStringArray& operator=(const MultiLanguageStringArray&) = default;
+  MultiLanguageStringArray(const MultiLanguageStringArray&) = default;
 
   std::string get_default_language() const { return default_language; }
   const std::vector<std::string>& get() const { return get(default_language); }
