@@ -63,6 +63,14 @@ const producers = {
       time: {start: iso(now - 12 * hour), end: iso(now.getTime() + 240 * hour), step: 180}
     },
     {
+      // The same name from another source
+      name: 'ecmwf',
+      source: 'grid',
+      parameters: ['temperature'],
+      bbox: [-180, -90, 180, 90],
+      time: {start: iso(now - 12 * hour), end: iso(now.getTime() + 144 * hour), step: 60}
+    },
+    {
       name: 'opendata',
       source: 'observation',
       parameters: ['temperature', 'ws_10min'],
@@ -453,7 +461,7 @@ async function main()
     // A parameter narrows the producers
     let r = await choose(b, PARAM, 'temp', 'Temperature');
     check(
-        'parameter search by name', r.found && r.labels.some((l) => l.includes('3 producers')), r);
+        'parameter search by name', r.found && r.labels.some((l) => l.includes('4 producers')), r);
     r = await choose(b, PARAM, 'relative', 'Humidity');
     check('parameter search by description', r.found, r);
     const chips = await b.evaluate(
@@ -465,7 +473,7 @@ async function main()
     const note = await b.evaluate(`document.querySelector('.form .step .muted.small').textContent`);
     check(
         'producers with all the parameters',
-        note === '1 of 3 producers have all these parameters',
+        note === '1 of 4 producers have all these parameters',
         note);
     r = await choose(b, PRODUCER, '', 'pal');
     check(
@@ -784,11 +792,32 @@ async function main()
         await b.evaluate(`document.querySelector('.form .step .muted.small').textContent`);
     check(
         'producers covering the selection',
-        covering === '0 of 3 producers have all these parameters in the selected area',
+        covering === '0 of 4 producers have all these parameters in the selected area',
         covering);
     await setLocation(b, 'not a box');
     const invalid = await b.evaluate(`document.querySelector('.warn').textContent`);
     check('invalid box', invalid.startsWith('Not a valid box'), invalid);
+
+    // A producer name served by several sources is requested from the chosen source
+    for (const [source, card] of [['grid', 'grid'], ['querydata', 'querydata'], ['', 'querydata']])
+    {
+      await b.send('Page.navigate', {url: `${base}/api`});
+      await sleep(200);
+      await b.send('Page.navigate', {
+        url: `${base}/api/explorer#api=/timeseries&producer=ecmwf&source=${
+            source}&params=temperature&locmode=place&location=Helsinki`
+      });
+      await waitFor(b, `!!document.querySelector('.model-card strong')`, 'the producer card');
+      const chosen = await b.evaluate(`({ url: document.querySelector('code.url').textContent,
+        badge: document.querySelector('.model-card .badge').textContent,
+        text: document.querySelector('.model-card').textContent })`);
+      const wanted = source || 'querydata';
+      check(
+          `producer from the ${wanted} source${source ? '' : ' by default'}`,
+          chosen.badge === card && new URL(chosen.url).searchParams.get('source') === wanted &&
+              !chosen.text.includes('null'),
+          chosen);
+    }
 
     // --- The EDR module -------------------------------------------------------
     await b.send('Page.navigate', {url: `${base}/api/explorer#api=/edr`});

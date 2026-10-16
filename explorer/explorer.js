@@ -347,13 +347,21 @@ const META_PARAMETERS = [
 ];
 const META = new Map(META_PARAMETERS);
 
+// The same producer name may come from several sources, for example querydata and grid
+const producerKey = (source, name) => (source ? `${source}:${name}` : name);
+
 function buildIndex(doc)
 {
   const producers = new Map();
+  const sources = new Map();
   for (const p of doc.producers || [])
   {
-    producers.set(p.name, Object.assign({}, p, {parameterSet: new Set(p.parameters || [])}));
+    const key = producerKey(p.source, p.name);
+    producers.set(key, Object.assign({}, p, {key, parameterSet: new Set(p.parameters || [])}));
+    sources.set(p.name, (sources.get(p.name) || 0) + 1);
   }
+  for (const p of producers.values())
+    p.ambiguous = sources.get(p.name) > 1;
   const parameters = new Map();
   for (const p of producers.values())
   {
@@ -372,7 +380,7 @@ function buildIndex(doc)
         };
         parameters.set(name, entry);
       }
-      entry.producers.push(p.name);
+      entry.producers.push(p.key);
     }
   }
   return {producers, parameters};
@@ -1912,7 +1920,10 @@ function timeSeriesModule(app, api, state, save)
       return Array.from(index.producers.values())
           .filter((p) => wanted.every((w) => p.parameterSet.has(w)) && covers(p, sel));
     };
-    const producer = () => index.producers.get(s.producer);
+    // A link without a source picks the first source that has the producer
+    const producer = () => index.producers.get(producerKey(s.source, s.producer)) ||
+        (s.source ? undefined :
+                    Array.from(index.producers.values()).find((p) => p.name === s.producer));
 
     const paramSearch = autocomplete({
       label: 'Parameter',
@@ -1978,7 +1989,7 @@ function timeSeriesModule(app, api, state, save)
             .filter((x) => x.score !== null)
             .sort((a, b) => a.score - b.score || a.p.name.localeCompare(b.p.name))
             .map(({p}) => ({
-                   key: p.name,
+                   key: p.key,
                    label: p.name,
                    badge: p.source,
                    badgeKind: p.source,
@@ -2003,10 +2014,11 @@ function timeSeriesModule(app, api, state, save)
       return `${formatTime(new Date(t.start))} – ${formatTime(new Date(t.end))}`;
     }
 
-    function setProducer(name)
+    function setProducer(key)
     {
-      s.producer = name;
-      const p = producer();
+      const p = index.producers.get(key);
+      s.producer = p ? p.name : '';
+      s.source = p ? p.source : '';
       // Parameters the producer does not have are dropped
       if (p)
         s.params = s.params.filter((x) => META.has(x) || p.parameterSet.has(x));
@@ -2267,6 +2279,7 @@ function timeSeriesModule(app, api, state, save)
                                               new Set(['name', 'time', 'lat', 'lon', ...s.params]));
       return [
         ['producer', s.producer],
+        ['source', sourceOption()],
         ['param', params.join(',')],
         ['starttime', fromInput(s.start)],
         ['endtime', fromInput(s.end)],
@@ -2278,6 +2291,14 @@ function timeSeriesModule(app, api, state, save)
         ['tz', 'UTC'],
         ['timeformat', 'xml']
       ];
+    }
+
+    // The server reads querydata unless told otherwise, or unless it is configured to prefer grid
+    function sourceOption()
+    {
+      const p = producer();
+      return p && (p.source === 'grid' || (p.ambiguous && p.source === 'querydata')) ? p.source :
+                                                                                       '';
     }
 
     function currentUrl()
@@ -2422,11 +2443,12 @@ function timeSeriesModule(app, api, state, save)
                     class: 'small',
                     onclick: () => {
                       s.producer = '';
+                      s.source = '';
                       refresh();
                     }
                   },
                   'Change')),
-            p.title && p.title !== p.name ? el('div', null, p.title) : null,
+            p.title && p.title !== p.name ? el('div', null, p.title) : '',
             el('div',
                {class: 'muted small'},
                [
@@ -3094,7 +3116,7 @@ function edrModule(app, api, state, save)
                     }
                   },
                   'Change')),
-            c.title && c.title !== c.name ? el('div', null, c.title) : null,
+            c.title && c.title !== c.name ? el('div', null, c.title) : '',
             el('div', {class: 'muted small'}, [
               timeRangeOf(c),
               `${c.parameters.length} parameters`,
