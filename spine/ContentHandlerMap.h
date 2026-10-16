@@ -418,6 +418,12 @@ private:
      */
     void cleanLog();
 
+    // Remove the URI handlers of the target, itsContentMutex must be locked
+    std::size_t removeUriHandlers(HandlerTarget currentTarget);
+
+    // Remove the admin request handlers of the target, itsContentMutex must be locked
+    std::size_t removeAdminRequestHandlers(const HandlerTarget& currentTarget);
+
     std::unique_ptr<Table> getAdminRequestsImpl(
         std::optional<HandlerTarget> target,
         bool publicOnly) const;

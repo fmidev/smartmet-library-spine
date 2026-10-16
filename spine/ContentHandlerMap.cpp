@@ -320,42 +320,45 @@ catch (...)
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
 
-std::size_t ContentHandlerMap::removeContentHandlers(HandlerTarget currentTarget)
-try
+std::size_t ContentHandlerMap::removeUriHandlers(HandlerTarget currentTarget)
 {
-  WriteLock lock(itsContentMutex);
-
   std::size_t count = 0;
   // We do not support content handlers for engines
-  if (!std::holds_alternative<SmartMetEngine*>(currentTarget))
-  {
-    // For some reason std::get_if<> returned 1 for NoTarget, so we need to check it separately (c++20, clang++-18)
-    const bool no_target = std::holds_alternative<NoTarget>(currentTarget);
+  if (std::holds_alternative<SmartMetEngine*>(currentTarget))
+    return count;
 
-    // Reset no-match admin request handler when removing builtin handlers
-    if (no_target && itsAdminHandlerInfo)
+  // For some reason std::get_if<> returned 1 for NoTarget, so we need to check it separately (c++20, clang++-18)
+  const bool no_target = std::holds_alternative<NoTarget>(currentTarget);
+
+  // Reset no-match admin request handler when removing builtin handlers
+  if (no_target && itsAdminHandlerInfo)
+  {
+    itsAdminHandlerInfo->itsNoMatchAdminRequestHandler = NoMatchAdminRequestHandler();
+  }
+  const SmartMetPlugin* thePlugin = no_target ? nullptr : std::get<SmartMetPlugin*>(currentTarget);
+  for (auto it = itsHandlers.begin(); it != itsHandlers.end();)
+  {
+    auto curr = it++;
+    if (curr->second and curr->second->usesPlugin(thePlugin))
     {
-      itsAdminHandlerInfo->itsNoMatchAdminRequestHandler = NoMatchAdminRequestHandler();
-    }
-    const SmartMetPlugin* thePlugin = no_target ? nullptr : std::get<SmartMetPlugin*>(currentTarget);
-    for (auto it = itsHandlers.begin(); it != itsHandlers.end();)
-    {
-      auto curr = it++;
-      if (curr->second and curr->second->usesPlugin(thePlugin))
-      {
-        const std::string uri = curr->first;
-        const std::string name = targetName(currentTarget);
-        const bool is_private = curr->second->isPrivate();
-        itsHandlers.erase(curr);
-        itsUriPrefixes.erase(uri);
-        count++;
-        std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Removed "
-            << (no_target ? "builtin " : "") << (is_private ? "private " : "")
-            << "URI " << uri << (no_target ? ""s : " provided by " + name)
-            << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
-      }
+      const std::string uri = curr->first;
+      const std::string name = targetName(currentTarget);
+      const bool is_private = curr->second->isPrivate();
+      itsHandlers.erase(curr);
+      itsUriPrefixes.erase(uri);
+      count++;
+      std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Removed "
+          << (no_target ? "builtin " : "") << (is_private ? "private " : "")
+          << "URI " << uri << (no_target ? ""s : " provided by " + name)
+          << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
     }
   }
+  return count;
+}
+
+std::size_t ContentHandlerMap::removeAdminRequestHandlers(const HandlerTarget& currentTarget)
+{
+  std::size_t count = 0;
 
   // Remove all admin request handlers provided by the target.
   for (auto it1 = itsAdminRequestHandlers.begin(); it1 != itsAdminRequestHandlers.end(); )
@@ -387,7 +390,16 @@ try
       count += erased;
     }
   }
+  return count;
+}
 
+std::size_t ContentHandlerMap::removeContentHandlers(HandlerTarget currentTarget)
+try
+{
+  WriteLock lock(itsContentMutex);
+
+  std::size_t count = removeUriHandlers(currentTarget);
+  count += removeAdminRequestHandlers(currentTarget);
   return count;
 }
 catch (...)
