@@ -944,6 +944,14 @@ void Publisher::addToCatalog(const std::string& rootPath,
                              const std::string& title,
                              const std::string& description)
 {
+  addToCatalog(rootPath, title, description, "");
+}
+
+void Publisher::addToCatalog(const std::string& rootPath,
+                             const std::string& title,
+                             const std::string& description,
+                             const std::string& kind)
+{
   try
   {
     if (!itsSettings.enabled)
@@ -963,6 +971,7 @@ void Publisher::addToCatalog(const std::string& rootPath,
     registration.entry.root = root;
     registration.entry.title = title;
     registration.entry.description = description;
+    registration.entry.kind = kind;
     registration.entry.docs = (itsSettings.ui && itsSwaggerUi);
   }
   catch (...)
@@ -1276,6 +1285,9 @@ CatalogSettings CatalogSettings::parse(const libconfig::Config& config, const st
       const auto& group = config.lookup(path);
       group.lookupValue("title", settings.title);
       group.lookupValue("description", settings.description);
+      group.lookupValue("explorer", settings.explorer);
+      group.lookupValue("explorer_dir", settings.explorer_dir);
+      group.lookupValue("uplot_dir", settings.uplot_dir);
     }
     return settings;
   }
@@ -1359,6 +1371,8 @@ std::vector<CatalogEntry> parseCatalog(const Json::Value& linkset)
         entry.title = (item["title"].isString() ? item["title"].asString() : entry.root);
         if (item["description"].isString())
           entry.description = item["description"].asString();
+        if (item["x-smartmet-kind"].isString())
+          entry.kind = item["x-smartmet-kind"].asString();
         entry.docs = (documented.count(entry.root) > 0);
         ret.push_back(std::move(entry));
       }
@@ -1378,6 +1392,52 @@ Catalog::Catalog(CatalogSettings settings) : itsSettings(std::move(settings))
 {
   if (itsSettings.openapi.enabled && itsSettings.openapi.ui)
     itsFiles = std::make_unique<Publisher>(itsSettings.openapi);
+
+  if (!itsSettings.openapi.enabled || !itsSettings.explorer)
+    return;
+
+  // The explorer, uPlot, and the SmartMet Swagger UI plugin for the snippets and the viewer
+  const std::vector<std::pair<std::string, std::string>> files{
+      {itsSettings.explorer_dir + "/explorer.js", "text/javascript; charset=UTF-8"},
+      {itsSettings.explorer_dir + "/explorer.css", "text/css; charset=UTF-8"},
+      {itsSettings.uplot_dir + "/uPlot.iife.min.js", "text/javascript; charset=UTF-8"},
+      {itsSettings.uplot_dir + "/uPlot.min.css", "text/css; charset=UTF-8"}};
+
+  std::string missing;
+  std::map<std::string, ExplorerFile> loaded;
+  for (const auto& file : files)
+  {
+    std::ifstream in(file.first, std::ios::binary);
+    if (!in)
+    {
+      missing += (missing.empty() ? "" : ", ") + file.first;
+      continue;
+    }
+    ExplorerFile f;
+    f.content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+    f.contentType = file.second;
+    f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
+    loaded.emplace(file.first.substr(file.first.rfind('/') + 1), std::move(f));
+  }
+
+  if (!missing.empty())
+  {
+    std::cerr << fmt::format(
+        "{} {}Warning:{} The data explorer is unavailable, files missing: {} (packages "
+        "smartmet-library-spine and smartmet-uplot)\n",
+        log_time_str(),
+        ANSI_FG_YELLOW,
+        ANSI_FG_DEFAULT,
+        missing);
+    return;
+  }
+
+  ExplorerFile plugin;
+  plugin.content = SWAGGER_UI_PLUGIN_JS;
+  plugin.contentType = "text/javascript; charset=UTF-8";
+  plugin.etag = quotedETag(Fmi::hash_value(plugin.content), "explorer");
+  loaded.emplace(PLUGIN_FILE, std::move(plugin));
+  itsExplorerFiles = std::move(loaded);
 }
 
 Catalog::~Catalog() = default;
@@ -1386,7 +1446,9 @@ bool Catalog::isCatalogResource(const std::string& resource)
 {
   return (resource == "/.well-known/api-catalog" || resource == "/api" || resource == "/api/" ||
           resource == "/api/docs" || resource == "/api/docs/" ||
-          boost::algorithm::starts_with(resource, "/api/docs/"));
+          boost::algorithm::starts_with(resource, "/api/docs/") || resource == "/api/explorer" ||
+          resource == "/api/explorer/" ||
+          boost::algorithm::starts_with(resource, "/api/explorer/"));
 }
 
 Json::Value Catalog::linkset(const HTTP::Request& request, const std::vector<CatalogEntry>& entries)
@@ -1409,6 +1471,8 @@ Json::Value Catalog::linkset(const HTTP::Request& request, const std::vector<Cat
       item["title"] = entry.title;
       if (!entry.description.empty())
         item["description"] = entry.description;
+      if (!entry.kind.empty())
+        item["x-smartmet-kind"] = entry.kind;
       catalog["item"].append(item);
 
       Json::Value context;
@@ -1459,6 +1523,17 @@ bool Catalog::handle(const HTTP::Request& request,
         "Link", "<" + serverUrl(request, "") + "/.well-known/api-catalog>; rel=\"api-catalog\"");
 
     const bool ui = (itsSettings.openapi.ui && itsFiles);
+
+    if (resource == "/api/explorer" || resource == "/api/explorer/")
+    {
+      handleExplorer(request, response);
+      return true;
+    }
+    if (boost::algorithm::starts_with(resource, "/api/explorer/"))
+    {
+      handleExplorerFile(request, response, resource.substr(14));
+      return true;
+    }
 
     if (resource == "/.well-known/api-catalog")
     {
@@ -1541,6 +1616,10 @@ void Catalog::handlePage(const HTTP::Request& request,
   if (ui && !entries.empty())
     links = fmt::format("<a href=\"{}\">All APIs in one documentation page</a> · {}",
                         htmlEscape(relativeHref(resource, "/api/docs")),
+                        links);
+  if (!itsExplorerFiles.empty() && !entries.empty())
+    links = fmt::format("<a href=\"{}\">Data explorer</a> · {}",
+                        htmlEscape(relativeHref(resource, "/api/explorer")),
                         links);
 
   const auto html = fmt::format(
@@ -1687,6 +1766,108 @@ window.onload = function () {{
   response.setHeader("Content-Security-Policy", docsPolicy(itsSettings.openapi));
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setContent(html);
+}
+
+void Catalog::handleExplorer(const HTTP::Request& request, HTTP::Response& response) const
+{
+  if (!itsSettings.explorer)
+  {
+    problem(response, 404, "Not Found", "The data explorer is disabled");
+    return;
+  }
+  if (itsExplorerFiles.empty())
+  {
+    problem(response,
+            503,
+            "Service Unavailable",
+            "The data explorer is not available: its files are not installed");
+    return;
+  }
+
+  const auto& resource = request.getResource();
+  const auto a = htmlEscape(relativeHref(resource, "/api/explorer/"));
+  const auto catalog = htmlEscape(relativeHref(resource, "/api"));
+
+  // The background of the location maps
+  std::string map;
+  const auto& o = itsSettings.openapi;
+  if (!o.map_tiles.empty())
+    map = fmt::format(R"( data-map-tiles="{}" data-map-tile-size="{}" data-map-attribution="{}")",
+                      htmlEscape(o.map_tiles),
+                      o.map_tile_size,
+                      htmlEscape(o.map_attribution));
+
+  // The file hashes in the links, since the files are cached for a day
+  const auto v = [this](const std::string& name)
+  {
+    const auto& etag = itsExplorerFiles.at(name).etag;
+    return etag.substr(1, etag.find('-') - 1);
+  };
+  const auto html = fmt::format(
+      R"HTML(<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{0} - Data explorer</title>
+<link rel="stylesheet" href="{1}uPlot.min.css?v={3}">
+<link rel="stylesheet" href="{1}explorer.css?v={4}">
+</head>
+<body>
+<div id="explorer" data-catalog="{2}" data-title="{0}"{8}></div>
+<script src="{1}uPlot.iife.min.js?v={5}"></script>
+<script src="{1}smartmet-swagger-ui.js?v={6}"></script>
+<script src="{1}explorer.js?v={7}"></script>
+</body>
+</html>
+)HTML",
+      htmlEscape(itsSettings.title),
+      a,
+      catalog,
+      v("uPlot.min.css"),
+      v("explorer.css"),
+      v("uPlot.iife.min.js"),
+      v(PLUGIN_FILE),
+      v("explorer.js"),
+      map);
+
+  response.setHeader("Cache-Control", cacheControl(request));
+  if (etagOnly(request, response, quotedETag(Fmi::hash_value(html), "explorerhtml")))
+    return;
+
+  response.setStatus(HTTP::Status::ok);
+  response.setHeader("Content-Type", "text/html; charset=UTF-8");
+  // No inline scripts, and data only from this server and the map tiles
+  std::string policy =
+      "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+      "img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; "
+      "frame-ancestors 'self'";
+  const auto origin = tileOrigin(itsSettings.openapi.map_tiles);
+  if (!origin.empty())
+    boost::algorithm::replace_first(policy, "img-src 'self'", "img-src 'self' " + origin);
+  response.setHeader("Content-Security-Policy", policy);
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setContent(html);
+}
+
+void Catalog::handleExplorerFile(const HTTP::Request& request,
+                                 HTTP::Response& response,
+                                 const std::string& name) const
+{
+  auto it = itsExplorerFiles.find(name);
+  if (!itsSettings.explorer || it == itsExplorerFiles.end())
+  {
+    problem(response, 404, "Not Found", "No such explorer file");
+    return;
+  }
+  const auto& file = it->second;
+  response.setHeader("Cache-Control", ASSET_CACHE_CONTROL);
+  if (etagOnly(request, response, file.etag))
+    return;
+  response.setStatus(HTTP::Status::ok);
+  response.setHeader("Content-Type", file.contentType);
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setContent(file.content);
 }
 
 }  // namespace OpenAPI

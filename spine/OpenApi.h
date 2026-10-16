@@ -253,6 +253,13 @@ class Publisher
                     const std::string& title = "",
                     const std::string& description = "");
 
+  // The same with the kind of the API, which tells clients such as the data explorer what
+  // the API is: "edr", "timeseries", "coverages", "tiles" or "wmts".
+  void addToCatalog(const std::string& rootPath,
+                    const std::string& title,
+                    const std::string& description,
+                    const std::string& kind);
+
   // Replace the served definition
   void publish(const Document& doc);
   std::shared_ptr<const Definition> definition() const;
@@ -318,6 +325,9 @@ class Publisher
  *                             preferring text/html
  *   /api/docs                 Swagger UI with all the APIs in a selector
  *   /api/docs/<file>          Swagger UI files
+ *   /api/explorer             the data explorer: queries built from the metadata of
+ *                             the APIs, with maps and charts
+ *   /api/explorer/<file>      the files of the explorer
  *
  * Configuration (the reactor configuration file):
  *
@@ -328,6 +338,9 @@ class Publisher
  *     swagger_ui_dir = "/usr/share/smartmet/swagger-ui";
  *     title          = "SmartMet Server APIs";
  *     description    = "...";
+ *     explorer       = true;
+ *     explorer_dir   = "/usr/share/smartmet/explorer";
+ *     uplot_dir      = "/usr/share/smartmet/uplot";
  *   };
  */
 // ----------------------------------------------------------------------
@@ -340,12 +353,13 @@ struct CatalogEntry
   std::string root;  // path of the API root, e.g. "/edr"
   std::string title;
   std::string description;
+  std::string kind;  // see Publisher::addToCatalog()
   bool docs = true;  // <root>/api/docs is available
 
   bool operator==(const CatalogEntry& other) const
   {
     return root == other.root && title == other.title && description == other.description &&
-           docs == other.docs;
+           kind == other.kind && docs == other.docs;
   }
 };
 
@@ -354,6 +368,9 @@ struct CatalogSettings
   Settings openapi;  // enabled, ui and swagger_ui_dir apply
   std::string title = "SmartMet Server APIs";
   std::string description;
+  bool explorer = true;  // serve /api/explorer
+  std::string explorer_dir = "/usr/share/smartmet/explorer";
+  std::string uplot_dir = "/usr/share/smartmet/uplot";
 
   // Read the group at 'path'. A missing group yields the defaults.
   static CatalogSettings parse(const libconfig::Config& config,
@@ -402,9 +419,22 @@ class Catalog
   void handleDocs(const HTTP::Request& request,
                   HTTP::Response& response,
                   const std::vector<CatalogEntry>& entries) const;
+  void handleExplorer(const HTTP::Request& request, HTTP::Response& response) const;
+  void handleExplorerFile(const HTTP::Request& request,
+                          HTTP::Response& response,
+                          const std::string& name) const;
 
   CatalogSettings itsSettings;
   std::unique_ptr<Publisher> itsFiles;  // the Swagger UI files
+
+  // The files of the explorer by name, empty if some file is missing
+  struct ExplorerFile
+  {
+    std::string content;
+    std::string contentType;
+    std::string etag;
+  };
+  std::map<std::string, ExplorerFile> itsExplorerFiles;
 };
 
 // ----------------------------------------------------------------------

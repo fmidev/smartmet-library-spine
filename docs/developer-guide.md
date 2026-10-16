@@ -372,7 +372,22 @@ Most plugins produce tables of values:
   and `parseCatalog()`. URLs are absolute when the request has a valid `Host`, relative
   otherwise (the frontend asks the backends without one). Settings are read from the
   `api_catalog` group of the server configuration (`enabled`, `ui`, `swagger_ui_dir`,
-  `title`, `description`).
+  `title`, `description`, `explorer`, `explorer_dir`, `uplot_dir`). An API added with a
+  `kind` (`edr`, `timeseries`, `coverages`, `tiles`, `wmts`) carries it as
+  `x-smartmet-kind` in the catalog.
+* **Data explorer** (`explorer/`, served by `OpenAPI::Catalog` at `/api/explorer`): a page
+  that builds queries from the metadata of the APIs in the catalog instead of from their
+  OpenAPI definitions. For TimeSeries (kind `timeseries`) it loads
+  `<root>/api/producers` and lets the parameters and the producers narrow each other with
+  autocomplete, sets the times from the producer's data, shows keyword locations on the
+  map, and draws the results with uPlot: a chart per parameter with a line per location,
+  or the median and the 10/25/75/90 % percentiles of more than 20 locations, and a table
+  and the JSON tree. The state is kept in the URL fragment, so a query can be shared as a
+  link. `explorer.js` and `explorer.css` are installed to `/usr/share/smartmet/explorer`,
+  uPlot comes from the `smartmet-uplot` package (`/usr/share/smartmet/uplot`), and the
+  snippets, the tree and the map are those of `OpenApiPlugin.cpp`. The page loads no inline
+  scripts. `test/explorer-browser-test.js` checks it in a headless browser
+  (`UPLOT_DIR` overrides the uPlot location).
 * **OpenTelemetry** (`OTelOptions`, `OTelLogger`, `OTelMetricsExporter`) is optional.
   Tracing is compiled in with `SMARTMET_SPINE_OPENTELEMETRY`
   (see [build-opentelemetry.md](build-opentelemetry.md)), and cache statistics are

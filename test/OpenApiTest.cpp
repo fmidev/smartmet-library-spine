@@ -437,10 +437,55 @@ BOOST_AUTO_TEST_CASE(browser_tests)
   HTTP::Response catalog_docs;
   catalog.handle(makeRequest("/api/docs"),
                  catalog_docs,
-                 {{"/edr", "Viewer test", "", true}, {"/other", "Other API", "", true}});
+                 {{"/edr", "Viewer test", "", "", true}, {"/other", "Other API", "", "", true}});
   std::ofstream(assets.path / "catalog.html") << catalog_docs.getContent();
 
   const auto command = "node openapi-browser-test.js " + assets.path.string() + " " + swagger_ui;
+  BOOST_TEST(std::system(command.c_str()) == 0);
+}
+
+BOOST_AUTO_TEST_CASE(explorer_tests)
+{
+  // The explorer page and files as served, with the explorer files of the source tree.
+  // UPLOT_DIR overrides the location of the installed smartmet-uplot files.
+  if (std::system("command -v node > /dev/null 2>&1") != 0)
+  {
+    BOOST_TEST_MESSAGE("node is not installed, the explorer tests are not run");
+    return;
+  }
+  const char* env = std::getenv("UPLOT_DIR");
+  const std::string uplot = (env ? env : "/usr/share/smartmet/uplot");
+  if (!std::filesystem::exists(uplot + "/uPlot.iife.min.js"))
+  {
+    BOOST_TEST_MESSAGE("smartmet-uplot is not installed, the explorer tests are not run");
+    return;
+  }
+
+  AssetDir assets;
+  libconfig::Config config;
+  config.readString("api_catalog: { swagger_ui_dir = \"" + assets.path.string() +
+                    "\"; explorer_dir = \"../explorer\"; uplot_dir = \"" + uplot + "\"; };");
+  OpenAPI::Catalog catalog(OpenAPI::CatalogSettings::parse(config));
+  const std::vector<OpenAPI::CatalogEntry> entries{
+      {"/timeseries", "TimeSeries", "", "timeseries", true}};
+
+  HTTP::Response page;
+  BOOST_TEST(catalog.handle(makeRequest("/api/explorer"), page, entries));
+  BOOST_TEST(page.getStatus() == HTTP::Status::ok);
+  BOOST_TEST(header(page, "Content-Security-Policy").find("script-src 'self';") !=
+             std::string::npos);
+  HTTP::Response plugin;
+  BOOST_TEST(catalog.handle(makeRequest("/api/explorer/smartmet-swagger-ui.js"), plugin, entries));
+  BOOST_TEST(plugin.getStatus() == HTTP::Status::ok);
+  HTTP::Response missing;
+  BOOST_TEST(catalog.handle(makeRequest("/api/explorer/../OpenApi.cpp"), missing, entries));
+  BOOST_TEST(missing.getStatus() == HTTP::Status::not_found);
+
+  std::ofstream(assets.path / "explorer.html") << page.getContent();
+  std::ofstream(assets.path / "smartmet-swagger-ui.js") << plugin.getContent();
+
+  const auto command =
+      "node explorer-browser-test.js " + assets.path.string() + " ../explorer " + uplot;
   BOOST_TEST(std::system(command.c_str()) == 0);
 }
 
@@ -598,8 +643,8 @@ BOOST_AUTO_TEST_CASE(catalog_registry)
 
 BOOST_AUTO_TEST_CASE(catalog_linkset)
 {
-  std::vector<OpenAPI::CatalogEntry> entries{{"/edr", "EDR", "Environmental data", true},
-                                             {"/wmts", "WMTS", "", false}};
+  std::vector<OpenAPI::CatalogEntry> entries{{"/edr", "EDR", "Environmental data", "edr", true},
+                                             {"/wmts", "WMTS", "", "", false}};
 
   auto doc = OpenAPI::Catalog::linkset(
       makeRequest("/api", {{"Host", "smartmet.fmi.fi"}, {"X-Forwarded-Proto", "https"}}), entries);
@@ -611,6 +656,8 @@ BOOST_AUTO_TEST_CASE(catalog_linkset)
   BOOST_TEST(linkset[0]["item"][0]["title"].asString() == "EDR");
   BOOST_TEST(linkset[0]["item"][0]["description"].asString() == "Environmental data");
   BOOST_TEST(!linkset[0]["item"][1].isMember("description"));
+  BOOST_TEST(linkset[0]["item"][0]["x-smartmet-kind"].asString() == "edr");
+  BOOST_TEST(!linkset[0]["item"][1].isMember("x-smartmet-kind"));
   BOOST_TEST(linkset[1]["anchor"].asString() == "https://smartmet.fmi.fi/edr");
   BOOST_TEST(linkset[1]["service-desc"][0]["href"].asString() == "https://smartmet.fmi.fi/edr/api");
   BOOST_TEST(linkset[1]["service-desc"][0]["type"].asString() == OpenAPI::MEDIA_TYPE);
@@ -665,8 +712,8 @@ BOOST_AUTO_TEST_CASE(catalog_requests)
   OpenAPI::Catalog catalog(OpenAPI::CatalogSettings::parse(config));
   BOOST_TEST(catalog.settings().title == "FMI <APIs>");
 
-  std::vector<OpenAPI::CatalogEntry> entries{{"/edr", "EDR <script>", "Data", true},
-                                             {"/timeseries", "TimeSeries", "", true}};
+  std::vector<OpenAPI::CatalogEntry> entries{{"/edr", "EDR <script>", "Data", "", true},
+                                             {"/timeseries", "TimeSeries", "", "", true}};
 
   const auto get = [&](const std::string& resource,
                        const HTTP::HeaderMap& headers = {},

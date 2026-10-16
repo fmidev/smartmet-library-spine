@@ -11,21 +11,13 @@
 
 "use strict";
 
-const childProcess = require("node:child_process");
 const fs = require("node:fs");
-const http = require("node:http");
-const os = require("node:os");
+const http = require('node:http');
 const path = require("node:path");
 
 const [dir, swaggerDir] = process.argv.slice(2);
 
-function findBrowser() {
-  for (const name of ["chromium-browser", "chromium", "google-chrome", "google-chrome-stable"])
-    if (childProcess.spawnSync("sh", ["-c", `command -v ${name}`]).status === 0) return name;
-  return null;
-}
-
-const browser = findBrowser();
+const {browser, startBrowser, sleep, waitFor} = require('./browser-harness.js');
 if (!browser || !fs.existsSync(path.join(swaggerDir || "", "swagger-ui-bundle.js"))) {
   console.log("Chromium or the Swagger UI files are not available, the browser tests are not run");
   process.exit(0);
@@ -129,51 +121,6 @@ const server = http.createServer((req, res) => {
 // ----------------------------------------------------------------------
 // Chromium over the DevTools protocol
 // ----------------------------------------------------------------------
-
-async function startBrowser() {
-  const profile = fs.mkdtempSync(path.join(os.tmpdir(), "viewer-test-"));
-  const child = childProcess.spawn(browser, ["--headless=new", "--disable-gpu", "--no-sandbox",
-    `--user-data-dir=${profile}`, "--remote-debugging-port=0", "about:blank"], { stdio: "ignore" });
-  const portFile = path.join(profile, "DevToolsActivePort");
-  for (let i = 0; i < 100 && !fs.existsSync(portFile); i++) await new Promise((r) => setTimeout(r, 100));
-  const port = fs.readFileSync(portFile, "utf8").split("\n")[0];
-  const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
-  const page = targets.find((t) => t.type === "page");
-  const ws = new WebSocket(page.webSocketDebuggerUrl);
-  await new Promise((r) => (ws.onopen = r));
-  let id = 0;
-  const pending = new Map();
-  const errors = [];
-  ws.onmessage = (event) => {
-    const m = JSON.parse(event.data);
-    if (m.id && pending.has(m.id)) {
-      pending.get(m.id)(m.result);
-      pending.delete(m.id);
-    } else if (m.method === "Runtime.exceptionThrown")
-      errors.push(m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text);
-  };
-  const send = (method, params = {}) =>
-    new Promise((r) => {
-      const i = ++id;
-      pending.set(i, r);
-      ws.send(JSON.stringify({ id: i, method, params }));
-    });
-  await send("Runtime.enable");
-  await send("Page.enable");
-  const evaluate = async (expression) =>
-    (await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true })).result.value;
-  return { child, profile, send, evaluate, errors };
-}
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function waitFor(b, expression, what) {
-  for (let i = 0; i < 100; i++) {
-    if (await b.evaluate(expression)) return;
-    await sleep(100);
-  }
-  throw new Error("timed out waiting for " + what);
-}
 
 // Execute an operation and return when its response tree is shown
 async function execute(b, operationId) {

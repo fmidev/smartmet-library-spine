@@ -489,6 +489,8 @@ void Reactor::addApiCatalogHandler()
     addContentHandler(nullptr, "/.well-known/api-catalog", handler);
     if (catalog->settings().openapi.ui)
       addContentHandler(nullptr, "/api/docs", handler, {}, true);
+    if (catalog->settings().explorer)
+      addContentHandler(nullptr, "/api/explorer", handler, {}, true);
   }
   catch (...)
   {

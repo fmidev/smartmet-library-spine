@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.16
-Release: 2%{?dist}.fmi
+Release: 3%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -14,6 +14,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 %if 0%{rhel} >= 8
 Requires: mariadb-connector-c
 #TestRequires: mariadb-connector-c
+#TestRequires: smartmet-uplot
 %else
 Requires: mariadb-libs
 #TestRequires: mariadb-devel
@@ -96,6 +97,7 @@ Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
+Requires: smartmet-uplot
 Requires: libbacktrace
 Requires: double-conversion
 Requires: smartmet-library-gis >= 26.10.16
@@ -157,6 +159,8 @@ make %{_smp_mflags}
 %files
 %defattr(0755,root,root,0755)
 %{_libdir}/lib%{LIBNAME}.so
+%defattr(0644,root,root,0755)
+%{_datadir}/smartmet/explorer
 
 %files -n %{SPECNAME}-devel
 %defattr(0644,root,root,0755)
@@ -168,6 +172,16 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Oct 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.16-3.fmi
+- Data explorer at /api/explorer: TimeSeries queries built from the producer metadata with
+  parameter and producer autocomplete narrowing each other, default times from the data,
+  keyword locations on a map, and uPlot charts (lines per location, or the median and
+  percentiles of many locations), tables and trees; files installed to
+  /usr/share/smartmet/explorer, requires smartmet-uplot
+- API catalog entries have a kind (x-smartmet-kind), Publisher::addToCatalog() with a kind
+- ABI change compared to 26.10.16-2: CatalogEntry, CatalogSettings and Catalog have new
+  members, smartmet-plugin-frontend must be rebuilt
+
 * Fri Oct 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.16-2.fmi
 - API catalog (RFC 9727): Spine::OpenAPI::Publisher::addToCatalog() lists an API in the
   catalog of the server, served by the reactor at /api, /.well-known/api-catalog and
