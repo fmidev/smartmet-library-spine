@@ -180,7 +180,9 @@ make %{_smp_mflags}
   chosen on a map narrow the producers to those covering them; the statistics of areas and
   keywords can be computed by the server (needs smartmet-library-timeseries 26.10.16-2 on
   the server for the percentiles); EDR queries (position, radius, area, cube, locations)
-  built from the collection metadata, CoverageJSON drawn as charts; a background map of the
+  built from the collection metadata, CoverageJSON drawn as charts; Coverages downloads with
+  the native grid, the area of the download in the chosen projection and its size before
+  downloading; a background map of the
   land, lakes and borders from Natural Earth (public domain) when no tile layer is
   configured; files installed to
   /usr/share/smartmet/explorer, requires smartmet-uplot

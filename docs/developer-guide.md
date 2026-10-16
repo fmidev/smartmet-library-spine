@@ -395,7 +395,12 @@ Most plugins produce tables of values:
   (position, radius, area, cube and locations, with the location list of the collection on
   the map), the times and the levels come from the extents, and CoverageJSON and GeoJSON
   responses are turned into rows for the same charts and tables, with a series per
-  location and level. The state is kept in the URL fragment, so a query can be shared as a
+  location and level. For Coverages (kind `coverages`) the parameters come from the schemas
+  of the collections, the card shows the native projection, grid and resolution, the map
+  shows the native grid, and as the box, the output projection, the grid size, the times,
+  the parameters or the levels change, `<root>/collections/{id}/outline` gives the area the
+  download would cover (drawn on the map) and its size; the result is a download link and
+  the code of the request. The state is kept in the URL fragment, so a query can be shared as a
   link. Without a tile layer (`map_tiles`) the map draws the land, the lakes and
   the country borders of `basemap.json`, generated from the public domain Natural Earth 1:50m
   data by `explorer/make-basemap.py` (see the script for the source), so that areas can be

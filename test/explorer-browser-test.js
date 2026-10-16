@@ -35,6 +35,7 @@ const catalog = {
     anchor: '/.well-known/api-catalog',
     item: [
       {href: '/edr', title: 'EDR', 'x-smartmet-kind': 'edr'},
+      {href: '/coverages', title: 'Coverages', 'x-smartmet-kind': 'coverages'},
       {href: '/timeseries', title: 'TimeSeries', 'x-smartmet-kind': 'timeseries'}
     ]
   }]
@@ -261,6 +262,62 @@ function edr(p, query)
   return pointCoverage(24.94, 60.17, params);
 }
 
+// ----------------------------------------------------------------------
+// The Coverages API
+// ----------------------------------------------------------------------
+
+const coverageCollections = {
+  collections: [{
+    id: 'pal',
+    title: 'pal',
+    outputFormats: ['application/x-grib2', 'application/netcdf'],
+    extent: {
+      spatial: {bbox: [[-9, 51, 49, 72]]},
+      temporal: {
+        interval: [[iso(now - 6 * hour), iso(now.getTime() + 60 * hour)]],
+        grid: {cellsCount: 67, resolution: 'PT1H'}
+      },
+      'x-smartmet-grid': {
+        wkt: 'PROJCS["FMI_Polar_Stereographic",GEOGCS["FMI_Sphere"]]',
+        width: 135,
+        height: 150,
+        resolution_km: [15, 15]
+      }
+    }
+  }]
+};
+
+function coverages(p, query)
+{
+  if (p === '/coverages/collections')
+    return coverageCollections;
+  if (p === '/coverages/collections/pal/schema')
+    return {
+      properties:
+          {Temperature: {title: 'Temperature', 'x-ogc-unit': 'C'}, Pressure: {title: 'Pressure'}}
+    };
+  if (p === '/coverages/collections/pal/outline')
+  {
+    const crs = query.get('crs') || 'native';
+    const ring = query.get('bbox') ? [[20, 60], [32, 60], [32, 70], [20, 70], [20, 60]] :
+                                     [[6, 51], [49, 51], [49, 70], [-9, 70], [6, 51]];
+    return {
+      type: 'Feature',
+      geometry: {type: 'Polygon', coordinates: [ring]},
+      properties: {
+        crs: crs,
+        grid: {width: 40, height: 82, estimated: crs !== 'native'},
+        times: 25,
+        parameters: 1,
+        levels: 1,
+        values: 82000,
+        bytes: 328000
+      }
+    };
+  }
+  return null;
+}
+
 const requested = [];
 const server = http.createServer((req, res) => {
   requested.push(req.url);
@@ -290,6 +347,9 @@ const server = http.createServer((req, res) => {
     return send(200, 'application/json', JSON.stringify(producers));
   if (p === '/timeseries')
     return send(200, 'application/json', JSON.stringify(timeseries(url.searchParams)));
+  const coverageDoc = coverages(p, url.searchParams);
+  if (coverageDoc)
+    return send(200, 'application/json', JSON.stringify(coverageDoc));
   const edrDoc = edr(p, url.searchParams);
   if (edrDoc)
     return send(200, 'application/json', JSON.stringify(edrDoc));
@@ -384,7 +444,8 @@ async function main()
         `[...document.querySelectorAll('nav select option')].map((o) => o.textContent)`);
     check(
         'only the APIs with a module are offered',
-        JSON.stringify(apis) === JSON.stringify(['EDR (/edr)', 'TimeSeries (/timeseries)']),
+        JSON.stringify(apis) ===
+            JSON.stringify(['EDR (/edr)', 'Coverages (/coverages)', 'TimeSeries (/timeseries)']),
         apis);
 
     // A parameter narrows the producers
@@ -571,7 +632,8 @@ async function main()
         restored);
 
     // The background map of the explorer
-    const land = await b.evaluate(`(() => { const l = document.querySelector('.xmap-land'); return l ? l.getAttribute('d').length : 0; })()`);
+    const land = await b.evaluate(
+        `(() => { const l = document.querySelector('.xmap-land'); return l ? l.getAttribute('d').length : 0; })()`);
     check('land drawn from the basemap', land > 1000, land);
 
     // The area of the producer on the map
@@ -794,6 +856,74 @@ async function main()
     await waitFor(b, `document.querySelectorAll('.chart canvas').length === 1`, 'the level chart');
     const levelTitle = await b.evaluate(`document.querySelector('.chart-title').textContent`);
     check('a series per level', levelTitle === 'temperature, 2 locations', levelTitle);
+
+    // --- The Coverages module --------------------------------------------------
+    await b.send('Page.navigate', {url: `${base}/api/explorer#api=/coverages`});
+    await sleep(300);
+    await b.evaluate(`location.reload()`);
+    await waitFor(
+        b, `!!document.querySelector('[aria-label="Collection"]')`, 'the Coverages module');
+    await waitFor(
+        b,
+        `!document.querySelector('.form .step .muted.small').textContent.includes('reading')`,
+        'the schemas');
+    r = await choose(b, '[aria-label="Parameter"]', 'temp', 'Temperature');
+    check('Coverages parameter from the schemas', r.found, r);
+    r = await choose(b, '[aria-label="Collection"]', '', 'pal');
+    check(
+        'Coverages collection with the native projection',
+        r.found && r.labels[0].includes('FMI_Polar_Stereographic'),
+        r);
+    await waitFor(b, `document.querySelectorAll('.xmap-region').length === 1`, 'the native grid');
+    await sleep(500);
+    const ccard = await b.evaluate(`document.querySelector('.model-card').textContent`);
+    check(
+        'native grid in the card',
+        ccard.includes('135 × 150 grid') && ccard.includes('15.0 km'),
+        ccard);
+    let curl = new URL(await b.evaluate(`document.querySelector('code.url').textContent`));
+    check(
+        'coverage request',
+        curl.pathname === '/coverages/collections/pal/coverage' &&
+            curl.searchParams.get('properties') === 'Temperature' &&
+            curl.searchParams.get('f') === 'netcdf' &&
+            /Z\/.*Z$/.test(curl.searchParams.get('datetime')),
+        curl.href);
+    const estimateText = await b.evaluate(`document.querySelector('.size-estimate').textContent`);
+    check(
+        'size estimate',
+        estimateText.includes('40 × 82 grid') && estimateText.includes('about 328.0 kB'),
+        estimateText);
+    const href = await b.evaluate(`document.querySelector('a.download').getAttribute('href')`);
+    check('download link', href === curl.href, href);
+    const curlSnippet = await b.evaluate(`document.querySelector('pre.code').textContent`);
+    check(
+        'snippet file name',
+        curlSnippet.startsWith('curl --fail --output result.nc '),
+        curlSnippet);
+
+    // A projection and a box: the area of the download is drawn
+    await b.evaluate(
+        `(() => { const s = document.querySelector('[aria-label="Output projection"]'); s.value = 'EPSG:3067'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
+    await sleep(300);
+    m = await mapRect(b);
+    await drag(b, m.x + m.w / 2 - 40, m.y + m.h / 2 - 40, m.x + m.w / 2 + 40, m.y + m.h / 2 + 40);
+    await sleep(800);
+    curl = new URL(await b.evaluate(`document.querySelector('code.url').textContent`));
+    check(
+        'projected coverage request',
+        curl.searchParams.get('crs') === 'EPSG:3067' &&
+            curl.searchParams.get('bbox').split(',').length === 4,
+        curl.href);
+    const outlines = await b.evaluate(`document.querySelectorAll('.xmap-outline').length`);
+    check('area of the download on the map', outlines === 1, outlines);
+    const outlineRequests = requested.filter(
+        (u) => u.startsWith('/coverages/collections/pal/outline?') && u.includes('crs=EPSG') &&
+            u.includes('bbox='));
+    check(
+        'outline asked with the options',
+        outlineRequests.length >= 1,
+        requested.filter((u) => u.includes('outline')));
 
     // Narrow screens
     await b.send(

@@ -199,3 +199,7 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .xmap-land { fill: var(--land); stroke: var(--border); stroke-width: 0.5; }
 .xmap-lake { fill: var(--lake); stroke: none; }
 .xmap-border { fill: none; stroke: var(--border); stroke-width: 0.8; stroke-dasharray: 3 2; }
+.xmap-outline { fill: rgba(43, 138, 62, 0.12); stroke: #2b8a3e; stroke-width: 2; }
+.size-estimate { margin: 0; }
+.download { display: inline-block; padding: 6px 20px; border-radius: 6px; background: var(--accent); color: var(--accent-fg); font-weight: 600; text-decoration: none; }
+.download[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }

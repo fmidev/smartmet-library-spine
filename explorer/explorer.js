@@ -727,7 +727,12 @@ function createMap(settings, onSelect)
     layers.regions.replaceChildren();
     for (const region of state.regions)
     {
-      const r = rect(region.bbox, 'xmap-region');
+      // A box, or a polygon in longitude and latitude
+      const r = region.polygon ? svg('polygon', {
+        class: region.cls || 'xmap-region',
+        points: region.polygon.map(([lon, lat]) => screenOf(lon, lat).join(',')).join(' ')
+      }) :
+                                 rect(region.bbox, region.cls || 'xmap-region');
       const title = svg('title');
       title.textContent = region.label;
       r.append(title);
@@ -937,7 +942,16 @@ function createMap(settings, onSelect)
       surface.dataset.tool = current;
     },
     setRegions(regions) {
-      state.regions = regions;
+      // The boxes of the polygons for fitting the map
+      state.regions = regions.map((r) => {
+        if (!r.polygon || r.bbox)
+          return r;
+        const lons = r.polygon.map((p) => p[0]);
+        const lats = r.polygon.map((p) => p[1]);
+        return Object.assign({}, r, {
+          bbox: [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)]
+        });
+      });
       drawOverlays();
     },
     setSelection(sel) {
@@ -1375,7 +1389,9 @@ function shellQuote(s)
 function snippets(url)
 {
   const request = {url: url, method: 'GET', headers: {}};
-  const ret = [['bash', `curl --fail --output result.json ${shellQuote(url)}\n`]];
+  // The file name extension of the response, as in the snippets of the Swagger plugin
+  const ext = S && S.extension ? S.extension(new URL(url)) : 'json';
+  const ret = [['bash', `curl --fail --output result.${ext} ${shellQuote(url)}\n`]];
   if (S && S.generators)
   {
     const g = S.generators;
@@ -2832,12 +2848,622 @@ function edrModule(app, api, state, save)
 }
 
 // ------------------------------------------------------------------
+// The Coverages module
+// ------------------------------------------------------------------
+
+// The f values of the output media types of the Coverages API
+const COVERAGE_FORMATS = {
+  'application/x-grib2': ['grib2', 'GRIB 2'],
+  'application/x-grib': ['grib1', 'GRIB 1'],
+  'application/netcdf': ['netcdf', 'NetCDF'],
+  'image/tiff': ['geotiff', 'GeoTIFF'],
+  'application/x-fmi-querydata': ['qd', 'Querydata']
+};
+
+// The output projections offered, besides the native grid and any other EPSG code
+const COVERAGE_CRS = [
+  ['', 'Native grid of the model'],
+  ['EPSG:4326', 'Longitude and latitude (EPSG:4326)'],
+  ['EPSG:3067', 'ETRS-TM35FIN (EPSG:3067)'],
+  ['EPSG:3035', 'ETRS89 LAEA Europe (EPSG:3035)'],
+  ['EPSG:3857', 'Web Mercator (EPSG:3857)']
+];
+
+// The name of the projection of a WKT
+function projectionName(wkt)
+{
+  const m = /^\s*(?:PROJCS|PROJCRS|GEOGCS|GEOGCRS)\s*\[\s*"([^"]*)"/.exec(wkt || '');
+  return m ? m[1] : '';
+}
+
+function formatBytes(n)
+{
+  if (!(n > 0))
+    return '0 bytes';
+  const units = ['bytes', 'kB', 'MB', 'GB', 'TB'];
+  const i = Math.min(units.length - 1, Math.floor(Math.log10(n) / 3));
+  return `${(n / 10 ** (3 * i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function buildCoverageIndex(doc)
+{
+  const producers = new Map();
+  for (const c of doc.collections || [])
+  {
+    const extent = c.extent || {};
+    const bbox = extent.spatial && extent.spatial.bbox && extent.spatial.bbox[0];
+    const interval = extent.temporal && extent.temporal.interval && extent.temporal.interval[0];
+    const native = extent['x-smartmet-grid'] ||
+        (extent['x-smartmet-grids'] && extent['x-smartmet-grids'][0]) || null;
+    const vertical = extent.vertical;
+    producers.set(c.id, {
+      name: c.id,
+      title: c.title,
+      description: c.description,
+      bbox: bbox && bbox.length >= 4 ? bbox.slice(0, 4) : null,
+      time: interval ? {
+        start: interval[0],
+        end: interval[1],
+        step: extent.temporal.grid && extent.temporal.grid.resolution
+      } :
+                       null,
+      levels: vertical && vertical.grid && vertical.grid.coordinates ? [{
+        type: vertical['x-smartmet-leveltype'] || 'level',
+        values: vertical.grid.coordinates.map(String)
+      }] :
+                                                                       [],
+      native: native,
+      formats: (c.outputFormats || []).filter((f) => COVERAGE_FORMATS[f]),
+      parameters: [],
+      parameterSet: new Set(),
+      schemaLoaded: false
+    });
+  }
+  return {producers, parameters: new Map()};
+}
+
+function coveragesModule(app, api, state, save)
+{
+  const rootPath = api.root;
+  const base = `${app.base}${rootPath.replace(/^\//, '')}`;
+  const view = el('div', {class: 'module'});
+  const status = el('p', {class: 'muted'}, 'Loading the collections…');
+  view.append(status);
+
+  fetchJson(`${base}/collections`).then((doc) => build(buildCoverageIndex(doc))).catch((e) => {
+    status.textContent = `The collections could not be loaded: ${e.message}`;
+  });
+
+  function build(index)
+  {
+    view.replaceChildren();
+    const s = state;
+    s.params = s.params || [];
+
+    // The parameters come from the schemas of the collections, four at a time
+    const queue = Array.from(index.producers.values());
+    let loading = queue.length;
+    const loadNext = () => {
+      const c = queue.shift();
+      if (!c)
+        return;
+      fetchJson(`${base}/collections/${encodeURIComponent(c.name)}/schema`)
+          .then((schema) => {
+            for (const [name, prop] of Object.entries(schema.properties || {}))
+            {
+              const key = name.toLowerCase();
+              c.parameters.push(name);
+              c.parameterSet.add(name);
+              let entry = index.parameters.get(key);
+              if (!entry)
+              {
+                entry = {
+                  key: key,
+                  name: name,
+                  description: prop.title || '',
+                  unit: prop['x-ogc-unit'] || '',
+                  producers: [],
+                  names: new Map()
+                };
+                index.parameters.set(key, entry);
+              }
+              entry.producers.push(c.name);
+              entry.names.set(c.name, name);
+            }
+            c.schemaLoaded = true;
+          })
+          .catch(
+              () => {
+                  // A collection without a schema is offered without parameters
+              })
+          .finally(() => {
+            loading--;
+            refresh(false);
+            loadNext();
+          });
+    };
+    for (let i = 0; i < 4; i++)
+      loadNext();
+
+    const collection = () => index.producers.get(s.collection);
+    // The names of the chosen parameters in a collection (the schemas keep their case)
+    const namesIn = (c) => s.params.map((key) => {
+      const entry = index.parameters.get(key);
+      return (entry && entry.names.get(c.name)) || key;
+    });
+    const has = (c, key) => {
+      const entry = index.parameters.get(key);
+      return !!(entry && entry.names.has(c.name));
+    };
+    const selection = () => parseSelection('bbox', s.location);
+    const candidates = () => {
+      const sel = selection();
+      return Array.from(index.producers.values())
+          .filter((c) => s.params.every((p) => has(c, p)) && covers(c, sel));
+    };
+
+    // --- What -----------------------------------------------------------
+    const chips = el('div', {class: 'chips'});
+    const note = el('p', {class: 'muted small'});
+    const card = el('div', {class: 'model-card'});
+
+    const paramSearch = autocomplete({
+      label: 'Parameter',
+      placeholder: 'Type a parameter name or description',
+      search: (text) => {
+        const q = text.toLowerCase();
+        const c = collection();
+        const out = [];
+        for (const entry of index.parameters.values())
+        {
+          if (s.params.includes(entry.key) || (c && !entry.names.has(c.name)))
+            continue;
+          const score = matchScore(q, entry.name, `${entry.description} ${entry.key}`);
+          if (score !== null)
+            out.push({
+              score,
+              key: entry.key,
+              label: entry.name,
+              detail:
+                  [entry.description, entry.unit && `[${entry.unit}]`].filter(Boolean).join(' '),
+              badge: c ?
+                  null :
+                  `${entry.producers.length} collection${entry.producers.length === 1 ? '' : 's'}`
+            });
+        }
+        out.sort((a, b) => a.score - b.score || a.label.localeCompare(b.label));
+        return out;
+      },
+      select: (item) => {
+        s.params.push(item.key);
+        refresh();
+      },
+      empty: (text) => `No parameter matches "${text}"`
+    });
+
+    const collectionSearch = autocomplete({
+      label: 'Collection',
+      placeholder: 'Type a collection name',
+      search: (text) => {
+        const q = text.toLowerCase();
+        return candidates()
+            .map(
+                (c) =>
+                    ({c, score: matchScore(q, c.name, `${c.title || ''} ${c.description || ''}`)}))
+            .filter((x) => x.score !== null)
+            .sort((a, b) => a.score - b.score || a.c.name.localeCompare(b.c.name))
+            .map(({c}) => ({
+                   key: c.name,
+                   label: c.name,
+                   detail: [projectionName(c.native && c.native.wkt), timeRangeOf(c)]
+                               .filter(Boolean)
+                               .join(' · ')
+                 }));
+      },
+      select: (item) => {
+        s.collection = item.key;
+        defaultTimes(true);
+        refresh();
+        loadNative();
+      },
+      empty: () => 'No collection has all the chosen parameters',
+      limit: 200
+    });
+
+    function timeRangeOf(c)
+    {
+      if (!c.time || !c.time.start || !c.time.end)
+        return '';
+      return `${formatTime(new Date(c.time.start))} – ${formatTime(new Date(c.time.end))}`;
+    }
+
+    // --- When and the levels -------------------------------------------------
+    const startInput = el('input', {type: 'datetime-local', 'aria-label': 'Start time (UTC)'});
+    const endInput = el('input', {type: 'datetime-local', 'aria-label': 'End time (UTC)'});
+    const dataPeriod = el('span', {class: 'muted small'});
+    const levels = el('div', {class: 'chips'});
+    const levelRow = el('div', null, el('label', null, 'Levels (all if none is chosen)'), levels);
+    startInput.addEventListener('change', () => {
+      s.start = startInput.value;
+      refresh();
+    });
+    endInput.addEventListener('change', () => {
+      s.end = endInput.value;
+      refresh();
+    });
+
+    function defaultTimes(force)
+    {
+      const c = collection();
+      if (!c || !c.time || (!force && s.start && s.end))
+        return;
+      // The first day of the data
+      const first = new Date(c.time.start);
+      const last = new Date(c.time.end);
+      s.start = toInput(first);
+      s.end = toInput(new Date(Math.min(last.getTime(), first.getTime() + 24 * 3600e3)));
+    }
+
+    // --- Where -------------------------------------------------------------
+    const locInput = el('input', {
+      type: 'text',
+      'aria-label': 'Box',
+      spellcheck: 'false',
+      placeholder: 'The whole area, or minlon,minlat,maxlon,maxlat: drag on the map'
+    });
+    const crsSelect =
+        el('select',
+           {'aria-label': 'Output projection'},
+           COVERAGE_CRS.map(([v, label]) => el('option', {value: v}, label)),
+           el('option', {value: 'other'}, 'Other EPSG code…'));
+    const crsInput =
+        el('input', {type: 'text', 'aria-label': 'EPSG code', placeholder: 'EPSG:3006', size: 12});
+    const widthInput =
+        el('input',
+           {type: 'number', min: 1, 'aria-label': 'Grid width', placeholder: 'width', size: 6});
+    const heightInput =
+        el('input',
+           {type: 'number', min: 1, 'aria-label': 'Grid height', placeholder: 'height', size: 6});
+    const areaNote = el('p', {class: 'warn small'});
+    const estimate = el('p', {class: 'size-estimate small'});
+    const map = createMap(mapSettings(app.element), (shape) => {
+      s.location = formatSelection(shape);
+      refresh();
+    });
+    locInput.addEventListener('input', debounce(() => {
+                                s.location = locInput.value.trim();
+                                refresh(false);
+                              }, 300));
+    crsSelect.addEventListener('change', () => {
+      s.crs = crsSelect.value === 'other' ? (crsInput.value.trim() || 'other') : crsSelect.value;
+      refresh();
+    });
+    crsInput.addEventListener('input', debounce(() => {
+                                s.crs = crsInput.value.trim() || 'other';
+                                refresh(false);
+                              }, 400));
+    for (const [input, key] of [[widthInput, 'width'], [heightInput, 'height']])
+      input.addEventListener('input', debounce(() => {
+                               s[key] = input.value.trim();
+                               refresh(false);
+                             }, 400));
+
+    // The native grid of the collection on the map
+    let nativeOutline = null;
+    function loadNative()
+    {
+      const c = collection();
+      nativeOutline = null;
+      if (!c)
+        return;
+      fetchJson(`${base}/collections/${encodeURIComponent(c.name)}/outline`)
+          .then((doc) => {
+            if (s.collection !== c.name)
+              return;
+            nativeOutline = doc.geometry && doc.geometry.coordinates && doc.geometry.coordinates[0];
+            refresh(false);
+            const extent = map.extent();
+            if (extent)
+              map.fit(extent);
+          })
+          .catch(() => {});
+    }
+
+    // The area and the size of the download, asked from the server as the options change
+    let outlineRequest = 0;
+    const updateOutline = debounce(() => {
+      const c = collection();
+      if (!c)
+        return;
+      const id = ++outlineRequest;
+      fetchJson(`${base}/collections/${encodeURIComponent(c.name)}/outline?${
+                    queryString(options(false))}`)
+          .then((doc) => {
+            if (id !== outlineRequest)
+              return;
+            const p = doc.properties || {};
+            const grid = p.grid ?
+                `${p.grid.width} × ${p.grid.height}${p.grid.estimated ? ' (estimated)' : ''} grid` :
+                'grid of an unknown size';
+            estimate.textContent =
+                `${grid}, ${p.parameters} parameter${p.parameters === 1 ? '' : 's'}, ${
+                    p.times} time${p.times === 1 ? '' : 's'}${
+                    p.levels > 1 ? `, ${p.levels} levels` : ''}` +
+                (p.values ? `: ${Math.round(p.values).toLocaleString('en')} values, about ${
+                                formatBytes(p.bytes)} as 32 bit floats` :
+                            '');
+            outline = doc.geometry && doc.geometry.coordinates && doc.geometry.coordinates[0];
+            drawRegions();
+          })
+          .catch((e) => {
+            if (id === outlineRequest)
+            {
+              estimate.textContent = '';
+              areaNote.textContent = e.message;
+              outline = null;
+              drawRegions();
+            }
+          });
+    }, 300);
+    let outline = null;
+
+    function drawRegions()
+    {
+      const regions = [];
+      if (nativeOutline)
+        regions.push({polygon: nativeOutline, label: 'The native grid'});
+      if (outline && (s.location || s.crs))
+        regions.push({polygon: outline, label: 'The area of the download', cls: 'xmap-outline'});
+      map.setRegions(regions);
+    }
+
+    // --- Output and the request ----------------------------------------------
+    const formatSelect = el('select', {'aria-label': 'Output format'});
+    formatSelect.addEventListener('change', () => {
+      s.format = formatSelect.value;
+      refresh();
+    });
+    const urlBox = el('code', {class: 'url'});
+    const missing = el('p', {class: 'missing'});
+    const download =
+        el('a', {class: 'download', download: '', 'aria-disabled': 'true'}, 'Download');
+    const copyUrl = el('button', {type: 'button', class: 'small'}, 'Copy URL');
+    const code = el('div', {class: 'code-box'});
+    const codeDetails =
+        el('details',
+           {class: 'code-details', open: true},
+           el('summary', null, 'Code for this request'),
+           code);
+    copyUrl.addEventListener(
+        'click', () => navigator.clipboard.writeText(currentUrl()).catch(() => {}));
+
+    // The options of the coverage and the outline requests; 'withFormat' adds f
+    function options(withFormat)
+    {
+      const c = collection();
+      const crs = s.crs && s.crs !== 'other' ? s.crs : '';
+      return [
+        ['properties', c ? namesIn(c).join(',') : ''],
+        ['datetime', s.start && s.end ? `${fromInput(s.start)}/${fromInput(s.end)}` : ''],
+        ['bbox', selection() ? selection().bbox.join(',') : ''],
+        ['crs', crs],
+        ['scale-size', s.width && s.height ? `Lon(${s.width}),Lat(${s.height})` : ''],
+        ['levels', (s.levels || []).join(',')],
+        ['f', withFormat ? s.format : '']
+      ];
+    }
+
+    function currentUrl()
+    {
+      const id = encodeURIComponent(s.collection || '{collectionId}');
+      return new URL(
+                 `${rootPath}/collections/${id}/coverage?${queryString(options(true))}`, app.base)
+          .href;
+    }
+
+    function refresh(rerender = true)
+    {
+      const c = collection();
+      chips.replaceChildren(...s.params.map((key) => {
+        const entry = index.parameters.get(key);
+        const label = entry ? entry.name : key;
+        return el(
+            'span',
+            {class: 'chip', title: entry ? entry.description : ''},
+            label,
+            el('button',
+               {
+                 type: 'button',
+                 class: 'chip-x',
+                 'aria-label': `Remove ${label}`,
+                 onclick: () => {
+                   s.params = s.params.filter((x) => x !== key);
+                   refresh();
+                 }
+               },
+               '×'));
+      }));
+      const n = candidates().length;
+      const pending = loading > 0 ? ` (reading the parameters of ${loading} more)` : '';
+      note.textContent =
+          (s.params.length > 0 ?
+               `${n} of ${index.producers.size} collections have ${
+                   s.params.length === 1 ?
+                       'this parameter' :
+                       'all these parameters'}${selection() ? ' in the selected area' : ''}` :
+               `${index.producers.size} collections`) +
+          pending;
+
+      if (c)
+      {
+        const nat = c.native || {};
+        card.replaceChildren(
+            el('div',
+               {class: 'model-head'},
+               el('strong', null, c.name),
+               el('button',
+                  {
+                    type: 'button',
+                    class: 'small',
+                    onclick: () => {
+                      s.collection = '';
+                      nativeOutline = null;
+                      refresh();
+                    }
+                  },
+                  'Change')),
+            el('div',
+               {class: 'muted small'},
+               [
+                 projectionName(nat.wkt),
+                 nat.width ? `${nat.width} × ${nat.height} grid` : '',
+                 nat.resolution_km ? `${nat.resolution_km[0].toFixed(1)} km` : ''
+               ].filter(Boolean)
+                   .join(' · ')),
+            el('div', {class: 'muted small'}, [
+              timeRangeOf(c),
+              c.time && c.time.step ? `step ${c.time.step}` : '',
+              `${c.parameters.length} parameters`,
+              c.levels.length ? `${c.levels[0].values.length} levels` : ''
+            ].filter(Boolean).join(' · ')));
+        card.hidden = false;
+        collectionSearch.element.hidden = true;
+      }
+      else
+      {
+        card.hidden = true;
+        collectionSearch.element.hidden = false;
+      }
+
+      startInput.value = s.start || '';
+      endInput.value = s.end || '';
+      dataPeriod.textContent = c && timeRangeOf(c) ? `Data: ${timeRangeOf(c)}` : '';
+      const values = c && c.levels.length ? c.levels[0].values : [];
+      s.levels = (s.levels || []).filter((v) => values.includes(v));
+      levels.replaceChildren(...values.map(
+          (v) =>
+              el('button',
+                 {
+                   type: 'button',
+                   class: `chip${s.levels.includes(v) ? '' : ' meta'}`,
+                   'aria-pressed': s.levels.includes(v) ? 'true' : 'false',
+                   onclick: () => {
+                     s.levels =
+                         s.levels.includes(v) ? s.levels.filter((x) => x !== v) : [...s.levels, v];
+                     refresh();
+                   }
+                 },
+                 v)));
+      levelRow.hidden = values.length === 0;
+
+      if (rerender !== false)
+      {
+        locInput.value = s.location || '';
+        widthInput.value = s.width || '';
+        heightInput.value = s.height || '';
+      }
+      const known = COVERAGE_CRS.some(([v]) => v === (s.crs || ''));
+      crsSelect.value = known ? (s.crs || '') : 'other';
+      crsInput.hidden = known;
+      if (!known && rerender !== false)
+        crsInput.value = s.crs === 'other' ? '' : s.crs;
+      map.setTools(['move', 'box'], 'box');
+      const sel = selection();
+      map.setSelection(sel);
+      areaNote.textContent = c && sel && !covers(c, sel) ?
+          `The box is outside the area of ${c.name}` :
+          (s.location && !sel ? 'Not a valid box: minlon,minlat,maxlon,maxlat' : '');
+      drawRegions();
+
+      const formats = c ? c.formats : Object.keys(COVERAGE_FORMATS);
+      formatSelect.replaceChildren(...formats.map(
+          (f) => el('option', {value: COVERAGE_FORMATS[f][0]}, COVERAGE_FORMATS[f][1])));
+      const fs = formats.map((f) => COVERAGE_FORMATS[f][0]);
+      if (!fs.includes(s.format))
+        s.format = fs.includes('netcdf') ? 'netcdf' : fs[0];
+      formatSelect.value = s.format || '';
+
+      const url = currentUrl();
+      urlBox.textContent = url;
+      const absent = [];
+      if (!s.collection)
+        absent.push('a collection');
+      if (s.params.length === 0)
+        absent.push('a parameter');
+      missing.textContent = absent.length ? `Still needed: ${absent.join(', ')}` : '';
+      if (absent.length === 0)
+      {
+        download.setAttribute('href', url);
+        download.setAttribute('aria-disabled', 'false');
+      }
+      else
+      {
+        download.removeAttribute('href');
+        download.setAttribute('aria-disabled', 'true');
+      }
+      codeTabs(code, url);
+      if (c)
+        updateOutline();
+      else
+        estimate.textContent = '';
+      save();
+    }
+
+    const section = (title, ...content) =>
+        el('section', {class: 'step'}, el('h2', null, title), ...content);
+    view.append(
+        el('div',
+           {class: 'form'},
+           section(
+               'What',
+               el('label', null, 'Parameters'),
+               chips,
+               paramSearch.element,
+               el('label', null, 'Collection'),
+               note,
+               collectionSearch.element,
+               card),
+           section(
+               'When',
+               el('div',
+                  {class: 'row'},
+                  el('label', null, 'Start (UTC)', startInput),
+                  el('label', null, 'End (UTC)', endInput)),
+               dataPeriod,
+               levelRow),
+           section('Where', el('div', {class: 'row'}, locInput), areaNote, map.element),
+           section(
+               'Output',
+               el('div', {class: 'row'}, el('label', null, 'Projection', crsSelect), crsInput),
+               el('div',
+                  {class: 'row'},
+                  el('label',
+                     null,
+                     'Grid size (optional)',
+                     el('span', {class: 'row'}, widthInput, '×', heightInput))),
+               el('div', {class: 'row'}, el('label', null, 'Format', formatSelect)))),
+        el('div',
+           {class: 'request'},
+           el('div', {class: 'url-row'}, urlBox, copyUrl),
+           missing,
+           estimate,
+           el('div', {class: 'row'}, download),
+           codeDetails));
+    defaultTimes(false);
+    refresh();
+    loadNative();
+  }
+  return view;
+}
+
+// ------------------------------------------------------------------
 // The application
 // ------------------------------------------------------------------
 
 const MODULES = {
   timeseries: timeSeriesModule,
-  edr: edrModule
+  edr: edrModule,
+  coverages: coveragesModule
 };
 
 function readState()
@@ -2940,6 +3566,8 @@ root.SmartMetExplorer = {
   buildIndex,
   buildEdrIndex,
   coverageRows,
+  projectionName,
+  formatBytes,
   queryString
 };
 
