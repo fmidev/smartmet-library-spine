@@ -162,6 +162,105 @@ function timeseries(query)
   return locations > 1 ? rows : rows[0];
 }
 
+// ----------------------------------------------------------------------
+// The EDR API
+// ----------------------------------------------------------------------
+
+const edrCollections = {
+  collections: [
+    {
+      id: 'pal',
+      title: 'Pal Skandinavia',
+      data_queries: {position: {}, radius: {}, area: {}, cube: {}, locations: {}},
+      output_formats: ['CoverageJSON', 'GeoJSON'],
+      extent: {
+        spatial: {bbox: [[5, 51, 49, 72]], crs: 'OGC:CRS84'},
+        temporal: {interval: [[iso(now - 6 * hour), iso(now.getTime() + 60 * hour)]]}
+      },
+      parameter_names: {
+        temperature: {
+          id: 'Temperature',
+          label: 'Temperature',
+          description: {en: 'Air temperature'},
+          unit: {symbol: 'C'}
+        },
+        humidity: {id: 'Humidity', label: 'Humidity', description: 'Relative humidity'}
+      }
+    },
+    {
+      id: 'ecmwf_pressure',
+      data_queries: {position: {}, cube: {}},
+      output_formats: ['CoverageJSON'],
+      extent: {
+        spatial: {bbox: [[-30, 30, 50, 80]]},
+        temporal: {interval: [[iso(now - 12 * hour), iso(now.getTime() + 240 * hour)]]},
+        vertical: {vrs: 'pressure', values: ['1000', '850', '500']}
+      },
+      parameter_names: {temperature: {id: 'Temperature', label: 'Temperature'}}
+    }
+  ]
+};
+
+// A point series coverage at a point (and a level)
+function pointCoverage(lon, lat, params, z)
+{
+  const ts = Array.from({length: 6}, (_, i) => iso(now.getTime() + i * hour));
+  const axes = {t: {values: ts}, x: {values: [lon]}, y: {values: [lat]}};
+  if (z !== undefined)
+    axes.z = {values: [Number(z)]};
+  const ranges = {};
+  for (const p of params)
+    ranges[p] = {
+      type: 'NdArray',
+      axisNames: ['t', 'y', 'x'],
+      shape: [6, 1, 1],
+      values: ts.map((t, i) => 10 + i + lat / 100 - (z ? Number(z) / 1000 : 0))
+    };
+  return {type: 'Coverage', domain: {type: 'Domain', axes: axes}, ranges: ranges};
+}
+
+function edr(p, query)
+{
+  if (p === '/edr/collections')
+    return edrCollections;
+  const m =
+      /^\/edr\/collections\/([^/]+)\/(position|radius|area|cube|locations)(?:\/([^/]+))?$/.exec(p);
+  if (!m)
+    return null;
+  const params = (query.get('parameter-name') || '').split(',').filter(Boolean);
+  if (m[2] === 'locations' && !m[3])
+    return {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          id: '100971',
+          geometry: {type: 'Point', coordinates: [24.94, 60.17]},
+          properties: {name: 'Helsinki Kaisaniemi'}
+        },
+        {
+          type: 'Feature',
+          id: '101004',
+          geometry: {type: 'Point', coordinates: [24.96, 60.2]},
+          properties: {name: 'Helsinki Kumpula'}
+        }
+      ]
+    };
+  if (m[2] === 'area' || m[2] === 'cube' || m[2] === 'radius')
+    return {
+      type: 'CoverageCollection',
+      coverages: [[24, 60], [24.5, 60], [24, 60.5], [24.5, 60.5]].map(
+          ([x, y]) => pointCoverage(x, y, params))
+    };
+  const z = (query.get('z') || '').split(',').filter(Boolean);
+  if (z.length > 0)
+    return {
+      type: 'CoverageCollection',
+      coverages: z.map((level) => pointCoverage(24.94, 60.17, params, level))
+    };
+  return pointCoverage(24.94, 60.17, params);
+}
+
 const requested = [];
 const server = http.createServer((req, res) => {
   requested.push(req.url);
@@ -189,6 +288,9 @@ const server = http.createServer((req, res) => {
     return send(200, 'application/json', JSON.stringify(producers));
   if (p === '/timeseries')
     return send(200, 'application/json', JSON.stringify(timeseries(url.searchParams)));
+  const edrDoc = edr(p, url.searchParams);
+  if (edrDoc)
+    return send(200, 'application/json', JSON.stringify(edrDoc));
   send(404, 'text/plain', 'not found');
 });
 
@@ -273,14 +375,14 @@ async function main()
   const b = await startBrowser('1280,1000');
   try
   {
-    await b.send('Page.navigate', {url: `${base}/api/explorer`});
+    await b.send('Page.navigate', {url: `${base}/api/explorer#api=/timeseries`});
     await waitFor(b, `!!document.querySelector('${PARAM}')`, 'the TimeSeries module');
 
     const apis = await b.evaluate(
         `[...document.querySelectorAll('nav select option')].map((o) => o.textContent)`);
     check(
         'only the APIs with a module are offered',
-        JSON.stringify(apis) === JSON.stringify(['TimeSeries (/timeseries)']),
+        JSON.stringify(apis) === JSON.stringify(['EDR (/edr)', 'TimeSeries (/timeseries)']),
         apis);
 
     // A parameter narrows the producers
@@ -570,6 +672,122 @@ async function main()
     await setLocation(b, 'not a box');
     const invalid = await b.evaluate(`document.querySelector('.warn').textContent`);
     check('invalid box', invalid.startsWith('Not a valid box'), invalid);
+
+    // --- The EDR module -------------------------------------------------------
+    await b.send('Page.navigate', {url: `${base}/api/explorer#api=/edr`});
+    await sleep(300);
+    await b.evaluate(`location.reload()`);
+    await waitFor(b, `!!document.querySelector('[aria-label="Collection"]')`, 'the EDR module');
+    const EPARAM = '[aria-label="Parameter"]';
+    r = await choose(b, EPARAM, 'temp', 'Temperature');
+    check('EDR parameter search', r.found && r.labels.some((l) => l.includes('2 collections')), r);
+    r = await choose(b, EPARAM, 'relative', 'Humidity');
+    let enote = await b.evaluate(`document.querySelector('.form .step .muted.small').textContent`);
+    check(
+        'collections with the parameters',
+        enote === '1 of 2 collections have all these parameters',
+        enote);
+    r = await choose(b, '[aria-label="Collection"]', '', 'pal');
+    check('only the collections with the parameters', r.found && r.labels.length === 1, r);
+    await sleep(300);
+    const queriesOf = await b.evaluate(
+        `[...document.querySelectorAll('[data-query]')].map((x) => x.textContent + ':' + x.getAttribute('aria-checked'))`);
+    check(
+        'query types of the collection',
+        JSON.stringify(queriesOf) ===
+            JSON.stringify(
+                ['Position:true', 'Radius:false', 'Area:false', 'Cube:false', 'Locations:false']),
+        queriesOf);
+
+    // A position clicked on the map
+    m = await mapRect(b);
+    await mouse(b, 'mouseMoved', m.x + m.w / 2, m.y + m.h / 2, 0);
+    await mouse(b, 'mousePressed', m.x + m.w / 2, m.y + m.h / 2, 1);
+    await mouse(b, 'mouseReleased', m.x + m.w / 2, m.y + m.h / 2, 0);
+    await sleep(400);
+    let eurl = new URL(await b.evaluate(`document.querySelector('code.url').textContent`));
+    check(
+        'EDR position request',
+        eurl.pathname === '/edr/collections/pal/position' &&
+            /^POINT\(-?[\d.]+ -?[\d.]+\)$/.test(eurl.searchParams.get('coords')) &&
+            eurl.searchParams.get('parameter-name') === 'temperature,humidity' &&
+            /Z\/.*Z$/.test(eurl.searchParams.get('datetime')) &&
+            eurl.searchParams.get('f') === 'CoverageJSON',
+        eurl.href);
+    await b.evaluate(`document.querySelector('button.primary').click()`);
+    await waitFor(b, `document.querySelectorAll('.chart canvas').length === 2`, 'the EDR charts');
+    const echarts =
+        await b.evaluate(`[...document.querySelectorAll('.chart')].map((c) => c.dataset.param)`);
+    check(
+        'EDR charts from CoverageJSON',
+        JSON.stringify(echarts) === JSON.stringify(['humidity', 'temperature']) ||
+            JSON.stringify(echarts) === JSON.stringify(['temperature', 'humidity']),
+        echarts);
+
+    // An area dragged on the map
+    await b.evaluate(`document.querySelector('[data-query="area"]').click()`);
+    await sleep(200);
+    m = await mapRect(b);
+    await drag(b, m.x + m.w / 2 - 50, m.y + m.h / 2 - 30, m.x + m.w / 2 + 50, m.y + m.h / 2 + 30);
+    eurl = new URL(await b.evaluate(`document.querySelector('code.url').textContent`));
+    check(
+        'EDR area request',
+        eurl.pathname === '/edr/collections/pal/area' &&
+            /^POLYGON\(\(.*\)\)$/.test(eurl.searchParams.get('coords')),
+        eurl.href);
+    await b.evaluate(`document.querySelector('button.primary').click()`);
+    await waitFor(
+        b,
+        `(document.querySelector('.results-head .muted') || {}).textContent === "24 rows, 4 locations"`,
+        'the EDR area results');
+    const earea = await b.evaluate(`document.querySelectorAll('.xmap-point').length`);
+    check('the points of the area on the map', earea === 4, earea);
+
+    // A location of the collection
+    await b.evaluate(`document.querySelector('[data-query="locations"]').click()`);
+    await sleep(500);
+    r = await choose(b, '[aria-label="Location id"]', 'kumpula', 'Helsinki Kumpula');
+    check('location search', r.found, r);
+    await sleep(300);
+    eurl = new URL(await b.evaluate(`document.querySelector('code.url').textContent`));
+    check(
+        'EDR locations request',
+        eurl.pathname === '/edr/collections/pal/locations/101004' &&
+            !eurl.searchParams.has('coords'),
+        eurl.href);
+    const elocs = await b.evaluate(`document.querySelectorAll('.xmap-point').length`);
+    check('the locations of the collection on the map', elocs === 2, elocs);
+
+    // The levels of a collection
+    await b.evaluate(
+        `[...document.querySelectorAll('.model-card button')].find((x) => x.textContent === "Change").click()`);
+    await sleep(200);
+    await b.evaluate(
+        `[...document.querySelectorAll('.chip-x')].find((x) => x.getAttribute('aria-label') === 'Remove Humidity').click()`);
+    await sleep(200);
+    r = await choose(b, '[aria-label="Collection"]', 'ecmwf', 'ecmwf_pressure');
+    await sleep(300);
+    await b.evaluate(
+        `(() => { const chips = [...document.querySelectorAll('.step button.chip')]; chips.find((x) => x.textContent === '850').click(); })()`);
+    await sleep(200);
+    await b.evaluate(
+        `(() => { const chips = [...document.querySelectorAll('.step button.chip')]; chips.find((x) => x.textContent === '500').click(); })()`);
+    await sleep(200);
+    m = await mapRect(b);
+    await mouse(b, 'mouseMoved', m.x + m.w / 2, m.y + m.h / 2, 0);
+    await mouse(b, 'mousePressed', m.x + m.w / 2, m.y + m.h / 2, 1);
+    await mouse(b, 'mouseReleased', m.x + m.w / 2, m.y + m.h / 2, 0);
+    await sleep(400);
+    eurl = new URL(await b.evaluate(`document.querySelector('code.url').textContent`));
+    check(
+        'EDR levels request',
+        eurl.pathname === '/edr/collections/ecmwf_pressure/position' &&
+            eurl.searchParams.get('z') === '850,500',
+        eurl.href);
+    await b.evaluate(`document.querySelector('button.primary').click()`);
+    await waitFor(b, `document.querySelectorAll('.chart canvas').length === 1`, 'the level chart');
+    const levelTitle = await b.evaluate(`document.querySelector('.chart-title').textContent`);
+    check('a series per level', levelTitle === 'temperature, 2 locations', levelTitle);
 
     // Narrow screens
     await b.send(

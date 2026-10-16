@@ -390,7 +390,12 @@ Most plugins produce tables of values:
   For areas, radii, boxes and (grouped with `grouplocations=1`) keywords and station lists,
   the server can compute the median and the percentiles instead (`nanpercentile_a[p]`,
   `nanmedian_a`), which scales to large areas; "Every point" fetches all the values for the
-  swarm. The state is kept in the URL fragment, so a query can be shared as a
+  swarm. For EDR (kind `edr`) the explorer reads `<root>/collections`: the parameters and
+  the collections narrow each other, the query types are those of the collection
+  (position, radius, area, cube and locations, with the location list of the collection on
+  the map), the times and the levels come from the extents, and CoverageJSON and GeoJSON
+  responses are turned into rows for the same charts and tables, with a series per
+  location and level. The state is kept in the URL fragment, so a query can be shared as a
   link. `explorer.js` and `explorer.css` are installed to `/usr/share/smartmet/explorer`,
   uPlot comes from the `smartmet-uplot` package (`/usr/share/smartmet/uplot`), and the
   snippets, the tree and the map are those of `OpenApiPlugin.cpp`. The page loads no inline

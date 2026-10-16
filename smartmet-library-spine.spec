@@ -179,7 +179,8 @@ make %{_smp_mflags}
   percentiles or a swarm of many locations), tables and trees; points, radii and boxes
   chosen on a map narrow the producers to those covering them; the statistics of areas and
   keywords can be computed by the server (needs smartmet-library-timeseries 26.10.16-2 on
-  the server for the percentiles); files installed to
+  the server for the percentiles); EDR queries (position, radius, area, cube, locations)
+  built from the collection metadata, CoverageJSON drawn as charts; files installed to
   /usr/share/smartmet/explorer, requires smartmet-uplot
 - API catalog entries have a kind (x-smartmet-kind), Publisher::addToCatalog() with a kind
 - ABI change compared to 26.10.16-2: CatalogEntry, CatalogSettings and Catalog have new

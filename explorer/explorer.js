@@ -67,14 +67,16 @@ async function fetchJson(url)
   return response.json();
 }
 
-// Query strings keep commas, colons and parentheses readable, everything else is percent encoded
+// Query strings keep commas, colons, slashes and parentheses readable, everything else is percent
+// encoded
 function encode(value)
 {
   return encodeURIComponent(value)
       .replace(/%2C/gi, ',')
       .replace(/%3A/gi, ':')
       .replace(/%28/gi, '(')
-      .replace(/%29/gi, ')');
+      .replace(/%29/gi, ')')
+      .replace(/%2F/gi, '/');
 }
 
 function queryString(params)
@@ -181,13 +183,15 @@ function expandRow(row)
 // point of an area
 function locationOf(row)
 {
+  // Each level is a series of its own
+  const level = row.level !== undefined && row.level !== null ? ` · ${row.level}` : '';
   const coords = row.lat !== undefined && row.lat !== null ? `${row.lat},${row.lon}` : '';
   if (row._point !== undefined)
     return `${row.name !== null && row.name !== undefined ? row.name + ' ' : ''}(${
-        coords || row._point})`;
+        coords || row._point})${level}`;
   if (row.name !== undefined && row.name !== null)
-    return String(row.name);
-  return coords;
+    return String(row.name) + level;
+  return coords + level;
 }
 
 function quantile(sorted, q)
@@ -2017,11 +2021,708 @@ function timeSeriesModule(app, api, state, save)
 }
 
 // ------------------------------------------------------------------
+// The EDR module
+// ------------------------------------------------------------------
+
+// A text of the EDR metadata: a string or a map of languages
+function edrText(value)
+{
+  if (!value)
+    return '';
+  if (typeof value === 'string')
+    return value;
+  return value.en || Object.values(value)[0] || '';
+}
+
+// The collections and the parameters of an EDR API, indexed like the TimeSeries producers
+function buildEdrIndex(doc)
+{
+  const producers = new Map();
+  const parameters = new Map();
+  for (const c of doc.collections || [])
+  {
+    const names = Object.keys(c.parameter_names || {});
+    const extent = c.extent || {};
+    const bbox = extent.spatial && extent.spatial.bbox && extent.spatial.bbox[0];
+    const interval = extent.temporal && extent.temporal.interval && extent.temporal.interval[0];
+    const vertical = extent.vertical || null;
+    producers.set(c.id, {
+      name: c.id,
+      title: c.title,
+      description: c.description,
+      source: 'edr',
+      bbox: bbox && bbox.length >= 4 ? bbox.slice(0, 4) : null,
+      time: interval ? {start: interval[0], end: interval[1]} : null,
+      levels: vertical && vertical.values ?
+          [{type: edrText(vertical.vrs) || 'level', values: vertical.values.map(String)}] :
+          [],
+      parameters: names,
+      parameterSet: new Set(names),
+      queries: Object.keys(c.data_queries || {}),
+      formats: c.output_formats || []
+    });
+    for (const key of names)
+    {
+      const info = c.parameter_names[key] || {};
+      let entry = parameters.get(key);
+      if (!entry)
+      {
+        const unit =
+            info.unit && (info.unit.symbol && (info.unit.symbol.value || info.unit.symbol));
+        entry = {
+          key: key,
+          name: edrText(info.label) || info.id || key,
+          description: edrText(info.description),
+          unit: typeof unit === 'string' ? unit : '',
+          producers: []
+        };
+        parameters.set(key, entry);
+      }
+      entry.producers.push(c.id);
+    }
+  }
+  return {producers, parameters};
+}
+
+// The rows of a CoverageJSON document: a Coverage or a CoverageCollection, each coverage
+// giving a row per point, level and time. GeoJSON features give a row per feature.
+function coverageRows(doc)
+{
+  const rows = [];
+  if (!doc || typeof doc !== 'object')
+    return rows;
+  if (doc.type === 'FeatureCollection' || doc.type === 'Feature')
+  {
+    const features = doc.type === 'Feature' ? [doc] : doc.features || [];
+    for (const f of features)
+    {
+      const row = Object.assign({}, f.properties || {});
+      const g = f.geometry;
+      if (g && g.type === 'Point' && Array.isArray(g.coordinates))
+      {
+        row.lon = g.coordinates[0];
+        row.lat = g.coordinates[1];
+      }
+      if (row.time === undefined && row.datetime !== undefined)
+        row.time = row.datetime;
+      rows.push(row);
+    }
+    return rows;
+  }
+  const coverages = doc.type === 'CoverageCollection' ? doc.coverages || [] : [doc];
+  coverages.forEach((cov, index) => {
+    const axes = (cov.domain && cov.domain.axes) || {};
+    const values = (name) => (axes[name] && axes[name].values) || [undefined];
+    const ts = values('t');
+    const xs = values('x');
+    const ys = values('y');
+    const zs = values('z');
+    const ranges = cov.ranges || {};
+    const params = Object.keys(ranges);
+    for (let zi = 0; zi < zs.length; zi++)
+      for (let yi = 0; yi < ys.length; yi++)
+        for (let xi = 0; xi < xs.length; xi++)
+          for (let ti = 0; ti < ts.length; ti++)
+          {
+            // Each point is a location, named by its coordinates
+            const row = {name: `${ys[yi]},${xs[xi]}`, time: ts[ti], lat: ys[yi], lon: xs[xi]};
+            if (zs[zi] !== undefined)
+              row.level = zs[zi];
+            for (const p of params)
+            {
+              const r = ranges[p];
+              const names = r.axisNames || [];
+              const shape = r.shape || [];
+              const position = {t: ti, x: xi, y: yi, z: zi};
+              let offset = 0;
+              names.forEach((n, i) => {
+                offset = offset * (shape[i] || 1) + (position[n] || 0);
+              });
+              const v = (r.values || [])[offset];
+              row[p] = v === undefined ? null : v;
+            }
+            row._coverage = index;
+            rows.push(row);
+          }
+  });
+  return rows;
+}
+
+// The query types the explorer can make, and their map tools
+const EDR_QUERIES = [
+  ['position', 'Position', 'point'],
+  ['radius', 'Radius', 'circle'],
+  ['area', 'Area', 'box'],
+  ['cube', 'Cube', 'box'],
+  ['locations', 'Locations', null]
+];
+
+function edrModule(app, api, state, save)
+{
+  const rootPath = api.root;
+  const view = el('div', {class: 'module'});
+  const status = el('p', {class: 'muted'}, 'Loading the collections…');
+  view.append(status);
+
+  fetchJson(`${app.base}${rootPath.replace(/^\//, '')}/collections?f=json`)
+      .then((doc) => build(buildEdrIndex(doc)))
+      .catch((e) => {
+        status.textContent = `The collections could not be loaded: ${e.message}`;
+      });
+
+  function build(index)
+  {
+    view.replaceChildren();
+    const s = state;
+    s.params = s.params || [];
+
+    const collection = () => index.producers.get(s.collection);
+    const queries = () => {
+      const c = collection();
+      return EDR_QUERIES.filter(([q]) => !c || c.queries.includes(q));
+    };
+    const query = () => {
+      const available = queries();
+      return available.find(([q]) => q === s.query) || available[0];
+    };
+    const selection = () => {
+      const [q] = query();
+      if (q === 'position')
+        return parseSelection('lonlat', s.location);
+      if (q === 'radius')
+        return parseSelection('radius', s.location);
+      if (q === 'area' || q === 'cube')
+        return parseSelection('bbox', s.location);
+      return null;
+    };
+    const candidates = () => {
+      const sel = selection();
+      return Array.from(index.producers.values())
+          .filter((c) => s.params.every((p) => c.parameterSet.has(p)) && covers(c, sel));
+    };
+
+    // --- What -----------------------------------------------------------
+    const chips = el('div', {class: 'chips'});
+    const note = el('p', {class: 'muted small'});
+    const card = el('div', {class: 'model-card'});
+
+    const paramSearch = autocomplete({
+      label: 'Parameter',
+      placeholder: 'Type a parameter name or description',
+      search: (text) => {
+        const q = text.toLowerCase();
+        const c = collection();
+        const out = [];
+        for (const entry of index.parameters.values())
+        {
+          if (s.params.includes(entry.key) || (c && !c.parameterSet.has(entry.key)))
+            continue;
+          const score = matchScore(q, entry.name, `${entry.description} ${entry.key}`);
+          if (score !== null)
+            out.push({
+              score,
+              key: entry.key,
+              label: entry.name,
+              detail:
+                  [entry.description, entry.unit && `[${entry.unit}]`].filter(Boolean).join(' '),
+              badge: c ?
+                  null :
+                  `${entry.producers.length} collection${entry.producers.length === 1 ? '' : 's'}`
+            });
+        }
+        out.sort((a, b) => a.score - b.score || a.label.localeCompare(b.label));
+        return out;
+      },
+      select: (item) => {
+        s.params.push(item.key);
+        refresh();
+      },
+      empty: (text) => `No parameter matches "${text}"`
+    });
+
+    const collectionSearch = autocomplete({
+      label: 'Collection',
+      placeholder: 'Type a collection name',
+      search: (text) => {
+        const q = text.toLowerCase();
+        return candidates()
+            .map(
+                (c) =>
+                    ({c, score: matchScore(q, c.name, `${c.title || ''} ${c.description || ''}`)}))
+            .filter((x) => x.score !== null)
+            .sort((a, b) => a.score - b.score || a.c.name.localeCompare(b.c.name))
+            .map(({c}) => ({
+                   key: c.name,
+                   label: c.name,
+                   detail: [c.title && c.title !== c.name ? c.title : '', timeRangeOf(c)]
+                               .filter(Boolean)
+                               .join(' · ')
+                 }));
+      },
+      select: (item) => {
+        s.collection = item.key;
+        const c = collection();
+        if (c)
+          s.params = s.params.filter((p) => c.parameterSet.has(p));
+        defaultTimes(true);
+        refresh();
+        fitMap();
+      },
+      empty: () => 'No collection has all the chosen parameters',
+      limit: 200
+    });
+
+    function timeRangeOf(c)
+    {
+      if (!c.time || !c.time.start || !c.time.end)
+        return '';
+      return `${formatTime(new Date(c.time.start))} – ${formatTime(new Date(c.time.end))}`;
+    }
+
+    // --- How: the query type -------------------------------------------------
+    const queryButtons = el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': 'Query'});
+
+    // --- When and the levels -------------------------------------------------
+    const startInput = el('input', {type: 'datetime-local', 'aria-label': 'Start time (UTC)'});
+    const endInput = el('input', {type: 'datetime-local', 'aria-label': 'End time (UTC)'});
+    const dataPeriod = el('span', {class: 'muted small'});
+    const levels = el('div', {class: 'chips'});
+    const levelRow = el('div', null, el('label', null, 'Levels'), levels);
+    startInput.addEventListener('change', () => {
+      s.start = startInput.value;
+      refresh();
+    });
+    endInput.addEventListener('change', () => {
+      s.end = endInput.value;
+      refresh();
+    });
+
+    function defaultTimes(force)
+    {
+      const c = collection();
+      if (!c || !c.time || !c.time.start || !c.time.end || (!force && s.start && s.end))
+        return;
+      const first = new Date(c.time.start);
+      const last = new Date(c.time.end);
+      const now = new Date();
+      now.setUTCMinutes(0, 0, 0);
+      const start = now > first && now < last ?
+          now :
+          (last < now ? new Date(Math.max(first.getTime(), last.getTime() - 24 * 3600e3)) : first);
+      const end = new Date(Math.min(last.getTime(), start.getTime() + 48 * 3600e3));
+      s.start = toInput(start);
+      s.end = toInput(end);
+    }
+
+    // --- Where -------------------------------------------------------------
+    const locInput = el('input', {type: 'text', 'aria-label': 'Location', spellcheck: 'false'});
+    const areaNote = el('p', {class: 'warn small'});
+    const map = createMap(mapSettings(app.element), (shape) => {
+      s.location = formatSelection(shape);
+      refresh();
+    });
+    locInput.addEventListener('input', debounce(() => {
+                                s.location = locInput.value.trim();
+                                refresh(false);
+                              }, 300));
+    let locationsOf = null;  // the locations of the collection for a locations query
+
+    function loadLocations()
+    {
+      const c = collection();
+      if (!c || (locationsOf && locationsOf.id === c.name))
+        return;
+      locationsOf = {id: c.name, list: []};
+      fetchJson(`${app.base}${rootPath.replace(/^\//, '')}/collections/${
+                    encodeURIComponent(c.name)}/locations?f=GeoJSON`)
+          .then((doc) => {
+            const list = (doc.features || [])
+                             .filter((f) => f.geometry && f.geometry.type === 'Point')
+                             .map((f) => ({
+                                    id: String(f.id),
+                                    lon: f.geometry.coordinates[0],
+                                    lat: f.geometry.coordinates[1],
+                                    label: (f.properties && f.properties.name) || String(f.id),
+                                    info: {id: f.id}
+                                  }));
+            locationsOf = {id: c.name, list};
+            refresh();
+          })
+          .catch((e) => {
+            areaNote.textContent = `The locations could not be loaded: ${e.message}`;
+          });
+    }
+
+    const locationSearch = autocomplete({
+      label: 'Location id',
+      placeholder: 'Type a location name or id',
+      search: (text) => {
+        const q = text.toLowerCase();
+        return ((locationsOf && locationsOf.list) || [])
+            .map((l) => ({l, score: matchScore(q, l.label, l.id)}))
+            .filter((x) => x.score !== null)
+            .sort((a, b) => a.score - b.score || a.l.label.localeCompare(b.l.label))
+            .map(({l}) => ({key: l.id, label: l.label, detail: l.id}));
+      },
+      select: (item) => {
+        s.location = item.key;
+        refresh();
+      },
+      empty: () => 'No location matches',
+      limit: 50
+    });
+
+    function fitMap()
+    {
+      const extent = map.extent();
+      if (extent)
+        map.fit(extent);
+    }
+
+    // --- Request ---------------------------------------------------------------
+    const formatSelect = el('select', {'aria-label': 'Output format'});
+    formatSelect.addEventListener('change', () => {
+      s.format = formatSelect.value;
+      refresh();
+    });
+    const urlBox = el('code', {class: 'url'});
+    const missing = el('p', {class: 'missing'});
+    const runButton = el('button', {type: 'button', class: 'primary'}, 'Run');
+    const copyUrl = el('button', {type: 'button', class: 'small'}, 'Copy URL');
+    const code = el('div', {class: 'code-box'});
+    const codeDetails =
+        el('details', {class: 'code-details'}, el('summary', null, 'Code for this request'), code);
+    const results = el('div', {class: 'results'});
+    copyUrl.addEventListener(
+        'click', () => navigator.clipboard.writeText(currentUrl()).catch(() => {}));
+    runButton.addEventListener('click', run);
+
+    function coords()
+    {
+      const sel = selection();
+      if (!sel)
+        return [];
+      if (sel.type === 'point')
+        return [['coords', `POINT(${sel.lon} ${sel.lat})`]];
+      if (sel.type === 'circle')
+        return [
+          ['coords', `POINT(${sel.lon} ${sel.lat})`],
+          ['within', String(sel.km)],
+          ['within-units', 'km']
+        ];
+      const [a, b, c, d] = sel.bbox;
+      if (query()[0] === 'cube')
+        return [['bbox', `${a},${b},${c},${d}`]];
+      return [['coords', `POLYGON((${a} ${b},${c} ${b},${c} ${d},${a} ${d},${a} ${b}))`]];
+    }
+
+    function currentUrl()
+    {
+      const c = collection();
+      const [q] = query();
+      let path =
+          `${rootPath}/collections/${encodeURIComponent(s.collection || '{collectionId}')}/${q}`;
+      if (q === 'locations' && s.location)
+        path += `/${encodeURIComponent(s.location)}`;
+      const params = [
+        ...coords(),
+        ['parameter-name', s.params.join(',')],
+        ['datetime', s.start && s.end ? `${fromInput(s.start)}/${fromInput(s.end)}` : ''],
+        ['z', (s.levels || []).join(',')],
+        ['f', s.format || (c && c.formats[0]) || 'CoverageJSON']
+      ];
+      return new URL(`${path}?${queryString(params)}`, app.base).href;
+    }
+
+    function missingParts()
+    {
+      const out = [];
+      if (!s.collection)
+        out.push('a collection');
+      if (s.params.length === 0)
+        out.push('a parameter');
+      const [q] = query();
+      if (q === 'locations' ? !s.location : !selection())
+        out.push(
+            q === 'locations' ? 'a location' :
+                                `a ${
+                                    q === 'position'   ? 'point' :
+                                        q === 'radius' ? 'radius' :
+                                                         'box'} on the map`);
+      return out;
+    }
+
+    async function run()
+    {
+      results.replaceChildren(el('p', {class: 'muted'}, 'Running…'));
+      let text;
+      try
+      {
+        const response = await fetch(currentUrl());
+        text = await response.text();
+        if (!response.ok)
+          throw new Error(`${response.status} ${response.statusText}: ${text.slice(0, 500)}`);
+      }
+      catch (e)
+      {
+        results.replaceChildren(el('p', {class: 'error'}, e.message));
+        return;
+      }
+      let doc;
+      try
+      {
+        doc = JSON.parse(text);
+      }
+      catch (e)
+      {
+        results.replaceChildren(el('pre', {class: 'code'}, text.slice(0, 20000)));
+        return;
+      }
+      const rows = coverageRows(doc);
+      map.setPoints(
+          rows.filter((r) => typeof r.lat === 'number' && typeof r.lon === 'number')
+              .filter((r, i, all) => all.findIndex((o) => o.lat === r.lat && o.lon === r.lon) === i)
+              .slice(0, 10000)
+              .map((r) => ({
+                     lon: r.lon,
+                     lat: r.lat,
+                     label: String(r.name || ''),
+                     info: {lat: r.lat, lon: r.lon}
+                   })));
+      const panes = {
+        Chart: el('div', {class: 'pane'}),
+        Table: el('div', {class: 'pane'}),
+        Tree: el('div', {class: 'pane tree-pane'})
+      };
+      const tabs = el('div', {class: 'tabs', role: 'tablist'});
+      const drawn = new Set();
+      const params = Array.from(new Set(rows.flatMap((r) => Object.keys(r))))
+                         .filter(
+                             (k) => !['name', 'time', 'lat', 'lon', 'level'].includes(k) &&
+                                 !k.startsWith('_'));
+      const show = (name) => {
+        for (const [n, pane] of Object.entries(panes))
+          pane.hidden = n !== name;
+        Array.from(tabs.children)
+            .forEach(
+                (b) => b.setAttribute('aria-selected', b.textContent === name ? 'true' : 'false'));
+        if (drawn.has(name))
+          return;
+        drawn.add(name);
+        if (name === 'Chart')
+          drawCharts(panes.Chart, rows, params);
+        else if (name === 'Table')
+          drawTable(panes.Table, rows);
+        else if (!S.renderTree(panes.Tree, text, 'json'))
+          panes.Tree.textContent = text;
+      };
+      for (const name of Object.keys(panes))
+        tabs.append(el('button', {type: 'button', role: 'tab', onclick: () => show(name)}, name));
+      const count = new Set(rows.map(locationOf)).size;
+      results.replaceChildren(
+          el('div',
+             {class: 'results-head'},
+             tabs,
+             el('span',
+                {class: 'muted small'},
+                `${rows.length} rows${count > 1 ? `, ${count} locations` : ''}`)),
+          ...Object.values(panes));
+      show('Chart');
+    }
+
+    function refresh(rerender = true)
+    {
+      const c = collection();
+      chips.replaceChildren(...s.params.map((key) => {
+        const entry = index.parameters.get(key);
+        const label = entry ? entry.name : key;
+        return el(
+            'span',
+            {class: 'chip', title: entry ? entry.description : ''},
+            label,
+            el('button',
+               {
+                 type: 'button',
+                 class: 'chip-x',
+                 'aria-label': `Remove ${label}`,
+                 onclick: () => {
+                   s.params = s.params.filter((x) => x !== key);
+                   refresh();
+                 }
+               },
+               '×'));
+      }));
+      const n = candidates().length;
+      const inArea = selection() ? ' in the selected area' : '';
+      note.textContent = s.params.length > 0 || inArea ?
+          `${n} of ${index.producers.size} collections${
+              s.params.length ?
+                  ` have ${s.params.length === 1 ? 'this parameter' : 'all these parameters'}` :
+                  ' cover the selected area'}${s.params.length ? inArea : ''}` :
+          `${index.producers.size} collections`;
+      if (c)
+      {
+        card.replaceChildren(
+            el('div',
+               {class: 'model-head'},
+               el('strong', null, c.name),
+               el('button',
+                  {
+                    type: 'button',
+                    class: 'small',
+                    onclick: () => {
+                      s.collection = '';
+                      refresh();
+                    }
+                  },
+                  'Change')),
+            c.title && c.title !== c.name ? el('div', null, c.title) : null,
+            el('div', {class: 'muted small'}, [
+              timeRangeOf(c),
+              `${c.parameters.length} parameters`,
+              c.levels.length ? `${c.levels[0].values.length} levels` : ''
+            ].filter(Boolean).join(' · ')));
+        card.hidden = false;
+        collectionSearch.element.hidden = true;
+      }
+      else
+      {
+        card.hidden = true;
+        collectionSearch.element.hidden = false;
+      }
+
+      // Query types
+      const [q, , tool] = query();
+      queryButtons.replaceChildren(...queries().map(
+          ([name, label]) =>
+              el('button',
+                 {
+                   type: 'button',
+                   role: 'radio',
+                   'data-query': name,
+                   'aria-checked': name === q ? 'true' : 'false',
+                   onclick: () => {
+                     if (s.query === name)
+                       return;
+                     s.query = name;
+                     s.location = '';
+                     refresh();
+                   }
+                 },
+                 label)));
+
+      // Times and levels
+      startInput.value = s.start || '';
+      endInput.value = s.end || '';
+      dataPeriod.textContent = c && timeRangeOf(c) ? `Data: ${timeRangeOf(c)}` : '';
+      const values = c && c.levels.length ? c.levels[0].values : [];
+      s.levels = (s.levels || []).filter((v) => values.includes(v));
+      levels.replaceChildren(...values.map(
+          (v) =>
+              el('button',
+                 {
+                   type: 'button',
+                   class: `chip${s.levels.includes(v) ? '' : ' meta'}`,
+                   'aria-pressed': s.levels.includes(v) ? 'true' : 'false',
+                   onclick: () => {
+                     s.levels =
+                         s.levels.includes(v) ? s.levels.filter((x) => x !== v) : [...s.levels, v];
+                     refresh();
+                   }
+                 },
+                 v)));
+      levelRow.hidden = values.length === 0;
+
+      // Location
+      const isLocations = q === 'locations';
+      locInput.hidden = isLocations;
+      locationSearch.element.hidden = !isLocations;
+      locInput.placeholder = q === 'position' ? '24.94,60.17, or click the map' :
+          q === 'radius'                      ? '24.94,60.17:25 (km), or drag on the map' :
+                                                '21,60,26,62, or drag on the map';
+      if (rerender !== false && !isLocations)
+        locInput.value = s.location || '';
+      map.setTools(tool ? ['move', tool] : ['move'], tool || 'move');
+      const sel = selection();
+      map.setSelection(sel);
+      map.setRegions(c && c.bbox ? [{bbox: c.bbox, label: `The area of ${c.name}`}] : []);
+      if (isLocations)
+      {
+        loadLocations();
+        if (locationsOf && locationsOf.list)
+          map.setPoints(locationsOf.list);
+      }
+      areaNote.textContent = c && sel && !covers(c, sel) ?
+          `The selection is outside the area of ${c.name}` :
+          (isLocations && s.location ? `Location ${s.location}` : '');
+
+      // Formats
+      const formats = c ? c.formats : ['CoverageJSON', 'GeoJSON'];
+      formatSelect.replaceChildren(...formats.map((f) => el('option', {value: f}, f)));
+      if (!formats.includes(s.format))
+        s.format = formats[0];
+      formatSelect.value = s.format || '';
+
+      const url = currentUrl();
+      urlBox.textContent = url;
+      const absent = missingParts();
+      missing.textContent = absent.length ? `Still needed: ${absent.join(', ')}` : '';
+      runButton.disabled = absent.length > 0;
+      codeTabs(code, url);
+      save();
+    }
+
+    const section = (title, ...content) =>
+        el('section', {class: 'step'}, el('h2', null, title), ...content);
+    view.append(
+        el('div',
+           {class: 'form'},
+           section(
+               'What',
+               el('label', null, 'Parameters'),
+               chips,
+               paramSearch.element,
+               el('label', null, 'Collection'),
+               note,
+               collectionSearch.element,
+               card),
+           section(
+               'When',
+               el('div',
+                  {class: 'row'},
+                  el('label', null, 'Start (UTC)', startInput),
+                  el('label', null, 'End (UTC)', endInput)),
+               dataPeriod,
+               levelRow),
+           section(
+               'Where',
+               queryButtons,
+               el('div', {class: 'row'}, locInput),
+               locationSearch.element,
+               areaNote,
+               map.element),
+           section('Output', el('div', {class: 'row'}, el('label', null, 'Format', formatSelect)))),
+        el('div',
+           {class: 'request'},
+           el('div', {class: 'url-row'}, urlBox, copyUrl),
+           missing,
+           el('div', {class: 'row'}, runButton),
+           codeDetails,
+           results));
+    defaultTimes(false);
+    refresh();
+    fitMap();
+  }
+  return view;
+}
+
+// ------------------------------------------------------------------
 // The application
 // ------------------------------------------------------------------
 
 const MODULES = {
-  timeseries: timeSeriesModule
+  timeseries: timeSeriesModule,
+  edr: edrModule
 };
 
 function readState()
@@ -2122,6 +2823,8 @@ root.SmartMetExplorer = {
   quantile,
   matchScore,
   buildIndex,
+  buildEdrIndex,
+  coverageRows,
   queryString
 };
 
