@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.16
-Release: 3%{?dist}.fmi
+Release: 4%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,11 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Oct 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.16-4.fmi
+- Data explorer: producers of the same name from several sources are told apart and
+  requested with source; model details for grid producers (model run, geometry, level type,
+  levels, ensemble forecast and members) build the parameter keys, with a series per level
+  and member; querydata levels are chosen with the levels option
 * Fri Oct 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.16-3.fmi
 - Data explorer at /api/explorer: TimeSeries queries built from the producer metadata with
   parameter and producer autocomplete narrowing each other, default times from the data,

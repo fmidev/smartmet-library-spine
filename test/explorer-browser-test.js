@@ -60,6 +60,7 @@ const producers = {
       name: 'ecmwf',
       source: 'querydata',
       parameters: ['temperature', 'windspeedms'],
+      levels: [{type: 'pressure', unit: 'hPa', values: ['500', '850', '1000']}],
       time: {start: iso(now - 12 * hour), end: iso(now.getTime() + 240 * hour), step: 180}
     },
     {
@@ -69,6 +70,13 @@ const producers = {
       parameters: ['temperature'],
       bbox: [-180, -90, 180, 90],
       time: {start: iso(now - 12 * hour), end: iso(now.getTime() + 144 * hour), step: 60}
+    },
+    {
+      // An ensemble with levels of two types
+      name: 'ens',
+      source: 'grid',
+      parameters: ['t-k'],
+      time: {start: iso(now - 6 * hour), end: iso(now.getTime() + 48 * hour), step: 60}
     },
     {
       name: 'opendata',
@@ -84,6 +92,52 @@ const producers = {
     windspeedms: {name: 'WindSpeedMS', description: 'Wind speed'}
   }
 };
+
+// The details of the grid producer ens, by run
+function ensDetails(query)
+{
+  const runs = [iso(now - 6 * hour), iso(now - 18 * hour)];
+  const run = query.get('origintime') || runs[0];
+  return {
+    name: 'ens',
+    source: 'grid',
+    producer: 'ENS',
+    runs: runs.map((r) => ({origintime: r, status: 'ready'})),
+    run: {origintime: run, status: 'ready', geometries: [{id: 1, name: 'A'}, {id: 2, name: 'B'}]},
+    parameters: {
+      't-k': {
+        name: 'T-K',
+        description: 'Temperature',
+        levels: [
+          {
+            type: 'pressure',
+            levelId: 2,
+            unit: 'hPa',
+            values: [1000, 850, 500],
+            keys: [100000, 85000, 50000]
+          },
+          {type: 'height', levelId: 6, unit: 'm', values: [2, 10], keys: [2, 10]}
+        ],
+        forecasts: [
+          {
+            type: 3,
+            name: 'EPS_PE',
+            description: 'Ensemble forecast, perturbation',
+            members: [1, 2, 3, 4, 5]
+          },
+          {
+            type: 4,
+            name: 'EPS_CF',
+            description: 'Ensemble forecast, control forecast',
+            members: [0]
+          }
+        ],
+        aggregation: {name: 'mean', description: 'Mean over time period', period: 60},
+        times: 6
+      }
+    }
+  };
+}
 
 // The rows of a TimeSeries request: one location, or 30 for keyword=many
 // An area or a radius: one row per time with the values of the 5 points as lists, as the
@@ -355,6 +409,8 @@ const server = http.createServer((req, res) => {
     return send(200, 'text/javascript', fs.readFileSync(path.join(dir, 'smartmet-swagger-ui.js')));
   if (p === '/timeseries/api/producers')
     return send(200, 'application/json', JSON.stringify(producers));
+  if (p === '/timeseries/api/producers/ens')
+    return send(200, 'application/json', JSON.stringify(ensDetails(url.searchParams)));
   if (p === '/timeseries')
     return send(200, 'application/json', JSON.stringify(timeseries(url.searchParams)));
   const coverageDoc = coverages(p, url.searchParams);
@@ -473,7 +529,7 @@ async function main()
     const note = await b.evaluate(`document.querySelector('.form .step .muted.small').textContent`);
     check(
         'producers with all the parameters',
-        note === '1 of 4 producers have all these parameters',
+        note === '1 of 5 producers have all these parameters',
         note);
     r = await choose(b, PRODUCER, '', 'pal');
     check(
@@ -792,7 +848,7 @@ async function main()
         await b.evaluate(`document.querySelector('.form .step .muted.small').textContent`);
     check(
         'producers covering the selection',
-        covering === '0 of 4 producers have all these parameters in the selected area',
+        covering === '0 of 5 producers have all these parameters in the selected area',
         covering);
     await setLocation(b, 'not a box');
     const invalid = await b.evaluate(`document.querySelector('.warn').textContent`);
@@ -818,6 +874,119 @@ async function main()
               !chosen.text.includes('null'),
           chosen);
     }
+
+    // The levels of a querydata producer are requested with the levels option
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {
+      url: `${
+          base}/api/explorer#api=/timeseries&producer=ecmwf&source=querydata&params=temperature&locmode=place&location=Helsinki&levels=850`
+    });
+    await waitFor(b, `!!document.querySelector('[data-level="850"]')`, 'the level buttons');
+    let lq = await currentQuery(b);
+    const levelButtons = await b.evaluate(`[...document.querySelectorAll('[data-level]')].map(
+        (x) => x.dataset.level + (x.getAttribute('aria-pressed') === 'true' ? '*' : ''))`);
+    check(
+        'querydata levels',
+        JSON.stringify(levelButtons) === JSON.stringify(['500', '850*', '1000']) &&
+            lq.get('levels') === '850' && lq.get('param') === 'name,time,lat,lon,level,temperature',
+        {levelButtons, query: lq.toString()});
+
+    // A grid ensemble: the run, geometry, levels and members make the parameter keys
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {
+      url: `${
+          base}/api/explorer#api=/timeseries&producer=ens&source=grid&params=t-k&locmode=place&location=Helsinki`
+    });
+    await waitFor(b, `!!document.querySelector('[data-level="850"]')`, 'the grid details');
+    const shown = await b.evaluate(`(() => {
+      const box = document.querySelector('.model-details');
+      const visible = (label) => { const x = box.querySelector('[aria-label="' + label + '"]');
+        return !!x && x.offsetParent !== null; };
+      return { run: visible('Model run'), geometry: visible('Geometry'), type: visible('Level type'),
+               forecast: document.querySelector('[aria-label="Forecast"]').value,
+               members: visible('Members'), text: box.innerText };
+    })()`);
+    check(
+        'grid choices shown',
+        shown.run && shown.geometry && shown.type && shown.members && shown.forecast === '3' &&
+            shown.text.includes('5 members, a series each') &&
+            shown.text.includes('Mean over time period (60 min)'),
+        shown);
+    lq = await currentQuery(b);
+    check(
+        'all members by default',
+        lq.get('param') ===
+            'name,time,lat,lon,level,' + [1, 2, 3, 4, 5].map((m) => `T-K:ENS::::3:${m}`).join(','),
+        lq.get('param'));
+    await b.evaluate(`document.querySelector('[data-level="850"]').click()`);
+    await sleep(100);
+    await b.evaluate(`document.querySelector('[data-level="500"]').click()`);
+    await b.evaluate(`(() => {
+      const input = document.querySelector('[aria-label="Members"]');
+      input.value = "1-2";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    })()`);
+    await sleep(500);
+    lq = await currentQuery(b);
+    check(
+        'keys of the levels and members',
+        lq.get('param') ===
+                'name,time,lat,lon,T-K:ENS::2:85000:3:1,T-K:ENS::2:85000:3:2,T-K:ENS::2:50000:3:1,' +
+                    'T-K:ENS::2:50000:3:2' &&
+            lq.get('levels') === null,
+        lq.get('param'));
+    await b.evaluate(`(() => {
+      for (const [label, value] of [['Geometry', '2'], ['Model run', ${
+        JSON.stringify(iso(now - 18 * hour))}]]) {
+        const select = document.querySelector('[aria-label="' + label + '"]');
+        select.value = value;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    })()`);
+    await sleep(500);
+    lq = await currentQuery(b);
+    check(
+        'geometry and run',
+        lq.get('param').includes('T-K:ENS:2:2:85000:3:1') &&
+            lq.get('origintime') === iso(now - 18 * hour) &&
+            requested.some(
+                (u) => u.startsWith('/timeseries/api/producers/ens?') && u.includes('origintime=')),
+        {param: lq.get('param'), origintime: lq.get('origintime')});
+    await b.evaluate(`document.querySelector('button.primary').click()`);
+    await waitFor(
+        b, `document.querySelectorAll('.chart canvas').length >= 1`, 'the ensemble chart');
+    const ensembleSeries = await b.evaluate(
+        `[...document.querySelectorAll('.chart[data-param="t-k"] .u-legend .u-series')].map((x) => x.textContent)`);
+    check(
+        'a series per level and member',
+        ensembleSeries.some((x) => x.includes('Helsinki · 850 hPa · member 1')) &&
+            ensembleSeries.some((x) => x.includes('Helsinki · 500 hPa · member 2')),
+        ensembleSeries);
+    await b.evaluate(`(() => {
+      const select = document.querySelector('[aria-label="Level type"]');
+      select.value = "6";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    })()`);
+    await sleep(300);
+    const heights = await b.evaluate(
+        `[...document.querySelectorAll('[data-level]')].map((x) => x.dataset.level)`);
+    check('another level type', JSON.stringify(heights) === JSON.stringify(['2', '10']), heights);
+    const helpers = await b.evaluate(`(() => {
+      const E = SmartMetExplorer;
+      return { list: E.parseNumberList('3-1, 7', [0, 1, 2, 3, 4, 5, 6]), bad: E.parseNumberList('x', [1]),
+               split: E.splitVariants([{ time: 't', 'a:1': 1, 'a:2': 2, name: 'n' }],
+                 new Map([['a:1', { name: 'a', variant: 'one' }], ['a:2', { name: 'a', variant: 'two' }]])) };
+    })()`);
+    check(
+        'member lists and variant rows',
+        JSON.stringify(helpers.list) === '[1,2,3]' && helpers.bad === null &&
+            JSON.stringify(helpers.split) === JSON.stringify([
+              {time: 't', name: 'n', a: 1, _variant: 'one'},
+              {time: 't', name: 'n', a: 2, _variant: 'two'}
+            ]),
+        helpers);
 
     // --- The EDR module -------------------------------------------------------
     await b.send('Page.navigate', {url: `${base}/api/explorer#api=/edr`});

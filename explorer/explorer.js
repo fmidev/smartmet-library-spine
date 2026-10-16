@@ -183,8 +183,10 @@ function expandRow(row)
 // point of an area
 function locationOf(row)
 {
-  // Each level is a series of its own
-  const level = row.level !== undefined && row.level !== null ? ` · ${row.level}` : '';
+  // Each level and each variant (a level or a member of a grid parameter key) is a series of
+  // its own
+  const level = (row.level !== undefined && row.level !== null ? ` · ${row.level}` : '') +
+      (row._variant ? ` · ${row._variant}` : '');
   const coords = row.lat !== undefined && row.lat !== null ? `${row.lat},${row.lon}` : '';
   if (row._point !== undefined)
     return `${row.name !== null && row.name !== undefined ? row.name + ' ' : ''}(${
@@ -192,6 +194,59 @@ function locationOf(row)
   if (row.name !== undefined && row.name !== null)
     return String(row.name) + level;
   return coords + level;
+}
+
+// The rows of a request whose columns are parameter keys standing for one parameter at some
+// level or ensemble member: the row is split into a row per variant with the columns named by
+// the parameter. columns maps a requested column to {name, variant}.
+function splitVariants(rows, columns)
+{
+  if (!columns || columns.size === 0)
+    return rows;
+  const out = [];
+  for (const row of rows)
+  {
+    const base = {};
+    const variants = new Map();
+    for (const [k, v] of Object.entries(row))
+    {
+      const c = columns.get(k);
+      if (!c)
+      {
+        base[k] = v;
+        continue;
+      }
+      if (!variants.has(c.variant))
+        variants.set(c.variant, {});
+      variants.get(c.variant)[c.name] = v;
+    }
+    if (variants.size === 0)
+      out.push(row);
+    for (const [variant, values] of variants)
+      out.push(Object.assign({}, base, values, variant ? {_variant: variant} : {}));
+  }
+  return out;
+}
+
+// "1-3,7" -> [1, 2, 3, 7], limited to the allowed numbers; null if the text is not a list
+function parseNumberList(text, allowed)
+{
+  const out = new Set();
+  for (const part of String(text || '').split(','))
+  {
+    const p = part.trim();
+    if (p === '')
+      continue;
+    const m = /^(-?\d+)(?:\s*-\s*(-?\d+))?$/.exec(p);
+    if (!m)
+      return null;
+    const a = Number(m[1]);
+    const b = m[2] !== undefined ? Number(m[2]) : a;
+    for (const n of allowed)
+      if (n >= Math.min(a, b) && n <= Math.max(a, b))
+        out.add(n);
+  }
+  return allowed.filter((n) => out.has(n));
 }
 
 function quantile(sorted, q)
@@ -1102,13 +1157,34 @@ const statisticParameter = (fn, param) => `${fn}(${param})`;
 function drawServerStatistics(container, rows, parameters)
 {
   container.replaceChildren();
-  const series =
-      rows.map((row) => [parseTime(row.time), row]).filter(([t]) => t).sort((a, b) => a[0] - b[0]);
-  if (series.length === 0)
+  // A chart per level and variant
+  const groups = new Map();
+  for (const row of rows)
+  {
+    const t = parseTime(row.time);
+    if (!t)
+      continue;
+    const label = [
+      row.level !== undefined && row.level !== null ? `level ${row.level}` : '',
+      row._variant || ''
+    ].filter(Boolean).join(' · ');
+    if (!groups.has(label))
+      groups.set(label, []);
+    groups.get(label).push([t, row]);
+  }
+  if (groups.size === 0)
   {
     container.append(el('p', {class: 'muted'}, 'No data.'));
     return;
   }
+  for (const [label, series] of groups)
+    drawServerStatisticsGroup(container, series.sort((a, b) => a[0] - b[0]), parameters, label);
+  if (container.children.length === 0)
+    container.append(el('p', {class: 'muted'}, 'No numeric values to draw.'));
+}
+
+function drawServerStatisticsGroup(container, series, parameters, label)
+{
   const xs = series.map(([t]) => Math.round(t.getTime() / 1000));
   const css = getComputedStyle(document.documentElement);
   const axisColor = css.getPropertyValue('--muted').trim() || '#666';
@@ -1128,7 +1204,8 @@ function drawServerStatistics(container, rows, parameters)
     panel.append(
         el('div',
            {class: 'chart-title'},
-           `${param}: median and percentiles of the area, computed by the server`));
+           `${param}${label ? ` · ${label}` : ''}: median and percentiles of the area, ` +
+               'computed by the server'));
     const plot = el('div', {class: 'chart-plot'});
     panel.append(plot);
     // eslint-disable-next-line no-new
@@ -1167,8 +1244,6 @@ function drawServerStatistics(container, rows, parameters)
         [xs, ...columns],
         plot);
   }
-  if (container.children.length === 0)
-    container.append(el('p', {class: 'muted'}, 'No numeric values to draw.'));
 }
 
 // UTC times in 24 hour format, with the date where the day changes
@@ -1925,6 +2000,203 @@ function timeSeriesModule(app, api, state, save)
         (s.source ? undefined :
                     Array.from(index.producers.values()).find((p) => p.name === s.producer));
 
+    // --- Model details: runs, geometries, levels and ensemble members ---------------
+    // The details of grid producers are loaded when one is chosen
+    const details = new Map();  // producer key @ run -> details, null while loading
+    const detailsKey = (p) => `${p.key}@${s.run || ''}`;
+    const gridDetails = () => {
+      const p = producer();
+      return p && p.source === 'grid' ? details.get(detailsKey(p)) || null : null;
+    };
+    function loadDetails()
+    {
+      const p = producer();
+      if (!p || p.source !== 'grid' || details.has(detailsKey(p)))
+        return;
+      const key = detailsKey(p);
+      details.set(key, null);
+      const query = queryString([['source', 'grid'], ['origintime', s.run || '']]);
+      fetchJson(`${app.base}${rootPath.replace(/^\//, '')}/api/producers/${
+                    encodeURIComponent(p.name)}?${query}`)
+          .then((doc) => {
+            details.set(key, doc);
+            refresh(false);
+          })
+          .catch((e) => {
+            details.set(key, {error: e.message});
+            refresh(false);
+          });
+    }
+
+    // The level types of the chosen parameters: [{id, type, unit, values: [{value, key}]}],
+    // where the value is the one of the levels option and the key the one of a parameter key
+    function levelTypes()
+    {
+      const p = producer();
+      if (!p)
+        return [];
+      if (p.source !== 'grid')
+        return (p.levels || [])
+            .filter((l) => l.values.length > 1)
+            .map((l) => ({
+                   id: l.type,
+                   type: l.type,
+                   unit: l.unit || '',
+                   values: l.values.map((v) => ({value: String(v), key: String(v)}))
+                 }));
+      const d = gridDetails();
+      if (!d || !d.parameters)
+        return [];
+      const types = new Map();
+      for (const name of dataParams())
+      {
+        const info = d.parameters[name];
+        for (const l of (info && info.levels) || [])
+        {
+          const id = String(l.levelId);
+          if (!types.has(id))
+            types.set(id, {id, type: l.type, unit: l.unit || '', values: new Map()});
+          l.values.forEach((v, i) => types.get(id).values.set(String(v), String(l.keys[i])));
+        }
+      }
+      return Array.from(types.values())
+          .map(
+              (x) => Object.assign(
+                  x, {values: Array.from(x.values, ([value, key]) => ({value, key}))}))
+          .filter((x) => x.values.length > 1 || types.size > 1);
+    }
+    const chosenLevelType = () => {
+      const types = levelTypes();
+      return types.find((x) => x.id === s.leveltype) || types[0] || null;
+    };
+    const chosenLevels = () => {
+      const type = chosenLevelType();
+      const wanted = new Set(String(s.levels || '').split(',').filter(Boolean));
+      return type ? type.values.filter((v) => wanted.has(v.value)) : [];
+    };
+
+    // The forecast types of the chosen grid parameters: [{type, name, description, members}]
+    function forecastTypes()
+    {
+      const d = gridDetails();
+      if (!d || !d.parameters)
+        return [];
+      const types = new Map();
+      for (const name of dataParams())
+      {
+        const info = d.parameters[name];
+        for (const f of (info && info.forecasts) || [])
+        {
+          if (!types.has(f.type))
+            types.set(f.type, Object.assign({}, f, {members: new Set()}));
+          f.members.forEach((m) => types.get(f.type).members.add(m));
+        }
+      }
+      return Array.from(types.values())
+          .map((f) => Object.assign(f, {members: Array.from(f.members).sort((a, b) => a - b)}))
+          .sort((a, b) => a.type - b.type);
+    }
+    // Ensemble choices are offered when there is more than one forecast to choose from
+    const hasEnsemble = () => {
+      const types = forecastTypes();
+      return types.length > 1 || types.some((f) => f.members.length > 1);
+    };
+    const chosenForecast = () => {
+      if (!hasEnsemble())
+        return null;
+      const types = forecastTypes();
+      return types.find((f) => String(f.type) === s.forecast) ||
+          types.reduce((a, b) => (b.members.length > a.members.length ? b : a));
+    };
+    const chosenMembers = () => {
+      const f = chosenForecast();
+      if (!f)
+        return [];
+      const list = s.members ? parseNumberList(s.members, f.members) : f.members;
+      return list || [];
+    };
+
+    // At most this many parameter keys in a request
+    const MAX_KEYS = 200;
+
+    // The parameter keys of a grid request: [{key, name, variant}], or null when the plain
+    // parameter names do
+    function gridColumns()
+    {
+      const p = producer();
+      const d = gridDetails();
+      if (!p || p.source !== 'grid' || !d || !d.parameters)
+        return null;
+      const type = chosenLevelType();
+      const levels = chosenLevels();
+      const forecast = chosenForecast();
+      const members = chosenMembers();
+      if (levels.length === 0 && !forecast && !s.geometry)
+        return null;
+      const out = [];
+      for (const name of dataParams())
+      {
+        const info = d.parameters[name];
+        if (!info)
+        {
+          out.push({key: name, name, variant: ''});
+          continue;
+        }
+        // The chosen levels the parameter has, or its only level
+        const own = type ? (info.levels || []).find((l) => String(l.levelId) === type.id) : null;
+        let lv = [{levelId: '', key: '', label: ''}];
+        if (own && levels.length > 0)
+          lv = levels.filter((v) => own.values.map(String).includes(v.value))
+                   .map((v) => ({
+                          levelId: own.levelId,
+                          key: v.key,
+                          label: `${v.value}${own.unit ? ' ' + own.unit : ''}`
+                        }));
+        else if ((info.levels || []).length === 1 && info.levels[0].keys.length === 1)
+          lv = [{levelId: info.levels[0].levelId, key: String(info.levels[0].keys[0]), label: ''}];
+        // The chosen members the parameter has
+        let mv = [{type: '', number: '', label: ''}];
+        const own_forecast =
+            forecast ? (info.forecasts || []).find((f) => f.type === forecast.type) : null;
+        if (own_forecast)
+          mv = members.filter((m) => own_forecast.members.includes(m))
+                   .map((m) => ({
+                          type: own_forecast.type,
+                          number: m,
+                          label: own_forecast.members.length > 1 ? `member ${m}` : ''
+                        }));
+        for (const l of lv)
+          for (const m of mv)
+            out.push({
+              key: [info.name, d.producer, s.geometry || '', l.levelId, l.key, m.type, m.number]
+                       .join(':')
+                       .replace(/:+$/, ''),
+              name,
+              variant: [levels.length > 1 ? l.label : '', m.label].filter(Boolean).join(' · '),
+              levelFixed: l.key !== ''
+            });
+      }
+      return out.slice(0, MAX_KEYS);
+    }
+
+    // What the columns of a grid request stand for
+    function variantColumns()
+    {
+      const grid = gridColumns();
+      if (!grid)
+        return null;
+      const columns = new Map();
+      for (const c of grid)
+      {
+        columns.set(c.key, {name: c.name, variant: c.variant});
+        for (const [, , fn] of AREA_STATISTICS)
+          columns.set(
+              statisticParameter(fn, c.key),
+              {name: statisticParameter(fn, c.name), variant: c.variant});
+      }
+      return columns;
+    }
+
     const paramSearch = autocomplete({
       label: 'Parameter',
       placeholder: 'Type a parameter name or description, e.g. temp',
@@ -2019,12 +2291,195 @@ function timeSeriesModule(app, api, state, save)
       const p = index.producers.get(key);
       s.producer = p ? p.name : '';
       s.source = p ? p.source : '';
+      resetDetails();
       // Parameters the producer does not have are dropped
       if (p)
         s.params = s.params.filter((x) => META.has(x) || p.parameterSet.has(x));
       defaultTimes(true);
       refresh();
       fitMap();
+    }
+
+    function resetDetails()
+    {
+      for (const k of ['run', 'geometry', 'leveltype', 'levels', 'forecast', 'members'])
+        delete s[k];
+    }
+
+    // The choices of the model: shown only when there is something to choose
+    const runSelect = el('select', {'aria-label': 'Model run'});
+    const geometrySelect = el('select', {'aria-label': 'Geometry'});
+    const levelTypeSelect = el('select', {'aria-label': 'Level type'});
+    const levelButtons = el('div', {class: 'level-buttons', role: 'group', 'aria-label': 'Levels'});
+    const levelNote = el('p', {class: 'muted small'});
+    const forecastSelect = el('select', {'aria-label': 'Forecast'});
+    const membersInput = el(
+        'input',
+        {type: 'text', 'aria-label': 'Members', spellcheck: 'false', placeholder: 'e.g. 1-10, 15'});
+    const membersNote = el('p', {class: 'muted small'});
+    const detailsNote = el('p', {class: 'muted small'});
+    const runRow = el('label', null, 'Model run', runSelect);
+    const geometryRow = el('label', null, 'Geometry', geometrySelect);
+    const levelTypeRow = el('label', null, 'Level type', levelTypeSelect);
+    const levelsRow = el('div', null, el('label', null, 'Levels'), levelButtons, levelNote);
+    const forecastRow = el('label', null, 'Forecast', forecastSelect);
+    const membersRow = el('div', null, el('label', null, 'Members', membersInput), membersNote);
+    const detailsBox =
+        el('div',
+           {class: 'model-details'},
+           runRow,
+           geometryRow,
+           levelTypeRow,
+           levelsRow,
+           forecastRow,
+           membersRow,
+           detailsNote);
+
+    runSelect.addEventListener('change', () => {
+      s.run = runSelect.value;
+      refresh();
+    });
+    geometrySelect.addEventListener('change', () => {
+      s.geometry = geometrySelect.value;
+      refresh();
+    });
+    levelTypeSelect.addEventListener('change', () => {
+      s.leveltype = levelTypeSelect.value;
+      s.levels = '';
+      refresh();
+    });
+    forecastSelect.addEventListener('change', () => {
+      s.forecast = forecastSelect.value;
+      s.members = '';
+      refresh();
+    });
+    membersInput.addEventListener('input', debounce(() => {
+                                    s.members = membersInput.value.trim();
+                                    refresh(false);
+                                  }, 300));
+
+    const options = (select, items, value) => {
+      select.replaceChildren(
+          ...items.map(([v, label]) => el('option', {value: v, selected: v === value}, label)));
+      select.value = value;
+    };
+
+    function renderDetails()
+    {
+      const p = producer();
+      const d = gridDetails();
+      loadDetails();
+      // Runs and geometries of grid producers
+      const runs = (d && d.runs) || [];
+      runRow.hidden = runs.length < 2;
+      if (!runRow.hidden)
+        options(
+            runSelect,
+            [
+              ['', 'The latest'],
+              ...runs.map(
+                  (r) =>
+                      [r.origintime,
+                       `${formatTime(new Date(r.origintime))}${
+                           r.status === 'ready' ? '' : ` (${r.status})`}`])
+            ],
+            s.run || '');
+      const geometries = (d && d.run && d.run.geometries) || [];
+      geometryRow.hidden = geometries.length < 2;
+      if (!geometryRow.hidden)
+        options(
+            geometrySelect,
+            [
+              ['', 'The default'],
+              ...geometries.map((g) => [String(g.id), g.name ? `${g.name} (${g.id})` : g.id])
+            ],
+            s.geometry || '');
+      // Levels
+      const types = levelTypes();
+      const type = chosenLevelType();
+      levelTypeRow.hidden = types.length < 2;
+      if (!levelTypeRow.hidden)
+        options(
+            levelTypeSelect,
+            types.map((x) => [x.id, `${x.type}${x.unit ? ` (${x.unit})` : ''}`]),
+            type ? type.id : '');
+      levelsRow.hidden = !type;
+      if (type)
+      {
+        const chosen = new Set(chosenLevels().map((v) => v.value));
+        levelButtons.replaceChildren(...type.values.map(
+            (v) =>
+                el('button',
+                   {
+                     type: 'button',
+                     class: 'small',
+                     'aria-pressed': chosen.has(v.value) ? 'true' : 'false',
+                     'data-level': v.value,
+                     onclick: () => {
+                       if (chosen.has(v.value))
+                         chosen.delete(v.value);
+                       else
+                         chosen.add(v.value);
+                       s.levels = type.values.filter((x) => chosen.has(x.value))
+                                      .map((x) => x.value)
+                                      .join(',');
+                       refresh();
+                     }
+                   },
+                   v.value)));
+        levelNote.textContent = chosen.size === 0 ?
+            `No level chosen: the values of all ${type.values.length} ${type.type} levels` :
+            `${chosen.size} of ${type.values.length} ${type.type} levels${
+                type.unit ? ` (${type.unit})` : ''}, a series each`;
+      }
+      // Ensembles
+      const forecasts = forecastTypes();
+      const forecast = chosenForecast();
+      forecastRow.hidden = !forecast;
+      if (forecast)
+        options(
+            forecastSelect,
+            forecasts.map(
+                (f) =>
+                    [String(f.type),
+                     `${f.description || f.name || `type ${f.type}`}${
+                         f.members.length > 1 ? ` (${f.members.length} members)` : ''}`]),
+            String(forecast.type));
+      membersRow.hidden = !forecast || forecast.members.length < 2;
+      if (!membersRow.hidden)
+      {
+        if (document.activeElement !== membersInput)
+          membersInput.value = s.members || '';
+        membersInput.placeholder = `all ${forecast.members.length} members, or e.g. ${
+            forecast.members[0]}-${forecast.members[Math.min(9, forecast.members.length - 1)]}`;
+        const list = s.members ? parseNumberList(s.members, forecast.members) : forecast.members;
+        membersNote.textContent = list === null ?
+            'Not a list of members: numbers and ranges separated by commas' :
+            `${list.length} member${list.length === 1 ? '' : 's'}, a series each`;
+      }
+      // What the data of the parameters is, and too large requests
+      const notes = [];
+      if (p && p.source === 'grid' && d === null)
+        notes.push('Loading the model details…');
+      if (d && d.error)
+        notes.push(`The model details could not be loaded: ${d.error}`);
+      for (const name of dataParams())
+      {
+        const info = d && d.parameters && d.parameters[name];
+        if (info && info.aggregation)
+          notes.push(`${name}: ${info.aggregation.description || info.aggregation.name}${
+              info.aggregation.period ? ` (${info.aggregation.period} min)` : ''}`);
+        if (info && info.processing)
+          notes.push(`${name}: ${info.processing.description || info.processing.name}`);
+      }
+      const grid = gridColumns();
+      if (grid && grid.length >= MAX_KEYS)
+        notes.push(`Only the first ${MAX_KEYS} combinations of levels and members are requested`);
+      detailsNote.textContent = notes.join(' · ');
+      detailsNote.hidden = notes.length === 0;
+      detailsBox.hidden =
+          [runRow, geometryRow, levelTypeRow, levelsRow, forecastRow, membersRow, detailsNote]
+              .every((x) => x.hidden);
     }
 
     // --- When ------------------------------------------------------
@@ -2269,18 +2724,35 @@ function timeSeriesModule(app, api, state, save)
     {
       // The coordinates show the locations of the data on the map. The statistics of an area
       // have none: the server returns the coordinates of all the points.
-      const params = serverStatistics() ? Array.from(new Set([
-        'name',
-        'time',
-        ...s.params.filter((p) => META.has(p) && p !== 'lat' && p !== 'lon'),
-        ...dataParams().flatMap((p) => AREA_STATISTICS.map(([, , fn]) => statisticParameter(fn, p)))
-      ])) :
-                                          Array.from(
-                                              new Set(['name', 'time', 'lat', 'lon', ...s.params]));
+      // The keys of a grid request, or the parameters and the levels option
+      const grid = gridColumns();
+      const columnsOf = (p) => (grid ? grid.filter((c) => c.name === p).map((c) => c.key) : [p]);
+      // The level column tells the levels apart when the request does not fix them
+      const level =
+          levelTypes().length > 0 && (!grid || grid.some((c) => !c.levelFixed)) ? ['level'] : [];
+      const params = serverStatistics() ?
+          Array.from(new Set([
+            'name',
+            'time',
+            ...level,
+            ...s.params.filter((p) => META.has(p) && p !== 'lat' && p !== 'lon'),
+            ...dataParams().flatMap(columnsOf).flatMap(
+                (p) => AREA_STATISTICS.map(([, , fn]) => statisticParameter(fn, p)))
+          ])) :
+          Array.from(new Set([
+            'name',
+            'time',
+            'lat',
+            'lon',
+            ...level,
+            ...s.params.flatMap((p) => (META.has(p) ? [p] : columnsOf(p)))
+          ]));
       return [
         ['producer', s.producer],
         ['source', sourceOption()],
+        ['origintime', producer() && producer().source === 'grid' ? s.run || '' : ''],
         ['param', params.join(',')],
+        ['levels', grid ? '' : chosenLevels().map((v) => v.value).join(',')],
         ['starttime', fromInput(s.start)],
         ['endtime', fromInput(s.end)],
         ['timestep', s.timestep],
@@ -2345,7 +2817,7 @@ function timeSeriesModule(app, api, state, save)
         results.replaceChildren(el('pre', {class: 'code'}, text.slice(0, 20000)));
         return;
       }
-      const rows = flattenRows(data);
+      const rows = splitVariants(flattenRows(data), variantColumns());
       if (!serverStatistics())
         map.setPoints(mapPoints(rows));
       showResults(rows, text);
@@ -2444,6 +2916,7 @@ function timeSeriesModule(app, api, state, save)
                     onclick: () => {
                       s.producer = '';
                       s.source = '';
+                      resetDetails();
                       refresh();
                     }
                   },
@@ -2471,6 +2944,7 @@ function timeSeriesModule(app, api, state, save)
         modelCard.hidden = true;
         modelSearch.element.hidden = false;
       }
+      renderDetails();
       // Times
       startInput.value = s.start || '';
       endInput.value = s.end || '';
@@ -2524,7 +2998,8 @@ function timeSeriesModule(app, api, state, save)
                el('label', null, 'Producer'),
                candidatesNote,
                modelSearch.element,
-               modelCard),
+               modelCard,
+               detailsBox),
            section(
                'When',
                el('div',
@@ -3974,6 +4449,8 @@ root.SmartMetExplorer = {
   matchScore,
   buildIndex,
   buildEdrIndex,
+  splitVariants,
+  parseNumberList,
   coverageRows,
   paletteColour,
   cellSize,
