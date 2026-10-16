@@ -210,3 +210,8 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .legend { display: flex; align-items: center; gap: 6px; margin: 4px 0 8px; }
 .legend-bar { display: flex; flex: 1; max-width: 360px; height: 12px; border: 1px solid var(--line); }
 .legend-step { flex: 1; }
+.legend-bands { max-width: none; height: auto; }
+.legend-bands .legend-step { min-height: 14px; position: relative; }
+.legend-label { position: absolute; left: 0; top: 15px; font-size: 9px; color: var(--muted); transform: translateX(-50%); white-space: nowrap; }
+.legend:has(.legend-bands) { margin-bottom: 20px; }
+.pane .row select { max-width: 14em; }

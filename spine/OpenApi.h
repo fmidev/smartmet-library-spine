@@ -341,6 +341,8 @@ class Publisher
  *     explorer       = true;
  *     explorer_dir   = "/usr/share/smartmet/explorer";
  *     uplot_dir      = "/usr/share/smartmet/uplot";
+ *     palette_dir    = "/usr/share/smartmet/qdless/palettes";
+ *     palette_config = "/usr/share/smartmet/qdless/qdless.conf";
  *   };
  */
 // ----------------------------------------------------------------------
@@ -371,6 +373,10 @@ struct CatalogSettings
   bool explorer = true;  // serve /api/explorer
   std::string explorer_dir = "/usr/share/smartmet/explorer";
   std::string uplot_dir = "/usr/share/smartmet/uplot";
+  // The isoband colours of the production products (as converted by qdless from wms-conf)
+  // and the parameter to palette map, used for the values on the maps of the explorer
+  std::string palette_dir = "/usr/share/smartmet/qdless/palettes";
+  std::string palette_config = "/usr/share/smartmet/qdless/qdless.conf";
 
   // Read the group at 'path'. A missing group yields the defaults.
   static CatalogSettings parse(const libconfig::Config& config,

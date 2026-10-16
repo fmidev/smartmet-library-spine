@@ -403,7 +403,12 @@ Most plugins produce tables of values:
   the code of the request. Results with values at several locations also get a Map tab:
   the values of a parameter at a time as coloured cells (grids, sized by the median
   distance to the nearest point) or dots (stations), with a time slider, a play button and
-  an editable colour scale (palette, minimum and maximum, continuous or in classes). The state is kept in the URL fragment, so a query can be shared as a
+  an editable colour scale (palette, minimum and maximum, continuous or in classes). The
+  isoband colours of the production products, as converted by qdless from `wms-conf`
+  (`palette_dir`, by default `/usr/share/smartmet/qdless/palettes`, and the parameter map of
+  `palette_config`, `/usr/share/smartmet/qdless/qdless.conf`), are served as
+  `palettes.json` and used by default for the parameters they are mapped to: the values
+  are coloured band by band and values outside the bands are left out, as in qdless. The state is kept in the URL fragment, so a query can be shared as a
   link. Without a tile layer (`map_tiles`) the map draws the land, the lakes and
   the country borders of `basemap.json`, generated from the public domain Natural Earth 1:50m
   data by `explorer/make-basemap.py` (see the script for the source), so that areas can be

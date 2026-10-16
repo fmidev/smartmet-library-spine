@@ -183,7 +183,8 @@ make %{_smp_mflags}
   built from the collection metadata, CoverageJSON drawn as charts; Coverages downloads with
   the native grid, the area of the download in the chosen projection and its size before
   downloading; values of grids and stations on a map with a time slider and an editable
-  colour scale; a background map of the
+  colour scale, by default the production isoband colours of the parameter (the palettes of
+  qdless, api_catalog.palette_dir and palette_config); a background map of the
   land, lakes and borders from Natural Earth (public domain) when no tile layer is
   configured; files installed to
   /usr/share/smartmet/explorer, requires smartmet-uplot

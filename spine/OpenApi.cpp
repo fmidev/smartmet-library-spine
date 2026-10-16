@@ -12,6 +12,7 @@
 #include <atomic>
 #include <cctype>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -1288,6 +1289,8 @@ CatalogSettings CatalogSettings::parse(const libconfig::Config& config, const st
       group.lookupValue("explorer", settings.explorer);
       group.lookupValue("explorer_dir", settings.explorer_dir);
       group.lookupValue("uplot_dir", settings.uplot_dir);
+      group.lookupValue("palette_dir", settings.palette_dir);
+      group.lookupValue("palette_config", settings.palette_config);
     }
     return settings;
   }
@@ -1430,6 +1433,63 @@ Catalog::Catalog(CatalogSettings settings) : itsSettings(std::move(settings))
         ANSI_FG_DEFAULT,
         missing);
     return;
+  }
+
+  // The production palettes are optional: {palettes: {name: [[lo, hi, r, g, b], ...]},
+  // parameters: {lower case parameter name: palette name}}
+  {
+    Json::Value doc;
+    Json::CharReaderBuilder reader;
+    reader["allowComments"] = true;
+    const auto readJson = [&reader](const std::string& path, Json::Value& value)
+    {
+      std::ifstream in(path);
+      std::string errors;
+      return in && Json::parseFromStream(reader, in, &value, &errors);
+    };
+    std::error_code ec;
+    if (std::filesystem::is_directory(itsSettings.palette_dir, ec))
+    {
+      for (const auto& file : std::filesystem::directory_iterator(itsSettings.palette_dir, ec))
+      {
+        if (file.path().extension() != ".json")
+          continue;
+        Json::Value palette;
+        if (!readJson(file.path().string(), palette) || !palette["isobands"].isArray())
+          continue;
+        Json::Value bands(Json::arrayValue);
+        for (const auto& band : palette["isobands"])
+        {
+          const auto& rgb = band["rgb"];
+          if (!band["lo"].isNumeric() || !band["hi"].isNumeric() || !rgb.isArray() ||
+              rgb.size() < 3)
+            continue;
+          Json::Value b(Json::arrayValue);
+          b.append(band["lo"]);
+          b.append(band["hi"]);
+          for (Json::ArrayIndex i = 0; i < 3; i++)
+            b.append(rgb[i]);
+          bands.append(b);
+        }
+        if (bands.size() > 0)
+          doc["palettes"][file.path().stem().string()] = bands;
+      }
+    }
+    Json::Value config;
+    if (doc.isMember("palettes") && readJson(itsSettings.palette_config, config) &&
+        config["palettes"].isObject())
+      for (const auto& name : config["palettes"].getMemberNames())
+        if (config["palettes"][name].isString() &&
+            doc["palettes"].isMember(config["palettes"][name].asString()))
+          doc["parameters"][boost::algorithm::to_lower_copy(name)] = config["palettes"][name];
+    if (doc.isMember("palettes"))
+    {
+      ExplorerFile f;
+      f.content = toJsonText(doc);
+      f.contentType = "application/json";
+      f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
+      loaded.emplace("palettes.json", std::move(f));
+    }
   }
 
   // The background map is optional
@@ -1812,6 +1872,8 @@ void Catalog::handleExplorer(const HTTP::Request& request, HTTP::Response& respo
   std::string map;
   if (itsExplorerFiles.count("basemap.json") > 0)
     map += fmt::format(R"( data-basemap="{}basemap.json?v={}")", a, v("basemap.json"));
+  if (itsExplorerFiles.count("palettes.json") > 0)
+    map += fmt::format(R"( data-palettes="{}palettes.json?v={}")", a, v("palettes.json"));
   const auto& o = itsSettings.openapi;
   if (!o.map_tiles.empty())
     map += fmt::format(R"( data-map-tiles="{}" data-map-tile-size="{}" data-map-attribution="{}")",

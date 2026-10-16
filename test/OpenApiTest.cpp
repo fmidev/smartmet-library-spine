@@ -462,9 +462,21 @@ BOOST_AUTO_TEST_CASE(explorer_tests)
   }
 
   AssetDir assets;
+
+  // A production palette and the parameter map, as qdless installs them
+  std::filesystem::create_directories(assets.path / "palettes");
+  std::ofstream(assets.path / "palettes" / "temperature.json")
+      << R"({"name": "temperature", "isobands": [{"lo": -999, "hi": 12, "rgb": [0, 0, 255]},)"
+      << R"( {"lo": 12, "hi": 14, "rgb": [0, 255, 0]}, {"lo": 14, "hi": 999, "rgb": [255, 0, 0]}]})";
+  std::ofstream(assets.path / "palettes" / "broken.json") << "{";
+  std::ofstream(assets.path / "qdless.conf")
+      << R"({"_comment": "test", "palettes": {"Temperature": "temperature", "X": "missing"}})";
+
   libconfig::Config config;
   config.readString("api_catalog: { swagger_ui_dir = \"" + assets.path.string() +
-                    "\"; explorer_dir = \"../explorer\"; uplot_dir = \"" + uplot + "\"; };");
+                    "\"; explorer_dir = \"../explorer\"; uplot_dir = \"" + uplot +
+                    "\"; palette_dir = \"" + (assets.path / "palettes").string() +
+                    "\"; palette_config = \"" + (assets.path / "qdless.conf").string() + "\"; };");
   OpenAPI::Catalog catalog(OpenAPI::CatalogSettings::parse(config));
   const std::vector<OpenAPI::CatalogEntry> entries{
       {"/timeseries", "TimeSeries", "", "timeseries", true}};
@@ -480,6 +492,17 @@ BOOST_AUTO_TEST_CASE(explorer_tests)
   HTTP::Response missing;
   BOOST_TEST(catalog.handle(makeRequest("/api/explorer/../OpenApi.cpp"), missing, entries));
   BOOST_TEST(missing.getStatus() == HTTP::Status::not_found);
+
+  BOOST_TEST(page.getContent().find("data-palettes=") != std::string::npos);
+  HTTP::Response palettes;
+  BOOST_TEST(catalog.handle(makeRequest("/api/explorer/palettes.json"), palettes, entries));
+  BOOST_TEST(palettes.getStatus() == HTTP::Status::ok);
+  const auto paletteDoc = parse(palettes.getContent());
+  BOOST_TEST(paletteDoc["palettes"]["temperature"].size() == 3U);
+  BOOST_TEST(!paletteDoc["palettes"].isMember("broken"));
+  BOOST_TEST(paletteDoc["parameters"]["temperature"].asString() == "temperature");
+  BOOST_TEST(!paletteDoc["parameters"].isMember("x"));
+  std::ofstream(assets.path / "palettes.json") << palettes.getContent();
 
   std::ofstream(assets.path / "explorer.html") << page.getContent();
   std::ofstream(assets.path / "smartmet-swagger-ui.js") << plugin.getContent();

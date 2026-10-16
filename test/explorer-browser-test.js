@@ -333,6 +333,8 @@ const server = http.createServer((req, res) => {
     return send(200, 'text/html; charset=UTF-8', fs.readFileSync(path.join(dir, 'explorer.html')));
   if (p === '/api/explorer/explorer.js')
     return send(200, 'text/javascript', fs.readFileSync(path.join(explorerDir, 'explorer.js')));
+  if (p === '/api/explorer/palettes.json')
+    return send(200, 'application/json', fs.readFileSync(path.join(dir, 'palettes.json')));
   if (p === '/api/explorer/basemap.json')
     return send(200, 'application/json', fs.readFileSync(path.join(explorerDir, 'basemap.json')));
   if (p === '/api/explorer/explorer.css')
@@ -735,6 +737,26 @@ async function main()
         valueMap.dots === 4 && valueMap.max === '5' && valueMap.changed && valueMap.legend &&
             valueMap.min !== '' && valueMap.time.endsWith('UTC'),
         valueMap);
+
+    // The production palette of the parameter, drawn band by band
+    const production = await b.evaluate(`(async () => {
+      const pane = [...document.querySelectorAll('.results .pane')].find((p) => !p.hidden);
+      const palette = pane.querySelector('[aria-label="Colours"]');
+      const param = pane.querySelector('[aria-label="Parameter"]');
+      param.value = "temperature";
+      param.dispatchEvent(new Event("change", { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 200));
+      return { palette: palette.value, disabled: pane.querySelector('[aria-label="Minimum"]').disabled,
+               colours: [...new Set([...pane.querySelectorAll('.xmap-dot')].map((c) => c.getAttribute('fill')))].sort(),
+               bands: pane.querySelectorAll('.legend-bands .legend-step').length };
+    })()`);
+    check(
+        'production palette by default',
+        production.palette === 'production:temperature' && production.disabled &&
+            production.bands === 3 &&
+            production.colours.every(
+                (c) => ['rgb(0,0,255)', 'rgb(0,255,0)', 'rgb(255,0,0)'].includes(c)),
+        production);
 
     // A box dragged on the map
     await setMode(b, 'bbox');

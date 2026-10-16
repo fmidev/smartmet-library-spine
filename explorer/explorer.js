@@ -403,13 +403,26 @@ function matchScore(q, name, text)
 function mapSettings(app)
 {
   const d = app.dataset;
-  if (!d.mapTiles)
-    return d.basemap ? {basemap: d.basemap, attribution: 'Natural Earth'} : null;
-  return {
-    tiles: d.mapTiles,
-    tileSize: Number(d.mapTileSize) || 256,
-    attribution: d.mapAttribution || ''
-  };
+  const settings = d.mapTiles ?
+      {
+        tiles: d.mapTiles,
+        tileSize: Number(d.mapTileSize) || 256,
+        attribution: d.mapAttribution || ''
+      } :
+      (d.basemap ? {basemap: d.basemap, attribution: 'Natural Earth'} : {});
+  if (d.palettes)
+    settings.palettes = d.palettes;
+  return settings;
+}
+
+// The isoband colours of the production products (palettes.json): loaded once
+let palettesPromise = null;
+
+function loadPalettes(url)
+{
+  if (!palettesPromise)
+    palettesPromise = fetchJson(url).catch(() => ({palettes: {}, parameters: {}}));
+  return palettesPromise;
 }
 
 // The background map of the explorer (basemap.json, see make-basemap.py): land, lakes and
@@ -1510,6 +1523,10 @@ function drawValueMap(container, rows, parameters, settings)
   const times = Array.from(new Set(located.map((r) => String(r.time))))
                     .sort((a, b) => (parseTime(a) || 0) - (parseTime(b) || 0));
   const state = {param: numeric[0], time: 0, palette: 'viridis', steps: 0, min: null, max: null};
+  // The production palettes: bands of fixed values and colours
+  let production = {palettes: {}, parameters: {}};
+  const bandsOf = (name) => production.palettes[name.replace(/^production:/, '')];
+  const isProduction = () => state.palette.startsWith('production:');
 
   const map = createMap(settings, null);
   map.setTools(['move'], 'move');
@@ -1519,6 +1536,7 @@ function drawValueMap(container, rows, parameters, settings)
       el('select',
          {'aria-label': 'Colours'},
          Object.keys(PALETTES).map((p) => el('option', {value: p}, p)));
+  const productionGroup = el('optgroup', {label: 'Production isobands'});
   const stepsSelect =
       el('select',
          {'aria-label': 'Classes'},
@@ -1560,12 +1578,19 @@ function drawValueMap(container, rows, parameters, settings)
     const items = located.filter((r) => String(r.time) === t).map((r) => {
       const v = r[state.param];
       const ok = typeof v === 'number' && isFinite(v);
+      let color = null;
+      if (ok && isProduction())
+      {
+        // The colour of the band of the value; values outside the bands are left out
+        const band = bandsOf(state.palette).find((b) => v >= b[0] && v < b[1]);
+        color = band ? `rgb(${band[2]},${band[3]},${band[4]})` : null;
+      }
+      else if (ok)
+        color = paletteColour(state.palette, hi > lo ? (v - lo) / (hi - lo) : 0.5, state.steps);
       return {
         lon: r.lon,
         lat: r.lat,
-        color: ok ?
-            paletteColour(state.palette, hi > lo ? (v - lo) / (hi - lo) : 0.5, state.steps) :
-            null,
+        color: color,
         label: `${state.param}: ${ok ? v : 'missing'}`,
         info: {name: r.name, lat: r.lat, lon: r.lon}
       };
@@ -1575,7 +1600,26 @@ function drawValueMap(container, rows, parameters, settings)
     map.setCells({items, dx: size.dx, dy: size.dy});
     const d = parseTime(t);
     timeLabel.textContent = d ? formatTime(d) : t;
-    // The legend: the colours and the range
+    // The legend: the colours and the range, or the bands of a production palette
+    minInput.disabled = maxInput.disabled = stepsSelect.disabled = isProduction();
+    if (isProduction())
+    {
+      const bands = bandsOf(state.palette);
+      const label = (v) => (Math.abs(v) >= 999 ? '' : String(v));
+      legend.replaceChildren(
+          el('span',
+             {class: 'legend-bar legend-bands'},
+             bands.map(
+                 (b) =>
+                     el('span',
+                        {
+                          class: 'legend-step',
+                          style: `background:rgb(${b[2]},${b[3]},${b[4]})`,
+                          title: `${label(b[0]) || '…'} – ${label(b[1]) || '…'}`
+                        },
+                        el('span', {class: 'legend-label'}, label(b[0]))))));
+      return;
+    }
     const n = state.steps > 0 ? state.steps : 24;
     legend.replaceChildren(
         el('span', {class: 'small'}, lo === null ? '' : round(lo, 2)),
@@ -1598,6 +1642,12 @@ function drawValueMap(container, rows, parameters, settings)
   paramSelect.addEventListener('change', () => {
     state.param = paramSelect.value;
     setRange();
+    if (isProduction())
+    {
+      state.palette = 'viridis';
+      paletteSelect.value = state.palette;
+    }
+    chooseProduction();
     draw();
   });
   paletteSelect.addEventListener('change', () => {
@@ -1645,6 +1695,27 @@ function drawValueMap(container, rows, parameters, settings)
   paletteSelect.value = state.palette;
   setRange();
   draw();
+
+  // The production palette of the parameter, when there is one
+  const chooseProduction = () => {
+    const name = production.parameters[state.param.toLowerCase()];
+    if (name && production.palettes[name])
+    {
+      state.palette = `production:${name}`;
+      paletteSelect.value = state.palette;
+    }
+  };
+  if (settings && settings.palettes)
+    loadPalettes(settings.palettes).then((doc) => {
+      production = doc;
+      const names = Object.keys(doc.palettes || {}).sort();
+      productionGroup.replaceChildren(
+          ...names.map((n) => el('option', {value: `production:${n}`}, n)));
+      if (names.length > 0)
+        paletteSelect.prepend(productionGroup);
+      chooseProduction();
+      draw();
+    });
   // Fit the map once it has a width
   requestAnimationFrame(() => map.fit(map.extent()));
 }
