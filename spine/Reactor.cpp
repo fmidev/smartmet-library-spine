@@ -1542,6 +1542,21 @@ void Reactor::waitForShutdownStart()
   shutdownRequestedCond.wait(lock, []() -> bool { return gIsShuttingDown; });
 }
 
+namespace
+{
+// Print the names of active tasks, if there are any
+void printActiveTasks(const char* title, const std::vector<std::string>& names)
+{
+  if (names.empty())
+    return;
+
+  std::cout << ANSI_FG_RED << ANSI_BOLD_ON << title << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
+            << std::endl;
+  for (const std::string& name : names)
+    std::cout << "         " << name << std::endl;
+}
+}  // namespace
+
 void Reactor::waitForShutdownComplete()
 {
   // Check if leak sanitizer is loaded and get pointer to its leak check function
@@ -1598,47 +1613,37 @@ void Reactor::waitForShutdownComplete()
           continue;
 
         // Shutdown last for too long time
-        std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nReactor shutdown timed expired"
-                  << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
-        std::vector<std::string> names;
-        if (itsInitTasks)
-          names = itsInitTasks->active_task_names();
-
-        if (!names.empty())
-        {
-          std::cout << ANSI_FG_RED << ANSI_BOLD_ON
-                    << "Active Reactor initialization tasks:" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
-                    << std::endl;
-          for (const std::string& name : names)
-            std::cout << "         " << name << std::endl;
-        }
-        names = shutdownTasks.active_task_names();
-        if (!names.empty())
-        {
-          std::cout << ANSI_FG_RED << ANSI_BOLD_ON
-                    << "Active Reactor shutdown tasks:" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
-                    << std::endl;
-          for (const std::string& name : names)
-          {
-            std::cout << "         " << name << std::endl;
-          }
-        }
-
-        if (shutdownTimedOutCallback)
-        {
-          try
-          {
-            shutdownTimedOutCallback();
-          }
-          catch(const std::exception&)
-          {
-            std::cerr << Fmi::Exception::Trace(BCP, "Unexpected exception in shutdown timeout callback")
-                      << std::endl;
-          }
-          abort();
-        }
+        reportShutdownTimeout();
       }
     }
+  }
+}
+
+// Report the active tasks after a shutdown timeout and run the timeout callback
+void Reactor::reportShutdownTimeout()
+{
+  std::cout << ANSI_FG_RED << ANSI_BOLD_ON << "\nReactor shutdown timed expired"
+            << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+  std::vector<std::string> names;
+  if (itsInitTasks)
+    names = itsInitTasks->active_task_names();
+
+  printActiveTasks("Active Reactor initialization tasks:", names);
+  names = shutdownTasks.active_task_names();
+  printActiveTasks("Active Reactor shutdown tasks:", names);
+
+  if (shutdownTimedOutCallback)
+  {
+    try
+    {
+      shutdownTimedOutCallback();
+    }
+    catch(const std::exception&)
+    {
+      std::cerr << Fmi::Exception::Trace(BCP, "Unexpected exception in shutdown timeout callback")
+                << std::endl;
+    }
+    abort();
   }
 }
 
@@ -1677,6 +1682,99 @@ std::string average_and_format(long total_microsecs, unsigned long requests)
     throw Fmi::Exception::Trace(BCP, "Operation failed!");
   }
 }
+using LastRequestFieldFn = std::function<std::string(const LoggedRequest&, const std::string&)>;
+
+// Formatters of the last requests fields
+std::map<std::string, LastRequestFieldFn> lastRequestFormatters(
+    const std::shared_ptr<Fmi::TimeFormatter>& timeFormatter, bool decode_request)
+{
+  using LR = Spine::LoggedRequest;
+
+  return {
+      {"time", [timeFormatter](const LR& r, const std::string&) {
+         if (timeFormatter)
+           return timeFormatter->format(r.getRequestEndTime());
+         return Fmi::to_iso_extended_string(r.getRequestEndTime().time_of_day());
+       }},
+      {"endtime", [timeFormatter](const LR& r, const std::string&) {
+         if (timeFormatter)
+           return timeFormatter->format(r.getRequestEndTime());
+         return Fmi::to_iso_extended_string(r.getRequestEndTime());
+       }},
+      {"starttime", [timeFormatter](const LR& r, const std::string&) {
+         if (timeFormatter)
+           return timeFormatter->format(r.getRequestStartTime());
+         return Fmi::to_iso_extended_string(r.getRequestStartTime());
+       }},
+      {"duration", [](const LR& r, const std::string&) {
+         // Integer milliseconds, matching the format the access-log
+         // writer (AccessLogger.cpp) uses on disk and the units
+         // every downstream tool already speaks.
+         return Fmi::to_string(r.getAccessDuration().total_milliseconds());
+       }},
+      {"cpu", [](const LR& r, const std::string&) {
+         return Fmi::to_string(r.getCpuDuration().total_milliseconds());
+       }},
+      {"ip", [](const LR& r, const std::string&) { return r.getIP(); }},
+      {"status", [](const LR& r, const std::string&) { return r.getStatus(); }},
+      {"size", [](const LR& r, const std::string&) {
+         // Plain integer bytes for now. A future ``sizeformat=
+         // readable`` parameter could format this as KB / MB / GB
+         // for human consumers without changing the field key.
+         return Fmi::to_string(r.getContentLength());
+       }},
+      {"method", [](const LR& r, const std::string&) { return r.getMethod(); }},
+      {"version", [](const LR& r, const std::string&) { return r.getVersion(); }},
+      {"etag", [](const LR& r, const std::string&) { return r.getETag(); }},
+      {"apikey", [](const LR& r, const std::string&) { return r.getApiKey(); }},
+      {"plugin", [](const LR&, const std::string& plugin) { return plugin; }},
+      {"url", [decode_request](const LR& r, const std::string&) {
+         const auto& s = r.getRequestString();
+         return decode_request ? HTTP::urldecode(s) : s;
+       }},
+  };
+}
+
+// Selected last requests fields, all fields if none of the requested ones is known
+std::vector<std::string> selectLastRequestFields(
+    const std::string& fields_param,
+    const std::vector<std::pair<std::string, std::string>>& field_order,
+    const std::map<std::string, std::string>& field_aliases,
+    const std::map<std::string, LastRequestFieldFn>& formatters)
+{
+  std::vector<std::string> selected;
+  if (fields_param.empty() || fields_param == "all")
+  {
+    for (const auto& kv : field_order)
+      selected.push_back(kv.first);
+  }
+  else
+  {
+    std::vector<std::string> tokens;
+    boost::algorithm::split(tokens, fields_param, boost::is_any_of(","));
+    for (auto& t : tokens)
+    {
+      boost::algorithm::trim(t);
+      boost::algorithm::to_lower(t);
+      // Resolve aliases first, then accept the canonical key.
+      auto alias_it = field_aliases.find(t);
+      if (alias_it != field_aliases.end())
+        t = alias_it->second;
+      if (!t.empty() && formatters.count(t))
+        selected.push_back(t);
+      // Unknown field names are silently dropped — forward-compat
+      // for clients probing with future field names.
+    }
+    if (selected.empty())
+    {
+      // Caller passed fields= but nothing matched — fall back to
+      // the all-fields view rather than emitting an empty table.
+      for (const auto& kv : field_order)
+        selected.push_back(kv.first);
+    }
+  }
+  return selected;
+}
 }  // namespace
 
 std::unique_ptr<Table> Reactor::requestLastRequests(const HTTP::Request& theRequest) const
@@ -1700,7 +1798,6 @@ try
   const std::string fields_param = optional_string(theRequest.getParameter("fields"), "");
 
   using LR = Spine::LoggedRequest;
-  using FieldFn = std::function<std::string(const LR&, const std::string&)>;
 
   // Field registry. Order matters: ``fields=all`` emits columns in
   // the order they appear here. ``time`` keeps the historical
@@ -1747,86 +1844,15 @@ try
   if (!time_format.empty())
     timeFormatter.reset(Fmi::TimeFormatter::create(time_format));
 
-  const std::map<std::string, FieldFn> formatters = {
-      {"time", [timeFormatter](const LR& r, const std::string&) {
-         if (timeFormatter)
-           return timeFormatter->format(r.getRequestEndTime());
-         return Fmi::to_iso_extended_string(r.getRequestEndTime().time_of_day());
-       }},
-      {"endtime", [timeFormatter](const LR& r, const std::string&) {
-         if (timeFormatter)
-           return timeFormatter->format(r.getRequestEndTime());
-         return Fmi::to_iso_extended_string(r.getRequestEndTime());
-       }},
-      {"starttime", [timeFormatter](const LR& r, const std::string&) {
-         if (timeFormatter)
-           return timeFormatter->format(r.getRequestStartTime());
-         return Fmi::to_iso_extended_string(r.getRequestStartTime());
-       }},
-      {"duration", [](const LR& r, const std::string&) {
-         // Integer milliseconds, matching the format the access-log
-         // writer (AccessLogger.cpp) uses on disk and the units
-         // every downstream tool already speaks.
-         return Fmi::to_string(r.getAccessDuration().total_milliseconds());
-       }},
-      {"cpu", [](const LR& r, const std::string&) {
-         return Fmi::to_string(r.getCpuDuration().total_milliseconds());
-       }},
-      {"ip", [](const LR& r, const std::string&) { return r.getIP(); }},
-      {"status", [](const LR& r, const std::string&) { return r.getStatus(); }},
-      {"size", [](const LR& r, const std::string&) {
-         // Plain integer bytes for now. A future ``sizeformat=
-         // readable`` parameter could format this as KB / MB / GB
-         // for human consumers without changing the field key.
-         return Fmi::to_string(r.getContentLength());
-       }},
-      {"method", [](const LR& r, const std::string&) { return r.getMethod(); }},
-      {"version", [](const LR& r, const std::string&) { return r.getVersion(); }},
-      {"etag", [](const LR& r, const std::string&) { return r.getETag(); }},
-      {"apikey", [](const LR& r, const std::string&) { return r.getApiKey(); }},
-      {"plugin", [](const LR&, const std::string& plugin) { return plugin; }},
-      {"url", [decode_request](const LR& r, const std::string&) {
-         const auto& s = r.getRequestString();
-         return decode_request ? HTTP::urldecode(s) : s;
-       }},
-  };
+  const auto formatters = lastRequestFormatters(timeFormatter, decode_request);
 
   // Resolve column selection. Default (no ``fields=``) returns
   // every field so an interactive operator hitting the URL gets a
   // useful overview without having to learn the field-set syntax.
   // Bandwidth-conscious callers (e.g. smwebmon's IP-flow poll)
   // pass an explicit comma-separated subset.
-  std::vector<std::string> selected;
-  if (fields_param.empty() || fields_param == "all")
-  {
-    for (const auto& kv : field_order)
-      selected.push_back(kv.first);
-  }
-  else
-  {
-    std::vector<std::string> tokens;
-    boost::algorithm::split(tokens, fields_param, boost::is_any_of(","));
-    for (auto& t : tokens)
-    {
-      boost::algorithm::trim(t);
-      boost::algorithm::to_lower(t);
-      // Resolve aliases first, then accept the canonical key.
-      auto alias_it = field_aliases.find(t);
-      if (alias_it != field_aliases.end())
-        t = alias_it->second;
-      if (!t.empty() && formatters.count(t))
-        selected.push_back(t);
-      // Unknown field names are silently dropped — forward-compat
-      // for clients probing with future field names.
-    }
-    if (selected.empty())
-    {
-      // Caller passed fields= but nothing matched — fall back to
-      // the all-fields view rather than emitting an empty table.
-      for (const auto& kv : field_order)
-        selected.push_back(kv.first);
-    }
-  }
+  std::vector<std::string> selected =
+      selectLastRequestFields(fields_param, field_order, field_aliases, formatters);
 
   std::map<std::string, std::string> key_to_header;
   for (const auto& kv : field_order)

@@ -194,6 +194,7 @@ class Reactor final : public ContentHandlerMap
   }
 
  private:
+  void reportShutdownTimeout();
 
   /**
    *  @brief Method called when initialization is done
