@@ -276,6 +276,8 @@ const server = http.createServer((req, res) => {
     return send(200, 'text/html; charset=UTF-8', fs.readFileSync(path.join(dir, 'explorer.html')));
   if (p === '/api/explorer/explorer.js')
     return send(200, 'text/javascript', fs.readFileSync(path.join(explorerDir, 'explorer.js')));
+  if (p === '/api/explorer/basemap.json')
+    return send(200, 'application/json', fs.readFileSync(path.join(explorerDir, 'basemap.json')));
   if (p === '/api/explorer/explorer.css')
     return send(200, 'text/css', fs.readFileSync(path.join(explorerDir, 'explorer.css')));
   if (p === '/api/explorer/uPlot.iife.min.js')
@@ -567,6 +569,10 @@ async function main()
         'state restored from the URL',
         restored.producer === 'pal' && restored.url.includes('keyword=many'),
         restored);
+
+    // The background map of the explorer
+    const land = await b.evaluate(`(() => { const l = document.querySelector('.xmap-land'); return l ? l.getAttribute('d').length : 0; })()`);
+    check('land drawn from the basemap', land > 1000, land);
 
     // The area of the producer on the map
     const region = await b.evaluate(`document.querySelectorAll('.xmap-region').length`);

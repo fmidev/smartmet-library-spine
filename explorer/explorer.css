@@ -192,3 +192,10 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .xmap-tooltip td { padding: 0 6px 0 0; }
 .xmap-tooltip td:first-child { color: var(--muted); }
 .chart-modes { margin-bottom: 8px; }
+.xmap { --sea: #dbe8f1; --land: #f4f1e8; --lake: #dbe8f1; --border: #a7a094; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .xmap { --sea: #0f1d2b; --land: #26292c; --lake: #0f1d2b; --border: #5d636a; } }
+:root[data-theme="dark"] .xmap { --sea: #0f1d2b; --land: #26292c; --lake: #0f1d2b; --border: #5d636a; }
+.xmap:has(.xmap-land) { background: var(--sea); }
+.xmap-land { fill: var(--land); stroke: var(--border); stroke-width: 0.5; }
+.xmap-lake { fill: var(--lake); stroke: none; }
+.xmap-border { fill: none; stroke: var(--border); stroke-width: 0.8; stroke-dasharray: 3 2; }

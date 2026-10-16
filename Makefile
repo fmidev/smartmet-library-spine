@@ -125,7 +125,7 @@ install:
 	echo $(INSTALL_PROG) $(LIBFILE) $(libdir)/$(LIBFILE)
 	$(INSTALL_PROG) $(LIBFILE) $(libdir)/$(LIBFILE)
 	@mkdir -p $(datadir)/smartmet/explorer
-	$(INSTALL_DATA) explorer/explorer.js explorer/explorer.css $(datadir)/smartmet/explorer/
+	$(INSTALL_DATA) explorer/explorer.js explorer/explorer.css explorer/basemap.json $(datadir)/smartmet/explorer/
 	$(MAKE) -C app $@
 
 test:

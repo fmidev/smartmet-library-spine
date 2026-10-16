@@ -1432,6 +1432,19 @@ Catalog::Catalog(CatalogSettings settings) : itsSettings(std::move(settings))
     return;
   }
 
+  // The background map is optional
+  {
+    std::ifstream in(itsSettings.explorer_dir + "/basemap.json", std::ios::binary);
+    if (in)
+    {
+      ExplorerFile f;
+      f.content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+      f.contentType = "application/json";
+      f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
+      loaded.emplace("basemap.json", std::move(f));
+    }
+  }
+
   ExplorerFile plugin;
   plugin.content = SWAGGER_UI_PLUGIN_JS;
   plugin.contentType = "text/javascript; charset=UTF-8";
@@ -1788,21 +1801,24 @@ void Catalog::handleExplorer(const HTTP::Request& request, HTTP::Response& respo
   const auto a = htmlEscape(relativeHref(resource, "/api/explorer/"));
   const auto catalog = htmlEscape(relativeHref(resource, "/api"));
 
-  // The background of the location maps
-  std::string map;
-  const auto& o = itsSettings.openapi;
-  if (!o.map_tiles.empty())
-    map = fmt::format(R"( data-map-tiles="{}" data-map-tile-size="{}" data-map-attribution="{}")",
-                      htmlEscape(o.map_tiles),
-                      o.map_tile_size,
-                      htmlEscape(o.map_attribution));
-
   // The file hashes in the links, since the files are cached for a day
   const auto v = [this](const std::string& name)
   {
     const auto& etag = itsExplorerFiles.at(name).etag;
     return etag.substr(1, etag.find('-') - 1);
   };
+
+  // The background of the location maps: the tiles, or the map of the explorer
+  std::string map;
+  if (itsExplorerFiles.count("basemap.json") > 0)
+    map += fmt::format(R"( data-basemap="{}basemap.json?v={}")", a, v("basemap.json"));
+  const auto& o = itsSettings.openapi;
+  if (!o.map_tiles.empty())
+    map += fmt::format(R"( data-map-tiles="{}" data-map-tile-size="{}" data-map-attribution="{}")",
+                      htmlEscape(o.map_tiles),
+                      o.map_tile_size,
+                      htmlEscape(o.map_attribution));
+
   const auto html = fmt::format(
       R"HTML(<!DOCTYPE html>
 <html lang="en">

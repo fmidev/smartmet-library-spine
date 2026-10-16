@@ -396,7 +396,11 @@ Most plugins produce tables of values:
   the map), the times and the levels come from the extents, and CoverageJSON and GeoJSON
   responses are turned into rows for the same charts and tables, with a series per
   location and level. The state is kept in the URL fragment, so a query can be shared as a
-  link. `explorer.js` and `explorer.css` are installed to `/usr/share/smartmet/explorer`,
+  link. Without a tile layer (`map_tiles`) the map draws the land, the lakes and
+  the country borders of `basemap.json`, generated from the public domain Natural Earth 1:50m
+  data by `explorer/make-basemap.py` (see the script for the source), so that areas can be
+  chosen without any online map service. `explorer.js`, `explorer.css` and `basemap.json`
+  are installed to `/usr/share/smartmet/explorer`,
   uPlot comes from the `smartmet-uplot` package (`/usr/share/smartmet/uplot`), and the
   snippets, the tree and the map are those of `OpenApiPlugin.cpp`. The page loads no inline
   scripts. `test/explorer-browser-test.js` checks it in a headless browser

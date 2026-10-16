@@ -404,12 +404,54 @@ function mapSettings(app)
 {
   const d = app.dataset;
   if (!d.mapTiles)
-    return null;
+    return d.basemap ? {basemap: d.basemap, attribution: 'Natural Earth'} : null;
   return {
     tiles: d.mapTiles,
     tileSize: Number(d.mapTileSize) || 256,
     attribution: d.mapAttribution || ''
   };
+}
+
+// The background map of the explorer (basemap.json, see make-basemap.py): land, lakes and
+// country borders as rings in Web Mercator world coordinates with their bounding boxes.
+// Loaded once.
+let basemapPromise = null;
+
+function loadBasemap(url)
+{
+  if (!basemapPromise)
+    basemapPromise = fetchJson(url).then((doc) => {
+      const scale = doc.scale || 100;
+      const decode = (rings) => rings.map((e) => {
+        const n = e.length / 2;
+        const xy = new Float64Array(e.length);
+        let lon = 0;
+        let lat = 0;
+        let x0 = Infinity;
+        let y0 = Infinity;
+        let x1 = -Infinity;
+        let y1 = -Infinity;
+        for (let i = 0; i < n; i++)
+        {
+          lon += e[2 * i];
+          lat += e[2 * i + 1];
+          const [x, y] = project(lon / scale, lat / scale);
+          xy[2 * i] = x;
+          xy[2 * i + 1] = y;
+          x0 = Math.min(x0, x);
+          y0 = Math.min(y0, y);
+          x1 = Math.max(x1, x);
+          y1 = Math.max(y1, y);
+        }
+        return {xy, box: [x0, y0, x1, y1]};
+      });
+      return {
+        land: decode(doc.land || []),
+        lakes: decode(doc.lakes || []),
+        borders: decode(doc.borders || [])
+      };
+    });
+  return basemapPromise;
 }
 
 // ------------------------------------------------------------------
@@ -520,6 +562,17 @@ function createMap(settings, onSelect)
     box.append(attribution);
 
   const tileSize = (settings && settings.tileSize) || 256;
+  let basemap = null;
+  if (settings && settings.basemap && !settings.tiles)
+    loadBasemap(settings.basemap)
+        .then((map) => {
+          basemap = map;
+          redraw();
+        })
+        .catch(
+            () => {
+                // The grid alone is drawn
+            });
   const state =
       {zoom: 3, center: project(25, 62), tool: 'move', regions: [], selection: null, points: []};
 
@@ -533,6 +586,53 @@ function createMap(settings, onSelect)
        state.center[1] + (sy - MAP_HEIGHT / 2) / scale()];
   const screenOf = (lon, lat) => toScreen(project(lon, lat));
   const lonLatOf = (sx, sy) => unproject(...toWorld(sx, sy));
+
+  // The land, the lakes and the borders in view, with at most a point per pixel
+  function drawBasemap(g, x0, y0, x1, y1)
+  {
+    const k = scale();
+    const cx = state.center[0];
+    const cy = state.center[1];
+    const w2 = width() / 2;
+    const h2 = MAP_HEIGHT / 2;
+    const path = (rings, closed) => {
+      let d = '';
+      for (const ring of rings)
+      {
+        const b = ring.box;
+        if (b[2] < x0 || b[0] > x1 || b[3] < y0 || b[1] > y1)
+          continue;
+        // Rings smaller than a pixel are left out
+        if ((b[2] - b[0]) * k < 1 && (b[3] - b[1]) * k < 1)
+          continue;
+        const xy = ring.xy;
+        let px = NaN;
+        let py = NaN;
+        for (let i = 0; i < xy.length; i += 2)
+        {
+          const sx = Math.round((xy[i] - cx) * k + w2);
+          const sy = Math.round((xy[i + 1] - cy) * k + h2);
+          if (sx === px && sy === py)
+            continue;
+          d += (i === 0 ? 'M' : 'L') + sx + ' ' + sy;
+          px = sx;
+          py = sy;
+        }
+        if (closed)
+          d += 'Z';
+      }
+      return d;
+    };
+    const land = path(basemap.land, true);
+    if (land)
+      g.append(svg('path', {class: 'xmap-land', d: land}));
+    const lakes = path(basemap.lakes, true);
+    if (lakes)
+      g.append(svg('path', {class: 'xmap-lake', d: lakes}));
+    const borders = path(basemap.borders, false);
+    if (borders)
+      g.append(svg('path', {class: 'xmap-border', d: borders}));
+  }
 
   function drawBackground()
   {
@@ -561,6 +661,8 @@ function createMap(settings, onSelect)
         }
       return;
     }
+    if (basemap)
+      drawBasemap(g, x0, y0, x1, y1);
     // A longitude/latitude grid with a step suited to the zoom
     const [lonW, latN] = unproject(x0, y0);
     const [lonE, latS] = unproject(x1, y1);
@@ -663,6 +765,19 @@ function createMap(settings, onSelect)
     tooltip.style.top = `${Math.max(0, Math.min(MAP_HEIGHT - tooltip.offsetHeight, sy - 10))}px`;
   }
 
+  // One redraw per animation frame while the map is dragged
+  let pending = false;
+  function scheduleRedraw()
+  {
+    if (pending)
+      return;
+    pending = true;
+    requestAnimationFrame(() => {
+      pending = false;
+      redraw();
+    });
+  }
+
   function redraw()
   {
     surface.setAttribute('viewBox', `0 0 ${width()} ${MAP_HEIGHT}`);
@@ -738,7 +853,7 @@ function createMap(settings, onSelect)
     }
     state.center =
         [drag.center[0] - (sx - drag.sx) / scale(), drag.center[1] - (sy - drag.sy) / scale()];
-    redraw();
+    scheduleRedraw();
   });
 
   surface.addEventListener('pointerup', (e) => {
