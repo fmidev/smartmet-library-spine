@@ -124,10 +124,66 @@ function parseTime(value)
 function flattenRows(data)
 {
   if (Array.isArray(data))
-    return data.flatMap((item) => (Array.isArray(item) ? flattenRows(item) : [item]));
+    return data.flatMap((item) => (Array.isArray(item) ? flattenRows(item) : expandRow(item)));
   if (data && typeof data === 'object')
-    return [data];
+    return expandRow(data);
   return [];
+}
+
+// The value of an area: "[16 15 nan]", the values of the points of the area
+const AREA_VALUES = /^\[(.*)\]$/;
+
+function areaValue(text)
+{
+  if (text === 'nan' || text === 'NaN' || text === '')
+    return null;
+  const n = Number(text);
+  return isNaN(n) ? text : n;
+}
+
+// A row of an area or a radius query has the values of all its points as lists: the row is
+// split into a row per point. Other rows are returned as they are.
+function expandRow(row)
+{
+  if (!row || typeof row !== 'object')
+    return [];
+  const lists = {};
+  let count = -1;
+  for (const [k, v] of Object.entries(row))
+  {
+    if (typeof v !== 'string')
+      continue;
+    const m = AREA_VALUES.exec(v);
+    if (!m)
+      continue;
+    lists[k] = m[1].trim() === '' ? [] : m[1].trim().split(/\s+/);
+    count = Math.max(count, lists[k].length);
+  }
+  if (count < 0)
+    return [row];
+  const out = [];
+  for (let i = 0; i < count; i++)
+  {
+    const point = {};
+    for (const [k, v] of Object.entries(row))
+      point[k] = k in lists ? areaValue(lists[k][i] !== undefined ? lists[k][i] : '') : v;
+    point._point = i;
+    out.push(point);
+  }
+  return out;
+}
+
+// The location of a row: the name, or the coordinates when there is no name or the row is a
+// point of an area
+function locationOf(row)
+{
+  const coords = row.lat !== undefined && row.lat !== null ? `${row.lat},${row.lon}` : '';
+  if (row._point !== undefined)
+    return `${row.name !== null && row.name !== undefined ? row.name + ' ' : ''}(${
+        coords || row._point})`;
+  if (row.name !== undefined && row.name !== null)
+    return String(row.name);
+  return coords;
 }
 
 function quantile(sorted, q)
@@ -349,14 +405,481 @@ function mapSettings(app)
 }
 
 // ------------------------------------------------------------------
+// The selection map
+//
+// An SVG map in Web Mercator with the tiles of the map_tiles setting, or a
+// longitude/latitude grid. It shows the areas of the producers, the selected
+// point, radius or box, and locations with tooltips, and lets the user choose
+// a point (click), a radius (drag from the centre) or a box (drag).
+// ------------------------------------------------------------------
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const EARTH_RADIUS_KM = 6371;
+const MAP_HEIGHT = 300;
+
+function svg(tag, attrs)
+{
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs || {}))
+    node.setAttribute(k, String(v));
+  return node;
+}
+
+// Web Mercator world coordinates of zoom level 0 (a 256 pixel world)
+function project(lon, lat)
+{
+  const s = Math.sin((Math.max(-85.05, Math.min(85.05, lat)) * Math.PI) / 180);
+  return [((lon + 180) / 360) * 256, (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * 256];
+}
+
+function unproject(x, y)
+{
+  const n = Math.PI - (2 * Math.PI * y) / 256;
+  return [(x / 256) * 360 - 180, (180 / Math.PI) * Math.atan(Math.sinh(n))];
+}
+
+const rad = (d) => (d * Math.PI) / 180;
+const deg = (r) => (r * 180) / Math.PI;
+
+// Great circle distance in km
+function distanceKm(lon1, lat1, lon2, lat2)
+{
+  const a = Math.sin(rad(lat2 - lat1) / 2) ** 2 +
+      Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lon2 - lon1) / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+// The point at a distance and a bearing from a point
+function destination(lon, lat, km, bearing)
+{
+  const d = km / EARTH_RADIUS_KM;
+  const b = rad(bearing);
+  const lat2 =
+      Math.asin(Math.sin(rad(lat)) * Math.cos(d) + Math.cos(rad(lat)) * Math.sin(d) * Math.cos(b));
+  const lon2 = rad(lon) +
+      Math.atan2(
+          Math.sin(b) * Math.sin(d) * Math.cos(rad(lat)),
+          Math.cos(d) - Math.sin(rad(lat)) * Math.sin(lat2));
+  return [deg(lon2), deg(lat2)];
+}
+
+// The bounding box of a selection: [minlon, minlat, maxlon, maxlat]
+function selectionBox(sel)
+{
+  if (!sel)
+    return null;
+  if (sel.type === 'box')
+    return sel.bbox;
+  if (sel.type === 'point')
+    return [sel.lon, sel.lat, sel.lon, sel.lat];
+  if (sel.type === 'circle')
+  {
+    const n = destination(sel.lon, sel.lat, sel.km, 0);
+    const e = destination(sel.lon, sel.lat, sel.km, 90);
+    return [2 * sel.lon - e[0], 2 * sel.lat - n[1], e[0], n[1]];
+  }
+  return null;
+}
+
+function boxesIntersect(a, b)
+{
+  return a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
+}
+
+const round = (v, decimals) => Number(v.toFixed(decimals));
+
+function createMap(settings, onSelect)
+{
+  const box = el('div', {class: 'xmap'});
+  const surface = svg('svg', {class: 'xmap-svg', role: 'img', 'aria-label': 'Map'});
+  const layers = {
+    background: svg('g'),
+    regions: svg('g'),
+    selection: svg('g'),
+    points: svg('g'),
+    draft: svg('g')
+  };
+  for (const layer of Object.values(layers))
+    surface.append(layer);
+  const tooltip = el('div', {class: 'xmap-tooltip', hidden: true});
+  const tools = el('div', {class: 'xmap-tools', role: 'toolbar', 'aria-label': 'Map tools'});
+  const zoom = el('div', {class: 'xmap-zoom'});
+  const attribution = settings && settings.attribution ?
+      el('div', {class: 'xmap-attribution'}, settings.attribution) :
+      null;
+  box.append(surface, tooltip, tools, zoom);
+  if (attribution)
+    box.append(attribution);
+
+  const tileSize = (settings && settings.tileSize) || 256;
+  const state =
+      {zoom: 3, center: project(25, 62), tool: 'move', regions: [], selection: null, points: []};
+
+  const width = () => box.clientWidth || 400;
+  const scale = () => 2 ** state.zoom;
+  const toScreen = ([x, y]) =>
+      [(x - state.center[0]) * scale() + width() / 2,
+       (y - state.center[1]) * scale() + MAP_HEIGHT / 2];
+  const toWorld = (sx, sy) =>
+      [state.center[0] + (sx - width() / 2) / scale(),
+       state.center[1] + (sy - MAP_HEIGHT / 2) / scale()];
+  const screenOf = (lon, lat) => toScreen(project(lon, lat));
+  const lonLatOf = (sx, sy) => unproject(...toWorld(sx, sy));
+
+  function drawBackground()
+  {
+    const g = layers.background;
+    g.replaceChildren();
+    const [x0, y0] = toWorld(0, 0);
+    const [x1, y1] = toWorld(width(), MAP_HEIGHT);
+    if (settings && settings.tiles)
+    {
+      const z = Math.max(0, Math.min(18, Math.round(state.zoom + Math.log2(256 / tileSize))));
+      const n = 2 ** z;
+      const tw = 256 / n;
+      for (let ty = Math.max(0, Math.floor(y0 / tw)); ty <= Math.min(n - 1, Math.floor(y1 / tw));
+           ty++)
+        for (let tx = Math.floor(x0 / tw); tx <= Math.floor(x1 / tw); tx++)
+        {
+          const [sx, sy] = toScreen([tx * tw, ty * tw]);
+          const wrapped = ((tx % n) + n) % n;
+          g.append(svg('image', {
+            x: sx,
+            y: sy,
+            width: tw * scale() + 0.5,
+            height: tw * scale() + 0.5,
+            href: settings.tiles.replace('{z}', z).replace('{x}', wrapped).replace('{y}', ty)
+          }));
+        }
+      return;
+    }
+    // A longitude/latitude grid with a step suited to the zoom
+    const [lonW, latN] = unproject(x0, y0);
+    const [lonE, latS] = unproject(x1, y1);
+    const steps = [90, 45, 30, 15, 10, 5, 2, 1, 0.5, 0.25, 0.1, 0.05];
+    const step = steps.find((st) => (lonE - lonW) / st >= 4) || steps[steps.length - 1];
+    for (let lon = Math.ceil(lonW / step) * step; lon <= lonE; lon += step)
+    {
+      const [sx] = screenOf(lon, 0);
+      g.append(svg('line', {class: 'xmap-grid', x1: sx, y1: 0, x2: sx, y2: MAP_HEIGHT}));
+      const t = svg('text', {class: 'xmap-label', x: sx + 2, y: MAP_HEIGHT - 4});
+      t.textContent = `${round(lon, 2)}°`;
+      g.append(t);
+    }
+    for (let lat = Math.ceil(latS / step) * step; lat <= latN; lat += step)
+    {
+      const [, sy] = screenOf(0, lat);
+      g.append(svg('line', {class: 'xmap-grid', x1: 0, y1: sy, x2: width(), y2: sy}));
+      const t = svg('text', {class: 'xmap-label', x: 2, y: sy - 2});
+      t.textContent = `${round(lat, 2)}°`;
+      g.append(t);
+    }
+  }
+
+  function rect(bbox, cls)
+  {
+    const [ax, ay] = screenOf(bbox[0], bbox[3]);
+    const [bx, by] = screenOf(bbox[2], bbox[1]);
+    return svg('rect', {
+      class: cls,
+      x: Math.min(ax, bx),
+      y: Math.min(ay, by),
+      width: Math.abs(bx - ax),
+      height: Math.abs(by - ay)
+    });
+  }
+
+  function circlePath(sel, cls)
+  {
+    const points = [];
+    for (let b = 0; b <= 360; b += 5)
+      points.push(screenOf(...destination(sel.lon, sel.lat, sel.km, b)).join(','));
+    return svg('polygon', {class: cls, points: points.join(' ')});
+  }
+
+  function drawShape(g, sel, cls)
+  {
+    if (!sel)
+      return;
+    if (sel.type === 'box')
+      g.append(rect(sel.bbox, cls));
+    else if (sel.type === 'circle')
+      g.append(circlePath(sel, cls));
+    if (sel.type === 'point' || sel.type === 'circle')
+    {
+      const [sx, sy] = screenOf(sel.lon, sel.lat);
+      g.append(svg('circle', {class: 'xmap-centre', cx: sx, cy: sy, r: 5}));
+    }
+  }
+
+  function drawOverlays()
+  {
+    layers.regions.replaceChildren();
+    for (const region of state.regions)
+    {
+      const r = rect(region.bbox, 'xmap-region');
+      const title = svg('title');
+      title.textContent = region.label;
+      r.append(title);
+      layers.regions.append(r);
+    }
+    layers.selection.replaceChildren();
+    drawShape(layers.selection, state.selection, 'xmap-selection');
+
+    layers.points.replaceChildren();
+    // Many points are drawn smaller
+    const radius = state.points.length > 500 ? 2 : state.points.length > 100 ? 3 : 4.5;
+    for (const point of state.points)
+    {
+      const [sx, sy] = screenOf(point.lon, point.lat);
+      if (sx < -10 || sy < -10 || sx > width() + 10 || sy > MAP_HEIGHT + 10)
+        continue;
+      const c = svg('circle', {class: 'xmap-point', cx: sx, cy: sy, r: radius});
+      c.addEventListener('mouseover', () => showTooltip(point, sx, sy));
+      c.addEventListener('mouseout', () => {
+        tooltip.hidden = true;
+      });
+      layers.points.append(c);
+    }
+  }
+
+  function showTooltip(point, sx, sy)
+  {
+    const rows = Object.entries(point.info || {})
+                     .filter(([k, v]) => k !== 'name' && v !== null && v !== undefined && v !== '')
+                     .map(([k, v]) => el('tr', null, el('td', null, k), el('td', null, v)));
+    tooltip.replaceChildren(el('strong', null, point.label || ''), el('table', null, rows));
+    tooltip.hidden = false;
+    const left = sx + 12 + tooltip.offsetWidth > width() ? sx - 12 - tooltip.offsetWidth : sx + 12;
+    tooltip.style.left = `${Math.max(0, left)}px`;
+    tooltip.style.top = `${Math.max(0, Math.min(MAP_HEIGHT - tooltip.offsetHeight, sy - 10))}px`;
+  }
+
+  function redraw()
+  {
+    surface.setAttribute('viewBox', `0 0 ${width()} ${MAP_HEIGHT}`);
+    drawBackground();
+    drawOverlays();
+  }
+
+  function zoomAt(z, sx, sy)
+  {
+    z = Math.max(0, Math.min(18, z));
+    if (z === state.zoom)
+      return;
+    const world = toWorld(sx, sy);
+    state.zoom = z;
+    state.center =
+        [world[0] - (sx - width() / 2) / scale(), world[1] - (sy - MAP_HEIGHT / 2) / scale()];
+    redraw();
+  }
+
+  // Show the box (with a margin) at the largest zoom that fits
+  function fit(bbox)
+  {
+    if (!bbox)
+      return;
+    const a = project(bbox[0], bbox[3]);
+    const b = project(bbox[2], bbox[1]);
+    state.center = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const dx = Math.max(1e-6, Math.abs(b[0] - a[0]));
+    const dy = Math.max(1e-6, Math.abs(b[1] - a[1]));
+    let z = 0;
+    while (z < 12 && dx * 2 ** (z + 1) < width() * 0.85 && dy * 2 ** (z + 1) < MAP_HEIGHT * 0.85)
+      z++;
+    state.zoom = z;
+    redraw();
+  }
+
+  // --- Interaction ------------------------------------------------------
+  let drag = null;
+  const local = (e) => {
+    const r = surface.getBoundingClientRect();
+    return [e.clientX - r.left, e.clientY - r.top];
+  };
+
+  surface.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0)
+      return;
+    try
+    {
+      surface.setPointerCapture(e.pointerId);
+    }
+    catch (err)
+    {
+      // Synthetic events have no pointer to capture
+    }
+    const [sx, sy] = local(e);
+    drag = {sx, sy, center: state.center.slice(), moved: false};
+  });
+
+  surface.addEventListener('pointermove', (e) => {
+    if (!drag)
+      return;
+    const [sx, sy] = local(e);
+    if (Math.abs(sx - drag.sx) + Math.abs(sy - drag.sy) > 4)
+      drag.moved = true;
+    const t = state.tool;
+    if (t === 'box' || t === 'circle')
+    {
+      layers.draft.replaceChildren();
+      const shape = shapeOf(drag, sx, sy);
+      if (shape)
+        drawShape(layers.draft, shape, 'xmap-draft');
+      return;
+    }
+    state.center =
+        [drag.center[0] - (sx - drag.sx) / scale(), drag.center[1] - (sy - drag.sy) / scale()];
+    redraw();
+  });
+
+  surface.addEventListener('pointerup', (e) => {
+    if (!drag)
+      return;
+    const [sx, sy] = local(e);
+    const t = state.tool;
+    layers.draft.replaceChildren();
+    let shape = null;
+    if (t === 'box' || t === 'circle')
+      shape = drag.moved ? shapeOf(drag, sx, sy) : null;
+    else if (t === 'point' && !drag.moved)
+    {
+      const [lon, lat] = lonLatOf(sx, sy);
+      shape = {type: 'point', lon: round(lon, 4), lat: round(lat, 4)};
+    }
+    drag = null;
+    if (shape && onSelect)
+      onSelect(shape);
+  });
+
+  function shapeOf(d, sx, sy)
+  {
+    const [lon0, lat0] = lonLatOf(d.sx, d.sy);
+    const [lon1, lat1] = lonLatOf(sx, sy);
+    if (state.tool === 'box')
+      return {
+        type: 'box',
+        bbox: [
+          round(Math.min(lon0, lon1), 3),
+          round(Math.min(lat0, lat1), 3),
+          round(Math.max(lon0, lon1), 3),
+          round(Math.max(lat0, lat1), 3)
+        ]
+      };
+    const km = distanceKm(lon0, lat0, lon1, lat1);
+    if (km < 1)
+      return null;
+    return {type: 'circle', lon: round(lon0, 4), lat: round(lat0, 4), km: Math.round(km)};
+  }
+
+  surface.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const [sx, sy] = local(e);
+    zoomAt(state.zoom + (e.deltaY < 0 ? 1 : -1), sx, sy);
+  }, {passive: false});
+
+  const button = (label, title, fn) =>
+      el('button',
+         {type: 'button', class: 'small', title: title, 'aria-label': title, onclick: fn},
+         label);
+  zoom.append(
+      button('+', 'Zoom in', () => zoomAt(state.zoom + 1, width() / 2, MAP_HEIGHT / 2)),
+      button('−', 'Zoom out', () => zoomAt(state.zoom - 1, width() / 2, MAP_HEIGHT / 2)),
+      button('Fit', 'Show everything on the map', () => fit(api.extent())));
+
+  const TOOLS = [
+    ['move', 'Move', 'Move the map'],
+    ['point', 'Point', 'Click to choose a point'],
+    ['circle', 'Radius', 'Drag from the centre to choose a radius'],
+    ['box', 'Box', 'Drag to choose a box']
+  ];
+
+  const api = {
+    element: box,
+    setTools(allowed, current) {
+      tools.replaceChildren(...TOOLS.filter(([t]) => allowed.includes(t))
+                                .map(
+                                    ([t, label, title]) =>
+                                        el('button',
+                                           {
+                                             type: 'button',
+                                             class: 'small',
+                                             title: title,
+                                             'data-tool': t,
+                                             'aria-pressed': t === current ? 'true' : 'false',
+                                             onclick: () => api.setTools(allowed, t)
+                                           },
+                                           label)));
+      state.tool = current;
+      surface.dataset.tool = current;
+    },
+    setRegions(regions) {
+      state.regions = regions;
+      drawOverlays();
+    },
+    setSelection(sel) {
+      state.selection = sel;
+      drawOverlays();
+    },
+    setPoints(points) {
+      state.points = points;
+      drawOverlays();
+    },
+    // The box of everything shown
+    extent() {
+      const boxes = [
+        ...state.regions.map((r) => r.bbox),
+        selectionBox(state.selection),
+        ...state.points.map((p) => [p.lon, p.lat, p.lon, p.lat])
+      ].filter(Boolean);
+      if (boxes.length === 0)
+        return null;
+      return [
+        Math.min(...boxes.map((b) => b[0])),
+        Math.min(...boxes.map((b) => b[1])),
+        Math.max(...boxes.map((b) => b[2])),
+        Math.max(...boxes.map((b) => b[3]))
+      ];
+    },
+    fit,
+    redraw,
+    lonLatOf,
+    screenOf
+  };
+
+  // Redraw when the width changes, e.g. on the first layout
+  if (typeof ResizeObserver !== 'undefined')
+  {
+    let last = 0;
+    new ResizeObserver(() => {
+      if (box.clientWidth !== last)
+      {
+        last = box.clientWidth;
+        redraw();
+      }
+    }).observe(box);
+  }
+  return api;
+}
+
+// ------------------------------------------------------------------
 // Charts
 // ------------------------------------------------------------------
 
-// The most series drawn as lines; more locations are drawn as a distribution
+// More locations than this are drawn as percentiles by default, and as a swarm of thin lines
+// without a legend when lines are chosen
 const MAX_LINES = 20;
 
-// The charts of the numeric parameters of the rows, one chart per parameter
-function drawCharts(container, rows, parameters)
+// The colours of a swarm: a narrow gradient, from south to north when the latitudes are known
+function swarmColour(i, n)
+{
+  const f = n > 1 ? i / (n - 1) : 0;
+  return `hsla(${Math.round(205 + 70 * f)}, 65%, 50%, 0.45)`;
+}
+
+// The charts of the numeric parameters of the rows, one chart per parameter. 'mode' is
+// "lines" or "percentiles"; the default depends on the number of locations.
+function drawCharts(container, rows, parameters, mode)
 {
   container.replaceChildren();
   if (rows.length === 0)
@@ -365,12 +888,9 @@ function drawCharts(container, rows, parameters)
     return;
   }
 
-  // Locations by name, or by coordinates when there are no names
-  const locationOf = (row) => row.name !== undefined ? String(row.name) :
-      row.lat !== undefined                          ? `${row.lat},${row.lon}` :
-                                                       '';
-  const times = new Map();  // epoch seconds -> index
+  const times = new Map();  // epoch seconds -> null
   const locations = new Map();
+  const latitudes = new Map();
   for (const row of rows)
   {
     const t = parseTime(row.time);
@@ -381,7 +901,10 @@ function drawCharts(container, rows, parameters)
       times.set(s, null);
     const loc = locationOf(row);
     if (!locations.has(loc))
+    {
       locations.set(loc, new Map());
+      latitudes.set(loc, typeof row.lat === 'number' ? row.lat : null);
+    }
     locations.get(loc).set(s, row);
   }
   const xs = Array.from(times.keys()).sort((a, b) => a - b);
@@ -402,7 +925,35 @@ function drawCharts(container, rows, parameters)
   }
 
   const names = Array.from(locations.keys());
-  const distribution = names.length > MAX_LINES;
+  const many = names.length > MAX_LINES;
+  const chosen = mode || (many ? 'percentiles' : 'lines');
+
+  // The choice of the drawing for several locations
+  if (names.length > 2)
+  {
+    const toolbar = el('div', {class: 'tabs chart-modes', role: 'tablist'});
+    for (const [m, label] of [
+             ['lines', many ? 'All locations' : 'Lines'],
+             ['percentiles', 'Percentiles']])
+      toolbar.append(
+          el('button',
+             {
+               type: 'button',
+               role: 'tab',
+               'data-mode': m,
+               'aria-selected': m === chosen ? 'true' : 'false',
+               onclick: () => drawCharts(container, rows, parameters, m)
+             },
+             label));
+    container.append(toolbar);
+  }
+
+  // A swarm is ordered by latitude so that the gradient runs from south to north
+  const ordered = names.slice();
+  const byLatitude = names.every((n) => latitudes.get(n) !== null);
+  if (byLatitude)
+    ordered.sort((a, b) => latitudes.get(a) - latitudes.get(b));
+
   const width = Math.max(320, container.clientWidth - 8);
   const css = getComputedStyle(document.documentElement);
   const axisColor = css.getPropertyValue('--muted').trim() || '#666';
@@ -441,31 +992,8 @@ function drawCharts(container, rows, parameters)
       return typeof v === 'number' && isFinite(v) ? v : null;
     };
 
-    const panel = el('div', {class: 'chart', 'data-param': param});
-    container.append(panel);
-    let data;
-    let series;
-    let bands = [];
-    let caption;
-
-    if (!distribution)
-    {
-      data = [xs, ...names.map((n) => xs.map((x) => valueOf(locations.get(n), x)))];
-      series = [
-        timeSeries,
-        ...names.map((n, i) => ({
-                       label: n || param,
-                       stroke: palette[i % palette.length],
-                       width: 1.5,
-                       spanGaps: false
-                     }))
-      ];
-      caption = names.length > 1 ? `${param}, ${names.length} locations` : param;
-    }
-    else
-    {
-      // The median and the 10-90 % and 25-75 % ranges over the locations
-      const qs = [0.1, 0.25, 0.5, 0.75, 0.9];
+    // The percentiles over the locations at each time
+    const percentiles = (qs) => {
       const columns = qs.map(() => []);
       for (const x of xs)
       {
@@ -479,7 +1007,63 @@ function drawCharts(container, rows, parameters)
         values.sort((a, b) => a - b);
         qs.forEach((q, i) => columns[i].push(quantile(values, q)));
       }
-      data = [xs, ...columns];
+      return columns;
+    };
+
+    const panel = el('div', {class: 'chart', 'data-param': param, 'data-mode': chosen});
+    container.append(panel);
+    let data;
+    let series;
+    let bands = [];
+    let caption;
+    let legend = {live: true};
+
+    if (chosen === 'lines' && !many)
+    {
+      data = [xs, ...names.map((n) => xs.map((x) => valueOf(locations.get(n), x)))];
+      series = [
+        timeSeries,
+        ...names.map((n, i) => ({
+                       label: n || param,
+                       stroke: palette[i % palette.length],
+                       width: 1.5,
+                       spanGaps: false
+                     }))
+      ];
+      caption = names.length > 1 ? `${param}, ${names.length} locations` : param;
+    }
+    else if (chosen === 'lines')
+    {
+      // Every location as a thin line without points, and the median on top
+      data = [
+        xs,
+        ...ordered.map((n) => xs.map((x) => valueOf(locations.get(n), x))),
+        percentiles([0.5])[0]
+      ];
+      series = [
+        timeSeries,
+        ...ordered.map((n, i) => ({
+                         label: n,
+                         stroke: swarmColour(i, ordered.length),
+                         width: 1,
+                         points: {show: false},
+                         spanGaps: false
+                       })),
+        {
+          label: 'median',
+          stroke: css.getPropertyValue('--fg').trim() || '#000',
+          width: 2,
+          points: {show: false}
+        }
+      ];
+      legend = {show: false};
+      caption = `${param}: ${names.length} locations${
+          byLatitude ? ', coloured from south to north' : ''}, and the median`;
+    }
+    else
+    {
+      // The median and the 10-90 % and 25-75 % ranges over the locations
+      data = [xs, ...percentiles([0.1, 0.25, 0.5, 0.75, 0.9])];
       const fill = (a) => `rgba(47, 111, 223, ${a})`;
       series = [
         timeSeries,
@@ -505,7 +1089,7 @@ function drawCharts(container, rows, parameters)
           bands: bands,
           axes: axes,
           scales: {x: {time: true}},
-          legend: {live: true},
+          legend: legend,
           tzDate: (ts) => root.uPlot.tzDate(new Date(ts * 1000), 'Etc/UTC')
         },
         data,
@@ -530,7 +1114,7 @@ function drawTable(container, rows)
   const columns = [];
   for (const row of rows.slice(0, 100))
     for (const k of Object.keys(row))
-      if (!columns.includes(k))
+      if (!k.startsWith('_') && !columns.includes(k))
         columns.push(k);
   const table =
       el('table',
@@ -619,13 +1203,57 @@ function codeTabs(container, url)
 // The TimeSeries module
 // ------------------------------------------------------------------
 
+// The location types: name, label, example, and the map tool choosing the location
 const LOCATION_MODES = [
-  ['place', 'Place', 'Helsinki or Helsinki:20 for a 20 km radius'],
-  ['lonlat', 'Coordinates', '24.94,60.17'],
-  ['keyword', 'Keyword', 'synop_fi'],
-  ['fmisid', 'Station id', '100971,101004'],
-  ['area', 'Area', 'Uusimaa']
+  ['place', 'Place', 'Helsinki or Helsinki:20 for a 20 km radius', null],
+  ['lonlat', 'Point', '24.94,60.17, or click the map', 'point'],
+  ['radius', 'Radius', '24.94,60.17:25 (km), or drag on the map', 'circle'],
+  ['bbox', 'Box', '21,60,26,62, or drag on the map', 'box'],
+  ['keyword', 'Keyword', 'synop_fi', null],
+  ['fmisid', 'Station id', '100971,101004', null],
+  ['area', 'Area', 'Uusimaa', null]
 ];
+
+// The TimeSeries option of a location type
+const locationOption = (mode) => (mode === 'radius' ? 'lonlat' : mode);
+
+const NUMBER = '\\s*(-?\\d+(?:\\.\\d*)?)\\s*';
+
+// The point, radius or box of a location value, null if the value is not one
+function parseSelection(mode, text)
+{
+  if (!text)
+    return null;
+  let m;
+  if (mode === 'lonlat' && (m = new RegExp(`^${NUMBER},${NUMBER}$`).exec(text)))
+    return {type: 'point', lon: Number(m[1]), lat: Number(m[2])};
+  if (mode === 'radius' && (m = new RegExp(`^${NUMBER},${NUMBER}:${NUMBER}$`).exec(text)))
+    return {type: 'circle', lon: Number(m[1]), lat: Number(m[2]), km: Number(m[3])};
+  if (mode === 'bbox' && (m = new RegExp(`^${NUMBER},${NUMBER},${NUMBER},${NUMBER}$`).exec(text)))
+  {
+    const [a, b, c, d] = m.slice(1, 5).map(Number);
+    return {type: 'box', bbox: [Math.min(a, c), Math.min(b, d), Math.max(a, c), Math.max(b, d)]};
+  }
+  return null;
+}
+
+function formatSelection(sel)
+{
+  if (sel.type === 'point')
+    return `${sel.lon},${sel.lat}`;
+  if (sel.type === 'circle')
+    return `${sel.lon},${sel.lat}:${sel.km}`;
+  return sel.bbox.join(',');
+}
+
+// Whether a producer covers a selection. Producers without an area are kept.
+function covers(producer, sel)
+{
+  const area = selectionBox(sel);
+  if (!area || !producer.bbox)
+    return true;
+  return boxesIntersect(producer.bbox, area);
+}
 
 function timeSeriesModule(app, api, state, save)
 {
@@ -652,10 +1280,12 @@ function timeSeriesModule(app, api, state, save)
     const candidatesNote = el('p', {class: 'muted small'});
 
     const dataParams = () => s.params.filter((p) => !META.has(p));
+    const selection = () => parseSelection(s.locmode, s.location);
     const candidates = () => {
       const wanted = dataParams();
+      const sel = selection();
       return Array.from(index.producers.values())
-          .filter((p) => wanted.every((w) => p.parameterSet.has(w)));
+          .filter((p) => wanted.every((w) => p.parameterSet.has(w)) && covers(p, sel));
     };
     const producer = () => index.producers.get(s.producer);
 
@@ -735,7 +1365,8 @@ function timeSeriesModule(app, api, state, save)
       select: (item) => {
         setProducer(item.key);
       },
-      empty: () => 'No producer has all the chosen parameters',
+      empty: () => selection() ? 'No producer has all the chosen parameters in the selected area' :
+                                 'No producer has all the chosen parameters',
       limit: 200
     });
 
@@ -756,6 +1387,7 @@ function timeSeriesModule(app, api, state, save)
         s.params = s.params.filter((x) => META.has(x) || p.parameterSet.has(x));
       defaultTimes(true);
       refresh();
+      fitMap();
     }
 
     // --- When ------------------------------------------------------
@@ -848,8 +1480,12 @@ function timeSeriesModule(app, api, state, save)
     const locInput = el('input', {type: 'text', 'aria-label': 'Location', spellcheck: 'false'});
     const locModes =
         el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': 'Location type'});
-    const locMap = el('div', {class: 'loc-map'});
-    const mapButton = el('button', {type: 'button', class: 'small'}, 'Show on map');
+    const showButton = el('button', {type: 'button', class: 'small'}, 'Show locations');
+    const areaNote = el('p', {class: 'warn small'});
+    const map = createMap(mapSettings(app.element), (shape) => {
+      s.location = formatSelection(shape);
+      refresh();
+    });
     for (const [mode, label] of LOCATION_MODES)
     {
       locModes.append(
@@ -859,6 +1495,9 @@ function timeSeriesModule(app, api, state, save)
                role: 'radio',
                'data-mode': mode,
                onclick: () => {
+                 if (s.locmode === mode)
+                   return;
+                 // The locations already on the map stay as a reference
                  s.locmode = mode;
                  s.location = '';
                  refresh();
@@ -871,19 +1510,12 @@ function timeSeriesModule(app, api, state, save)
                                 refresh(false);
                               }, 300));
 
-    let removeMap = null;
-    mapButton.addEventListener('click', () => {
-      if (removeMap)
-      {
-        removeMap();
-        removeMap = null;
-        mapButton.textContent = 'Show on map';
-        return;
-      }
-      mapButton.disabled = true;
+    // The locations of a place, keyword, station or area name on the map
+    showButton.addEventListener('click', () => {
+      showButton.disabled = true;
       // The locations do not depend on the data, so no producer: its times could be anywhere
       const url = `${rootPath}?${queryString([
-        [s.locmode, s.location],
+        [locationOption(s.locmode), s.location],
         ['param', 'name,lat,lon,geoid,fmisid,wmo,elevation,region,country,tz'],
         ['timesteps', '1'],
         ['format', 'json'],
@@ -891,21 +1523,56 @@ function timeSeriesModule(app, api, state, save)
       ])}`;
       fetchJson(app.base + url.replace(/^\//, ''))
           .then((data) => {
-            const locations = flattenRows(data).filter(
-                (r) => typeof r.lat === 'number' && typeof r.lon === 'number');
-            if (locations.length === 0)
-            {
-              locMap.replaceChildren(el('p', {class: 'muted'}, 'No locations found.'));
-              return;
-            }
-            removeMap = S.drawMap(locMap, locations, mapSettings(app.element));
-            mapButton.textContent = 'Hide map';
+            const points = mapPoints(flattenRows(data));
+            areaNote.textContent = points.length === 0 ? 'No locations found.' : '';
+            map.setPoints(points);
+            map.fit(map.extent());
           })
-          .catch((e) => locMap.replaceChildren(el('p', {class: 'error'}, e.message)))
+          .catch((e) => {
+            areaNote.textContent = e.message;
+          })
           .finally(() => {
-            mapButton.disabled = false;
+            showButton.disabled = false;
           });
     });
+
+    // The points of rows with coordinates, one per location
+    function mapPoints(rows)
+    {
+      const seen = new Map();
+      for (const row of rows)
+      {
+        if (typeof row.lat !== 'number' || typeof row.lon !== 'number')
+          continue;
+        const key = `${row.lat},${row.lon}`;
+        if (seen.has(key) || seen.size >= 10000)
+          continue;
+        const info = {};
+        for (const k
+                 of ['geoid',
+                     'fmisid',
+                     'wmo',
+                     'lat',
+                     'lon',
+                     'elevation',
+                     'region',
+                     'country',
+                     'tz',
+                     'stationname',
+                     'distance'])
+          if (row[k] !== undefined)
+            info[k] = row[k];
+        seen.set(key, {lon: row.lon, lat: row.lat, label: row.name || key, info: info});
+      }
+      return Array.from(seen.values());
+    }
+
+    function fitMap()
+    {
+      const extent = map.extent();
+      if (extent)
+        map.fit(extent);
+    }
 
     // --- Output ----------------------------------------------------
     const langInput =
@@ -931,14 +1598,15 @@ function timeSeriesModule(app, api, state, save)
 
     function requestParams()
     {
-      const params = Array.from(new Set(['name', 'time', ...s.params]));
+      // The coordinates show the locations of the data on the map
+      const params = Array.from(new Set(['name', 'time', 'lat', 'lon', ...s.params]));
       return [
         ['producer', s.producer],
         ['param', params.join(',')],
         ['starttime', fromInput(s.start)],
         ['endtime', fromInput(s.end)],
         ['timestep', s.timestep],
-        [s.locmode, s.location],
+        [locationOption(s.locmode), s.location],
         ['lang', s.lang],
         ['format', 'json'],
         ['tz', 'UTC'],
@@ -991,6 +1659,7 @@ function timeSeriesModule(app, api, state, save)
         return;
       }
       const rows = flattenRows(data);
+      map.setPoints(mapPoints(rows));
       showResults(rows, text);
     }
 
@@ -1021,7 +1690,7 @@ function timeSeriesModule(app, api, state, save)
       };
       for (const name of Object.keys(panes))
         tabs.append(el('button', {type: 'button', role: 'tab', onclick: () => show(name)}, name));
-      const locationsCount = new Set(rows.map((r) => r.name)).size;
+      const locationsCount = new Set(rows.map(locationOf)).size;
       results.replaceChildren(
           el('div',
              {class: 'results-head'},
@@ -1061,10 +1730,12 @@ function timeSeriesModule(app, api, state, save)
       }));
       // Model
       const n = candidates().length;
+      const inArea = selection() ? ' in the selected area' : '';
       candidatesNote.textContent = dataParams().length > 0 ?
           `${n} of ${index.producers.size} producers have ${
-              dataParams().length === 1 ? 'this parameter' : 'all these parameters'}` :
-          `${index.producers.size} producers`;
+              dataParams().length === 1 ? 'this parameter' : 'all these parameters'}${inArea}` :
+          (inArea ? `${n} of ${index.producers.size} producers cover the selected area` :
+                    `${index.producers.size} producers`);
       if (p)
       {
         const levels =
@@ -1121,8 +1792,15 @@ function timeSeriesModule(app, api, state, save)
       locInput.placeholder = mode[2];
       if (rerender !== false)
         locInput.value = s.location || '';
-      mapButton.hidden = !['place', 'lonlat', 'keyword', 'fmisid', 'area'].includes(s.locmode);
-      mapButton.disabled = !s.location;
+      map.setTools(mode[3] ? ['move', mode[3]] : ['move'], mode[3] || 'move');
+      const sel = selection();
+      map.setSelection(sel);
+      map.setRegions(p && p.bbox ? [{bbox: p.bbox, label: `The area of ${p.name}`}] : []);
+      showButton.hidden = mode[3] !== null;
+      showButton.disabled = !s.location;
+      areaNote.textContent = p && sel && !covers(p, sel) ?
+          `The selection is outside the area of ${p.name}` :
+          (s.location && mode[3] && !sel ? `Not a valid ${mode[1].toLowerCase()}: ${mode[2]}` : '');
       if (rerender !== false)
         langInput.value = s.lang || '';
       // Request
@@ -1157,7 +1835,12 @@ function timeSeriesModule(app, api, state, save)
                   el('label', null, 'End (UTC)', endInput)),
                el('div', {class: 'row'}, el('label', null, 'Step', stepSelect), dataPeriod),
                presets),
-           section('Where', locModes, el('div', {class: 'row'}, locInput, mapButton), locMap),
+           section(
+               'Where',
+               locModes,
+               el('div', {class: 'row'}, locInput, showButton),
+               areaNote,
+               map.element),
            section(
                'Output',
                el('div', {class: 'row'}, el('label', null, 'Language of the names', langInput)))),
@@ -1170,6 +1853,7 @@ function timeSeriesModule(app, api, state, save)
            results));
     defaultTimes(false);
     refresh();
+    fitMap();
   }
   return view;
 }
@@ -1274,6 +1958,8 @@ async function main()
 
 root.SmartMetExplorer = {
   flattenRows,
+  expandRow,
+  locationOf,
   parseTime,
   quantile,
   matchScore,

@@ -133,12 +133,12 @@ label > input, label > select { color: var(--fg); font-size: 15px; }
 .model-head button { margin-left: auto; }
 
 .segmented { display: flex; flex-wrap: wrap; gap: 0; }
+.segmented button { padding: 4px 7px; font-size: 0.9em; }
 .segmented button { border-radius: 0; margin-left: -1px; }
 .segmented button:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
 .segmented button:last-child { border-radius: 0 6px 6px 0; }
 .segmented button[aria-checked="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .step .row > input[type="text"] { flex: 1; min-width: 160px; }
-.loc-map:empty { display: none; }
 
 /* Request */
 .request { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
@@ -167,3 +167,28 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* uPlot on the dark theme */
 .uplot { color: var(--fg); }
 .u-legend { font-size: 0.85em; }
+
+.warn { color: var(--warn); margin: 0; }
+.warn:empty { display: none; }
+
+/* The selection map */
+.xmap { position: relative; height: 300px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel); touch-action: none; }
+.xmap-svg { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; user-select: none; }
+.xmap-svg[data-tool="point"], .xmap-svg[data-tool="box"], .xmap-svg[data-tool="circle"] { cursor: crosshair; }
+.xmap-grid { stroke: var(--line); stroke-width: 1; }
+.xmap-label { fill: var(--muted); font: 10px sans-serif; }
+.xmap-region { fill: rgba(9, 105, 218, 0.06); stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 6 4; }
+.xmap-selection { fill: rgba(217, 72, 15, 0.15); stroke: #d9480f; stroke-width: 2; }
+.xmap-draft { fill: rgba(217, 72, 15, 0.08); stroke: #d9480f; stroke-width: 1.5; stroke-dasharray: 4 3; }
+.xmap-centre { fill: #d9480f; stroke: #fff; stroke-width: 1.5; }
+.xmap-point { fill: #2f6fdf; stroke: #fff; stroke-width: 1; cursor: pointer; }
+.xmap-point:hover { fill: #e67700; }
+.xmap-tools { position: absolute; left: 6px; top: 6px; display: flex; gap: 2px; z-index: 1; }
+.xmap-tools button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.xmap-zoom { position: absolute; right: 6px; top: 6px; display: flex; flex-direction: column; gap: 2px; z-index: 1; }
+.xmap-zoom button { min-width: 28px; padding: 2px 4px; }
+.xmap-attribution { position: absolute; right: 0; bottom: 0; font-size: 10px; padding: 1px 4px; background: var(--bg); opacity: 0.85; }
+.xmap-tooltip { position: absolute; z-index: 2; pointer-events: none; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; font-size: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); white-space: nowrap; }
+.xmap-tooltip td { padding: 0 6px 0 0; }
+.xmap-tooltip td:first-child { color: var(--muted); }
+.chart-modes { margin-bottom: 8px; }

@@ -379,10 +379,14 @@ Most plugins produce tables of values:
   that builds queries from the metadata of the APIs in the catalog instead of from their
   OpenAPI definitions. For TimeSeries (kind `timeseries`) it loads
   `<root>/api/producers` and lets the parameters and the producers narrow each other with
-  autocomplete, sets the times from the producer's data, shows keyword locations on the
-  map, and draws the results with uPlot: a chart per parameter with a line per location,
-  or the median and the 10/25/75/90 % percentiles of more than 20 locations, and a table
-  and the JSON tree. The state is kept in the URL fragment, so a query can be shared as a
+  autocomplete, sets the times from the producer's data, and draws the results with uPlot:
+  a chart per parameter with a line per location, or for more than 20 locations the
+  median and the 10/25/75/90 % percentiles or a swarm of thin lines coloured from south to
+  north with the median, and a table and the JSON tree. The map shows the area of the
+  producer, the locations of a place, keyword, station or area name and of the results,
+  and lets the user click a point, drag a radius or drag a box; a selected area narrows the
+  producers to those covering it. Area and radius results, whose values TimeSeries returns
+  as lists, are split into a row per point. The state is kept in the URL fragment, so a query can be shared as a
   link. `explorer.js` and `explorer.css` are installed to `/usr/share/smartmet/explorer`,
   uPlot comes from the `smartmet-uplot` package (`/usr/share/smartmet/uplot`), and the
   snippets, the tree and the map are those of `OpenApiPlugin.cpp`. The page loads no inline

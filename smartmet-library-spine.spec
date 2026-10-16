@@ -176,7 +176,8 @@ make %{_smp_mflags}
 - Data explorer at /api/explorer: TimeSeries queries built from the producer metadata with
   parameter and producer autocomplete narrowing each other, default times from the data,
   keyword locations on a map, and uPlot charts (lines per location, or the median and
-  percentiles of many locations), tables and trees; files installed to
+  percentiles or a swarm of many locations), tables and trees; points, radii and boxes
+  chosen on a map narrow the producers to those covering them; files installed to
   /usr/share/smartmet/explorer, requires smartmet-uplot
 - API catalog entries have a kind (x-smartmet-kind), Publisher::addToCatalog() with a kind
 - ABI change compared to 26.10.16-2: CatalogEntry, CatalogSettings and Catalog have new
