@@ -824,6 +824,185 @@ void ContentHandlerMap::addNoMatchAdminRequestHandler(NoMatchAdminRequestHandler
   }
 }
 
+namespace
+{
+// Authenticate an admin request requiring authentication, false if the request was rejected
+bool authenticateAdminRequest(
+    const HTTP::Request& theRequest,
+    HTTP::Response& theResponse,
+    const std::function<bool(const HTTP::Request&, HTTP::Response&)>& authCallback)
+{
+  if (authCallback)
+  {
+    try
+    {
+      theResponse.setContent (""); // Clear any previous content
+      bool authPassed = authCallback(theRequest, theResponse);
+      if (not authPassed)
+      {
+        if (theResponse.getContent().empty())
+        {
+          theResponse.setStatus(HTTP::Status::unauthorized);
+          theResponse.setContent("Unauthorized");
+        }
+        return false;
+      }
+    }
+    catch (const Fmi::Exception&)
+    {
+      theResponse.setStatus(HTTP::Status::bad_request);
+      theResponse.setContent("Corrupt Authorization header");
+      return false;
+    }
+  } else {
+    theResponse.setStatus(HTTP::Status::forbidden);
+    theResponse.setContent("Authentication required but callback not provided");
+    return false;
+  }
+  return true;
+}
+
+// Set the caching and CORS headers of an admin response
+void setAdminResponseHeaders(HTTP::Response& theResponse)
+{
+  // We return JSON, hence we should enable CORS
+  theResponse.setHeader("Access-Control-Allow-Origin", "*");
+
+  // Adding response headers
+
+  const int expires_seconds = 60;
+  Fmi::DateTime t_now = Fmi::SecondClock::universal_time();
+  Fmi::DateTime t_expires = t_now + Fmi::Seconds(expires_seconds);
+  std::shared_ptr<Fmi::TimeFormatter> tformat(Fmi::TimeFormatter::create("http"));
+  std::string cachecontrol = "public, max-age=" + std::to_string(expires_seconds);
+  std::string expiration = tformat->format(t_expires);
+  std::string modification = tformat->format(t_now);
+
+  theResponse.setHeader("Cache-Control", cachecontrol);
+  theResponse.setHeader("Expires", expiration);
+  theResponse.setHeader("Last-Modified", modification);
+
+  // We allow JSON requests, hence we should enable CORS
+  theResponse.setHeader("Access-Control-Allow-Origin", "*");
+}
+}  // namespace
+
+// Answer an unknown admin request using the no-match handler if there is one
+void ContentHandlerMap::answerUnknownAdminRequest(Reactor& reactor,
+                                                  const HTTP::Request& theRequest,
+                                                  HTTP::Response& theResponse,
+                                                  bool isInfo,
+                                                  const std::string& what)
+{
+  // Check if there's a custom no-match handler
+  if (itsAdminHandlerInfo->itsNoMatchAdminRequestHandler)
+  {
+    itsAdminHandlerInfo->itsNoMatchAdminRequestHandler(reactor, theRequest, theResponse);
+  }
+  else
+  {
+    theResponse.setStatus(HTTP::Status::not_found);
+    theResponse.setContent("Unknown "s
+      + (isInfo ? "info" : "admin")
+      + " request: "
+      + what);
+  }
+}
+
+// Run a single admin request handler
+void ContentHandlerMap::runAdminRequestHandler(std::ostream& errors,
+                                               bool& ok,
+                                               const AdminRequestInfo& info,
+                                               Reactor& theReactor,
+                                               const HTTP::Request& theRequest,
+                                               HTTP::Response& theResponse)
+{
+  const AdminRequestHandler& handler = info.handler;
+  if (std::holds_alternative<AdminBoolRequestHandler>(handler))
+  {
+    const std::string id = "Handler: {" + targetName(info.target) + ":" + info.what
+           + "} - " + info.description;
+    try
+    {
+      bool currOk = handleAdminBoolRequest(
+        errors,
+        std::get<AdminBoolRequestHandler>(handler),
+        theReactor,
+        theRequest);
+      ok = ok && currOk;
+      errors << (currOk ? "OK    : " : "ERROR  ") << id << '\n';
+    }
+    catch (...)
+    {
+      ok = false;
+      errors << "ERROR : " << id << '\n';
+    }
+  }
+  else
+  {
+    if (std::holds_alternative<AdminStringRequestHandler>(handler))
+    {
+      handleAdminStringRequest(
+        errors,
+        std::get<AdminStringRequestHandler>(handler),
+        theReactor,
+        theRequest,
+        theResponse);
+    }
+    else if (std::holds_alternative<AdminTableRequestHandler>(handler))
+    {
+      handleAdminTableRequest(
+        errors,
+        std::get<AdminTableRequestHandler>(handler),
+        theReactor,
+        theRequest, theResponse);
+    }
+    else if (std::holds_alternative<AdminCustomRequestHandler>(handler))
+    {
+      handleAdminCustomRequest(
+        errors,
+        std::get<AdminCustomRequestHandler>(handler),
+        theReactor,
+        theRequest,
+        theResponse);
+    }
+    else
+    {
+      throw Fmi::Exception(BCP, "INTERNAL ERROR: Unknown admin request handler type");
+    }
+  }
+}
+
+// Check that the handlers are either all bool handlers or a single other handler, true if
+// they are bool handlers
+bool ContentHandlerMap::checkAdminHandlerTypes(
+    const std::map<HandlerTarget, std::shared_ptr<AdminRequestInfo>>& handlers)
+{
+  bool haveBoolAdminRequests = false;
+  bool haveNonBoolAdminRequests = false;
+  for (const auto& item : handlers)
+  {
+    // FIXME: what to do if one handler of several throws an exception?
+    const AdminRequestHandler& handler = item.second->handler;
+    const bool is_bool_handler = std::holds_alternative<AdminBoolRequestHandler>(handler);
+    haveBoolAdminRequests = haveBoolAdminRequests || is_bool_handler;
+    haveNonBoolAdminRequests = haveNonBoolAdminRequests || !is_bool_handler;
+  }
+
+  if (haveBoolAdminRequests && haveNonBoolAdminRequests)
+  {
+    // Should never happen due to earlier checks when adding them
+    throw Fmi::Exception(BCP, "INTERNAL ERROR: Mixed admin request handlers");
+  }
+
+  if (haveNonBoolAdminRequests && handlers.size() > 1)
+  {
+    // Should never happen due to earlier checks when adding them
+    throw Fmi::Exception(BCP, "INTERNAL ERROR: Multiple non-bool admin request handlers");
+  }
+  return haveBoolAdminRequests;
+}
+
 bool ContentHandlerMap::executeAdminRequest(
     const HTTP::Request& theRequest,
     HTTP::Response& theResponse,
@@ -833,16 +1012,6 @@ bool ContentHandlerMap::executeAdminRequest(
   {
     // Force stack trace to be generated in case of an exception
     Fmi::Exception::ForceStackTrace force_stack_trace;
-
-    const auto unknown_request =
-      [&theResponse](bool isInfo, const std::string& what)
-      {
-        theResponse.setStatus(HTTP::Status::not_found);
-        theResponse.setContent("Unknown "s
-          + (isInfo ? "info" : "admin")
-          + " request: "
-          + what);
-      };
 
     Reactor* reactor = getReactor();
     if (!reactor)
@@ -867,114 +1036,38 @@ bool ContentHandlerMap::executeAdminRequest(
     const auto it = itsAdminRequestHandlers.find(*what);
     if (it == itsAdminRequestHandlers.end())
     {
-      // Check if there's a custom no-match handler
-      if (itsAdminHandlerInfo->itsNoMatchAdminRequestHandler)
-      {
-        itsAdminHandlerInfo->itsNoMatchAdminRequestHandler(*reactor, theRequest, theResponse);
-      }
-      else
-      {
-        unknown_request(isInfo, *what);
-      }
+      answerUnknownAdminRequest(*reactor, theRequest, theResponse, isInfo, *what);
       return false;
     }
 
     // Only accept public handlers for info requests
     if (isInfo)
     {
-      bool isPublic = false;
-      for (const auto& item : it->second)
-      {
-        if (item.second->isPublic)
-        {
-          isPublic = true;
-          break;
-        }
-      }
+      const bool isPublic = std::any_of(it->second.begin(),
+                                        it->second.end(),
+                                        [](const auto& item) { return item.second->isPublic; });
 
       if (not isPublic)
       {
-        // Check if there's a custom no-match handler
-        if (itsAdminHandlerInfo->itsNoMatchAdminRequestHandler)
-        {
-          itsAdminHandlerInfo->itsNoMatchAdminRequestHandler(*reactor, theRequest, theResponse);
-        }
-        else
-        {
-          unknown_request(isInfo, *what);
-        }
+        answerUnknownAdminRequest(*reactor, theRequest, theResponse, isInfo, *what);
         return false;
       }
     }
 
     // Check whether any of the handlers require authentication
     // Assume that all handlers for the same 'what' require the same authentication
-    bool requiresAuth = false;
-    for (const auto& item : it->second)
-    {
-      if (item.second->requiresAuthentication)
-      {
-        requiresAuth = true;
-        break;
-      }
-    }
+    const bool requiresAuth =
+        std::any_of(it->second.begin(),
+                    it->second.end(),
+                    [](const auto& item) { return item.second->requiresAuthentication; });
 
-    if (requiresAuth)
-    {
-      if (authCallback)
-      {
-        try
-        {
-          theResponse.setContent (""); // Clear any previous content
-          bool authPassed = authCallback(theRequest, theResponse);
-          if (not authPassed)
-          {
-            if (theResponse.getContent().empty())
-            {
-              theResponse.setStatus(HTTP::Status::unauthorized);
-              theResponse.setContent("Unauthorized");
-            }
-            return false;
-          }
-        }
-        catch (const Fmi::Exception&)
-        {
-          theResponse.setStatus(HTTP::Status::bad_request);
-          theResponse.setContent("Corrupt Authorization header");
-          return false;
-        }
-      } else {
-        theResponse.setStatus(HTTP::Status::forbidden);
-        theResponse.setContent("Authentication required but callback not provided");
-        return false;
-      }
-    }
+    if (requiresAuth && !authenticateAdminRequest(theRequest, theResponse, authCallback))
+      return false;
 
     // Make a local copy before unlocking the mutex
     bool ok = true;
-    bool haveBoolAdminRequests = false;
-    bool haveNonBoolAdminRequests = false;
     const std::map<HandlerTarget, std::shared_ptr<AdminRequestInfo>> handlers = it->second;
-    for (const auto& item : handlers)
-    {
-      // FIXME: what to do if one handler of several throws an exception?
-      const AdminRequestHandler& handler = item.second->handler;
-      const bool is_bool_handler = std::holds_alternative<AdminBoolRequestHandler>(handler);
-      haveBoolAdminRequests = haveBoolAdminRequests || is_bool_handler;
-      haveNonBoolAdminRequests = haveNonBoolAdminRequests || !is_bool_handler;
-    }
-
-    if (haveBoolAdminRequests && haveNonBoolAdminRequests)
-    {
-      // Should never happen due to earlier checks when adding them
-      throw Fmi::Exception(BCP, "INTERNAL ERROR: Mixed admin request handlers");
-    }
-
-    if (haveNonBoolAdminRequests && handlers.size() > 1)
-    {
-      // Should never happen due to earlier checks when adding them
-      throw Fmi::Exception(BCP, "INTERNAL ERROR: Multiple non-bool admin request handlers");
-    }
+    const bool haveBoolAdminRequests = checkAdminHandlerTypes(handlers);
 
     //============================  FIXME  ====================
     // It is not thread safe to unlock theContentMutex here, but otherwise attempt to add
@@ -987,87 +1080,16 @@ bool ContentHandlerMap::executeAdminRequest(
     for (const auto& item : handlers)
     {
       // FIXME: what to do if one handler of several throws an exception?
-      const AdminRequestHandler& handler = item.second->handler;
       if (isInfo && !item.second->isPublic)
       {
         // Skip non-public handlers when /info URI is used
         continue;
       }
 
-      if (std::holds_alternative<AdminBoolRequestHandler>(handler))
-      {
-        const std::string id = "Handler: {" + targetName(item.second->target) + ":" + item.second->what
-               + "} - " + item.second->description;
-        try
-        {
-          bool currOk = handleAdminBoolRequest(
-            errors,
-            std::get<AdminBoolRequestHandler>(handler),
-            *reactor,
-            theRequest);
-          ok = ok && currOk;
-          errors << (currOk ? "OK    : " : "ERROR  ") << id << '\n';
-        }
-        catch (...)
-        {
-          ok = false;
-          errors << "ERROR : " << id << '\n';
-        }
-      }
-      else
-      {
-        if (std::holds_alternative<AdminStringRequestHandler>(handler))
-        {
-          handleAdminStringRequest(
-            errors,
-            std::get<AdminStringRequestHandler>(handler),
-            *reactor,
-            theRequest,
-            theResponse);
-        }
-        else if (std::holds_alternative<AdminTableRequestHandler>(handler))
-        {
-          handleAdminTableRequest(
-            errors,
-            std::get<AdminTableRequestHandler>(handler),
-            *reactor,
-            theRequest, theResponse);
-        }
-        else if (std::holds_alternative<AdminCustomRequestHandler>(handler))
-        {
-          handleAdminCustomRequest(
-            errors,
-            std::get<AdminCustomRequestHandler>(handler),
-            *reactor,
-            theRequest,
-            theResponse);
-        }
-        else
-        {
-          throw Fmi::Exception(BCP, "INTERNAL ERROR: Unknown admin request handler type");
-        }
-      }
+      runAdminRequestHandler(errors, ok, *item.second, *reactor, theRequest, theResponse);
     }
 
-    // We return JSON, hence we should enable CORS
-    theResponse.setHeader("Access-Control-Allow-Origin", "*");
-
-      // Adding response headers
-
-    const int expires_seconds = 60;
-    Fmi::DateTime t_now = Fmi::SecondClock::universal_time();
-    Fmi::DateTime t_expires = t_now + Fmi::Seconds(expires_seconds);
-    std::shared_ptr<Fmi::TimeFormatter> tformat(Fmi::TimeFormatter::create("http"));
-    std::string cachecontrol = "public, max-age=" + std::to_string(expires_seconds);
-    std::string expiration = tformat->format(t_expires);
-    std::string modification = tformat->format(t_now);
-
-    theResponse.setHeader("Cache-Control", cachecontrol);
-    theResponse.setHeader("Expires", expiration);
-    theResponse.setHeader("Last-Modified", modification);
-
-    // We allow JSON requests, hence we should enable CORS
-    theResponse.setHeader("Access-Control-Allow-Origin", "*");
+    setAdminResponseHeaders(theResponse);
 
     /* This will need some thought
              if(response.first.size() == 0)

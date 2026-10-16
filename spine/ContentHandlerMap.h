@@ -489,6 +489,22 @@ private:
         bool unique() const;
     };
 
+    void answerUnknownAdminRequest(Reactor& reactor,
+                                   const HTTP::Request& theRequest,
+                                   HTTP::Response& theResponse,
+                                   bool isInfo,
+                                   const std::string& what);
+
+    static bool checkAdminHandlerTypes(
+        const std::map<HandlerTarget, std::shared_ptr<AdminRequestInfo>>& handlers);
+
+    void runAdminRequestHandler(std::ostream& errors,
+                                bool& ok,
+                                const AdminRequestInfo& info,
+                                Reactor& theReactor,
+                                const HTTP::Request& theRequest,
+                                HTTP::Response& theResponse);
+
     /**
      * @brief Information about top level admin request handler
      *
