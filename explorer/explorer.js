@@ -544,6 +544,7 @@ function createMap(settings, onSelect)
   const surface = svg('svg', {class: 'xmap-svg', role: 'img', 'aria-label': 'Map'});
   const layers = {
     background: svg('g'),
+    cells: svg('g'),
     regions: svg('g'),
     selection: svg('g'),
     points: svg('g'),
@@ -740,6 +741,49 @@ function createMap(settings, onSelect)
     }
     layers.selection.replaceChildren();
     drawShape(layers.selection, state.selection, 'xmap-selection');
+
+    // Values as coloured cells (a grid) or dots (stations)
+    layers.cells.replaceChildren();
+    if (state.cells)
+    {
+      const {items, dx, dy} = state.cells;
+      for (const cell of items)
+      {
+        if (cell.color === null)
+          continue;
+        let shape;
+        if (dx > 0)
+        {
+          const [ax, ay] = screenOf(cell.lon - dx / 2, cell.lat + dy / 2);
+          const [bx, by] = screenOf(cell.lon + dx / 2, cell.lat - dy / 2);
+          if (bx < 0 || by < 0 || ax > width() || ay > MAP_HEIGHT)
+            continue;
+          shape = svg('rect', {
+            class: 'xmap-cell',
+            x: ax,
+            y: ay,
+            width: Math.max(1, bx - ax + 0.5),
+            height: Math.max(1, by - ay + 0.5),
+            fill: cell.color
+          });
+        }
+        else
+        {
+          const [sx, sy] = screenOf(cell.lon, cell.lat);
+          if (sx < -10 || sy < -10 || sx > width() + 10 || sy > MAP_HEIGHT + 10)
+            continue;
+          shape = svg('circle', {class: 'xmap-dot', cx: sx, cy: sy, r: 6, fill: cell.color});
+        }
+        shape.addEventListener('mouseover', () => {
+          const [sx, sy] = screenOf(cell.lon, cell.lat);
+          showTooltip({label: cell.label, info: cell.info}, sx, sy);
+        });
+        shape.addEventListener('mouseout', () => {
+          tooltip.hidden = true;
+        });
+        layers.cells.append(shape);
+      }
+    }
 
     layers.points.replaceChildren();
     // Many points are drawn smaller
@@ -962,12 +1006,19 @@ function createMap(settings, onSelect)
       state.points = points;
       drawOverlays();
     },
+    // Coloured values: {items: [{lon, lat, color, label, info}], dx, dy}, the cell size in
+    // degrees, or dx = 0 for dots
+    setCells(cells) {
+      state.cells = cells;
+      drawOverlays();
+    },
     // The box of everything shown
     extent() {
       const boxes = [
         ...state.regions.map((r) => r.bbox),
         selectionBox(state.selection),
-        ...state.points.map((p) => [p.lon, p.lat, p.lon, p.lat])
+        ...state.points.map((p) => [p.lon, p.lat, p.lon, p.lat]),
+        ...(state.cells ? state.cells.items.map((c) => [c.lon, c.lat, c.lon, c.lat]) : [])
       ].filter(Boolean);
       if (boxes.length === 0)
         return null;
@@ -1337,6 +1388,265 @@ function drawCharts(container, rows, parameters, mode)
         data,
         plot);
   }
+}
+
+// ------------------------------------------------------------------
+// Values on a map
+// ------------------------------------------------------------------
+
+// The colour scales: colours from the low end to the high end
+const PALETTES = {
+  temperature: [
+    '#313695',
+    '#4575b4',
+    '#74add1',
+    '#abd9e9',
+    '#e0f3f8',
+    '#ffffbf',
+    '#fee090',
+    '#fdae61',
+    '#f46d43',
+    '#d73027',
+    '#a50026'
+  ],
+  viridis: [
+    '#440154',
+    '#482878',
+    '#3e4989',
+    '#31688e',
+    '#26828e',
+    '#1f9e89',
+    '#35b779',
+    '#6ece58',
+    '#b5de2b',
+    '#fde725'
+  ],
+  precipitation: ['#f7fbff', '#c6dbef', '#6baed6', '#2171b5', '#08306b', '#6a51a3', '#bc80bd'],
+  grey: ['#f7f7f7', '#252525']
+};
+
+function hexColour(hex)
+{
+  return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+}
+
+// The colour of f = 0...1 on a palette; 'steps' > 0 quantizes the scale
+function paletteColour(name, f, steps)
+{
+  const colours = PALETTES[name] || PALETTES.viridis;
+  let t = Math.max(0, Math.min(1, f));
+  if (steps > 0)
+    t = Math.min(steps - 1, Math.floor(t * steps)) / Math.max(1, steps - 1);
+  const pos = t * (colours.length - 1);
+  const i = Math.min(colours.length - 2, Math.floor(pos));
+  const a = hexColour(colours[i]);
+  const b = hexColour(colours[i + 1]);
+  const u = pos - i;
+  return `rgb(${a.map((v, k) => Math.round(v + (b[k] - v) * u)).join(',')})`;
+}
+
+// The size of the cells of points on a grid in degrees, or null when the points are not a
+// grid (stations): the median distance to the nearest neighbour, if the distances are similar
+function cellSize(points)
+{
+  if (points.length < 20)
+    return null;
+  const sample = points.length > 400 ?
+      points.filter((_, i) => i % Math.ceil(points.length / 400) === 0) :
+      points;
+  const distances = [];
+  for (const p of sample)
+  {
+    let best = Infinity;
+    const c = Math.cos(rad(p.lat));
+    for (const q of points)
+    {
+      if (q === p)
+        continue;
+      const d = Math.hypot((q.lon - p.lon) * c, q.lat - p.lat);
+      if (d > 0 && d < best)
+        best = d;
+    }
+    if (isFinite(best))
+      distances.push(best);
+  }
+  distances.sort((a, b) => a - b);
+  const median = quantile(distances, 0.5);
+  const spread = quantile(distances, 0.9) / Math.max(1e-9, quantile(distances, 0.1));
+  if (!(median > 0) || spread > 2)
+    return null;
+  const meanLat = points.reduce((sum, p) => sum + p.lat, 0) / points.length;
+  // The cells overlap a little: the grid is seldom aligned with longitude and latitude
+  const d = median * 1.2;
+  return {dx: d / Math.max(0.05, Math.cos(rad(meanLat))), dy: d};
+}
+
+// Whether the rows have values at several locations with coordinates
+function hasMapValues(rows)
+{
+  const seen = new Set();
+  for (const r of rows)
+    if (typeof r.lat === 'number' && typeof r.lon === 'number')
+    {
+      seen.add(`${r.lat},${r.lon}`);
+      if (seen.size > 1)
+        return true;
+    }
+  return false;
+}
+
+// The values of the rows on a map: a parameter, a time slider and a colour scale
+function drawValueMap(container, rows, parameters, settings)
+{
+  container.replaceChildren();
+  const numeric = parameters.filter((p) => rows.some((r) => typeof r[p] === 'number'));
+  const located = rows.filter((r) => typeof r.lat === 'number' && typeof r.lon === 'number');
+  if (numeric.length === 0 || located.length === 0)
+  {
+    container.append(el('p', {class: 'muted'}, 'No located numeric values to show.'));
+    return;
+  }
+
+  const times = Array.from(new Set(located.map((r) => String(r.time))))
+                    .sort((a, b) => (parseTime(a) || 0) - (parseTime(b) || 0));
+  const state = {param: numeric[0], time: 0, palette: 'viridis', steps: 0, min: null, max: null};
+
+  const map = createMap(settings, null);
+  map.setTools(['move'], 'move');
+  const paramSelect =
+      el('select', {'aria-label': 'Parameter'}, numeric.map((p) => el('option', {value: p}, p)));
+  const paletteSelect =
+      el('select',
+         {'aria-label': 'Colours'},
+         Object.keys(PALETTES).map((p) => el('option', {value: p}, p)));
+  const stepsSelect =
+      el('select',
+         {'aria-label': 'Classes'},
+         [['0', 'Continuous'], ['5', '5 classes'], ['8', '8 classes'], ['12', '12 classes']].map(
+             ([v, t]) => el('option', {value: v}, t)));
+  const minInput = el('input', {type: 'number', step: 'any', 'aria-label': 'Minimum', size: 6});
+  const maxInput = el('input', {type: 'number', step: 'any', 'aria-label': 'Maximum', size: 6});
+  const slider = el(
+      'input',
+      {type: 'range', min: 0, max: Math.max(0, times.length - 1), value: 0, 'aria-label': 'Time'});
+  const timeLabel = el('span', {class: 'muted small'});
+  const play = el('button', {type: 'button', class: 'small'}, 'Play');
+  const legend = el('div', {class: 'legend'});
+  container.append(
+      el('div',
+         {class: 'row'},
+         el('label', null, 'Parameter', paramSelect),
+         el('label', null, 'Colours', paletteSelect),
+         el('label', null, 'Scale', stepsSelect),
+         el('label', null, 'Min', minInput),
+         el('label', null, 'Max', maxInput)),
+      el('div', {class: 'row value-time'}, play, slider, timeLabel),
+      legend,
+      map.element);
+
+  // The default range: the 2nd and the 98th percentiles of all times, so that the colours
+  // keep their meaning when the time changes
+  const defaultRange = () => {
+    const values = located.map((r) => r[state.param])
+                       .filter((v) => typeof v === 'number' && isFinite(v))
+                       .sort((a, b) => a - b);
+    return [quantile(values, 0.02), quantile(values, 0.98)];
+  };
+
+  let size = null;
+  const draw = () => {
+    const [lo, hi] = [state.min, state.max];
+    const t = times[state.time];
+    const items = located.filter((r) => String(r.time) === t).map((r) => {
+      const v = r[state.param];
+      const ok = typeof v === 'number' && isFinite(v);
+      return {
+        lon: r.lon,
+        lat: r.lat,
+        color: ok ?
+            paletteColour(state.palette, hi > lo ? (v - lo) / (hi - lo) : 0.5, state.steps) :
+            null,
+        label: `${state.param}: ${ok ? v : 'missing'}`,
+        info: {name: r.name, lat: r.lat, lon: r.lon}
+      };
+    });
+    if (size === null)
+      size = cellSize(items) || {dx: 0, dy: 0};
+    map.setCells({items, dx: size.dx, dy: size.dy});
+    const d = parseTime(t);
+    timeLabel.textContent = d ? formatTime(d) : t;
+    // The legend: the colours and the range
+    const n = state.steps > 0 ? state.steps : 24;
+    legend.replaceChildren(
+        el('span', {class: 'small'}, lo === null ? '' : round(lo, 2)),
+        el('span',
+           {class: 'legend-bar'},
+           Array.from(
+               {length: n},
+               (_, i) => el('span', {
+                 class: 'legend-step',
+                 style: `background:${paletteColour(state.palette, (i + 0.5) / n, state.steps)}`
+               }))),
+        el('span', {class: 'small'}, hi === null ? '' : round(hi, 2)));
+  };
+  const setRange = () => {
+    [state.min, state.max] = defaultRange();
+    minInput.value = state.min === null ? '' : round(state.min, 2);
+    maxInput.value = state.max === null ? '' : round(state.max, 2);
+  };
+
+  paramSelect.addEventListener('change', () => {
+    state.param = paramSelect.value;
+    setRange();
+    draw();
+  });
+  paletteSelect.addEventListener('change', () => {
+    state.palette = paletteSelect.value;
+    draw();
+  });
+  stepsSelect.addEventListener('change', () => {
+    state.steps = Number(stepsSelect.value);
+    draw();
+  });
+  for (const [input, key] of [[minInput, 'min'], [maxInput, 'max']])
+    input.addEventListener('input', () => {
+      const v = Number(input.value);
+      if (input.value !== '' && isFinite(v))
+      {
+        state[key] = v;
+        draw();
+      }
+    });
+  slider.addEventListener('input', () => {
+    state.time = Number(slider.value);
+    draw();
+  });
+  let timer = null;
+  play.addEventListener('click', () => {
+    if (timer)
+    {
+      clearInterval(timer);
+      timer = null;
+      play.textContent = 'Play';
+      return;
+    }
+    play.textContent = 'Stop';
+    timer = setInterval(() => {
+      if (!container.isConnected)
+      {
+        clearInterval(timer);
+        return;
+      }
+      state.time = (state.time + 1) % times.length;
+      slider.value = String(state.time);
+      draw();
+    }, 700);
+  });
+  paletteSelect.value = state.palette;
+  setRange();
+  draw();
+  // Fit the map once it has a width
+  requestAnimationFrame(() => map.fit(map.extent()));
 }
 
 // ------------------------------------------------------------------
@@ -1952,11 +2262,12 @@ function timeSeriesModule(app, api, state, save)
     function showResults(rows, text)
     {
       const statistics = serverStatistics();
-      const panes = {
-        Chart: el('div', {class: 'pane'}),
-        Table: el('div', {class: 'pane'}),
-        Tree: el('div', {class: 'pane tree-pane'})
-      };
+      const panes = {Chart: el('div', {class: 'pane'})};
+      // The values on a map when there are several located points
+      if (hasMapValues(rows))
+        panes.Map = el('div', {class: 'pane'});
+      panes.Table = el('div', {class: 'pane'});
+      panes.Tree = el('div', {class: 'pane tree-pane'});
       const tabs = el('div', {class: 'tabs', role: 'tablist'});
       const drawn = new Set();
       const show = (name) => {
@@ -1970,6 +2281,8 @@ function timeSeriesModule(app, api, state, save)
         drawn.add(name);
         if (name === 'Chart')
           drawCharts(panes.Chart, rows, dataParams(), statistics ? 'server' : undefined);
+        else if (name === 'Map')
+          drawValueMap(panes.Map, rows, dataParams(), mapSettings(app.element));
         else if (name === 'Table')
           drawTable(panes.Table, rows);
         else if (!S.renderTree(panes.Tree, text, 'json'))
@@ -2620,11 +2933,12 @@ function edrModule(app, api, state, save)
                      label: String(r.name || ''),
                      info: {lat: r.lat, lon: r.lon}
                    })));
-      const panes = {
-        Chart: el('div', {class: 'pane'}),
-        Table: el('div', {class: 'pane'}),
-        Tree: el('div', {class: 'pane tree-pane'})
-      };
+      const panes = {Chart: el('div', {class: 'pane'})};
+      // The values on a map when there are several located points
+      if (hasMapValues(rows))
+        panes.Map = el('div', {class: 'pane'});
+      panes.Table = el('div', {class: 'pane'});
+      panes.Tree = el('div', {class: 'pane tree-pane'});
       const tabs = el('div', {class: 'tabs', role: 'tablist'});
       const drawn = new Set();
       const params = Array.from(new Set(rows.flatMap((r) => Object.keys(r))))
@@ -2642,6 +2956,8 @@ function edrModule(app, api, state, save)
         drawn.add(name);
         if (name === 'Chart')
           drawCharts(panes.Chart, rows, params);
+        else if (name === 'Map')
+          drawValueMap(panes.Map, rows, params, mapSettings(app.element));
         else if (name === 'Table')
           drawTable(panes.Table, rows);
         else if (!S.renderTree(panes.Tree, text, 'json'))
@@ -3566,6 +3882,8 @@ root.SmartMetExplorer = {
   buildIndex,
   buildEdrIndex,
   coverageRows,
+  paletteColour,
+  cellSize,
   projectionName,
   formatBytes,
   queryString

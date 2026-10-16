@@ -709,6 +709,33 @@ async function main()
     const areaPoints = await b.evaluate(`document.querySelectorAll('.xmap-point').length`);
     check('points of the radius on the map', areaPoints === 5, areaPoints);
 
+    // The values on a map: a dot per point, a time slider and a colour scale
+    const valueMap = await b.evaluate(`(async () => {
+      [...document.querySelectorAll('.results-head .tabs button')].find((x) => x.textContent === "Map").click();
+      await new Promise((r) => setTimeout(r, 400));
+      const pane = [...document.querySelectorAll('.results .pane')].find((p) => !p.hidden);
+      const colours = () => [...pane.querySelectorAll('.xmap-dot')].map((c) => c.getAttribute('fill')).join(' ');
+      const first = colours();
+      const slider = pane.querySelector('input[type="range"]');
+      slider.value = "5";
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 200));
+      const last = colours();
+      const legendBefore = pane.querySelector('.legend-step').style.background;
+      const palette = pane.querySelector('[aria-label="Colours"]');
+      palette.value = "temperature";
+      palette.dispatchEvent(new Event("change", { bubbles: true }));
+      const legendAfter = pane.querySelector('.legend-step').style.background;
+      return { dots: pane.querySelectorAll('.xmap-dot').length, max: slider.max, changed: first !== last,
+               legend: legendBefore !== legendAfter, min: pane.querySelector('[aria-label="Minimum"]').value,
+               time: pane.querySelector('.value-time .muted').textContent };
+    })()`);
+    check(
+        'values on a map',
+        valueMap.dots === 4 && valueMap.max === '5' && valueMap.changed && valueMap.legend &&
+            valueMap.min !== '' && valueMap.time.endsWith('UTC'),
+        valueMap);
+
     // A box dragged on the map
     await setMode(b, 'bbox');
     m = await mapRect(b);

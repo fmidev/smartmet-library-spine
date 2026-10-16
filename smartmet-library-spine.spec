@@ -182,7 +182,8 @@ make %{_smp_mflags}
   the server for the percentiles); EDR queries (position, radius, area, cube, locations)
   built from the collection metadata, CoverageJSON drawn as charts; Coverages downloads with
   the native grid, the area of the download in the chosen projection and its size before
-  downloading; a background map of the
+  downloading; values of grids and stations on a map with a time slider and an editable
+  colour scale; a background map of the
   land, lakes and borders from Natural Earth (public domain) when no tile layer is
   configured; files installed to
   /usr/share/smartmet/explorer, requires smartmet-uplot

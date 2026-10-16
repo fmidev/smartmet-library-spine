@@ -203,3 +203,10 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .size-estimate { margin: 0; }
 .download { display: inline-block; padding: 6px 20px; border-radius: 6px; background: var(--accent); color: var(--accent-fg); font-weight: 600; text-decoration: none; }
 .download[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
+.xmap-cell { stroke: none; }
+.xmap-dot { stroke: #fff; stroke-width: 1; }
+.value-time { align-items: center; margin: 6px 0; }
+.value-time input[type="range"] { flex: 1; min-width: 160px; }
+.legend { display: flex; align-items: center; gap: 6px; margin: 4px 0 8px; }
+.legend-bar { display: flex; flex: 1; max-width: 360px; height: 12px; border: 1px solid var(--line); }
+.legend-step { flex: 1; }
