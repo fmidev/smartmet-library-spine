@@ -60,6 +60,41 @@ std::optional<std::string> ParameterTranslations::getTranslation(
   return trans->second;
 }
 
+// Read the translations of a single parameter value
+void ParameterTranslations::readValueTranslations(const libconfig::Setting& value_translations,
+                                                  const std::string& param_name,
+                                                  int position,
+                                                  Json::Reader& jsonreader)
+{
+  if (value_translations.isList())
+    throw Fmi::Exception(BCP,
+                         "translations for parameter " + param_name +
+                             " must be a list of translations for individual values");
+
+  int param_value = 0;
+  if (!value_translations.lookupValue("value", param_value))
+    throw Fmi::Exception(BCP,
+                         "translation setting for " + param_name + " at position " +
+                             std::to_string(position) + " has no parameter value to be translated");
+
+  for (int k = 0; k < value_translations.getLength(); k++)
+  {
+    const auto& translation = value_translations[k];
+
+    std::string lang = translation.getName();
+    if (lang == "value")
+      continue;
+
+    auto text = std::string("\"") + translation.c_str() + "\"";
+    Json::Value json;
+    bool ok = jsonreader.parse(text, json);
+    if (!ok || !json.isString())
+      throw Fmi::Exception(BCP, "Failed to parse JSON string '" + text + "'");
+
+    addTranslation(param_name, param_value, lang, json.asString());
+  }
+}
+
 void ParameterTranslations::readTranslations(const libconfig::Config& config)
 {
   try
@@ -106,35 +141,7 @@ void ParameterTranslations::readTranslations(const libconfig::Config& config)
 
       for (int j = 0; j < param_settings.getLength(); j++)
       {
-        const auto& value_translations = param_settings[j];
-
-        if (value_translations.isList())
-          throw Fmi::Exception(BCP,
-                               "translations for parameter " + param_name +
-                                   " must be a list of translations for individual values");
-
-        int param_value = 0;
-        if (!value_translations.lookupValue("value", param_value))
-          throw Fmi::Exception(BCP,
-                               "translation setting for " + param_name + " at position " +
-                                   std::to_string(j) + " has no parameter value to be translated");
-
-        for (int k = 0; k < value_translations.getLength(); k++)
-        {
-          const auto& translation = value_translations[k];
-
-          std::string lang = translation.getName();
-          if (lang == "value")
-            continue;
-
-          auto text = std::string("\"") + translation.c_str() + "\"";
-          Json::Value json;
-          bool ok = jsonreader.parse(text, json);
-          if (!ok || !json.isString())
-            throw Fmi::Exception(BCP, "Failed to parse JSON string '" + text + "'");
-
-          addTranslation(param_name, param_value, lang, json.asString());
-        }
+        readValueTranslations(param_settings[j], param_name, j, jsonreader);
       }
     }
   }

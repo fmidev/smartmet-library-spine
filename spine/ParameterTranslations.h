@@ -5,6 +5,11 @@
 #include <map>
 #include <string>
 
+namespace Json
+{
+class Reader;
+}
+
 namespace SmartMet
 {
 namespace Spine
@@ -25,6 +30,11 @@ public:
                                               const std::string& theLanguage) const;
 
  private:
+  void readValueTranslations(const libconfig::Setting& value_translations,
+                             const std::string& param_name,
+                             int position,
+                             Json::Reader& jsonreader);
+
   void addTranslation(const std::string& theParam,
                       int theValue,
                       const std::string& theLanguage,
