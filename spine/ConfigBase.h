@@ -419,6 +419,16 @@ class ConfigBase
                                         bool mandatory,
                                         int max_depth) const;
 
+  libconfig::Setting* find_path_part(libconfig::Setting& curr_setting,
+                                     libconfig::Setting& search_start,
+                                     const std::string& path,
+                                     const std::string& name,
+                                     bool mandatory) const;
+
+  libconfig::Setting* follow_redirection(libconfig::Setting* curr,
+                                         bool mandatory,
+                                         int max_depth) const;
+
   const std::string file_name;
   const std::string config_name;
   std::shared_ptr<libconfig::Config> itsConfig;

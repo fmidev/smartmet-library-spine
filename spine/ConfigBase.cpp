@@ -139,6 +139,110 @@ void ConfigBase::dump_config(std::ostream& stream, const libconfig::Config& conf
   }
 }
 
+namespace
+{
+// Dump the setting prefix and name
+void dump_name(std::ostream& stream,
+               const std::string& prefix,
+               const char* name,
+               const char* separator)
+{
+  stream << prefix;
+  if (name)
+    stream << name << separator;
+}
+
+// Dump a group setting
+void dump_group(std::ostream& stream,
+                const libconfig::Setting& setting,
+                const std::string& prefix,
+                const char* name,
+                std::size_t offset)
+{
+  dump_name(stream, prefix, name, ": ");
+  stream << "{\n";
+  int N = setting.getLength();
+  for (int i = 0; i < N; i++)
+  {
+    ConfigBase::dump_setting(stream, setting[i], offset + 4);
+    if (i < N + 1)
+      stream << "\n";
+  }
+  stream << prefix << "}";
+}
+
+// Dump a list or an array setting
+void dump_sequence(std::ostream& stream,
+                   const libconfig::Setting& setting,
+                   const std::string& prefix,
+                   const char* name,
+                   std::size_t offset,
+                   char open,
+                   char close)
+{
+  dump_name(stream, prefix, name, ": ");
+  stream << open << '\n';
+  int N = setting.getLength();
+  for (int i = 0; i < N; i++)
+  {
+    if (i > 0)
+      stream << ",\n";
+    ConfigBase::dump_setting(stream, setting[i], offset + 4);
+  }
+  stream << '\n' << prefix << close;
+}
+
+// Dump a scalar setting, false if the type is unknown
+bool dump_scalar(std::ostream& stream,
+                 const libconfig::Setting& setting,
+                 const std::string& prefix,
+                 const char* name)
+{
+  int type = setting.getType();
+
+  if (type == libconfig::Setting::TypeInt)
+  {
+    int value = setting;
+    dump_name(stream, prefix, name, " = ");
+    stream << value;
+  }
+  else if (type == libconfig::Setting::TypeInt64)
+  {
+    long long value = setting;
+    dump_name(stream, prefix, name, " = ");
+    stream << value;
+  }
+  else if (type == libconfig::Setting::TypeFloat)
+  {
+    double value = setting;
+    dump_name(stream, prefix, name, " = ");
+    stream << fmt::format("{}", value);
+  }
+  else if (type == libconfig::Setting::TypeString)
+  {
+    // Conversion through const char * to avoid ambiguity
+    const char* tmp = setting;
+    const std::string value = tmp;
+    dump_name(stream, prefix, name, " = ");
+    stream << "\"" << value << "\"";
+  }
+  else if (type == libconfig::Setting::TypeBoolean)
+  {
+    const bool value = setting;
+    dump_name(stream, prefix, name, " = ");
+    stream << (value ? "true" : "false");
+  }
+  else
+  {
+    // Error: unknown type
+    dump_name(stream, prefix, name, " = ");
+    stream << '?';
+    return false;
+  }
+  return true;
+}
+}  // namespace
+
 void ConfigBase::dump_setting(std::ostream& stream,
                               const libconfig::Setting& setting,
                               std::size_t offset)
@@ -151,101 +255,13 @@ void ConfigBase::dump_setting(std::ostream& stream,
     int type = setting.getType();
 
     if (type == libconfig::Setting::TypeGroup)
-    {
-      stream << prefix;
-      if (name)
-        stream << name << ": ";
-      stream << "{\n";
-      int N = setting.getLength();
-      for (int i = 0; i < N; i++)
-      {
-        dump_setting(stream, setting[i], offset + 4);
-        if (i < N + 1)
-          stream << "\n";
-      }
-      stream << prefix << "}";
-    }
+      dump_group(stream, setting, prefix, name, offset);
     else if (type == libconfig::Setting::TypeList)
-    {
-      stream << prefix;
-      if (name)
-        stream << name << ": ";
-      stream << "(\n";
-      int N = setting.getLength();
-      for (int i = 0; i < N; i++)
-      {
-        if (i > 0)
-          stream << ",\n";
-        dump_setting(stream, setting[i], offset + 4);
-      }
-      stream << '\n' << prefix << ')';
-    }
+      dump_sequence(stream, setting, prefix, name, offset, '(', ')');
     else if (type == libconfig::Setting::TypeArray)
-    {
-      stream << prefix;
-      if (name)
-        stream << name << ": ";
-      stream << "[\n";
-      int N = setting.getLength();
-      for (int i = 0; i < N; i++)
-      {
-        if (i > 0)
-          stream << ",\n";
-        dump_setting(stream, setting[i], offset + 4);
-      }
-      stream << '\n' << prefix << ']';
-    }
-    else if (type == libconfig::Setting::TypeInt)
-    {
-      int value = setting;
-      stream << prefix;
-      if (name)
-        stream << name << " = ";
-      stream << value;
-    }
-    else if (type == libconfig::Setting::TypeInt64)
-    {
-      long long value = setting;
-      stream << prefix;
-      if (name)
-        stream << name << " = ";
-      stream << value;
-    }
-    else if (type == libconfig::Setting::TypeFloat)
-    {
-      double value = setting;
-      stream << prefix;
-      if (name)
-        stream << name << " = ";
-      stream << fmt::format("{}", value);
-    }
-    else if (type == libconfig::Setting::TypeString)
-    {
-      // Conversion through const char * to avoid ambiguity
-      const char* tmp = setting;
-      const std::string value = tmp;
-      stream << prefix;
-      if (name)
-        stream << name << " = ";
-      stream << "\"" << value << "\"";
-    }
-    else if (type == libconfig::Setting::TypeBoolean)
-    {
-      const bool value = setting;
-      stream << prefix;
-      if (name)
-        stream << name << " = ";
-      stream << (value ? "true" : "false");
-    }
-    else
-    {
-      // Error: unknown type
-      stream << prefix;
-      if (name)
-        stream << name << " = ";
-      stream << '?';
-      return;
-    }
+      dump_sequence(stream, setting, prefix, name, offset, '[', ']');
+    else if (!dump_scalar(stream, setting, prefix, name))
+      return;  // Error: unknown type
 
     if (name)
     {
@@ -333,6 +349,100 @@ libconfig::Setting* ConfigBase::find_setting(libconfig::Setting& search_start,
   return find_setting_impl(search_start, path, mandatory, 5);
 }
 
+// Find the setting named by a single part of a path, or nullptr if an optional setting
+// does not exist
+libconfig::Setting* ConfigBase::find_path_part(libconfig::Setting& curr_setting,
+                                               libconfig::Setting& search_start,
+                                               const std::string& path,
+                                               const std::string& name,
+                                               bool mandatory) const
+{
+  namespace qi = boost::spirit::qi;
+  namespace ns = boost::spirit::standard;
+  namespace bl = boost::lambda;
+
+  libconfig::Setting* curr = &curr_setting;
+  int ind = 0;
+
+  if (curr->isScalar())
+  {
+    throw Fmi::Exception(BCP, "Incorrect path!")
+        .addParameter("Configuration file", file_name)
+        .addParameter("Path", format_path(&search_start, path))
+        .addDetail(curr->getPath() + "' is scalar");
+  }
+
+  if (qi::phrase_parse(name.begin(),
+                       name.end(),
+                       qi::char_('[') >> qi::int_[bl::var(ind) = bl::_1] >> qi::char_(']'),
+                       ns::space))
+  {
+    if (curr->isGroup())
+    {
+      throw Fmi::Exception(BCP, "Incorrect path!")
+          .addParameter("Path", format_path(&search_start, path))
+          .addDetail(curr->getPath() + "' is group when array or list is expected");
+    }
+
+    if (ind < 0 or ind >= curr->getLength())
+    {
+      if (!mandatory)
+        return nullptr;
+
+      throw Fmi::Exception(BCP, "Index in path is out of range!")
+          .addParameter("Configuration file", file_name)
+          .addParameter("Path", format_path(&search_start, path))
+          .addParameter("Index", std::to_string(ind))
+          .addParameter("Range", "0 .. " + std::to_string(curr->getLength() - 1));
+    }
+
+    return &(*curr)[ind];
+  }
+
+  if (!curr->isGroup())
+  {
+    throw Fmi::Exception(BCP, "Incorrect path!")
+        .addParameter("Configuration file", file_name)
+        .addParameter("Path", format_path(curr, name))
+        .addDetail(curr->getPath() + "' is not a group");
+  }
+
+  if (curr->exists(name))
+    return &(*curr)[name.c_str()];
+
+  if (mandatory)
+  {
+    throw Fmi::Exception(BCP, "Path not found!")
+        .addParameter("Configuration file", file_name)
+        .addParameter("Path", format_path(curr, name));
+  }
+  return nullptr;
+}
+
+// Follow a %[path] redirection of a string setting
+libconfig::Setting* ConfigBase::follow_redirection(libconfig::Setting* curr,
+                                                   bool mandatory,
+                                                   int max_depth) const
+{
+  const char* content = *curr;
+  if (strncasecmp(content, "%[", 2) != 0)
+    return curr;
+
+  const char* end = std::strrchr(content + 2, ']');
+  if (!end or strcmp(end, "]") != 0)
+    return curr;
+
+  if (max_depth >= 0)
+  {
+    std::string redirect(content + 2, end);
+    return find_setting_impl(itsConfig->getRoot(), redirect, mandatory, max_depth - 1);
+  }
+
+  throw Fmi::Exception(BCP, "Configuration parameter redirection depth exceeded")
+      .addParameter("Configuration file", file_name)
+      .addParameter("Path", format_path(curr, config_name));
+}
+
 libconfig::Setting* ConfigBase::find_setting_impl(libconfig::Setting& search_start,
                                                   const std::string& path,
                                                   bool mandatory,
@@ -341,9 +451,6 @@ libconfig::Setting* ConfigBase::find_setting_impl(libconfig::Setting& search_sta
   try
   {
     namespace ba = boost::algorithm;
-    namespace qi = boost::spirit::qi;
-    namespace ns = boost::spirit::standard;
-    namespace bl = boost::lambda;
 
     libconfig::Setting* curr = &search_start;
 
@@ -351,93 +458,13 @@ libconfig::Setting* ConfigBase::find_setting_impl(libconfig::Setting& search_sta
     ba::split(parts, path, ba::is_any_of(".:/"), ba::token_compress_on);
     for (const auto& name : parts)
     {
-      int ind = 0;
-
-      if (curr->isScalar())
-      {
-        throw Fmi::Exception(BCP, "Incorrect path!")
-            .addParameter("Configuration file", file_name)
-            .addParameter("Path", format_path(&search_start, path))
-            .addDetail(curr->getPath() + "' is scalar");
-      }
-
-      if (qi::phrase_parse(name.begin(),
-                           name.end(),
-                           qi::char_('[') >> qi::int_[bl::var(ind) = bl::_1] >> qi::char_(']'),
-                           ns::space))
-      {
-        if (curr->isGroup())
-        {
-          throw Fmi::Exception(BCP, "Incorrect path!")
-              .addParameter("Path", format_path(&search_start, path))
-              .addDetail(curr->getPath() + "' is group when array or list is expected");
-        }
-
-        if (ind < 0 or ind >= curr->getLength())
-        {
-          if (!mandatory)
-            return nullptr;
-
-          throw Fmi::Exception(BCP, "Index in path is out of range!")
-              .addParameter("Configuration file", file_name)
-              .addParameter("Path", format_path(&search_start, path))
-              .addParameter("Index", std::to_string(ind))
-              .addParameter("Range", "0 .. " + std::to_string(curr->getLength() - 1));
-        }
-
-        curr = &(*curr)[ind];
-      }
-      else
-      {
-        if (curr->isGroup())
-        {
-          if (curr->exists(name))
-          {
-            curr = &(*curr)[name.c_str()];
-          }
-          else if (mandatory)
-          {
-            throw Fmi::Exception(BCP, "Path not found!")
-                .addParameter("Configuration file", file_name)
-                .addParameter("Path", format_path(curr, name));
-          }
-          else
-          {
-            return nullptr;
-          }
-        }
-        else
-        {
-          throw Fmi::Exception(BCP, "Incorrect path!")
-              .addParameter("Configuration file", file_name)
-              .addParameter("Path", format_path(curr, name))
-              .addDetail(curr->getPath() + "' is not a group");
-        }
-      }
+      curr = find_path_part(*curr, search_start, path, name, mandatory);
+      if (curr == nullptr)
+        return nullptr;
     }
 
     if (curr and curr->isScalar() and curr->getType() == libconfig::Setting::TypeString)
-    {
-      const char* content = *curr;
-      if (strncasecmp(content, "%[", 2) == 0)
-      {
-        const char* end = std::strrchr(content + 2, ']');
-        if (end and strcmp(end, "]") == 0)
-        {
-          if (max_depth >= 0)
-          {
-            std::string redirect(content + 2, end);
-            curr = find_setting_impl(itsConfig->getRoot(), redirect, mandatory, max_depth - 1);
-          }
-          else
-          {
-            throw Fmi::Exception(BCP, "Configuration parameter redirection depth exceeded")
-                .addParameter("Configuration file", file_name)
-                .addParameter("Path", format_path(curr, config_name));
-          }
-        }
-      }
-    }
+      curr = follow_redirection(curr, mandatory, max_depth);
 
     return curr;
   }
