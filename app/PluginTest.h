@@ -69,6 +69,41 @@ class PluginTest
                      SmartMet::Spine::Reactor& reactor,
                      IgnoreMap& ignores) const;
 
+  // Terminal colors of the test output
+  struct OutputColors
+  {
+    std::string fg_fn;
+    std::string fg_red;
+    std::string fg_green;
+    std::string fg_default;
+  };
+
+  bool run_query(const std::filesystem::path& fn,
+                 SmartMet::Spine::Reactor& reactor,
+                 IgnoreMap& ignores,
+                 SmartMet::Spine::HTTP::Request& request,
+                 std::ostream& out,
+                 const OutputColors& colors) const;
+
+  bool validate_result(const std::filesystem::path& fn,
+                       std::string& result,
+                       const std::string& time_str,
+                       std::ostream& out,
+                       const OutputColors& colors) const;
+
+  bool validate_with_regex(const std::filesystem::path& fn,
+                           const std::filesystem::path& regexfile,
+                           const std::string& result,
+                           const std::string& time_str,
+                           std::ostream& out,
+                           const OutputColors& colors) const;
+
+  bool validate_with_output(const std::filesystem::path& fn,
+                            const std::string& result,
+                            const std::string& time_str,
+                            std::ostream& out,
+                            const OutputColors& colors) const;
+
   std::unique_ptr<boost::regex> filter;
   std::vector<std::string> read_ignore_list(const std::string& dir) const;
   static std::vector<std::string> read_ignore_file(const std::string& fn);

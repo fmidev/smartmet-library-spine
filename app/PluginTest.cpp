@@ -317,6 +317,57 @@ bool get_processed_response(const std::filesystem::path& scriptfile, std::string
   }
 }
 
+// Normalize the newlines of GET and OPTIONS requests
+std::string normalize_request_input(const std::filesystem::path& inputfile, std::string input)
+{
+  // emacs keeps messing up the newlines, easier to make sure
+  // the ending is correct this way, but do NOT touch POST queries
+  //
+  // NOTE: content after headers is not supported for GET and OPTIONS methods
+  //
+  if (boost::algorithm::ends_with(inputfile.string(), ".get") or
+      boost::algorithm::ends_with(inputfile.string(), ".options"))
+  {
+    std::vector<std::string> lines;
+    ba::split(lines, input, ba::is_any_of("\r\n"), ba::token_compress_on);
+    input = ba::trim_copy(ba::join(lines, "\r\n")) + "\r\n\r\n";
+  }
+  return input;
+}
+
+// The response as text for comparison with the expected result
+std::string format_response(SmartMet::Spine::HTTP::Response& response,
+                            SmartMet::Spine::HTTP::RequestMethod method)
+{
+  switch (method)
+  {
+    default:
+      return get_full_response(response);
+
+    case SmartMet::Spine::HTTP::RequestMethod::OPTIONS:
+      response.removeHeader("Date");
+      return response.toString();
+  }
+}
+
+// The response status and the listed response headers
+std::string test_headers_prefix(const std::string& test_headers,
+                                const SmartMet::Spine::HTTP::Response& response)
+{
+  std::string prefix = fmt::format("Status: {}\n", response.getStatusString());
+  std::vector<std::string> names;
+  boost::algorithm::split(names, test_headers, boost::algorithm::is_any_of(","));
+  for (auto name : names)
+  {
+    boost::algorithm::trim(name);
+    if (name.empty())
+      continue;
+    const auto value = response.getHeader(name);
+    prefix += fmt::format("{}: {}\n", name, value ? *value : std::string("(none)"));
+  }
+  return prefix;
+}
+
 } // anonymous namespace
 
 namespace SmartMet
@@ -441,10 +492,14 @@ bool PluginTest::process_query(const fs::path& fn,
   using std::filesystem::path;
 
   const bool is_tty = isatty(fileno(stdout));
-  const std::string fg_fn = is_tty ? ANSI_FG_CYAN : "";
-  const std::string fg_red = is_tty ? ANSI_FG_RED : "";
-  const std::string fg_green = is_tty ? ANSI_FG_GREEN : "";
-  const std::string fg_default = is_tty ? ANSI_FG_DEFAULT : "";
+  OutputColors colors;
+  colors.fg_fn = is_tty ? ANSI_FG_CYAN : "";
+  colors.fg_red = is_tty ? ANSI_FG_RED : "";
+  colors.fg_green = is_tty ? ANSI_FG_GREEN : "";
+  colors.fg_default = is_tty ? ANSI_FG_DEFAULT : "";
+  const std::string& fg_fn = colors.fg_fn;
+  const std::string& fg_red = colors.fg_red;
+  const std::string& fg_default = colors.fg_default;
 
   path inputfile(mInputDir);
   inputfile /= fn;
@@ -455,20 +510,7 @@ bool PluginTest::process_query(const fs::path& fn,
 
   out << fg_fn << fn.native() << fg_default << ' ' << std::setw(dots) << std::setfill('.') << ". ";
 
-  std::string input = get_file_contents(inputfile);
-
-  // emacs keeps messing up the newlines, easier to make sure
-  // the ending is correct this way, but do NOT touch POST queries
-  //
-  // NOTE: content after headers is not supported for GET and OPTIONS methods
-  //
-  if (boost::algorithm::ends_with(inputfile.string(), ".get") or
-      boost::algorithm::ends_with(inputfile.string(), ".options"))
-  {
-    std::vector<std::string> lines;
-    ba::split(lines, input, ba::is_any_of("\r\n"), ba::token_compress_on);
-    input = ba::trim_copy(ba::join(lines, "\r\n")) + "\r\n\r\n";
-  }
+  std::string input = normalize_request_input(inputfile, get_file_contents(inputfile));
 
   auto query = SmartMet::Spine::HTTP::parseRequest(input);
 
@@ -485,168 +527,7 @@ bool PluginTest::process_query(const fs::path& fn,
   {
     try
     {
-      SmartMet::Spine::HTTP::Response response;
-
-      const auto start_time = std::chrono::system_clock::now();
-
-      auto* view = reactor.getHandlerView(*query.second);
-      if (!view)
-      {
-        ok = false;
-        out << fg_red << "FAILED TO HANDLE REQUEST STRING" << fg_default;
-      }
-      else
-      {
-        auto ignores_it = ignores.find(fn.string());
-        bool filter_ok = not filter or boost::regex_search(fn.string(), *filter);
-        if (ignores_it != ignores.end())
-        {
-          ignores_it->second.found = true;
-          ok = true;
-          out << "IGNORED IN THIS SETUP";
-          if (!ignores_it->second.description.empty())
-          {
-            out << ": " << ignores_it->second.description;
-          }
-        }
-        else if (not filter_ok)
-        {
-          ok = true;
-          out << "IGNORED BY FILTER";
-        }
-        else
-        {
-          view->handle(reactor, *query.second, response);
-
-          const auto done_time = std::chrono::system_clock::now();
-          const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(done_time - start_time)
-                                    .count();
-          const std::string time_str = fmt::format("{:6.3f}", 0.001*duration);
-
-          std::string result;
-
-          switch (query.second->getMethod())
-          {
-            default:
-              result = get_full_response(response);
-              break;
-
-            case HTTP::RequestMethod::OPTIONS:
-              response.removeHeader("Date");
-              result = response.toString();
-              break;
-          }
-
-          // Optionally validate the status and selected headers too: a request header
-          // "X-Test-Headers: Content-Type,Link" prepends the response status and the listed
-          // response headers to the result. An empty list prepends the status only.
-          //
-          if (const auto test_headers = query.second->getHeader("X-Test-Headers"))
-          {
-            std::string prefix = fmt::format("Status: {}\n", response.getStatusString());
-            std::vector<std::string> names;
-            boost::algorithm::split(names, *test_headers, boost::algorithm::is_any_of(","));
-            for (auto name : names)
-            {
-              boost::algorithm::trim(name);
-              if (name.empty())
-                continue;
-              const auto value = response.getHeader(name);
-              prefix += fmt::format("{}: {}\n", name, value ? *value : std::string("(none)"));
-            }
-            result = prefix + "\n" + result;
-          }
-
-          // Run script/executable to process the result (e.g. convert binary to ascii) for
-          // validation
-          //
-          path scriptfile = path("scripts") / fn;
-
-          if (exists(scriptfile))
-          {
-            ok = get_processed_response(scriptfile, result);
-
-            if (!ok)
-              out << fg_red << "FAIL" << fg_default << "  " << time_str << "s "
-                  << fg_red << "(result processing failed)" << fg_default;
-          }
-
-          // Responses which vary by environment (versions, paths, timestamps) can be
-          // validated with a regular expression instead: output/<test>.regex must match
-          // the full result. Perl syntax in free-spacing mode, so the pattern may span
-          // several lines and contain # comments, and literal spaces must be escaped.
-          //
-          const path regexfile = path(mOutputDir) / (fn.native() + ".regex");
-
-          if (ok && exists(regexfile))
-          {
-            const path failure_fn = path(mFailDir) / fn;
-            try
-            {
-              const boost::regex pattern(get_file_contents(regexfile),
-                                         boost::regex::perl | boost::regex::mod_x);
-              if (boost::regex_match(result, pattern))
-                out << fg_green << "OK  " << fg_default << "  " << time_str << "s";
-              else
-              {
-                ok = false;
-                std::filesystem::create_directories(failure_fn.parent_path());
-                put_file_contents(failure_fn, result);
-                out << fg_red << "FAIL" << fg_default << "  " << time_str
-                    << "s  (result does not match '" << regexfile.string() << "', see '"
-                    << failure_fn.string() << "')";
-              }
-            }
-            catch (const boost::regex_error& e)
-            {
-              ok = false;
-              out << fg_red << "FAIL" << fg_default << "  " << time_str << "s  (invalid regex in '"
-                  << regexfile.string() << "': " << e.what() << ")";
-            }
-          }
-          else if (ok)
-          {
-            path outputfile = path(mOutputDir) / fn;
-            path failure_fn = path(mFailDir) / fn;
-
-            if (!Fmi::LegacyMode())
-            {
-              path wgs84outputfile = path(mOutputDir) / (fn.native() + ".wgs84");
-              if (exists(wgs84outputfile))
-              {
-                outputfile = wgs84outputfile;
-                failure_fn = path(mFailDir) / (fn.native() + ".wgs84");
-              }
-            }
-
-            const auto real_output_file = Fmi::lookup_file(outputfile.string());
-            if (real_output_file)
-            {
-              std::string output = get_file_contents(*real_output_file);
-
-              if (result == output)
-                out << fg_green << "OK  " << fg_default << "  " << time_str << "s";
-              else
-              {
-                ok = false;
-                out << fg_red << "FAIL" << fg_default << "  " << time_str << "s";
-                std::filesystem::create_directories(failure_fn.parent_path());
-                put_file_contents(failure_fn, result);
-                out << get_diff(outputfile.string(), failure_fn.string());
-              }
-            }
-            else
-            {
-              ok = false;
-              std::filesystem::create_directories(failure_fn.parent_path());
-              put_file_contents(failure_fn, result);
-              out << fg_red << "FAIL" << fg_default << "  " << time_str
-                  << "  (expected result file '" << fg_red << outputfile.string()
-                  << fg_default << "' missing)";
-            }
-          }
-        }
-      }
+      ok = run_query(fn, reactor, ignores, *query.second, out, colors);
       std::cout << out.str() + "\n" << std::flush;
     }
     catch (std::exception& e)
@@ -671,6 +552,199 @@ bool PluginTest::process_query(const fs::path& fn,
     std::cout << out.str() + fg_red + "PARSED REQUEST ONLY PARTIALLY\n" + fg_default << std::flush;
   }
   return ok;
+}
+
+// Run a parsed test query unless it is ignored, and validate the result
+bool PluginTest::run_query(const fs::path& fn,
+                           SmartMet::Spine::Reactor& reactor,
+                           IgnoreMap& ignores,
+                           SmartMet::Spine::HTTP::Request& request,
+                           std::ostream& out,
+                           const OutputColors& colors) const
+{
+  SmartMet::Spine::HTTP::Response response;
+
+  const auto start_time = std::chrono::system_clock::now();
+
+  auto* view = reactor.getHandlerView(request);
+  if (!view)
+  {
+    out << colors.fg_red << "FAILED TO HANDLE REQUEST STRING" << colors.fg_default;
+    return false;
+  }
+
+  auto ignores_it = ignores.find(fn.string());
+  bool filter_ok = not filter or boost::regex_search(fn.string(), *filter);
+  if (ignores_it != ignores.end())
+  {
+    ignores_it->second.found = true;
+    out << "IGNORED IN THIS SETUP";
+    if (!ignores_it->second.description.empty())
+    {
+      out << ": " << ignores_it->second.description;
+    }
+    return true;
+  }
+
+  if (not filter_ok)
+  {
+    out << "IGNORED BY FILTER";
+    return true;
+  }
+
+  view->handle(reactor, request, response);
+
+  const auto done_time = std::chrono::system_clock::now();
+  const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(done_time - start_time)
+                            .count();
+  const std::string time_str = fmt::format("{:6.3f}", 0.001*duration);
+
+  std::string result = format_response(response, request.getMethod());
+
+  // Optionally validate the status and selected headers too: a request header
+  // "X-Test-Headers: Content-Type,Link" prepends the response status and the listed
+  // response headers to the result. An empty list prepends the status only.
+  //
+  if (const auto test_headers = request.getHeader("X-Test-Headers"))
+    result = test_headers_prefix(*test_headers, response) + "\n" + result;
+
+  return validate_result(fn, result, time_str, out, colors);
+}
+
+// Validate the result of a test query
+bool PluginTest::validate_result(const fs::path& fn,
+                                 std::string& result,
+                                 const std::string& time_str,
+                                 std::ostream& out,
+                                 const OutputColors& colors) const
+{
+  using std::filesystem::path;
+
+  const std::string& fg_red = colors.fg_red;
+  const std::string& fg_default = colors.fg_default;
+
+  bool ok = true;
+
+  // Run script/executable to process the result (e.g. convert binary to ascii) for
+  // validation
+  //
+  path scriptfile = path("scripts") / fn;
+
+  if (exists(scriptfile))
+  {
+    ok = get_processed_response(scriptfile, result);
+
+    if (!ok)
+      out << fg_red << "FAIL" << fg_default << "  " << time_str << "s "
+          << fg_red << "(result processing failed)" << fg_default;
+  }
+
+  // Responses which vary by environment (versions, paths, timestamps) can be
+  // validated with a regular expression instead: output/<test>.regex must match
+  // the full result. Perl syntax in free-spacing mode, so the pattern may span
+  // several lines and contain # comments, and literal spaces must be escaped.
+  //
+  const path regexfile = path(mOutputDir) / (fn.native() + ".regex");
+
+  if (ok && exists(regexfile))
+    return validate_with_regex(fn, regexfile, result, time_str, out, colors);
+
+  if (ok)
+    return validate_with_output(fn, result, time_str, out, colors);
+
+  return ok;
+}
+
+// Validate the result of a test query with a regular expression
+bool PluginTest::validate_with_regex(const fs::path& fn,
+                                     const fs::path& regexfile,
+                                     const std::string& result,
+                                     const std::string& time_str,
+                                     std::ostream& out,
+                                     const OutputColors& colors) const
+{
+  using std::filesystem::path;
+
+  const std::string& fg_red = colors.fg_red;
+  const std::string& fg_green = colors.fg_green;
+  const std::string& fg_default = colors.fg_default;
+
+  const path failure_fn = path(mFailDir) / fn;
+  try
+  {
+    const boost::regex pattern(get_file_contents(regexfile),
+                               boost::regex::perl | boost::regex::mod_x);
+    if (boost::regex_match(result, pattern))
+    {
+      out << fg_green << "OK  " << fg_default << "  " << time_str << "s";
+      return true;
+    }
+
+    std::filesystem::create_directories(failure_fn.parent_path());
+    put_file_contents(failure_fn, result);
+    out << fg_red << "FAIL" << fg_default << "  " << time_str
+        << "s  (result does not match '" << regexfile.string() << "', see '"
+        << failure_fn.string() << "')";
+    return false;
+  }
+  catch (const boost::regex_error& e)
+  {
+    out << fg_red << "FAIL" << fg_default << "  " << time_str << "s  (invalid regex in '"
+        << regexfile.string() << "': " << e.what() << ")";
+    return false;
+  }
+}
+
+// Validate the result of a test query against the expected output file
+bool PluginTest::validate_with_output(const fs::path& fn,
+                                      const std::string& result,
+                                      const std::string& time_str,
+                                      std::ostream& out,
+                                      const OutputColors& colors) const
+{
+  using std::filesystem::path;
+
+  const std::string& fg_red = colors.fg_red;
+  const std::string& fg_green = colors.fg_green;
+  const std::string& fg_default = colors.fg_default;
+
+  path outputfile = path(mOutputDir) / fn;
+  path failure_fn = path(mFailDir) / fn;
+
+  if (!Fmi::LegacyMode())
+  {
+    path wgs84outputfile = path(mOutputDir) / (fn.native() + ".wgs84");
+    if (exists(wgs84outputfile))
+    {
+      outputfile = wgs84outputfile;
+      failure_fn = path(mFailDir) / (fn.native() + ".wgs84");
+    }
+  }
+
+  const auto real_output_file = Fmi::lookup_file(outputfile.string());
+  if (!real_output_file)
+  {
+    std::filesystem::create_directories(failure_fn.parent_path());
+    put_file_contents(failure_fn, result);
+    out << fg_red << "FAIL" << fg_default << "  " << time_str
+        << "  (expected result file '" << fg_red << outputfile.string()
+        << fg_default << "' missing)";
+    return false;
+  }
+
+  std::string output = get_file_contents(*real_output_file);
+
+  if (result == output)
+  {
+    out << fg_green << "OK  " << fg_default << "  " << time_str << "s";
+    return true;
+  }
+
+  out << fg_red << "FAIL" << fg_default << "  " << time_str << "s";
+  std::filesystem::create_directories(failure_fn.parent_path());
+  put_file_contents(failure_fn, result);
+  out << get_diff(outputfile.string(), failure_fn.string());
+  return false;
 }
 
 std::vector<std::string> PluginTest::read_ignore_list(const std::string& dir) const
