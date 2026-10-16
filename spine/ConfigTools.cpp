@@ -165,7 +165,7 @@ std::string variable_value(const libconfig::Config& theConfig,
   {
     const auto& setting = theConfig.lookup(var);
     if (setting.getType() != libconfig::Setting::TypeString)
-      throw Fmi::Exception(BCP, "Value for setting " + varValue + " must be a string");
+      throw Fmi::Exception(BCP, "Value for setting " + var + " must be a string");
     varValue = setting.c_str();
   }
   else
