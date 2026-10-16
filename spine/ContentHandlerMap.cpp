@@ -379,12 +379,12 @@ try
         }
         erased++;
       }
+    }
 
-      if (erased && curr->second.empty())
-      {
-        itsAdminRequestHandlers.erase(curr);
-        count += erased;
-      }
+    if (erased && curr->second.empty())
+    {
+      itsAdminRequestHandlers.erase(curr);
+      count += erased;
     }
   }
 
