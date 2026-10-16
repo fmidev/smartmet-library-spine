@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.16
-Release: 4%{?dist}.fmi
+Release: 5%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Oct 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.16-5.fmi
+- Data explorer: extra columns chosen by group (the data, the location, the station, the time
+  and the sun), and for grid producers the details of the data of each parameter (@AT-N model
+  run, @L-N level, @FN-N member, @LATLON-N grid point, ...) shown with its series
 * Fri Oct 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.16-4.fmi
 - Data explorer: producers of the same name from several sources are told apart and
   requested with source; model details for grid producers (model run, geometry, level type,

@@ -450,22 +450,87 @@ function autocomplete(options)
 // ------------------------------------------------------------------
 
 // Meta parameters every producer has
-const META_PARAMETERS = [
-  ['name', 'Location name'],
-  ['time', 'Time'],
-  ['lat', 'Latitude'],
-  ['lon', 'Longitude'],
-  ['latlon', 'Latitude and longitude'],
-  ['geoid', 'Location id'],
-  ['fmisid', 'FMI station id'],
-  ['wmo', 'WMO station id'],
-  ['elevation', 'Elevation of the location'],
-  ['stationname', 'Name of the observation station'],
-  ['distance', 'Distance to the station'],
-  ['origintime', 'Origin time of the model run'],
-  ['level', 'Level'],
-  ['producer', 'Producer of the value'],
-  ['localtime', 'Local time']
+// The parameters of the TimeSeries API that are not data, by what they tell; sources limits a
+// group to producers of those sources
+const META_GROUPS = [
+  {
+    title: 'The data',
+    sources: ['querydata', 'grid'],
+    params: [
+      ['producer', 'Producer of the value'],
+      ['model', 'Model of the value'],
+      ['origintime', 'Origin time of the model run'],
+      ['modtime', 'Modification time of the data'],
+      ['level', 'Level']
+    ]
+  },
+  {
+    title: 'The location',
+    params: [
+      ['name', 'Location name'],
+      ['lat', 'Latitude'],
+      ['lon', 'Longitude'],
+      ['latlon', 'Latitude and longitude'],
+      ['geoid', 'Location id'],
+      ['elevation', 'Elevation of the location'],
+      ['dem', 'Elevation from the elevation model'],
+      ['region', 'Region'],
+      ['country', 'Country'],
+      ['iso2', 'Country code'],
+      ['localtz', 'Time zone of the location'],
+      ['population', 'Population']
+    ]
+  },
+  {
+    title: 'The station',
+    sources: ['observation'],
+    params: [
+      ['fmisid', 'FMI station id'],
+      ['wmo', 'WMO station id'],
+      ['lpnn', 'LPNN station id'],
+      ['stationname', 'Name of the observation station'],
+      ['stationlat', 'Latitude of the station'],
+      ['stationlon', 'Longitude of the station'],
+      ['station_elevation', 'Elevation of the station'],
+      ['distance', 'Distance to the station'],
+      ['direction', 'Direction to the station'],
+      ['stationtype', 'Type of the station'],
+      ['modifiedlast', 'Last modification of the value']
+    ]
+  },
+  {
+    title: 'The time and the sun',
+    params: [
+      ['time', 'Time'],
+      ['localtime', 'Local time'],
+      ['epochtime', 'Seconds since 1970'],
+      ['weekday', 'Day of the week'],
+      ['sunelevation', 'Elevation angle of the sun'],
+      ['sunazimuth', 'Azimuth of the sun'],
+      ['dark', 'Dark (1) or light (0)'],
+      ['sunrise', 'Time of sunrise'],
+      ['sunset', 'Time of sunset'],
+      ['daylength', 'Length of the day'],
+      ['moonphase', 'Phase of the moon']
+    ]
+  }
+];
+
+const META_PARAMETERS = META_GROUPS.flatMap((g) => g.params);
+
+// The details of the grid data of a column N, requested as @code-N
+const GRID_DETAILS = [
+  ['AT', 'model run', 'Analysis time of the model run'],
+  ['LT', 'level type', 'Level type'],
+  ['L', 'level', 'Level in the units of parameter keys'],
+  ['FT', 'forecast type', 'Forecast type'],
+  ['FN', 'member', 'Forecast (ensemble member) number'],
+  ['GM', 'geometry', 'Geometry id of the grid'],
+  ['P', 'producer', 'Producer'],
+  ['G', 'generation', 'Generation (model run) name'],
+  ['I', 'parameter key', 'The full parameter key'],
+  ['F', 'file', 'The grid file'],
+  ['LATLON', 'grid point', 'Coordinates of the grid point(s) used']
 ];
 const META = new Map(META_PARAMETERS);
 
@@ -2323,10 +2388,40 @@ function timeSeriesModule(app, api, state, save)
     }
 
     // What the columns of the response stand for, when they are not named by the parameter
+    // The details of the grid data of each data column: @code-N, where N is the index of the
+    // column in the parameter list
+    function gridDetailColumns(params, columns)
+    {
+      const p = producer();
+      const codes =
+          String(s.details || '').split(',').filter((c) => GRID_DETAILS.some((d) => d[0] === c));
+      if (!p || p.source !== 'grid' || codes.length === 0)
+        return [];
+      const out = [];
+      params.forEach((param, index) => {
+        const c = columns.find((x) => x.column === param);
+        if (!c)
+          return;
+        for (const code of codes)
+        {
+          const def = GRID_DETAILS.find((d) => d[0] === code);
+          out.push({
+            column: `@${code}-${index}`,
+            response: `@${code}-${index}`,
+            name: `${c.name} ${def[1]}`,
+            variant: c.variant
+          });
+        }
+      });
+      return out;
+    }
+
     function variantColumns()
     {
       const columns = new Map();
-      for (const c of [...dataColumns(), ...qualityColumns()])
+      const requested = (requestParams().find(([k]) => k === 'param') || [])[1] || '';
+      const details = gridDetailColumns(String(requested).split(','), dataColumns());
+      for (const c of [...dataColumns(), ...qualityColumns(), ...details])
         if (c.response !== c.name || c.variant)
           columns.set(c.response, {name: c.name, variant: c.variant});
       return columns;
@@ -2447,7 +2542,8 @@ function timeSeriesModule(app, api, state, save)
                    'sensors',
                    'quality',
                    'qfilter',
-                   'qc'])
+                   'qc',
+                   'details'])
         delete s[k];
     }
 
@@ -3048,6 +3144,67 @@ function timeSeriesModule(app, api, state, save)
     const groupLocations = () => serverStatistics() && ['keyword', 'fmisid'].includes(s.locmode);
     const serverStatistics = () => isArea() && areaValuesOf() === 'statistics';
 
+    // Extra columns: the meta parameters by group, and the details of the grid data
+    const extraGroups = el('div', {class: 'extra-groups'});
+    const extraDetails =
+        el('details', {class: 'extra-columns'}, el('summary', null, 'Extra columns'), extraGroups);
+    const toggleButton = (label, title, pressed, onclick, data) =>
+        el('button',
+           Object.assign(
+               {
+                 type: 'button',
+                 class: 'small',
+                 title,
+                 'aria-pressed': pressed ? 'true' : 'false',
+                 onclick
+               },
+               data),
+           label);
+    function renderExtraColumns()
+    {
+      const p = producer();
+      const source = p ? p.source : '';
+      const groups = [];
+      for (const g of META_GROUPS)
+      {
+        if (g.sources && !g.sources.includes(source))
+          continue;
+        // The name, time and coordinates are always requested
+        const buttons =
+            g.params.filter(([key]) => !['name', 'time', 'lat', 'lon'].includes(key))
+                .map(([key, desc]) => toggleButton(key, desc, s.params.includes(key), () => {
+                       s.params = s.params.includes(key) ? s.params.filter((x) => x !== key) :
+                                                           [...s.params, key];
+                       refresh();
+                     }, {'data-meta': key}));
+        groups.push(
+            el('div',
+               {class: 'extra-group'},
+               el('div', {class: 'muted small'}, g.title),
+               el('div', {class: 'level-buttons'}, buttons)));
+      }
+      if (source === 'grid')
+      {
+        const chosen = new Set(String(s.details || '').split(',').filter(Boolean));
+        const buttons = GRID_DETAILS.map(
+            ([code, label, desc]) =>
+                toggleButton(label, `${desc} (@${code}-N)`, chosen.has(code), () => {
+                  if (chosen.has(code))
+                    chosen.delete(code);
+                  else
+                    chosen.add(code);
+                  s.details = GRID_DETAILS.map((d) => d[0]).filter((c) => chosen.has(c)).join(',');
+                  refresh();
+                }, {'data-detail': code}));
+        groups.push(
+            el('div',
+               {class: 'extra-group'},
+               el('div', {class: 'muted small'}, 'Details of the grid data of each parameter'),
+               el('div', {class: 'level-buttons'}, buttons)));
+      }
+      extraGroups.replaceChildren(...groups);
+    }
+
     const langInput =
         el('input', {type: 'text', 'aria-label': 'Language', placeholder: 'fi, sv, en', size: 6});
     langInput.addEventListener('input', () => {
@@ -3099,11 +3256,12 @@ function timeSeriesModule(app, api, state, save)
             ...level,
             ...s.params.flatMap((p) => (META.has(p) ? [p] : columnsOf(p)))
           ]));
+      const details = gridDetailColumns(params, columns);
       return [
         ['producer', s.producer],
         ['source', sourceOption()],
         ['origintime', producer() && producer().source === 'grid' ? s.run || '' : ''],
-        ['param', params.join(',')],
+        ['param', [...params, ...details.map((d) => d.column)].join(',')],
         ['levels', grid ? '' : chosenLevels().map((v) => v.value).join(',')],
         ['data_quality', qualityOption()],
         ['starttime', fromInput(s.start)],
@@ -3298,6 +3456,7 @@ function timeSeriesModule(app, api, state, save)
         modelSearch.element.hidden = false;
       }
       renderDetails();
+      renderExtraColumns();
       // Times
       startInput.value = s.start || '';
       endInput.value = s.end || '';
@@ -3386,7 +3545,8 @@ function timeSeriesModule(app, api, state, save)
            section(
                'Output',
                areaValuesRow,
-               el('div', {class: 'row'}, el('label', null, 'Language of the names', langInput)))),
+               el('div', {class: 'row'}, el('label', null, 'Language of the names', langInput)),
+               extraDetails)),
         el('div',
            {class: 'request'},
            el('div', {class: 'url-row'}, urlBox, copyUrl),

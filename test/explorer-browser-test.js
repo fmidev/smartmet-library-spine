@@ -228,6 +228,8 @@ function timeseries(query)
           row.lat = 60 + l * 0.1;
         else if (p === 'lon')
           row.lon = 25 + l * 0.05;
+        else if (p.startsWith('@'))
+          row[p] = p.startsWith('@AT') ? '20261016T000000' : 1;
         else if (/:qc\)$|^qc_/.test(p))
           row[responseColumn(p)] = 1;
         else
@@ -1118,6 +1120,38 @@ async function main()
     const heights = await b.evaluate(
         `[...document.querySelectorAll('[data-level]')].map((x) => x.dataset.level)`);
     check('another level type', JSON.stringify(heights) === JSON.stringify(['2', '10']), heights);
+
+    // The details of the grid data of each column, and other extra columns
+    await b.evaluate(`(() => {
+      document.querySelector('.extra-columns').open = true;
+      document.querySelector('[data-detail="AT"]').click();
+    })()`);
+    await sleep(100);
+    await b.evaluate(`document.querySelector('[data-detail="FN"]').click()`);
+    await sleep(100);
+    await b.evaluate(`document.querySelector('[data-meta="sunelevation"]').click()`);
+    await sleep(300);
+    const dq = await currentQuery(b);
+    const dparams = dq.get('param').split(',');
+    const keyIndexes =
+        dparams.map((p, i) => (p.startsWith('T-K:ENS') ? i : -1)).filter((i) => i >= 0);
+    check(
+        'grid details of each data column',
+        keyIndexes.length > 0 && dparams.includes('sunelevation') &&
+            keyIndexes.every((i) => dparams.includes(`@AT-${i}`) && dparams.includes(`@FN-${i}`)) &&
+            dparams.filter((p) => p.startsWith('@')).length === 2 * keyIndexes.length,
+        dparams);
+    const extraGroups = await b.evaluate(
+        `[...document.querySelectorAll('.extra-group > .muted')].map((x) => x.textContent)`);
+    check(
+        'extra columns of a grid producer',
+        JSON.stringify(extraGroups) === JSON.stringify([
+          'The data',
+          'The location',
+          'The time and the sun',
+          'Details of the grid data of each parameter'
+        ]),
+        extraGroups);
     const helpers = await b.evaluate(`(() => {
       const E = SmartMetExplorer;
       return { list: E.parseNumberList('3-1, 7', [0, 1, 2, 3, 4, 5, 6]), bad: E.parseNumberList('x', [1]),
