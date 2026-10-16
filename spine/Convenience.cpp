@@ -530,6 +530,109 @@ std::string log_time_str()
   }
 }
 
+namespace
+{
+// Format an integral std::any value, false if the value is not integral
+bool integral_any_to_string(const std::any& anyvalue, std::string& retval)
+{
+  const std::type_info& type = anyvalue.type();
+  if (type == typeid(short))
+    retval = Fmi::to_string(std::any_cast<short>(anyvalue));
+  else if (type == typeid(unsigned short))
+    retval = Fmi::to_string(static_cast<int>(std::any_cast<unsigned short>(anyvalue)));
+  else if (type == typeid(int))
+    retval = Fmi::to_string(std::any_cast<int>(anyvalue));
+  else if (type == typeid(unsigned int))
+    retval = Fmi::to_string(std::any_cast<unsigned int>(anyvalue));
+  else if (type == typeid(long))
+    retval = Fmi::to_string(std::any_cast<long>(anyvalue));
+  else if (type == typeid(unsigned long))
+    retval = Fmi::to_string(std::any_cast<unsigned long>(anyvalue));
+  else if (type == typeid(long long))
+    retval = std::to_string(std::any_cast<long long>(anyvalue));
+  else if (type == typeid(unsigned long long))
+    retval = std::to_string(std::any_cast<unsigned long long>(anyvalue));
+  else
+    return false;
+  return true;
+}
+
+// Format a floating point std::any value, false if the value is not floating point
+bool floating_any_to_string(const std::any& anyvalue,
+                            const Fmi::ValueFormatter& vf,
+                            int precision,
+                            std::string& retval)
+{
+  const std::type_info& type = anyvalue.type();
+  if (type == typeid(float))
+  {
+    auto floatvalue = std::any_cast<float>(anyvalue);
+    retval = vf.format(static_cast<double>(floatvalue), precision);
+  }
+  else if (type == typeid(double))
+  {
+    auto doublevalue = std::any_cast<double>(anyvalue);
+    retval = vf.format(doublevalue, precision);
+  }
+  else if (type == typeid(long double))
+  {
+    auto doublevalue = static_cast<double>(std::any_cast<long double>(anyvalue));
+    retval = vf.format(doublevalue, precision);
+  }
+  else
+    return false;
+  return true;
+}
+
+// Format a vector of std::any values, in brackets if there are several values
+std::string any_vector_to_string(const std::vector<std::any>& anyvector,
+                                 const Fmi::ValueFormatter& vf,
+                                 int precision)
+{
+  std::string retval;
+
+  bool matrix_data(anyvector.size() > 1);
+  if (matrix_data)
+    retval.append("[");
+
+  for (const auto& value : anyvector)
+  {
+    if ((matrix_data && retval.size() > 1) || (!matrix_data && !retval.empty()))
+      retval.append(" ");
+    retval.append(boost_any_to_string(value, vf, precision));
+  }
+
+  if (matrix_data)
+    retval.append("]");
+
+  return retval;
+}
+
+// Format a string, coordinate pair or vector std::any value, throws for other types
+std::string other_any_to_string(const std::any& anyvalue,
+                                const Fmi::ValueFormatter& vf,
+                                int precision)
+{
+  const std::type_info& type = anyvalue.type();
+  if (type == typeid(std::string))
+    return std::any_cast<std::string>(anyvalue);
+
+  if (type == typeid(std::pair<double, double>))
+  {
+    auto value = std::any_cast<std::pair<double, double> >(anyvalue);
+    std::string retval = vf.format(value.first, precision);
+    retval += ',';
+    retval += vf.format(value.second, precision);
+    return retval;
+  }
+
+  if (type == typeid(std::vector<std::any>))
+    return any_vector_to_string(std::any_cast<std::vector<std::any> >(anyvalue), vf, precision);
+
+  throw Fmi::Exception(BCP, "Unknown std::any datatype: " + std::string(type.name()));
+}
+}  // namespace
+
 std::string boost_any_to_string(const std::any& anyvalue)
 {
   try
@@ -565,70 +668,9 @@ std::string boost_any_to_string(const std::any& anyvalue,
 
     if (type == typeid(char*))
       retval = std::any_cast<const char*>(anyvalue);
-    else if (type == typeid(short))
-      retval = Fmi::to_string(std::any_cast<short>(anyvalue));
-    else if (type == typeid(unsigned short))
-      retval = Fmi::to_string(static_cast<int>(std::any_cast<unsigned short>(anyvalue)));
-    else if (type == typeid(int))
-      retval = Fmi::to_string(std::any_cast<int>(anyvalue));
-    else if (type == typeid(unsigned int))
-      retval = Fmi::to_string(std::any_cast<unsigned int>(anyvalue));
-    else if (type == typeid(long))
-      retval = Fmi::to_string(std::any_cast<long>(anyvalue));
-    else if (type == typeid(unsigned long))
-      retval = Fmi::to_string(std::any_cast<unsigned long>(anyvalue));
-    else if (type == typeid(long long))
-      retval = std::to_string(std::any_cast<long long>(anyvalue));
-    else if (type == typeid(unsigned long long))
-      retval = std::to_string(std::any_cast<unsigned long long>(anyvalue));
-    else if (type == typeid(float))
-    {
-      auto floatvalue = std::any_cast<float>(anyvalue);
-      retval = vf.format(static_cast<double>(floatvalue), precision);
-    }
-    else if (type == typeid(double))
-    {
-      auto doublevalue = std::any_cast<double>(anyvalue);
-      retval = vf.format(doublevalue, precision);
-    }
-    else if (type == typeid(long double))
-    {
-      auto doublevalue = static_cast<double>(std::any_cast<long double>(anyvalue));
-      retval = vf.format(doublevalue, precision);
-    }
-    else if (type == typeid(std::string))
-    {
-      retval = std::any_cast<std::string>(anyvalue);
-    }
-    else if (type == typeid(std::pair<double, double>))
-    {
-      auto value = std::any_cast<std::pair<double, double> >(anyvalue);
-      retval = vf.format(value.first, precision);
-      retval += ',';
-      retval += vf.format(value.second, precision);
-    }
-    else if (type == typeid(std::vector<std::any>))
-    {
-      auto anyvector = std::any_cast<std::vector<std::any> >(anyvalue);
-
-      bool matrix_data(anyvector.size() > 1);
-      if (matrix_data)
-        retval.append("[");
-
-      for (const auto& value : anyvector)
-      {
-        if ((matrix_data && retval.size() > 1) || (!matrix_data && !retval.empty()))
-          retval.append(" ");
-        retval.append(boost_any_to_string(value, vf, precision));
-      }
-
-      if (matrix_data)
-        retval.append("]");
-    }
-    else
-    {
-      throw Fmi::Exception(BCP, "Unknown std::any datatype: " + std::string(type.name()));
-    }
+    else if (!integral_any_to_string(anyvalue, retval) &&
+             !floating_any_to_string(anyvalue, vf, precision, retval))
+      retval = other_any_to_string(anyvalue, vf, precision);
 
     if (retval.empty() && !(type == typeid(char*) || type == typeid(std::string)))
       retval = vf.missing();
