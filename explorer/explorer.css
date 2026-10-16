@@ -132,6 +132,10 @@ label > input, label > select { color: var(--fg); font-size: 15px; }
 .model-details { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .model-details [hidden], .model-details[hidden] { display: none; }
 .model-details select, .model-details input { max-width: 100%; }
+.agg-details { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.agg-details[hidden], .agg-details [hidden] { display: none; }
+label.check { flex-direction: row; align-items: center; gap: 6px; }
+.agg-summary { margin: 0; padding-left: 1.2em; color: var(--muted); }
 .level-buttons { display: flex; flex-wrap: wrap; gap: 4px; max-height: 9em; overflow-y: auto; }
 .level-buttons button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .model-head { display: flex; gap: 8px; align-items: center; }

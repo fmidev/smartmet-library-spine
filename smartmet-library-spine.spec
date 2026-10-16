@@ -177,6 +177,11 @@ make %{_smp_mflags}
   requested with source; model details for grid producers (model run, geometry, level type,
   levels, ensemble forecast and members) build the parameter keys, with a series per level
   and member; querydata levels are chosen with the levels option
+- Data explorer: values over a period (mean, minimum, maximum, sum, median, percentile, ...)
+  with the function recommended for each kind of parameter (sums of amounts, circular means
+  of directions, warnings for categories), the periods counting the data step right
+- Data explorer: observation sensors (a series each), quality code filters and the quality
+  codes in the table
 * Fri Oct 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.16-3.fmi
 - Data explorer at /api/explorer: TimeSeries queries built from the producer metadata with
   parameter and producer autocomplete narrowing each other, default times from the data,

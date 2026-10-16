@@ -52,7 +52,7 @@ const producers = {
       name: 'pal',
       source: 'querydata',
       title: 'Pal Skandinavia',
-      parameters: ['humidity', 'temperature'],
+      parameters: ['humidity', 'temperature', 'precipitation1h', 'wavedirection'],
       bbox: [5, 51, 49, 72],
       time: {start: iso(now - 6 * hour), end: iso(now.getTime() + 60 * hour), step: 60}
     },
@@ -89,7 +89,10 @@ const producers = {
   parameters: {
     temperature: {name: 'Temperature', description: 'Air temperature', unit: 'C'},
     humidity: {name: 'Humidity', description: 'Relative humidity', unit: '%'},
-    windspeedms: {name: 'WindSpeedMS', description: 'Wind speed'}
+    windspeedms: {name: 'WindSpeedMS', description: 'Wind speed'},
+    precipitation1h:
+        {name: 'Precipitation1h', description: 'Precipitation in one hour', unit: 'mm'},
+    wavedirection: {name: 'WaveDirection', description: 'Direction of the waves', unit: 'deg'}
   }
 };
 
@@ -190,6 +193,16 @@ function statisticRows(params)
   return rows;
 }
 
+// The column of a parameter as the server names it: the sensor number and the quality code
+// are appended to observation parameters
+function responseColumn(p)
+{
+  const m = /\(:(\d+)(:qc)?\)/.exec(p);
+  if (m)
+    return `${p}_#${m[1]}${m[2] ? '_qc' : ''}`;
+  return p.startsWith('qc_') ? `${p}_qc` : p;
+}
+
 function timeseries(query)
 {
   const params = (query.get('param') || '').split(',');
@@ -215,8 +228,10 @@ function timeseries(query)
           row.lat = 60 + l * 0.1;
         else if (p === 'lon')
           row.lon = 25 + l * 0.05;
+        else if (/:qc\)$|^qc_/.test(p))
+          row[responseColumn(p)] = 1;
         else
-          row[p] = 10 + l * 0.1 + i;
+          row[responseColumn(p)] = 10 + l * 0.1 + i + (p.includes('(:11)') ? 0.5 : 0);
       }
       list.push(row);
     }
@@ -874,6 +889,136 @@ async function main()
               !chosen.text.includes('null'),
           chosen);
     }
+
+    // Values over a period: the function recommended for each kind of parameter
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {
+      url: `${
+          base}/api/explorer#api=/timeseries&producer=pal&source=querydata&params=temperature,precipitation1h,wavedirection&locmode=place&location=Helsinki`
+    });
+    await waitFor(b, `!!document.querySelector('[data-agg="period"]')`, 'the period choices');
+    await b.evaluate(`document.querySelector('[data-agg="period"]').click()`);
+    await sleep(200);
+    await b.evaluate(`(() => {
+      const select = document.querySelector('[aria-label="Period"]');
+      select.value = "1440";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    })()`);
+    await sleep(300);
+    let aq = await currentQuery(b);
+    const aggSummary = await b.evaluate(
+        `[...document.querySelectorAll('.agg-summary li')].map((x) => x.textContent)`);
+    check(
+        'recommended functions over a period',
+        aq.get('param') ===
+                'name,time,lat,lon,mean_t(temperature/1380m/0m),sum_t(precipitation1h/1380m/0m),' +
+                    'meandir_t(wavedirection/1380m/0m)' &&
+            aq.get('timestep') === '1440' &&
+            aggSummary.includes(
+                'precipitation1h: sum of the 24 hours ending at each time (amount)') &&
+            !aggSummary.some((x) => x.includes('means nothing')),
+        {param: aq.get('param'), timestep: aq.get('timestep'), aggSummary});
+    await b.evaluate(`document.querySelector('button.primary').click()`);
+    await waitFor(b, `document.querySelectorAll('.chart canvas').length >= 3`, 'the period charts');
+    const periodCharts =
+        await b.evaluate(`[...document.querySelectorAll('.chart')].map((c) => c.dataset.param)`);
+    check(
+        'charts of the period values',
+        JSON.stringify(periodCharts) ===
+            JSON.stringify(['temperature', 'precipitation1h', 'wavedirection']),
+        periodCharts);
+    await b.evaluate(`(() => {
+      const select = document.querySelector('[aria-label="Function"]');
+      select.value = "sum";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    })()`);
+    await sleep(300);
+    const sumWarnings = await b.evaluate(
+        `[...document.querySelectorAll('.agg-summary li.warn')].map((x) => x.textContent)`);
+    check(
+        'warnings of unsuitable functions',
+        sumWarnings.length === 2 &&
+            sumWarnings[0] === 'temperature is not an amount: its sum means nothing' &&
+            sumWarnings[1].startsWith('wavedirection is a direction'),
+        sumWarnings);
+    await b.evaluate(`(() => {
+      const select = document.querySelector('[aria-label="Function"]');
+      select.value = "percentile";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      const window = document.querySelector('[aria-label="Period placement"]');
+      window.value = "centre";
+      window.dispatchEvent(new Event("change", { bubbles: true }));
+    })()`);
+    await sleep(300);
+    aq = await currentQuery(b);
+    check(
+        'percentile centred on the times',
+        aq.get('param').includes('percentile_t[90](temperature/720m/720m)') &&
+            await b.evaluate(
+                `!document.querySelector('[aria-label="Percentile"]').closest('label').hidden`),
+        aq.get('param'));
+    await setMode(b, 'radius');
+    await setLocation(b, '24.9,60.2:20');
+    aq = await currentQuery(b);
+    check(
+        'period values inside the area statistics',
+        aq.get('param').includes('nanmedian_a(percentile_t[90](temperature/720m/720m))'),
+        aq.get('param'));
+
+    // Observations: the sensors, a filter of the quality codes and the codes themselves
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {
+      url: `${
+          base}/api/explorer#api=/timeseries&producer=opendata&source=observation&params=temperature&locmode=fmisid&location=101004`
+    });
+    await waitFor(
+        b,
+        `!!document.querySelector('[aria-label="Sensors"]') && document.querySelector('[aria-label="Sensors"]').offsetParent !== null`,
+        'the observation choices');
+    await b.evaluate(`(() => {
+      const input = document.querySelector('[aria-label="Sensors"]');
+      input.value = "1, 11";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    })()`);
+    await sleep(500);
+    await b.evaluate(`(() => {
+      const select = document.querySelector('[aria-label="Quality"]');
+      select.value = "custom";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    })()`);
+    await sleep(200);
+    await b.evaluate(`(() => {
+      const input = document.querySelector('[aria-label="Quality filter"]');
+      input.value = "le 1";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      document.querySelector('[aria-label="Quality codes"]').click();
+    })()`);
+    await sleep(500);
+    const oq = await currentQuery(b);
+    check(
+        'sensors and quality in the request',
+        oq.get('param') ===
+                'name,time,lat,lon,temperature(:1),temperature(:11),temperature(:1:qc),' +
+                    'temperature(:11:qc)' &&
+            oq.get('data_quality') === 'le 1',
+        oq.toString());
+    await b.evaluate(`document.querySelector('button.primary').click()`);
+    await waitFor(b, `document.querySelectorAll('.chart canvas').length >= 1`, 'the sensor chart');
+    const sensorSeries = await b.evaluate(
+        `[...document.querySelectorAll('.chart[data-param="temperature"] .u-legend .u-series')].map((x) => x.textContent)`);
+    const sensorTable = await b.evaluate(`(() => {
+      [...document.querySelectorAll('.results-head .tabs button')].find((x) => x.textContent === "Table").click();
+      return { head: [...document.querySelectorAll('table.data th')].map((th) => th.textContent),
+               rows: document.querySelectorAll('table.data tbody tr').length };
+    })()`);
+    check(
+        'a series per sensor, the codes in the table',
+        sensorSeries.some((x) => x.includes('sensor 1')) &&
+            sensorSeries.some((x) => x.includes('sensor 11')) &&
+            sensorTable.head.includes('temperature quality') && sensorTable.rows === 12,
+        {sensorSeries, sensorTable});
 
     // The levels of a querydata producer are requested with the levels option
     await b.send('Page.navigate', {url: `${base}/api`});

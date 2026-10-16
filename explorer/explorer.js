@@ -228,6 +228,73 @@ function splitVariants(rows, columns)
   return out;
 }
 
+// What kind of quantity a parameter is, for choosing how its values are aggregated over time:
+// 'amount' (precipitation and other accumulations: summed), 'direction' (mean of angles),
+// 'category' (symbols and classes: not to be averaged), 'maximum', 'minimum' or 'state'
+// (temperature, humidity, ...: averaged). info is what the grid details tell of the parameter.
+function parameterKind(key, entry, info)
+{
+  const name = `${key} ${(entry && entry.name) || ''}`.toLowerCase();
+  const text = `${name} ${(entry && entry.description) || ''}`.toLowerCase();
+  const unit = ((entry && entry.unit) || '').toLowerCase();
+  const aggregation = info && info.aggregation ? info.aggregation.name : '';
+  if (aggregation === 'accumulation')
+    return 'amount';
+  if (aggregation === 'max')
+    return 'maximum';
+  if (aggregation === 'min')
+    return 'minimum';
+  if (/^deg$|^degrees?$|^°$/.test(unit) || /direction|winddir|^dd\b|\bdd-d\b/.test(text))
+    return 'direction';
+  if (/symbol|wawa|\bww\b|class|type\b|\bcode\b|form\b|fogint|cldsym/.test(text))
+    return 'category';
+  if (/precipitation|rainfall|snowfall|precip|\brr\b|\brrr|accum|amount/.test(text) ||
+      /^mm$|^kg m-2$|^kg\/m2$|^kgm2$/.test(unit) || /-(mm|kgm2)\b/.test(name))
+    return 'amount';
+  if (/gust|maximum|\bmax|tmax|-max/.test(text))
+    return 'maximum';
+  if (/minimum|\bmin|tmin|-min/.test(text))
+    return 'minimum';
+  return 'state';
+}
+
+// The functions over a period offered by the explorer: label, the TimeSeries function, and
+// for directions its circular variant
+const TIME_FUNCTIONS = [
+  ['mean', 'Mean', 'mean_t', 'meandir_t'],
+  ['min', 'Minimum', 'min_t'],
+  ['max', 'Maximum', 'max_t'],
+  ['sum', 'Sum', 'sum_t'],
+  ['median', 'Median', 'median_t'],
+  ['percentile', 'Percentile', 'percentile_t'],
+  ['sdev', 'Standard deviation', 'sdev_t', 'sdevdir_t'],
+  ['change', 'Change', 'change_t']
+];
+
+// The function recommended for a kind of parameter
+const RECOMMENDED_FUNCTION = {
+  amount: 'sum',
+  direction: 'mean',
+  category: 'max',
+  maximum: 'max',
+  minimum: 'min',
+  state: 'mean'
+};
+
+// Why a function does not suit a kind of parameter, or ''
+function functionWarning(fn, kind)
+{
+  if (kind === 'category' && fn !== 'max' && fn !== 'min')
+    return 'is a category: its mean or sum means nothing, the maximum gives the most severe class';
+  if (kind === 'direction' && (fn === 'sum' || fn === 'change'))
+    return 'is a direction: its sum or change means nothing';
+  if (kind === 'amount' && fn === 'mean')
+    return 'is an amount: the sum gives the total of the period';
+  if (kind !== 'amount' && fn === 'sum')
+    return 'is not an amount: its sum means nothing';
+  return '';
+}
+
 // "1-3,7" -> [1, 2, 3, 7], limited to the allowed numbers; null if the text is not a list
 function parseNumberList(text, allowed)
 {
@@ -1980,6 +2047,8 @@ function timeSeriesModule(app, api, state, save)
   {
     view.replaceChildren();
     const s = state;
+    // Typing stores the value at once and redraws the request a moment later
+    const refreshSoon = debounce(() => refresh(false), 300);
     s.params = s.params || [];
 
     // --- What: parameters and model --------------------------------
@@ -2116,6 +2185,23 @@ function timeSeriesModule(app, api, state, save)
       return list || [];
     };
 
+    // The sensors of observations: the numbers chosen, empty for the default sensor; null if the
+    // text is not a list
+    const isObservation = () => {
+      const p = producer();
+      return !!p && p.source === 'observation';
+    };
+    const SENSOR_NUMBERS = Array.from({length: 1000}, (_, i) => i);
+    const chosenSensors = () =>
+        (isObservation() && s.sensors ? parseNumberList(s.sensors, SENSOR_NUMBERS) : []);
+    const qualityOption = () => {
+      if (!isObservation())
+        return '';
+      if (s.quality === 'all')
+        return 'ge 0';
+      return s.quality === 'custom' ? s.qfilter || '' : '';
+    };
+
     // At most this many parameter keys in a request
     const MAX_KEYS = 200;
 
@@ -2179,21 +2265,70 @@ function timeSeriesModule(app, api, state, save)
       return out.slice(0, MAX_KEYS);
     }
 
-    // What the columns of a grid request stand for
-    function variantColumns()
+    // The data columns of the request: [{column, name, variant}], where the column is what is
+    // requested (a parameter or grid key, maybe inside a time function and an area statistic)
+    // and the name and variant what it stands for
+    function dataColumns()
     {
       const grid = gridColumns();
-      if (!grid)
-        return null;
-      const columns = new Map();
-      for (const c of grid)
+      const sensors = chosenSensors() || [];
+      const out = [];
+      for (const name of dataParams())
       {
-        columns.set(c.key, {name: c.name, variant: c.variant});
-        for (const [, , fn] of AREA_STATISTICS)
-          columns.set(
-              statisticParameter(fn, c.key),
-              {name: statisticParameter(fn, c.name), variant: c.variant});
+        const tf = timeFunction(name);
+        // The server names the column of a sensor by appending its number
+        let bases = [{key: name, variant: '', suffix: ''}];
+        if (grid)
+          bases = grid.filter((c) => c.name === name);
+        else if (sensors.length > 0)
+          bases = sensors.map(
+              (n) => ({key: `${name}(:${n})`, variant: `sensor ${n}`, suffix: `_#${n}`}));
+        for (const b of bases)
+        {
+          const column = tf ? tf.expression(b.key) : b.key;
+          const suffix = b.suffix || '';
+          if (serverStatistics())
+            for (const [, , fn] of AREA_STATISTICS)
+              out.push({
+                column: statisticParameter(fn, column),
+                response: statisticParameter(fn, column) + suffix,
+                name: statisticParameter(fn, name),
+                variant: b.variant
+              });
+          else
+            out.push({column, response: column + suffix, name, variant: b.variant});
+        }
       }
+      return out;
+    }
+
+    // The quality codes of observations, shown in the table
+    function qualityColumns()
+    {
+      if (!isObservation() || s.qc !== '1' || serverStatistics())
+        return [];
+      const sensors = chosenSensors() || [];
+      return dataParams().flatMap((name) => {
+        if (sensors.length === 0)
+          return [
+            {column: `qc_${name}`, response: `qc_${name}_qc`, name: `${name} quality`, variant: ''}
+          ];
+        return sensors.map((n) => ({
+                             column: `${name}(:${n}:qc)`,
+                             response: `${name}(:${n}:qc)_#${n}_qc`,
+                             name: `${name} quality`,
+                             variant: `sensor ${n}`
+                           }));
+      });
+    }
+
+    // What the columns of the response stand for, when they are not named by the parameter
+    function variantColumns()
+    {
+      const columns = new Map();
+      for (const c of [...dataColumns(), ...qualityColumns()])
+        if (c.response !== c.name || c.variant)
+          columns.set(c.response, {name: c.name, variant: c.variant});
       return columns;
     }
 
@@ -2302,7 +2437,17 @@ function timeSeriesModule(app, api, state, save)
 
     function resetDetails()
     {
-      for (const k of ['run', 'geometry', 'leveltype', 'levels', 'forecast', 'members'])
+      for (const k
+               of ['run',
+                   'geometry',
+                   'leveltype',
+                   'levels',
+                   'forecast',
+                   'members',
+                   'sensors',
+                   'quality',
+                   'qfilter',
+                   'qc'])
         delete s[k];
     }
 
@@ -2318,6 +2463,34 @@ function timeSeriesModule(app, api, state, save)
         {type: 'text', 'aria-label': 'Members', spellcheck: 'false', placeholder: 'e.g. 1-10, 15'});
     const membersNote = el('p', {class: 'muted small'});
     const detailsNote = el('p', {class: 'muted small'});
+    // Observations: the sensors and the quality of the values
+    const sensorsInput = el('input', {
+      type: 'text',
+      'aria-label': 'Sensors',
+      spellcheck: 'false',
+      placeholder: 'the default sensor, or e.g. 1, 11'
+    });
+    const sensorsNote = el('p', {class: 'muted small'});
+    const qualitySelect = el('select', {'aria-label': 'Quality'}, [
+      ['', 'The default filter of the server'],
+      ['all', 'All values, whatever their quality'],
+      ['custom', 'A filter of the quality codes']
+    ].map(([v, label]) => el('option', {value: v}, label)));
+    const qualityInput = el('input', {
+      type: 'text',
+      'aria-label': 'Quality filter',
+      spellcheck: 'false',
+      placeholder: 'e.g. le 1, or in 0,1'
+    });
+    const qualityCodes = el('input', {type: 'checkbox', 'aria-label': 'Quality codes'});
+    const sensorsRow = el('div', null, el('label', null, 'Sensors', sensorsInput), sensorsNote);
+    const qualityRow =
+        el('div',
+           {class: 'row'},
+           el('label', null, 'Quality', qualitySelect),
+           el('label', null, 'Filter', qualityInput));
+    const qualityCodesRow =
+        el('label', {class: 'check'}, qualityCodes, 'Show the quality codes in the table');
     const runRow = el('label', null, 'Model run', runSelect);
     const geometryRow = el('label', null, 'Geometry', geometrySelect);
     const levelTypeRow = el('label', null, 'Level type', levelTypeSelect);
@@ -2333,7 +2506,26 @@ function timeSeriesModule(app, api, state, save)
            levelsRow,
            forecastRow,
            membersRow,
+           sensorsRow,
+           qualityRow,
+           qualityCodesRow,
            detailsNote);
+    sensorsInput.addEventListener('input', () => {
+      s.sensors = sensorsInput.value.trim();
+      refreshSoon();
+    });
+    qualitySelect.addEventListener('change', () => {
+      s.quality = qualitySelect.value;
+      refresh();
+    });
+    qualityInput.addEventListener('input', () => {
+      s.qfilter = qualityInput.value.trim();
+      refreshSoon();
+    });
+    qualityCodes.addEventListener('change', () => {
+      s.qc = qualityCodes.checked ? '1' : '';
+      refresh();
+    });
 
     runSelect.addEventListener('change', () => {
       s.run = runSelect.value;
@@ -2353,10 +2545,10 @@ function timeSeriesModule(app, api, state, save)
       s.members = '';
       refresh();
     });
-    membersInput.addEventListener('input', debounce(() => {
-                                    s.members = membersInput.value.trim();
-                                    refresh(false);
-                                  }, 300));
+    membersInput.addEventListener('input', () => {
+      s.members = membersInput.value.trim();
+      refreshSoon();
+    });
 
     const options = (select, items, value) => {
       select.replaceChildren(
@@ -2457,6 +2649,28 @@ function timeSeriesModule(app, api, state, save)
             'Not a list of members: numbers and ranges separated by commas' :
             `${list.length} member${list.length === 1 ? '' : 's'}, a series each`;
       }
+      // Observations
+      const obs = isObservation();
+      sensorsRow.hidden = !obs;
+      qualityRow.hidden = !obs;
+      qualityCodesRow.hidden = !obs;
+      if (obs)
+      {
+        if (document.activeElement !== sensorsInput)
+          sensorsInput.value = s.sensors || '';
+        const sensors = s.sensors ? parseNumberList(s.sensors, SENSOR_NUMBERS) : [];
+        sensorsNote.textContent = sensors === null ?
+            'Not a list of sensors: numbers and ranges separated by commas' :
+            sensors.length === 0 ?
+            'The default sensor of each station' :
+            `${sensors.length} sensor${sensors.length === 1 ? '' : 's'}, a series each; ` +
+                'a sensor without values gives no rows';
+        qualitySelect.value = s.quality || '';
+        qualityInput.closest('label').hidden = s.quality !== 'custom';
+        if (document.activeElement !== qualityInput)
+          qualityInput.value = s.qfilter || '';
+        qualityCodes.checked = s.qc === '1';
+      }
       // What the data of the parameters is, and too large requests
       const notes = [];
       if (p && p.source === 'grid' && d === null)
@@ -2477,9 +2691,16 @@ function timeSeriesModule(app, api, state, save)
         notes.push(`Only the first ${MAX_KEYS} combinations of levels and members are requested`);
       detailsNote.textContent = notes.join(' · ');
       detailsNote.hidden = notes.length === 0;
-      detailsBox.hidden =
-          [runRow, geometryRow, levelTypeRow, levelsRow, forecastRow, membersRow, detailsNote]
-              .every((x) => x.hidden);
+      detailsBox.hidden = [
+        runRow,
+        geometryRow,
+        levelTypeRow,
+        levelsRow,
+        forecastRow,
+        membersRow,
+        sensorsRow,
+        detailsNote
+      ].every((x) => x.hidden);
     }
 
     // --- When ------------------------------------------------------
@@ -2492,6 +2713,7 @@ function timeSeriesModule(app, api, state, save)
       ['60', '1 hour'],
       ['180', '3 hours'],
       ['360', '6 hours'],
+      ['720', '12 hours'],
       ['1440', '1 day']
     ].map(([v, t]) => el('option', {value: v}, t)));
     const dataPeriod = el('span', {class: 'muted small'});
@@ -2567,6 +2789,133 @@ function timeSeriesModule(app, api, state, save)
       refresh();
     });
 
+    // --- Values over a period: the time functions, chosen per kind of parameter -----
+    const PERIODS = [
+      ['60', '1 hour'],
+      ['180', '3 hours'],
+      ['360', '6 hours'],
+      ['720', '12 hours'],
+      ['1440', '24 hours']
+    ];
+    const aggModes =
+        el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': 'Values over time'});
+    for (const [value, label] of [['', 'As in the data'], ['period', 'Over a period']])
+      aggModes.append(
+          el('button',
+             {
+               type: 'button',
+               role: 'radio',
+               'data-agg': value,
+               onclick: () => {
+                 s.agg = value;
+                 if (value)
+                   periodChanged();
+                 refresh();
+               }
+             },
+             label));
+    const periodSelect =
+        el('select',
+           {'aria-label': 'Period'},
+           PERIODS.map(([v, label]) => el('option', {value: v}, label)));
+    const windowSelect = el('select', {'aria-label': 'Period placement'}, [
+      ['end', 'ending at each time'],
+      ['centre', 'centred on each time'],
+      ['start', 'starting at each time']
+    ].map(([v, label]) => el('option', {value: v}, label)));
+    const functionSelect = el('select', {'aria-label': 'Function'}, [
+      ['auto', 'Recommended for each parameter'],
+      ...TIME_FUNCTIONS.map(([v, label]) => [v, label])
+    ].map(([v, label]) => el('option', {value: v}, label)));
+    const percentileInput = el(
+        'input', {type: 'number', min: 0, max: 100, step: 1, size: 4, 'aria-label': 'Percentile'});
+    const percentileLabel = el('label', null, 'Percentile', percentileInput);
+    const aggSummary = el('ul', {class: 'agg-summary small'});
+    const aggDetails = el(
+        'div',
+        {class: 'agg-details'},
+        el('div',
+           {class: 'row'},
+           el('label', null, 'Period', periodSelect),
+           el('label', null, 'Placement', windowSelect)),
+        el('div', {class: 'row'}, el('label', null, 'Function', functionSelect), percentileLabel),
+        aggSummary);
+    const aggRow = el('div', null, el('label', null, 'Values over time'), aggModes, aggDetails);
+
+    // A daily maximum is wanted once a day: the time step follows the period
+    function periodChanged()
+    {
+      const period = Number(s.period || 60);
+      if (!s.timestep || s.timestep === 'data' || Number(s.timestep) < period)
+        s.timestep = String(period);
+    }
+    periodSelect.addEventListener('change', () => {
+      s.period = periodSelect.value;
+      periodChanged();
+      refresh();
+    });
+    windowSelect.addEventListener('change', () => {
+      s.window = windowSelect.value;
+      refresh();
+    });
+    functionSelect.addEventListener('change', () => {
+      s.fn = functionSelect.value;
+      refresh();
+    });
+    percentileInput.addEventListener('input', () => {
+      s.pct = percentileInput.value;
+      refreshSoon();
+    });
+
+    const dataStep = () => {
+      const p = producer();
+      return p && p.time && p.time.step ? Number(p.time.step) : 0;
+    };
+
+    // The time function of a parameter: {fn, expression(base), text, warning}, or null for the
+    // values as they are
+    function timeFunction(name)
+    {
+      if (s.agg !== 'period')
+        return null;
+      const period = Number(s.period || 60);
+      const step = dataStep();
+      const entry = index.parameters.get(name);
+      const d = gridDetails();
+      const kind = parameterKind(name, entry, d && d.parameters ? d.parameters[name] : null);
+      const choice = !s.fn || s.fn === 'auto' ? RECOMMENDED_FUNCTION[kind] : s.fn;
+      const def = TIME_FUNCTIONS.find((f) => f[0] === choice) || TIME_FUNCTIONS[0];
+      const fn = kind === 'direction' && def[3] ? def[3] : def[2];
+      const pct =
+          Math.min(100, Math.max(0, Number(s.pct === undefined || s.pct === '' ? 90 : s.pct)));
+      const prefix = choice === 'percentile' ? `${fn}[${pct}]` : fn;
+      // The aggregator includes both ends of the interval: a period ending at a time leaves out
+      // the value at its start, so that 24 hourly values make a day
+      const span = Math.max(0, period - (step > 0 && step < period ? step : 0));
+      const window = s.window || 'end';
+      const [before, after] = window === 'end' ? [span, 0] :
+          window === 'start'                   ? [0, span] :
+                                                 [Math.floor(period / 2), Math.floor(period / 2)];
+      const label = (PERIODS.find((x) => x[0] === String(period)) || [null, `${period} min`])[1];
+      const what = choice === 'percentile' ? `${pct} % percentile` : def[1].toLowerCase();
+      const placement = window === 'end' ? 'ending at' :
+          window === 'start'             ? 'starting at' :
+                                           'centred on';
+      const warnings = [];
+      const warning = functionWarning(choice, kind);
+      if (warning)
+        warnings.push(`${name} ${warning}`);
+      if (step > 0 && step >= period)
+        warnings.push(
+            `the data has a value every ${step} min: a period of ${period} min has only one`);
+      return {
+        expression: (base) => `${prefix}(${base}/${before}m/${after}m)`,
+        text: `${name}: ${what} of the ${label} ${placement} each time${
+            kind === 'state' ? '' : ` (${kind})`}`,
+        warnings
+      };
+    }
+
     // --- Where -----------------------------------------------------
     s.locmode = s.locmode || 'place';
     const locInput = el('input', {type: 'text', 'aria-label': 'Location', spellcheck: 'false'});
@@ -2599,10 +2948,10 @@ function timeSeriesModule(app, api, state, save)
              },
              label));
     }
-    locInput.addEventListener('input', debounce(() => {
-                                s.location = locInput.value.trim();
-                                refresh(false);
-                              }, 300));
+    locInput.addEventListener('input', () => {
+      s.location = locInput.value.trim();
+      refreshSoon();
+    });
 
     // The locations of a place, keyword, station or area name on the map
     showButton.addEventListener('click', () => {
@@ -2701,10 +3050,10 @@ function timeSeriesModule(app, api, state, save)
 
     const langInput =
         el('input', {type: 'text', 'aria-label': 'Language', placeholder: 'fi, sv, en', size: 6});
-    langInput.addEventListener('input', debounce(() => {
-                                 s.lang = langInput.value.trim();
-                                 refresh(false);
-                               }, 300));
+    langInput.addEventListener('input', () => {
+      s.lang = langInput.value.trim();
+      refreshSoon();
+    });
 
     // --- Request and results ----------------------------------------
     const urlBox = el('code', {class: 'url'});
@@ -2726,7 +3075,11 @@ function timeSeriesModule(app, api, state, save)
       // have none: the server returns the coordinates of all the points.
       // The keys of a grid request, or the parameters and the levels option
       const grid = gridColumns();
-      const columnsOf = (p) => (grid ? grid.filter((c) => c.name === p).map((c) => c.key) : [p]);
+      const columns = dataColumns();
+      const quality = qualityColumns();
+      const columnsOf = (p) => [...columns, ...quality]
+                                   .filter((c) => c.name === p || c.name === `${p} quality`)
+                                   .map((c) => c.column);
       // The level column tells the levels apart when the request does not fix them
       const level =
           levelTypes().length > 0 && (!grid || grid.some((c) => !c.levelFixed)) ? ['level'] : [];
@@ -2736,8 +3089,7 @@ function timeSeriesModule(app, api, state, save)
             'time',
             ...level,
             ...s.params.filter((p) => META.has(p) && p !== 'lat' && p !== 'lon'),
-            ...dataParams().flatMap(columnsOf).flatMap(
-                (p) => AREA_STATISTICS.map(([, , fn]) => statisticParameter(fn, p)))
+            ...columns.map((c) => c.column)
           ])) :
           Array.from(new Set([
             'name',
@@ -2753,6 +3105,7 @@ function timeSeriesModule(app, api, state, save)
         ['origintime', producer() && producer().source === 'grid' ? s.run || '' : ''],
         ['param', params.join(',')],
         ['levels', grid ? '' : chosenLevels().map((v) => v.value).join(',')],
+        ['data_quality', qualityOption()],
         ['starttime', fromInput(s.start)],
         ['endtime', fromInput(s.end)],
         ['timestep', s.timestep],
@@ -2949,6 +3302,21 @@ function timeSeriesModule(app, api, state, save)
       startInput.value = s.start || '';
       endInput.value = s.end || '';
       stepSelect.value = s.timestep || 'data';
+      Array.from(aggModes.children)
+          .forEach(
+              (b) => b.setAttribute(
+                  'aria-checked', b.dataset.agg === (s.agg || '') ? 'true' : 'false'));
+      aggDetails.hidden = s.agg !== 'period';
+      periodSelect.value = s.period || '60';
+      windowSelect.value = s.window || 'end';
+      functionSelect.value = s.fn || 'auto';
+      percentileLabel.hidden = s.fn !== 'percentile';
+      if (document.activeElement !== percentileInput)
+        percentileInput.value = s.pct || '90';
+      const functions = dataParams().map(timeFunction).filter(Boolean);
+      aggSummary.replaceChildren(
+          ...functions.map((f) => el('li', null, f.text)),
+          ...functions.flatMap((f) => f.warnings).map((w) => el('li', {class: 'warn'}, w)));
       dataPeriod.textContent = p && timeRange(p) ? `Data: ${timeRange(p)}` : '';
       // Location
       Array.from(locModes.children)
@@ -3007,7 +3375,8 @@ function timeSeriesModule(app, api, state, save)
                   el('label', null, 'Start (UTC)', startInput),
                   el('label', null, 'End (UTC)', endInput)),
                el('div', {class: 'row'}, el('label', null, 'Step', stepSelect), dataPeriod),
-               presets),
+               presets,
+               aggRow),
            section(
                'Where',
                locModes,
@@ -3186,6 +3555,8 @@ function edrModule(app, api, state, save)
   {
     view.replaceChildren();
     const s = state;
+    // Typing stores the value at once and redraws the request a moment later
+    const refreshSoon = debounce(() => refresh(false), 300);
     s.params = s.params || [];
 
     const collection = () => index.producers.get(s.collection);
@@ -3333,10 +3704,10 @@ function edrModule(app, api, state, save)
       s.location = formatSelection(shape);
       refresh();
     });
-    locInput.addEventListener('input', debounce(() => {
-                                s.location = locInput.value.trim();
-                                refresh(false);
-                              }, 300));
+    locInput.addEventListener('input', () => {
+      s.location = locInput.value.trim();
+      refreshSoon();
+    });
     let locationsOf = null;  // the locations of the collection for a locations query
 
     function loadLocations()
@@ -3822,6 +4193,8 @@ function coveragesModule(app, api, state, save)
   {
     view.replaceChildren();
     const s = state;
+    // Typing stores the value at once and redraws the request a moment later
+    const refreshSoon = debounce(() => refresh(false), 300);
     s.params = s.params || [];
 
     // The parameters come from the schemas of the collections, four at a time
@@ -4014,10 +4387,10 @@ function coveragesModule(app, api, state, save)
       s.location = formatSelection(shape);
       refresh();
     });
-    locInput.addEventListener('input', debounce(() => {
-                                s.location = locInput.value.trim();
-                                refresh(false);
-                              }, 300));
+    locInput.addEventListener('input', () => {
+      s.location = locInput.value.trim();
+      refreshSoon();
+    });
     crsSelect.addEventListener('change', () => {
       s.crs = crsSelect.value === 'other' ? (crsInput.value.trim() || 'other') : crsSelect.value;
       refresh();
@@ -4451,6 +4824,7 @@ root.SmartMetExplorer = {
   buildEdrIndex,
   splitVariants,
   parseNumberList,
+  parameterKind,
   coverageRows,
   paletteColour,
   cellSize,
