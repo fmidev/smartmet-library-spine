@@ -385,6 +385,41 @@ void JSON::extract_set(const std::string& theName,
 
 namespace
 {
+// Is the value a reference of type ref:name or json:name
+bool is_reference(const Json::Value& value)
+{
+  if (!value.isString())
+    return false;
+  return (boost::algorithm::starts_with(value.asString(), "ref:") ||
+          boost::algorithm::starts_with(value.asString(), "json:"));
+}
+
+// Store the value to the dot separated path, creating the missing objects along the path
+void store_value(Json::Value& theJson, const std::string& path, const Json::Value& value)
+{
+  namespace ba = boost::algorithm;
+
+  Json::Value* json = &theJson;
+
+  std::vector<std::string> path_components;
+  ba::split(path_components, path, ba::is_any_of("."), ba::token_compress_on);
+
+  if (path_components.size() == 1)
+  {
+    (*json)[path] = value;
+  }
+  else
+  {
+    for (const auto& component : path_components)
+    {
+      if (!json->isMember(component))
+        (*json)[component] = Json::objectValue;
+      json = &(*json)[component];
+    }
+    (*json) = value;
+  }
+}
+
 void replaceFromJsonMap(Json::Value& theJson,
                         const std::map<std::string, Json::Value>& theParams,
                         const std::string& /* thePrefix */,
@@ -406,12 +441,7 @@ void replaceFromJsonMap(Json::Value& theJson,
       const auto& value = name_value.second;
 
       // Is the value a reference of type ref:name or json:name
-      bool value_is_reference = false;
-      if (value.isString())
-      {
-        value_is_reference = (boost::algorithm::starts_with(value.asString(), "ref:") ||
-                              boost::algorithm::starts_with(value.asString(), "json:"));
-      }
+      const bool value_is_reference = is_reference(value);
 
       bool process_value =
           (replaceReferences && value_is_reference) || (!replaceReferences && !value_is_reference);
@@ -444,25 +474,7 @@ void replaceFromJsonMap(Json::Value& theJson,
 
       // Now store the object following the remaining path.
 
-      namespace ba = boost::algorithm;
-
-      std::vector<std::string> path_components;
-      ba::split(path_components, path, ba::is_any_of("."), ba::token_compress_on);
-
-      if (path_components.size() == 1)
-      {
-        (*json)[path] = value;
-      }
-      else
-      {
-        for (const auto& component : path_components)
-        {
-          if (!json->isMember(component))
-            (*json)[component] = Json::objectValue;
-          json = &(*json)[component];
-        }
-        (*json) = value;
-      }
+      store_value(*json, path, value);
     }
   }
   catch (...)
