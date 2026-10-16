@@ -546,8 +546,6 @@ std::string Value::to_string() const
 {
   try
   {
-    namespace ba = boost::algorithm;
-
     switch (data.index())
     {
       case TI_EMPTY:
