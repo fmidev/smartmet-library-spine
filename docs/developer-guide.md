@@ -386,7 +386,11 @@ Most plugins produce tables of values:
   producer, the locations of a place, keyword, station or area name and of the results,
   and lets the user click a point, drag a radius or drag a box; a selected area narrows the
   producers to those covering it. Area and radius results, whose values TimeSeries returns
-  as lists, are split into a row per point. The state is kept in the URL fragment, so a query can be shared as a
+  as lists, are split into a row per point.
+  For areas, radii, boxes and (grouped with `grouplocations=1`) keywords and station lists,
+  the server can compute the median and the percentiles instead (`nanpercentile_a[p]`,
+  `nanmedian_a`), which scales to large areas; "Every point" fetches all the values for the
+  swarm. The state is kept in the URL fragment, so a query can be shared as a
   link. `explorer.js` and `explorer.css` are installed to `/usr/share/smartmet/explorer`,
   uPlot comes from the `smartmet-uplot` package (`/usr/share/smartmet/uplot`), and the
   snippets, the tree and the map are those of `OpenApiPlugin.cpp`. The page loads no inline

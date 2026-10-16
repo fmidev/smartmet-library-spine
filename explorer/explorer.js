@@ -67,10 +67,14 @@ async function fetchJson(url)
   return response.json();
 }
 
-// Query strings keep commas and colons readable, everything else is percent encoded
+// Query strings keep commas, colons and parentheses readable, everything else is percent encoded
 function encode(value)
 {
-  return encodeURIComponent(value).replace(/%2C/gi, ',').replace(/%3A/gi, ':');
+  return encodeURIComponent(value)
+      .replace(/%2C/gi, ',')
+      .replace(/%3A/gi, ':')
+      .replace(/%28/gi, '(')
+      .replace(/%29/gi, ')');
 }
 
 function queryString(params)
@@ -877,10 +881,115 @@ function swarmColour(i, n)
   return `hsla(${Math.round(205 + 70 * f)}, 65%, 50%, 0.45)`;
 }
 
+// The statistics the server computes over an area, and the TimeSeries functions computing them
+const AREA_STATISTICS = [
+  [0.1, '10 %', 'nanpercentile_a[10]'],
+  [0.25, '25 %', 'nanpercentile_a[25]'],
+  [0.5, 'median', 'nanmedian_a'],
+  [0.75, '75 %', 'nanpercentile_a[75]'],
+  [0.9, '90 %', 'nanpercentile_a[90]']
+];
+
+const statisticParameter = (fn, param) => `${fn}(${param})`;
+
+// The percentiles of an area computed by the server: a chart per parameter, like the
+// percentiles of many locations
+function drawServerStatistics(container, rows, parameters)
+{
+  container.replaceChildren();
+  const series =
+      rows.map((row) => [parseTime(row.time), row]).filter(([t]) => t).sort((a, b) => a[0] - b[0]);
+  if (series.length === 0)
+  {
+    container.append(el('p', {class: 'muted'}, 'No data.'));
+    return;
+  }
+  const xs = series.map(([t]) => Math.round(t.getTime() / 1000));
+  const css = getComputedStyle(document.documentElement);
+  const axisColor = css.getPropertyValue('--muted').trim() || '#666';
+  const gridColor = css.getPropertyValue('--line').trim() || '#ddd';
+  const width = Math.max(320, container.clientWidth - 8);
+  const fill = (a) => `rgba(47, 111, 223, ${a})`;
+  for (const param of parameters)
+  {
+    const columns = AREA_STATISTICS.map(([, , fn]) => series.map(([, row]) => {
+      const v = row[statisticParameter(fn, param)];
+      return typeof v === 'number' && isFinite(v) ? v : null;
+    }));
+    if (columns.every((c) => c.every((v) => v === null)))
+      continue;
+    const panel = el('div', {class: 'chart', 'data-param': param, 'data-mode': 'server'});
+    container.append(panel);
+    panel.append(
+        el('div',
+           {class: 'chart-title'},
+           `${param}: median and percentiles of the area, computed by the server`));
+    const plot = el('div', {class: 'chart-plot'});
+    panel.append(plot);
+    // eslint-disable-next-line no-new
+    new root.uPlot(
+        {
+          width: width,
+          height: 260,
+          series: [
+            {value: (u, x) => (x === null ? '--' : formatTime(new Date(x * 1000)))},
+            {label: '10 %', stroke: fill(0.5), width: 1},
+            {label: '25 %', stroke: fill(0.7), width: 1},
+            {label: 'median', stroke: palette[0], width: 2},
+            {label: '75 %', stroke: fill(0.7), width: 1},
+            {label: '90 %', stroke: fill(0.5), width: 1}
+          ],
+          bands: [{series: [5, 1], fill: fill(0.12)}, {series: [4, 2], fill: fill(0.22)}],
+          axes: [
+            {
+              stroke: axisColor,
+              grid: {stroke: gridColor, width: 1},
+              ticks: {stroke: gridColor},
+              values: utcTimeLabels,
+              size: 50
+            },
+            {
+              stroke: axisColor,
+              grid: {stroke: gridColor, width: 1},
+              ticks: {stroke: gridColor},
+              size: 60
+            }
+          ],
+          scales: {x: {time: true}},
+          legend: {live: true},
+          tzDate: (ts) => root.uPlot.tzDate(new Date(ts * 1000), 'Etc/UTC')
+        },
+        [xs, ...columns],
+        plot);
+  }
+  if (container.children.length === 0)
+    container.append(el('p', {class: 'muted'}, 'No numeric values to draw.'));
+}
+
+// UTC times in 24 hour format, with the date where the day changes
+function utcTimeLabels(u, splits)
+{
+  let previous = '';
+  return splits.map((x) => {
+    const d = new Date(x * 1000);
+    const day = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+    const time = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+    const label = day !== previous ? `${time}\n${day}` : time;
+    previous = day;
+    return label;
+  });
+}
+
 // The charts of the numeric parameters of the rows, one chart per parameter. 'mode' is
-// "lines" or "percentiles"; the default depends on the number of locations.
+// "lines" or "percentiles"; the default depends on the number of locations. "server" draws
+// the percentiles the server computed over an area (AREA_STATISTICS).
 function drawCharts(container, rows, parameters, mode)
 {
+  if (mode === 'server')
+  {
+    drawServerStatistics(container, rows, parameters);
+    return;
+  }
   container.replaceChildren();
   if (rows.length === 0)
   {
@@ -1500,6 +1609,8 @@ function timeSeriesModule(app, api, state, save)
                  // The locations already on the map stay as a reference
                  s.locmode = mode;
                  s.location = '';
+                 // Each location type has its own default for the values of an area
+                 s.areavalues = '';
                  refresh();
                }
              },
@@ -1575,6 +1686,36 @@ function timeSeriesModule(app, api, state, save)
     }
 
     // --- Output ----------------------------------------------------
+    // Areas: the statistics computed by the server, or every point
+    // The default is the statistics for areas, every point for keywords and station lists
+    const areaValuesOf = () =>
+        s.areavalues || (['keyword', 'fmisid'].includes(s.locmode) ? 'points' : 'statistics');
+    const areaValues =
+        el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': 'Area values'});
+    for (const [value, label] of [['statistics', 'Statistics'], ['points', 'Every point']])
+      areaValues.append(
+          el('button',
+             {
+               type: 'button',
+               role: 'radio',
+               'data-areavalues': value,
+               onclick: () => {
+                 s.areavalues = value;
+                 refresh();
+               }
+             },
+             label));
+    const areaValuesRow = el('div', null, el('label', null, 'Values of an area'), areaValues);
+
+    // An area, radius or box, or several locations, whose values the server can aggregate
+    const isArea = () => ['bbox', 'radius', 'area'].includes(s.locmode) ||
+        (s.locmode === 'place' && /:\s*\d/.test(s.location || '')) ||
+        (s.locmode === 'keyword' && !!s.location) ||
+        (s.locmode === 'fmisid' && (s.location || '').includes(','));
+    // Keywords and station lists are grouped into one area for the statistics
+    const groupLocations = () => serverStatistics() && ['keyword', 'fmisid'].includes(s.locmode);
+    const serverStatistics = () => isArea() && areaValuesOf() === 'statistics';
+
     const langInput =
         el('input', {type: 'text', 'aria-label': 'Language', placeholder: 'fi, sv, en', size: 6});
     langInput.addEventListener('input', debounce(() => {
@@ -1598,8 +1739,16 @@ function timeSeriesModule(app, api, state, save)
 
     function requestParams()
     {
-      // The coordinates show the locations of the data on the map
-      const params = Array.from(new Set(['name', 'time', 'lat', 'lon', ...s.params]));
+      // The coordinates show the locations of the data on the map. The statistics of an area
+      // have none: the server returns the coordinates of all the points.
+      const params = serverStatistics() ? Array.from(new Set([
+        'name',
+        'time',
+        ...s.params.filter((p) => META.has(p) && p !== 'lat' && p !== 'lon'),
+        ...dataParams().flatMap((p) => AREA_STATISTICS.map(([, , fn]) => statisticParameter(fn, p)))
+      ])) :
+                                          Array.from(
+                                              new Set(['name', 'time', 'lat', 'lon', ...s.params]));
       return [
         ['producer', s.producer],
         ['param', params.join(',')],
@@ -1607,6 +1756,7 @@ function timeSeriesModule(app, api, state, save)
         ['endtime', fromInput(s.end)],
         ['timestep', s.timestep],
         [locationOption(s.locmode), s.location],
+        ['grouplocations', groupLocations() ? '1' : ''],
         ['lang', s.lang],
         ['format', 'json'],
         ['tz', 'UTC'],
@@ -1659,12 +1809,14 @@ function timeSeriesModule(app, api, state, save)
         return;
       }
       const rows = flattenRows(data);
-      map.setPoints(mapPoints(rows));
+      if (!serverStatistics())
+        map.setPoints(mapPoints(rows));
       showResults(rows, text);
     }
 
     function showResults(rows, text)
     {
+      const statistics = serverStatistics();
       const panes = {
         Chart: el('div', {class: 'pane'}),
         Table: el('div', {class: 'pane'}),
@@ -1682,7 +1834,7 @@ function timeSeriesModule(app, api, state, save)
           return;
         drawn.add(name);
         if (name === 'Chart')
-          drawCharts(panes.Chart, rows, dataParams());
+          drawCharts(panes.Chart, rows, dataParams(), statistics ? 'server' : undefined);
         else if (name === 'Table')
           drawTable(panes.Table, rows);
         else if (!S.renderTree(panes.Tree, text, 'json'))
@@ -1803,6 +1955,11 @@ function timeSeriesModule(app, api, state, save)
           (s.location && mode[3] && !sel ? `Not a valid ${mode[1].toLowerCase()}: ${mode[2]}` : '');
       if (rerender !== false)
         langInput.value = s.lang || '';
+      areaValuesRow.hidden = !isArea();
+      Array.from(areaValues.children)
+          .forEach(
+              (b) => b.setAttribute(
+                  'aria-checked', b.dataset.areavalues === areaValuesOf() ? 'true' : 'false'));
       // Request
       const url = currentUrl();
       urlBox.textContent = url;
@@ -1843,6 +2000,7 @@ function timeSeriesModule(app, api, state, save)
                map.element),
            section(
                'Output',
+               areaValuesRow,
                el('div', {class: 'row'}, el('label', null, 'Language of the names', langInput)))),
         el('div',
            {class: 'request'},

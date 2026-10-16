@@ -103,9 +103,35 @@ function areaRows(params)
   return rows;
 }
 
+// The statistics of an area computed by the server: one row per time
+function statisticRows(params)
+{
+  const rows = [];
+  for (let i = 0; i < 6; i++)
+  {
+    const row = {};
+    for (const p of params)
+    {
+      if (p === 'name')
+        row.name = 'Area';
+      else if (p === 'time')
+        row.time = new Date(now.getTime() + i * hour).toISOString().slice(0, 19);
+      else
+      {
+        const m = /\[(\d+)\]/.exec(p);
+        row[p] = 10 + i + (m ? Number(m[1]) / 10 : 5);
+      }
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
 function timeseries(query)
 {
   const params = (query.get('param') || '').split(',');
+  if (params.some((p) => /_a[[(]/.test(p)))
+    return statisticRows(params);
   if (query.get('bbox') || (query.get('lonlat') || '').includes(':'))
     return areaRows(params);
   const locations = query.get('keyword') === 'many' ? 30 : 1;
@@ -410,6 +436,21 @@ async function main()
       return document.querySelector('.chart').dataset.mode;
     })()`);
     check('back to percentiles', backToPercentiles === 'percentiles', backToPercentiles);
+
+    // A keyword can be summarized by the server too, as one group of locations
+    await b.evaluate(`document.querySelector('[data-areavalues="statistics"]').click()`);
+    await sleep(300);
+    const grouped = await currentQuery(b);
+    check(
+        'keyword statistics requested',
+        grouped.get('grouplocations') === '1' && grouped.get('keyword') === 'many' &&
+            grouped.get('param').includes('nanmedian_a(temperature)'),
+        grouped.toString());
+    await b.evaluate(`document.querySelector('[data-areavalues="points"]').click()`);
+    await sleep(300);
+    const ungrouped = await currentQuery(b);
+    check(
+        'keyword points requested', ungrouped.get('grouplocations') === null, ungrouped.toString());
     const keywordPoints = await b.evaluate(`document.querySelectorAll('.xmap-point').length`);
     check('the locations of the result on the map', keywordPoints > 0, keywordPoints);
 
@@ -458,6 +499,36 @@ async function main()
     check('radius from the map', radius && Number(radius[3]) > 10, mq.get('lonlat'));
     const polygon = await b.evaluate(`document.querySelectorAll('.xmap-selection').length`);
     check('radius drawn', polygon === 1, polygon);
+
+    // The values of an area: the statistics computed by the server by default
+    const areaQuery = mq.get('param');
+    check(
+        'area statistics requested',
+        areaQuery ===
+            'name,time,nanpercentile_a[10](temperature),nanpercentile_a[25](temperature),nanmedian_a(temperature),nanpercentile_a[75](temperature),nanpercentile_a[90](temperature),nanpercentile_a[10](humidity),nanpercentile_a[25](humidity),nanmedian_a(humidity),nanpercentile_a[75](humidity),nanpercentile_a[90](humidity)',
+        areaQuery);
+    const readable = await b.evaluate(
+        `document.querySelector('code.url').textContent.includes("nanmedian_a(temperature)")`);
+    check('readable function names in the URL', readable, readable);
+    await b.evaluate(`document.querySelector('button.primary').click()`);
+    await waitFor(
+        b,
+        `document.querySelectorAll('.chart[data-mode="server"] canvas').length === 2`,
+        'the server statistics');
+    const serverTitle = await b.evaluate(`document.querySelector('.chart-title').textContent`);
+    check(
+        'server statistics drawn',
+        serverTitle === 'temperature: median and percentiles of the area, computed by the server',
+        serverTitle);
+
+    // ... or every point
+    await b.evaluate(`document.querySelector('[data-areavalues="points"]').click()`);
+    await sleep(300);
+    mq = await currentQuery(b);
+    check(
+        'every point requested',
+        mq.get('param') === 'name,time,lat,lon,temperature,humidity',
+        mq.get('param'));
 
     // The points of the radius in the results
     await b.evaluate(`document.querySelector('button.primary').click()`);
