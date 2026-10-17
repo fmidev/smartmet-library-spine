@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.17
-Release: 15%{?dist}.fmi
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,64 +172,48 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
-* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-15.fmi
+* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
 - Data explorer: EDR trajectory queries drawn on the map; paths at their marked points or every
   N km; an animated view of the time series along a path; trajectory CoverageJSON read
-* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-14.fmi
 - Data explorer: charts of areas with several levels show one level at a time (the lowest by
   default); swarms of thousands of locations are drawn on the canvas and hover in milliseconds;
   charts are drawn when scrolled to
-* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-13.fmi
 - Data explorer: the hover readouts and guides of diagrams stay under a resting pointer and
   follow the times of an animation
-* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-12.fmi
 - Data explorer: EDR collections on hybrid sigma-pressure model levels were taken for pressure
   levels, so their soundings were not drawn
-* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-11.fmi
 - Data explorer: the results open on the chosen view (profile, section, sounding, cross
   section, map) also when the request is run again; the sounding diagram buttons choose it
-* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-10.fmi
 - Data explorer: animations advance only after the previous time has been drawn, so that a
   slow browser animates more slowly instead of skipping times
-* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-9.fmi
 - Data explorer: time sliders of profiles, soundings, cross sections and maps animate with a
   play button and a speed choice, and show the available times as ticks
-* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-8.fmi
 - Data explorer: optional flight levels (ICAO standard atmosphere) on cross sections and
   time-height sections
-* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-7.fmi
 - Data explorer: TimeSeries paths clicked on the map (e.g. a flight path) with a cross section
   of the levels along the path
 - Data explorer: sections use the production isoband colours of the parameter when they cover
   the values, with continuous scales fitted to the data as alternatives
 - Data explorer: sounding diagram buttons for level data add the parameters of a sounding,
   run the request and open the chosen diagram
-* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-6.fmi
 - Data explorer: model levels of grid data are placed by their pressure in Pa (P-PA)
-* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-5.fmi
 - Data explorer: tephigram and Stüve diagrams next to the skew-T, the sounding of another
   producer for comparison, time-height sections, values under the mouse in all vertical
   diagrams, a top for profiles and sections, and WMO stations of point querydata
-* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-4.fmi
 - Data explorer skew-T: temperatures named in Kelvins but returned in Celsius (grid T-K) are
   no longer converted twice
-* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-3.fmi
 - Data explorer: vertical profiles of pressure, model, height and depth levels (value against
   pressure, height, depth or model level, a time slider or all times) and a skew-T log-p
   diagram of soundings with wind barbs and a lifted parcel, in the TimeSeries and EDR modules
-* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-2.fmi
 - Data explorer charts: locations reporting at different intervals are drawn as lines and their
   percentiles no longer make a comb; parameters without values are named instead of left out
-* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
 - Data explorer: observation stations operating in the chosen period shown on the map, chosen
   by clicking or by name; EDR results named by the locations of the collection; no "Whole
   data" or "Next 24 h" for observations but "Last week" and "Last month", and a warning of
   long observation periods
-* Fri Oct 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.16-5.fmi
 - Data explorer: extra columns chosen by group (the data, the location, the station, the time
   and the sun), and for grid producers the details of the data of each parameter (@AT-N model
   run, @L-N level, @FN-N member, @LATLON-N grid point, ...) shown with its series
-* Fri Oct 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.16-4.fmi
 - Data explorer: producers of the same name from several sources are told apart and
   requested with source; model details for grid producers (model run, geometry, level type,
   levels, ensemble forecast and members) build the parameter keys, with a series per level
@@ -239,7 +223,6 @@ make %{_smp_mflags}
   of directions, warnings for categories), the periods counting the data step right
 - Data explorer: observation sensors (a series each), quality code filters and the quality
   codes in the table
-* Fri Oct 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.16-3.fmi
 - Data explorer at /api/explorer: TimeSeries queries built from the producer metadata with
   parameter and producer autocomplete narrowing each other, default times from the data,
   keyword locations on a map, and uPlot charts (lines per location, or the median and
@@ -258,8 +241,6 @@ make %{_smp_mflags}
 - API catalog entries have a kind (x-smartmet-kind), Publisher::addToCatalog() with a kind
 - ABI change compared to 26.10.16-2: CatalogEntry, CatalogSettings and Catalog have new
   members, smartmet-plugin-frontend must be rebuilt
-
-* Fri Oct 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.16-2.fmi
 - API catalog (RFC 9727): Spine::OpenAPI::Publisher::addToCatalog() lists an API in the
   catalog of the server, served by the reactor at /api, /.well-known/api-catalog and
   /api/docs (Swagger UI with all APIs in a selector) when some plugin has added an API.
