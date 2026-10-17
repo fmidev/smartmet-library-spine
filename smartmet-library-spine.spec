@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.10.16
-Release: 5%{?dist}.fmi
+Version: 26.10.17
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,11 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
+- Data explorer: observation stations operating in the chosen period shown on the map, chosen
+  by clicking or by name; EDR results named by the locations of the collection; no "Whole
+  data" or "Next 24 h" for observations but "Last week" and "Last month", and a warning of
+  long observation periods
 * Fri Oct 16 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.16-5.fmi
 - Data explorer: extra columns chosen by group (the data, the location, the station, the time
   and the sun), and for grid producers the details of the data of each parameter (@AT-N model

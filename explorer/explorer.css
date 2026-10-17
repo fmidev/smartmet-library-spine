@@ -194,6 +194,7 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .xmap-centre { fill: #d9480f; stroke: #fff; stroke-width: 1.5; }
 .xmap-point { fill: #2f6fdf; stroke: #fff; stroke-width: 1; cursor: pointer; }
 .xmap-point:hover { fill: #e67700; }
+.xmap-point.selected { fill: #e67700; stroke-width: 1.5; }
 .xmap-tools { position: absolute; left: 6px; top: 6px; display: flex; gap: 2px; z-index: 1; }
 .xmap-tools button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .xmap-zoom { position: absolute; right: 6px; top: 6px; display: flex; flex-direction: column; gap: 2px; z-index: 1; }

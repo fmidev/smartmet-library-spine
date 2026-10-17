@@ -426,6 +426,42 @@ const server = http.createServer((req, res) => {
     return send(200, 'text/javascript', fs.readFileSync(path.join(dir, 'smartmet-swagger-ui.js')));
   if (p === '/timeseries/api/producers')
     return send(200, 'application/json', JSON.stringify(producers));
+  if (p === '/timeseries/api/producers/opendata')
+    return send(200, 'application/json', JSON.stringify({
+      name: 'opendata',
+      source: 'observation',
+      parameters: {},
+      locations: [
+        {
+          id: '101004',
+          type: 'fmisid',
+          name: 'Helsinki Kumpula',
+          lon: 24.96,
+          lat: 60.2,
+          start: '2006-10-11T00:00:00Z',
+          end: '9999-12-31T00:00:00Z',
+          wsi: '0-20000-0-02998'
+        },
+        {
+          id: '100971',
+          type: 'fmisid',
+          name: 'Helsinki Kaisaniemi',
+          lon: 24.94,
+          lat: 60.18,
+          start: '1844-01-01T00:00:00Z',
+          end: '9999-12-31T00:00:00Z'
+        },
+        {
+          id: '100001',
+          type: 'fmisid',
+          name: 'Closed station',
+          lon: 25.5,
+          lat: 61.0,
+          start: '1950-01-01T00:00:00Z',
+          end: '1990-01-01T00:00:00Z'
+        }
+      ]
+    }));
   if (p === '/timeseries/api/producers/ens')
     return send(200, 'application/json', JSON.stringify(ensDetails(url.searchParams)));
   if (p === '/timeseries')
@@ -1022,6 +1058,53 @@ async function main()
             sensorTable.head.includes('temperature quality') && sensorTable.rows === 12,
         {sensorSeries, sensorTable});
 
+    // The stations of an observation producer: searched by name and chosen on the map
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {
+      url: `${
+          base}/api/explorer#api=/timeseries&producer=opendata&source=observation&params=temperature&locmode=fmisid&location=101004`
+    });
+    await waitFor(b, `document.querySelectorAll('.xmap-point').length > 0`, 'the stations');
+    let st = await b.evaluate(`({ points: document.querySelectorAll('.xmap-point').length,
+      selected: [...document.querySelectorAll('.xmap-point.selected')].length,
+      note: [...document.querySelectorAll('p.muted.small')].map((p) => p.textContent).find((x) => x.includes('stations')) })`);
+    check(
+        'the stations operating in the period',
+        st.points === 2 && st.selected === 1 &&
+            st.note ===
+                '2 of the 3 stations of opendata operate in the chosen period: click ' +
+                    'them on the map to choose',
+        st);
+    const stationChoice = await choose(b, '[aria-label="Station"]', 'kais', 'Helsinki Kaisaniemi');
+    await sleep(200);
+    st = await b.evaluate(`({ location: document.querySelector('[aria-label="Location"]').value,
+      selected: document.querySelectorAll('.xmap-point.selected').length })`);
+    check(
+        'a station chosen by name',
+        stationChoice.found && st.location === '101004,100971' && st.selected === 2,
+        {stationChoice, st});
+    await b.evaluate(
+        `document.querySelector('.xmap-point.selected').dispatchEvent(new MouseEvent("click", { bubbles: true }))`);
+    await sleep(200);
+    const afterClick = await b.evaluate(`document.querySelector('[aria-label="Location"]').value`);
+    check('a station removed on the map', afterClick === '100971', afterClick);
+    const obsPresets = await b.evaluate(`[...document.querySelectorAll('button.small')]
+      .filter((x) => ['Whole data', 'Next 24 h', 'Last 24 h', 'Last week', 'Last month'].includes(x.textContent) && !x.hidden)
+      .map((x) => x.textContent)`);
+    check(
+        'no whole data of observations, but the last week and month',
+        JSON.stringify(obsPresets) === '["Last 24 h","Last week","Last month"]',
+        obsPresets);
+    await b.evaluate(
+        `[...document.querySelectorAll('button.small')].find((x) => x.textContent === 'Last week').click()`);
+    await sleep(200);
+    const week = await currentQuery(b);
+    check(
+        'the last week',
+        new Date(week.get('endtime')) - new Date(week.get('starttime')) === 7 * 24 * hour,
+        week.toString());
+
     // The levels of a querydata producer are requested with the levels option
     await b.send('Page.navigate', {url: `${base}/api`});
     await sleep(200);
@@ -1251,6 +1334,14 @@ async function main()
         eurl.href);
     const elocs = await b.evaluate(`document.querySelectorAll('.xmap-point').length`);
     check('the locations of the collection on the map', elocs === 2, elocs);
+    // The data at a location of the collection is named by it
+    await b.evaluate(`document.querySelector('button.primary').click()`);
+    await waitFor(b, `document.querySelectorAll('.chart').length > 0`, 'the EDR location results');
+    const named = await b.evaluate(`(() => {
+      [...document.querySelectorAll('.results-head .tabs button')].find((x) => x.textContent === "Table").click();
+      return [...document.querySelectorAll('table.data tbody tr:first-child td')].map((td) => td.textContent);
+    })()`);
+    check('rows named by the location', named.includes('Helsinki Kaisaniemi'), named);
 
     // The levels of a collection
     await b.evaluate(

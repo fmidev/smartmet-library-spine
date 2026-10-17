@@ -1001,7 +1001,21 @@ function createMap(settings, onSelect)
       const [sx, sy] = screenOf(point.lon, point.lat);
       if (sx < -10 || sy < -10 || sx > width() + 10 || sy > MAP_HEIGHT + 10)
         continue;
-      const c = svg('circle', {class: 'xmap-point', cx: sx, cy: sy, r: radius});
+      const c = svg('circle', {
+        class: `xmap-point${point.selected ? ' selected' : ''}${point.onclick ? ' clickable' : ''}`,
+        cx: sx,
+        cy: sy,
+        r: point.selected ? radius + 1.5 : radius
+      });
+      // A point that can be chosen does not start dragging or drawing
+      if (point.onclick)
+      {
+        c.addEventListener('pointerdown', (e) => e.stopPropagation());
+        c.addEventListener('click', (e) => {
+          e.stopPropagation();
+          point.onclick();
+        });
+      }
       c.addEventListener('mouseover', () => showTooltip(point, sx, sy));
       c.addEventListener('mouseout', () => {
         tooltip.hidden = true;
@@ -2142,14 +2156,41 @@ function timeSeriesModule(app, api, state, save)
       const p = producer();
       return p && p.source === 'grid' ? details.get(detailsKey(p)) || null : null;
     };
+    // The stations of an observation producer, [] until loaded
+    const stations = () => {
+      const p = producer();
+      const d = p && p.source === 'observation' ? details.get(detailsKey(p)) : null;
+      return d && d.locations ? d.locations.filter((l) => l.type === 'fmisid') : [];
+    };
+    // The stations operating at some time of the chosen period
+    const stationsInPeriod = () => {
+      const start = s.start ? new Date(`${s.start}Z`) : null;
+      const end = s.end ? new Date(`${s.end}Z`) : null;
+      return stations().filter(
+          (l) => (!end || !l.start || new Date(l.start) <= end) &&
+              (!start || !l.end || new Date(l.end) >= start));
+    };
+    const chosenStations = () =>
+        (s.locmode === 'fmisid' ?
+             String(s.location || '').split(',').map((x) => x.trim()).filter(Boolean) :
+             []);
+    function toggleStation(id)
+    {
+      const chosen = chosenStations();
+      s.locmode = 'fmisid';
+      s.location =
+          (chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id]).join(',');
+      refresh();
+    }
     function loadDetails()
     {
       const p = producer();
-      if (!p || p.source !== 'grid' || details.has(detailsKey(p)))
+      if (!p || !['grid', 'observation'].includes(p.source) || details.has(detailsKey(p)))
         return;
       const key = detailsKey(p);
       details.set(key, null);
-      const query = queryString([['source', 'grid'], ['origintime', s.run || '']]);
+      const query = queryString(
+          [['source', p.source], ['origintime', p.source === 'grid' ? s.run || '' : '']]);
       fetchJson(`${app.base}${rootPath.replace(/^\//, '')}/api/producers/${
                     encodeURIComponent(p.name)}?${query}`)
           .then((doc) => {
@@ -2522,6 +2563,9 @@ function timeSeriesModule(app, api, state, save)
       s.producer = p ? p.name : '';
       s.source = p ? p.source : '';
       resetDetails();
+      // Observations are chosen by station
+      if (p && p.source === 'observation' && !s.location)
+        s.locmode = 'fmisid';
       // Parameters the producer does not have are dropped
       if (p)
         s.params = s.params.filter((x) => META.has(x) || p.parameterSet.has(x));
@@ -2870,6 +2914,18 @@ function timeSeriesModule(app, api, state, save)
                          now.setUTCMinutes(0, 0, 0);
                          s.end = toInput(now);
                          s.start = toInput(new Date(now.getTime() - 24 * 3600e3));
+                       }), preset('Last week', () => {
+                         const now = new Date();
+                         now.setUTCMinutes(0, 0, 0);
+                         s.end = toInput(now);
+                         s.start = toInput(new Date(now.getTime() - 7 * 24 * 3600e3));
+                       }), preset('Last month', () => {
+                         const now = new Date();
+                         now.setUTCMinutes(0, 0, 0);
+                         const start = new Date(now);
+                         start.setUTCMonth(start.getUTCMonth() - 1);
+                         s.end = toInput(now);
+                         s.start = toInput(start);
                        }));
 
     startInput.addEventListener('change', () => {
@@ -3018,6 +3074,26 @@ function timeSeriesModule(app, api, state, save)
     const locModes =
         el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': 'Location type'});
     const showButton = el('button', {type: 'button', class: 'small'}, 'Show locations');
+    const stationNote = el('p', {class: 'muted small'});
+    const stationSearch = autocomplete({
+      label: 'Station',
+      placeholder: 'Type a station name or id',
+      search: (text) => {
+        const q = text.toLowerCase();
+        const chosen = new Set(chosenStations());
+        return stationsInPeriod()
+            .filter((l) => !chosen.has(l.id))
+            .map((l) => ({l, score: matchScore(q, l.name, `${l.id} ${l.wsi || ''}`)}))
+            .filter((x) => x.score !== null)
+            .sort((a, b) => a.score - b.score || a.l.name.localeCompare(b.l.name))
+            .map(
+                ({l}) =>
+                    ({key: l.id, label: l.name, detail: `${l.id}${l.wsi ? ` · ${l.wsi}` : ''}`}));
+      },
+      select: (item) => toggleStation(item.key),
+      empty: (text) => `No station of the period matches "${text}"`,
+      limit: 50
+    });
     const areaNote = el('p', {class: 'warn small'});
     const map = createMap(mapSettings(app.element), (shape) => {
       s.location = formatSelection(shape);
@@ -3329,7 +3405,8 @@ function timeSeriesModule(app, api, state, save)
         return;
       }
       const rows = splitVariants(flattenRows(data), variantColumns());
-      if (!serverStatistics())
+      // The stations being chosen stay on the map
+      if (!serverStatistics() && !(stations().length > 0 && s.locmode === 'fmisid'))
         map.setPoints(mapPoints(rows));
       showResults(rows, text);
     }
@@ -3437,7 +3514,8 @@ function timeSeriesModule(app, api, state, save)
                {class: 'muted small'},
                [
                  timeRange(p),
-                 p.time && p.time.step ? `step ${p.time.step} min` : '',
+                 p.time && p.time.step && p.source !== 'observation' ? `step ${p.time.step} min` :
+                                                                       '',
                  p.time && p.time.origintime ? `run ${formatTime(new Date(p.time.origintime))}` : ''
                ].filter(Boolean)
                    .join(' · ')),
@@ -3476,7 +3554,25 @@ function timeSeriesModule(app, api, state, save)
       aggSummary.replaceChildren(
           ...functions.map((f) => el('li', null, f.text)),
           ...functions.flatMap((f) => f.warnings).map((w) => el('li', {class: 'warn'}, w)));
-      dataPeriod.textContent = p && timeRange(p) ? `Data: ${timeRange(p)}` : '';
+      // The period listed for observations is only the recent one the metadata covers
+      // Observations may go back to the 1800s: the whole data would be a huge request, and
+      // they have no future
+      // and forecasts have no past weeks
+      const observation = !!p && p.source === 'observation';
+      for (const button of presets.children)
+        button.hidden = observation ? ['Whole data', 'Next 24 h'].includes(button.textContent) :
+                                      ['Last week', 'Last month'].includes(button.textContent);
+      dataPeriod.textContent = !p || !timeRange(p) ?
+          '' :
+          p.source === 'observation' ?
+          `Recent data: ${timeRange(p)}, older by station` :
+          `Data: ${
+              timeRange(p)}`;  // A long period of observations is a large request: warn about it
+      const days = s.start && s.end ? (new Date(`${s.end}Z`) - new Date(`${s.start}Z`)) / 864e5 : 0;
+      if (p && p.source === 'observation' && days > 32)
+        dataPeriod.textContent += ` · ${Math.round(days)} days of observations is a large ` +
+            'request: consider a longer step or values over a period';
+
       // Location
       Array.from(locModes.children)
           .forEach(
@@ -3491,6 +3587,35 @@ function timeSeriesModule(app, api, state, save)
       map.setSelection(sel);
       map.setRegions(p && p.bbox ? [{bbox: p.bbox, label: `The area of ${p.name}`}] : []);
       showButton.hidden = mode[3] !== null;
+      // The stations of an observation producer: chosen on the map or by name
+      const known = stations();
+      const operating = stationsInPeriod();
+      const pickStations = known.length > 0;
+      stationSearch.element.hidden = !pickStations;
+      stationNote.hidden = !pickStations;
+      if (pickStations)
+      {
+        const chosen = new Set(chosenStations());
+        stationNote.textContent = `${operating.length} of the ${known.length} stations of ${
+            p.name} operate in the chosen period${
+            s.locmode === 'fmisid' ? ': click them on the map to choose' :
+                                     ', choose "Station id" to pick them on the map'}`;
+        if (s.locmode === 'fmisid')
+          map.setPoints(
+              operating.map((l) => ({
+                              lon: l.lon,
+                              lat: l.lat,
+                              label: l.name,
+                              info: {fmisid: l.id, wsi: l.wsi, since: (l.start || '').slice(0, 10)},
+                              selected: chosen.has(l.id),
+                              onclick: () => toggleStation(l.id)
+                            })));
+      }
+      else if (p && p.source === 'observation' && details.get(detailsKey(p)) === null)
+      {
+        stationNote.hidden = false;
+        stationNote.textContent = 'Loading the stations…';
+      }
       showButton.disabled = !s.location;
       areaNote.textContent = p && sel && !covers(p, sel) ?
           `The selection is outside the area of ${p.name}` :
@@ -3540,6 +3665,8 @@ function timeSeriesModule(app, api, state, save)
                'Where',
                locModes,
                el('div', {class: 'row'}, locInput, showButton),
+               stationSearch.element,
+               stationNote,
                areaNote,
                map.element),
            section(
@@ -3870,6 +3997,30 @@ function edrModule(app, api, state, save)
     });
     let locationsOf = null;  // the locations of the collection for a locations query
 
+    // CoverageJSON has only the coordinates of the data: a row at a location of the collection,
+    // such as an observation station, is named by it
+    function nameRows(rows)
+    {
+      const list = (locationsOf && locationsOf.list) || [];
+      if (list.length === 0)
+        return rows;
+      const key = (lat, lon) => `${Number(lat).toFixed(4)},${Number(lon).toFixed(4)}`;
+      const names = new Map(list.map((l) => [key(l.lat, l.lon), l.label]));
+      for (const row of rows)
+      {
+        // Rows are named by their coordinates unless the data names them
+        if (row.name !== undefined && row.name !== null && row.name !== `${row.lat},${row.lon}`)
+          continue;
+        if (typeof row.lat === 'number' && typeof row.lon === 'number')
+        {
+          const name = names.get(key(row.lat, row.lon));
+          if (name)
+            row.name = name;
+        }
+      }
+      return rows;
+    }
+
     function loadLocations()
     {
       const c = collection();
@@ -4021,7 +4172,7 @@ function edrModule(app, api, state, save)
         results.replaceChildren(el('pre', {class: 'code'}, text.slice(0, 20000)));
         return;
       }
-      const rows = coverageRows(doc);
+      const rows = nameRows(coverageRows(doc));
       map.setPoints(
           rows.filter((r) => typeof r.lat === 'number' && typeof r.lon === 'number')
               .filter((r, i, all) => all.findIndex((o) => o.lat === r.lat && o.lon === r.lon) === i)
@@ -4192,12 +4343,11 @@ function edrModule(app, api, state, save)
       const sel = selection();
       map.setSelection(sel);
       map.setRegions(c && c.bbox ? [{bbox: c.bbox, label: `The area of ${c.name}`}] : []);
-      if (isLocations)
-      {
+      // The locations of the collection name the results of all queries
+      if (c && c.queries.includes('locations'))
         loadLocations();
-        if (locationsOf && locationsOf.list)
-          map.setPoints(locationsOf.list);
-      }
+      if (isLocations && locationsOf && locationsOf.list)
+        map.setPoints(locationsOf.list);
       areaNote.textContent = c && sel && !covers(c, sel) ?
           `The selection is outside the area of ${c.name}` :
           (isLocations && s.location ? `Location ${s.location}` : '');
