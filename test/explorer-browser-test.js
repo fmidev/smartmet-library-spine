@@ -1333,6 +1333,46 @@ async function main()
             cross.fl100 === 696.8 && cross.fl390 === 196.8 && cross.after === 0,
         {flightLevels: cross.flightLevels, fl100: cross.fl100, fl390: cross.fl390, after: cross.after});
 
+    // The readout of a skew-T under a resting pointer follows the time steps
+    await b.evaluate(`(() => {
+      const rows = [];
+      for (const [time, dt] of [['2026-10-15T00:00:00Z', 0], ['2026-10-15T03:00:00Z', 4]])
+        for (let k = 0; k < 12; k++)
+        {
+          const p = 1000 - k * 75;
+          rows.push({ name: 'x', time, lat: 60, lon: 25, level: k + 1, pressure: p,
+                      temperature: 15 + dt - k * 6, dewpoint: 10 + dt - k * 7 });
+        }
+      const box = document.createElement('div');
+      box.id = 'hover-skewt';
+      box.style.width = '600px';
+      document.body.prepend(box);
+      SmartMetExplorer.drawSkewT(box, rows, 'hybrid');
+      box.scrollIntoView();
+    })()`);
+    const hr = await b.evaluate(`(() => {
+      const r = document.querySelector('#hover-skewt .vhover').getBoundingClientRect();
+      return { x: r.left + r.width * 0.3, y: r.top + r.height * 0.85 };
+    })()`);
+    await mouse(b, 'mouseMoved', hr.x, hr.y, 0);
+    await sleep(100);
+    const hover = await b.evaluate(`(() => {
+      const box = document.querySelector('#hover-skewt');
+      const readout = () => box.querySelector('.sk-readout').textContent;
+      const before = readout();
+      box.querySelector('input[type="range"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      const after = readout();
+      const guide = box.querySelector('.sk-guide').getAttribute('visibility');
+      box.remove();
+      return { before, after, guide };
+    })()`);
+    check(
+        'the skew-T readout under the pointer follows the animation',
+        /hPa: T /.test(hover.before) && /hPa: T /.test(hover.after) && hover.before !== hover.after &&
+            hover.guide === 'visible',
+        hover);
+    await mouse(b, 'mouseMoved', 1, 1, 0);
+
     // Locations reporting at different intervals, and a parameter without values
     const mixed = await b.evaluate(`(() => {
       const rows = [];

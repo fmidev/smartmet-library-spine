@@ -263,7 +263,7 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .sk-mark { fill: none; stroke-width: 2; pointer-events: none; }
 .sk-mark.temperature { stroke: #d62728; }
 .sk-mark.dewpoint { stroke: #2ca02c; }
-.sk-readout { min-height: 1.4em; color: var(--muted); }
+.sk-readout { min-height: 1.4em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .section-cell { stroke: none; }
 .section-cell:hover { stroke: var(--fg); stroke-width: 1; }
 

@@ -1735,6 +1735,34 @@ let animationDelay = (() => {
   }
 })();
 
+// The position of the pointer on the page, null when it is outside the page. Diagrams redrawn
+// under a resting pointer get its events again, so that their hover readouts follow the
+// animation.
+let pointerAt = null;
+if (typeof document !== 'undefined')
+{
+  document.addEventListener('mousemove', (e) => {
+    if (e.isTrusted)
+      pointerAt = {x: e.clientX, y: e.clientY};
+  }, true);
+  document.addEventListener('mouseout', (e) => {
+    if (!e.relatedTarget)
+      pointerAt = null;
+  });
+}
+
+function replayPointer()
+{
+  if (!pointerAt)
+    return;
+  const target = document.elementFromPoint(pointerAt.x, pointerAt.y);
+  if (!target)
+    return;
+  const init = {clientX: pointerAt.x, clientY: pointerAt.y, bubbles: false};
+  target.dispatchEvent(new MouseEvent('mouseenter', init));
+  target.dispatchEvent(new MouseEvent('mousemove', Object.assign({}, init, {bubbles: true})));
+}
+
 // A time slider with animation: a play button, the speed, and a slider over the times with a
 // tick at each available time. The slider is positioned by time, so that the ticks show the
 // steps and gaps of the data, and it always snaps to an available time. times are in ms; when
@@ -1799,7 +1827,10 @@ function timeSlider(times, options = {})
     index = next;
     update();
     if (changed && options.onChange)
+    {
       options.onChange();
+      replayPointer();
+    }
   };
   const stop = () => {
     if (timer)
