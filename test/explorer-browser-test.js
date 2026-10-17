@@ -1105,6 +1105,28 @@ async function main()
         new Date(week.get('endtime')) - new Date(week.get('starttime')) === 7 * 24 * hour,
         week.toString());
 
+    // Locations reporting at different intervals, and a parameter without values
+    const mixed = await b.evaluate(`(() => {
+      const rows = [];
+      for (let m = 0; m <= 120; m++) {
+        const time = new Date(Date.UTC(2013, 7, 5, 0, m)).toISOString();
+        rows.push({ name: 'every minute', time, a: 10 + m / 60, b: null });
+        if (m % 10 === 0)
+          for (let s = 0; s < 4; s++)
+            rows.push({ name: 'station ' + s, time, a: 12 + s + m / 60, b: null });
+      }
+      const box = document.createElement('div');
+      document.body.append(box);
+      SmartMetExplorer.drawCharts(box, rows, ['a', 'b'], 'percentiles');
+      const out = { charts: box.querySelectorAll('.chart').length, note: box.lastChild.textContent };
+      box.remove();
+      return out;
+    })()`);
+    check(
+        'mixed intervals and a parameter without values',
+        mixed.charts === 1 && mixed.note === 'No values in the result: b',
+        mixed);
+
     // The levels of a querydata producer are requested with the levels option
     await b.send('Page.navigate', {url: `${base}/api`});
     await sleep(200);

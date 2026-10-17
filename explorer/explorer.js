@@ -1442,8 +1442,8 @@ function drawCharts(container, rows, parameters, mode)
     }
     locations.get(loc).set(s, row);
   }
-  const xs = Array.from(times.keys()).sort((a, b) => a - b);
-  if (xs.length === 0)
+  const allTimes = Array.from(times.keys()).sort((a, b) => a - b);
+  if (allTimes.length === 0)
   {
     container.append(
         el('p',
@@ -1453,9 +1453,14 @@ function drawCharts(container, rows, parameters, mode)
   }
 
   const numeric = parameters.filter((p) => rows.some((r) => typeof r[p] === 'number'));
+  // Parameters without values are named rather than left out silently
+  const empty = parameters.filter((p) => !numeric.includes(p));
   if (numeric.length === 0)
   {
-    container.append(el('p', {class: 'muted'}, 'No numeric values to draw.'));
+    container.append(
+        el('p',
+           {class: 'muted'},
+           `No numeric values to draw${empty.length ? ` for ${empty.join(', ')}` : ''}.`));
     return;
   }
 
@@ -1526,12 +1531,26 @@ function drawCharts(container, rows, parameters, mode)
       const v = row ? row[param] : null;
       return typeof v === 'number' && isFinite(v) ? v : null;
     };
+    // The times of the parameter: those at which some location has a value
+    const xs = allTimes.filter(
+        (x) => Array.from(locations.values()).some((map) => valueOf(map, x) !== null));
 
-    // The percentiles over the locations at each time
+    // The percentiles over the locations at each time. Locations may report at different
+    // intervals (every minute, every 10 minutes, hourly): a time at which only a few of them
+    // report would make a comb of the percentiles, so it is left out.
     const percentiles = (qs) => {
+      const counts = xs.map(
+          (x) => Array.from(locations.values()).filter((map) => valueOf(map, x) !== null).length);
+      // Most times may have only a few locations (a station reporting every minute among ones
+      // reporting every 10 minutes), so the measure is the most locations at a time
+      const typical = Math.max(1, ...counts);
       const columns = qs.map(() => []);
-      for (const x of xs)
-      {
+      xs.forEach((x, k) => {
+        if (counts[k] < Math.ceil(typical / 2))
+        {
+          qs.forEach((q, i) => columns[i].push(null));
+          return;
+        }
         const values = [];
         for (const map of locations.values())
         {
@@ -1541,8 +1560,19 @@ function drawCharts(container, rows, parameters, mode)
         }
         values.sort((a, b) => a - b);
         qs.forEach((q, i) => columns[i].push(quantile(values, q)));
-      }
+      });
       return columns;
+    };
+    // A series is drawn across the times at which it has no value, unless the gap is much
+    // longer than its own interval: a station reporting every 10 minutes is a line also
+    // among stations reporting every minute, but a missing day is a gap
+    const gapsOf = (values) => {
+      const own = xs.filter((x, i) => values[i] !== null);
+      const steps = own.slice(1).map((x, i) => x - own[i]).sort((a, b) => a - b);
+      const step = quantile(steps, 0.5) || 0;
+      const longest = Math.max(3 * step, 1);
+      return (u, sidx, idx0, idx1, nullGaps) =>
+                 nullGaps.filter(([a, b]) => u.posToVal(b, 'x') - u.posToVal(a, 'x') > longest);
     };
 
     const panel = el('div', {class: 'chart', 'data-param': param, 'data-mode': chosen});
@@ -1562,7 +1592,8 @@ function drawCharts(container, rows, parameters, mode)
                        label: n || param,
                        stroke: palette[i % palette.length],
                        width: 1.5,
-                       spanGaps: false
+                       spanGaps: false,
+                       gaps: gapsOf(data[i + 1])
                      }))
       ];
       caption = names.length > 1 ? `${param}, ${names.length} locations` : param;
@@ -1582,13 +1613,15 @@ function drawCharts(container, rows, parameters, mode)
                          stroke: swarmColour(i, ordered.length),
                          width: 1,
                          points: {show: false},
-                         spanGaps: false
+                         spanGaps: false,
+                         gaps: gapsOf(data[i + 1])
                        })),
         {
           label: 'median',
           stroke: css.getPropertyValue('--fg').trim() || '#000',
           width: 2,
-          points: {show: false}
+          points: {show: false},
+          gaps: gapsOf(data[data.length - 1])
         }
       ];
       legend = {show: false};
@@ -1600,13 +1633,14 @@ function drawCharts(container, rows, parameters, mode)
       // The median and the 10-90 % and 25-75 % ranges over the locations
       data = [xs, ...percentiles([0.1, 0.25, 0.5, 0.75, 0.9])];
       const fill = (a) => `rgba(47, 111, 223, ${a})`;
+      const gaps = gapsOf(data[3]);
       series = [
         timeSeries,
-        {label: '10 %', stroke: fill(0.5), width: 1},
-        {label: '25 %', stroke: fill(0.7), width: 1},
-        {label: 'median', stroke: palette[0], width: 2},
-        {label: '75 %', stroke: fill(0.7), width: 1},
-        {label: '90 %', stroke: fill(0.5), width: 1}
+        {label: '10 %', stroke: fill(0.5), width: 1, gaps},
+        {label: '25 %', stroke: fill(0.7), width: 1, gaps},
+        {label: 'median', stroke: palette[0], width: 2, gaps},
+        {label: '75 %', stroke: fill(0.7), width: 1, gaps},
+        {label: '90 %', stroke: fill(0.5), width: 1, gaps}
       ];
       bands = [{series: [5, 1], fill: fill(0.12)}, {series: [4, 2], fill: fill(0.22)}];
       caption = `${param}: median and percentiles of ${names.length} locations`;
@@ -1630,6 +1664,9 @@ function drawCharts(container, rows, parameters, mode)
         data,
         plot);
   }
+  if (empty.length > 0)
+    container.append(
+        el('p', {class: 'muted small'}, `No values in the result: ${empty.join(', ')}`));
 }
 
 // ------------------------------------------------------------------
@@ -5134,6 +5171,7 @@ root.SmartMetExplorer = {
   buildEdrIndex,
   splitVariants,
   parseNumberList,
+  drawCharts,
   parameterKind,
   coverageRows,
   paletteColour,
