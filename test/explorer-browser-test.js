@@ -1608,6 +1608,39 @@ async function main()
                 'name,time,lat,lon,level,temperature,dewpoint,windspeedms,winddirection,pressure,geomheight',
         {note: diagramNote, params: dhash.get('params'), diagram: dhash.get('diagram'), param: tq.get('param')});
 
+    // The charts of one place compared with another producer, and their differences
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {
+      url: `${base}/api/explorer#api=/timeseries&producer=pal&source=querydata&params=temperature&locmode=place&location=Helsinki`
+    });
+    await waitFor(b, `!!document.querySelector('button.primary') && !document.querySelector('button.primary').disabled`, 'the form');
+    await b.evaluate(`document.querySelector('button.primary').click()`);
+    await waitFor(b, `!!document.querySelector('[aria-label="Compare with"]')`, 'the comparison');
+    const compared = await b.evaluate(`(async () => {
+      const select = document.querySelector('[aria-label="Compare with"]');
+      const options = [...select.options].map((o) => o.textContent);
+      select.value = select.options[1].value;
+      select.dispatchEvent(new Event('change'));
+      for (let i = 0; i < 50 && !document.querySelector('.compare-stats div'); i++)
+        await new Promise((r) => setTimeout(r, 100));
+      const out = { options: options.length, other: select.options[1].textContent.split(' ')[0],
+                    title: document.querySelector('.chart-title').textContent,
+                    stats: [...document.querySelectorAll('.compare-stats div')].map((d) => d.textContent) };
+      select.value = '';
+      select.dispatchEvent(new Event('change'));
+      await new Promise((r) => setTimeout(r, 200));
+      out.after = document.querySelector('.chart-title').textContent;
+      return out;
+    })()`);
+    check(
+        'a comparison with another producer',
+        compared.options > 1 && compared.title === 'temperature, 2 producers' &&
+            compared.stats.length === 1 &&
+            compared.stats[0] === `temperature: pal − ${compared.other} on average +0.00, mean absolute difference 0.00 at 6 times` &&
+            compared.after === 'temperature',
+        compared);
+
     // A path clicked on the map, vertex by vertex
     await b.send('Page.navigate', {url: `${base}/api`});
     await sleep(200);

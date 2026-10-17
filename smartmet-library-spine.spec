@@ -173,6 +173,8 @@ make %{_smp_mflags}
 
 %changelog
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
+- Data explorer: the charts of a place compared with another producer or observations, with the
+  mean and the mean absolute difference
 - Data explorer: meteograms (temperature, precipitation, cloud cover, wind and gusts with
   barbs), of ensembles as the median and the spread of the members
 - Data explorer: the analysis of soundings (CAPE, CIN, LFC, EL, lifted index, freezing level,

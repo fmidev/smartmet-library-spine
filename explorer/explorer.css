@@ -327,3 +327,6 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .meteogram .chart { margin-bottom: 4px; }
 .meteogram-note { color: var(--muted); }
 .meteogram-barbs { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+
+/* Comparison with another producer */
+.compare-stats { margin: 4px 0 8px; color: var(--muted); }
