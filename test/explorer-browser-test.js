@@ -1355,7 +1355,7 @@ async function main()
         'a tephigram chosen before the request',
         diagramNote.includes('dewpoint, windspeedms, winddirection') &&
             dhash.get('params') === 'temperature,dewpoint,windspeedms,winddirection' &&
-            dhash.get('diagram') === 'tephigram' &&
+            dhash.get('diagram') === 'tephigram' && dhash.get('tab') === 'Sounding' &&
             tq.get('param') ===
                 'name,time,lat,lon,level,temperature,dewpoint,windspeedms,winddirection,pressure,geomheight',
         {note: diagramNote, params: dhash.get('params'), diagram: dhash.get('diagram'), param: tq.get('param')});

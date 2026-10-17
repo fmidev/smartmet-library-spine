@@ -1378,6 +1378,10 @@ const SOUNDING_PARAMS = {
   v: [['windvms', 0], ['v-ms', 0]]
 };
 
+// The tabs of results that open first with later results once chosen: the views of what the
+// data has. Charts, tables and trees are the defaults.
+const REMEMBERED_TABS = ['Profile', 'Section', 'Sounding', 'Cross section', 'Map'];
+
 // The kind of the levels of an EDR collection from its vertical reference system
 function edrLevelKind(collection)
 {
@@ -5478,7 +5482,21 @@ function timeSeriesModule(app, api, state, save)
           panes.Tree.textContent = text;
       };
       for (const name of Object.keys(panes))
-        tabs.append(el('button', {type: 'button', role: 'tab', onclick: () => show(name)}, name));
+        tabs.append(el('button',
+                       {
+                         type: 'button',
+                         role: 'tab',
+                         onclick: () => {
+                           // A view of the data chosen opens first with later results too
+                           if (REMEMBERED_TABS.includes(name))
+                             s.tab = name;
+                           else
+                             delete s.tab;
+                           save();
+                           show(name);
+                         }
+                       },
+                       name));
       // Profiles are counted by their levels, not as locations
       const levelCount = new Set(rows.map((r) => r.level)).size;
       const locationsCount = vertical ?
@@ -5493,10 +5511,8 @@ function timeSeriesModule(app, api, state, save)
                 `${rows.length} rows${locationsCount > 1 ? `, ${locationsCount} locations` : ''}${
                     vertical ? `, ${levelCount} levels` : ''}`)),
           ...Object.values(panes));
-      const wantedTab = resultTab;
-      resultTab = null;
-      show(wantedTab && panes[wantedTab] ? wantedTab :
-               crossSection                 ? 'Cross section' :
+      show(s.tab && panes[s.tab] ? s.tab :
+               crossSection        ? 'Cross section' :
                vertical                     ? 'Profile' :
                                               'Chart');
     }
@@ -5656,7 +5672,6 @@ function timeSeriesModule(app, api, state, save)
     // A sounding diagram chosen before the request: the parameters of a sounding are added, the
     // levels chosen so that there are enough of them, and the result opens on the diagram
     let pendingSounding = null;
-    let resultTab = null;
     function startSounding(type)
     {
       const p = producer();
@@ -5697,7 +5712,7 @@ function timeSeriesModule(app, api, state, save)
         if (pressure && !s.params.includes(pressure))
           s.params.push(pressure);
       }
-      resultTab = 'Sounding';
+      s.tab = 'Sounding';
       refresh();
       if (missingParts().length === 0)
         run();
@@ -6440,8 +6455,7 @@ function edrModule(app, api, state, save)
     }
 
     // A sounding diagram chosen before the request: the parameters of a sounding are added, and
-    // the result opens on the diagram
-    let resultTab = null;
+    // the results open on the diagram
     function startSounding(type)
     {
       const c = collection();
@@ -6460,7 +6474,7 @@ function edrModule(app, api, state, save)
       if ((s.levels || []).length < 3)
         s.levels = [];
       s.diagram = type;
-      resultTab = 'Sounding';
+      s.tab = 'Sounding';
       refresh();
       if (missingParts().length === 0)
         run();
@@ -6577,7 +6591,21 @@ function edrModule(app, api, state, save)
           panes.Tree.textContent = text;
       };
       for (const name of Object.keys(panes))
-        tabs.append(el('button', {type: 'button', role: 'tab', onclick: () => show(name)}, name));
+        tabs.append(el('button',
+                       {
+                         type: 'button',
+                         role: 'tab',
+                         onclick: () => {
+                           // A view of the data chosen opens first with later results too
+                           if (REMEMBERED_TABS.includes(name))
+                             s.tab = name;
+                           else
+                             delete s.tab;
+                           save();
+                           show(name);
+                         }
+                       },
+                       name));
       // Profiles are counted by their levels, not as locations
       const count = vertical ?
           new Set(rows.map((r) => locationOf({name: r.name, lat: r.lat, lon: r.lon}))).size :
@@ -6592,9 +6620,7 @@ function edrModule(app, api, state, save)
                 `${rows.length} rows${count > 1 ? `, ${count} locations` : ''}${
                     vertical ? `, ${levelCount} levels` : ''}`)),
           ...Object.values(panes));
-      const wantedTab = resultTab;
-      resultTab = null;
-      show(wantedTab && panes[wantedTab] ? wantedTab : vertical ? 'Profile' : 'Chart');
+      show(s.tab && panes[s.tab] ? s.tab : vertical ? 'Profile' : 'Chart');
     }
 
     function refresh(rerender = true)
