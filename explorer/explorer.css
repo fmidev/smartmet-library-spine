@@ -333,3 +333,7 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* Export */
 .export-buttons { display: inline-flex; gap: 4px; align-items: center; margin-left: auto; }
+
+/* Units */
+.units-chooser { display: inline-flex; gap: 4px; }
+.units-chooser select { width: auto; }

@@ -1412,6 +1412,115 @@ function createMap(settings, onSelect)
 // Vertical profiles and soundings
 // ----------------------------------------------------------------------
 
+// The units of the values shown: temperatures, wind speeds and heights. The server gives them
+// in C (grid temperatures in K are converted by the server, or recognised by their values), m/s
+// and m. The choice is shared by the page and remembered by the browser.
+const UNIT_CHOICES = {
+  temperature: [['C', 'C', (v) => v], ['K', 'K', (v) => v + 273.15], ['F', 'F', (v) => v * 1.8 + 32]],
+  speed: [['ms', 'm/s', (v) => v], ['kt', 'kt', (v) => v * 1.943844], ['kmh', 'km/h', (v) => v * 3.6]],
+  height: [['m', 'm', (v) => v], ['ft', 'ft', (v) => v * 3.28084]]
+};
+const UNITS_KEY = 'smartmet-explorer-units';
+let displayUnits = (() => {
+  const fallback = {temperature: 'C', speed: 'ms', height: 'm'};
+  try
+  {
+    return Object.assign(fallback, JSON.parse(localStorage.getItem(UNITS_KEY) || '{}'));
+  }
+  catch (e)
+  {
+    return fallback;
+  }
+})();
+
+// The chosen unit of a quantity: [id, label, convert(value in the default unit)]
+const unitOf = (quantity) =>
+    UNIT_CHOICES[quantity].find(([id]) => id === displayUnits[quantity]) || UNIT_CHOICES[quantity][0];
+
+// The quantity of a parameter by its name (also inside a function, e.g. nanmedian_a(t2m)):
+// 'temperature', 'speed', 'height' or null
+function quantityOf(name)
+{
+  const n = String(name).toLowerCase().replace(/^.*\(([^()]+)\)$/, '$1');
+  if (/temperature|dewpoint|^t2m$|^t-[kc]$|^td-[kc]$|^td$|^ta_|^td_|^tamax|^tamin|^tmax|^tmin/.test(n))
+    return 'temperature';
+  if (/windspeed|^ws_|^ws$|^ff-ms$|^ffg-ms$|gust|^wg_|windums|windvms|^[uv]-ms$/.test(n))
+    return 'speed';
+  if (HEIGHT_PARAMS.includes(n) || /height$|^hl-m$|^z-m$/.test(n))
+    return 'height';
+  return null;
+}
+
+// The rows in the chosen units: {rows, labels: {column: unit}}, the rows as they are when all
+// the units are the defaults
+function displayRows(rows)
+{
+  const defaults = Object.keys(UNIT_CHOICES).every((q) => unitOf(q) === UNIT_CHOICES[q][0]);
+  if (defaults || rows.length === 0)
+    return {rows, labels: {}};
+  const converters = {};
+  const labels = {};
+  const keys = new Set();
+  for (const row of rows.slice(0, 500))
+    Object.keys(row).forEach((k) => keys.add(k));
+  for (const key of keys)
+  {
+    const quantity = quantityOf(key);
+    if (!quantity || key === 'lat' || key === 'lon')
+      continue;
+    const [, label, convert] = unitOf(quantity);
+    let from = (v) => v;
+    if (quantity === 'temperature')
+    {
+      // Kelvins recognised by their values
+      const values = rows.map((r) => r[key]).filter((v) => typeof v === 'number').sort((a, b) => a - b);
+      if (values.length && quantile(values, 0.5) > 100)
+        from = (v) => v - 273.15;
+    }
+    converters[key] = (v) => convert(from(v));
+    labels[key] = label;
+  }
+  if (Object.keys(converters).length === 0)
+    return {rows, labels};
+  return {
+    rows: rows.map((r) => {
+      const out = Object.assign({}, r);
+      for (const [key, f] of Object.entries(converters))
+        if (typeof out[key] === 'number')
+          out[key] = f(out[key]);
+      return out;
+    }),
+    labels
+  };
+}
+
+// The choices of the units: the results are drawn again when they change
+function unitsChooser(onChange)
+{
+  const box = el('span', {class: 'units-chooser'});
+  for (const [quantity, label] of [['temperature', 'Temperature unit'], ['speed', 'Wind speed unit'],
+                                   ['height', 'Height unit']])
+  {
+    const select = el('select', {'aria-label': label, title: label},
+                      UNIT_CHOICES[quantity].map(([id, text]) => el('option', {value: id}, text)));
+    select.value = unitOf(quantity)[0];
+    select.addEventListener('change', () => {
+      displayUnits = Object.assign({}, displayUnits, {[quantity]: select.value});
+      try
+      {
+        localStorage.setItem(UNITS_KEY, JSON.stringify(displayUnits));
+      }
+      catch (e)
+      {
+        // Not remembered
+      }
+      onChange();
+    });
+    box.append(select);
+  }
+  return box;
+}
+
 // Rows with several levels per location and time are drawn as profiles, time-height sections,
 // thermodynamic diagrams (see below), and along paths as cross sections and animated time
 // series. Flight levels and the animated time slider are shared by these views.
@@ -1516,14 +1625,18 @@ function verticalAxes(rows, levelKind)
       log: true,
       down: true
     });
+  // Heights in the chosen unit
+  const [, heightUnit, toHeight] = unitOf('height');
+  const inHeightUnit = (v) => (v === null ? null : toHeight(v));
   if (levelKind === 'height' || levelKind === 'altitude')
-    axes.push({id: 'height', label: 'Height', unit: 'm', value: level, log: false, down: false});
+    axes.push({id: 'height', label: 'Height', unit: heightUnit, value: (r) => inHeightUnit(level(r)),
+               log: false, down: false});
   else if (height)
     axes.push({
       id: 'height',
       label: 'Height',
-      unit: 'm',
-      value: (r) => columnValue(r, height),
+      unit: heightUnit,
+      value: (r) => inHeightUnit(columnValue(r, height)),
       log: false,
       down: false
     });
@@ -1603,6 +1716,8 @@ function verticalTops(axis)
       ['700', '700 hPa'],
       ['900', '900 hPa']
     ];
+  if (axis.id === 'height' && axis.unit === 'ft')
+    return [['', 'All'], ['40000', '40000 ft'], ['20000', '20000 ft'], ['10000', '10000 ft'], ['5000', '5000 ft']];
   if (axis.id === 'height')
     return [['', 'All'], ['10000', '10 km'], ['5000', '5 km'], ['3000', '3 km'], ['1000', '1 km']];
   if (axis.id === 'depth')
@@ -2774,7 +2889,8 @@ function pathPoints(rows)
 // their distance from the start, and a chart of each parameter at the chosen point against the
 // median and the 10-90 % range of the whole path. The vertical scales are those of the whole
 // path, so that the steps can be compared. options: onPosition({lat, lon} or null) to show the
-// point elsewhere, e.g. on a map.
+// point elsewhere, e.g. on a map; flight (departure and arrival); labels (the units of the
+// columns).
 function drawAlongPath(container, rows, parameters, levelKind, options = {})
 {
   container.replaceChildren();
@@ -2918,7 +3034,8 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
       {
         // Redrawn on the same scales: the times do not change, the vertical range is fixed
         u.setData([times, stats.map((s) => s[0]), stats.map((s) => s[2]), stats.map((s) => s[1]), values[p][i]]);
-        title.textContent = `${p} at ${Math.round(point.km)} km of ${Math.round(points[points.length - 1].km)} km (${
+        const unit = (options.labels || {})[p];
+        title.textContent = `${p}${unit ? ` (${unit})` : ''} at ${Math.round(point.km)} km of ${Math.round(points[points.length - 1].km)} km (${
             point.lat.toFixed(3)}, ${point.lon.toFixed(3)})${when}, against the median and 10-90 % of the path`;
       }
       if (options.onPosition)
@@ -3975,8 +4092,8 @@ function drawSkewT(container, rows, levelKind, options)
       ['EL', fmt(analysis.el, 0, ' hPa')],
       ['Lifted index', fmt(analysis.li, 1, '')],
       ['Freezing level', analysis.freezing ?
-           `${Math.round(analysis.freezing.height)} m${analysis.dataHeights ? '' : '*'} (${
-               Math.round(analysis.freezing.p)} hPa)` :
+           `${Math.round(unitOf('height')[2](analysis.freezing.height))} ${unitOf('height')[1]}${
+               analysis.dataHeights ? '' : '*'} (${Math.round(analysis.freezing.p)} hPa)` :
            '–'],
       ['K-index', fmt(analysis.k, 0, '')],
       ['Total totals', fmt(analysis.tt, 0, '')],
@@ -4140,6 +4257,10 @@ function drawMeteogram(container, rows, levelKind)
       return lists;
     };
     const stat = (lists, q) => lists.map((l) => (l.length ? quantile(l, q) : null));
+    // Temperatures and speeds in the chosen units; the barbs take m/s
+    const [, tUnit, toT] = unitOf('temperature');
+    const [, sUnit, toS] = unitOf('speed');
+    const inUnit = (lists, f) => lists.map((l) => l.map(f));
     const ensemble = Array.from(times.values()).some((list) => list.length > 1);
     const css = getComputedStyle(document.documentElement);
     const axisColor = css.getPropertyValue('--muted').trim() || '#666';
@@ -4186,10 +4307,10 @@ function drawMeteogram(container, rows, levelKind)
     // Temperature and dewpoint
     if (columns.temperature)
     {
-      const tb = band(scaled('temperature', values('temperature')), '#e03131', 'temperature');
+      const tb = band(inUnit(scaled('temperature', values('temperature')), toT), '#e03131', 'temperature');
       const parts = [tb];
       if (columns.dewpoint)
-        parts.push(band(scaled('dewpoint', values('dewpoint')), '#2f9e44', 'dewpoint'));
+        parts.push(band(inUnit(scaled('dewpoint', values('dewpoint')), toT), '#2f9e44', 'dewpoint'));
       let n = 0;
       const bands = [];
       for (const part of parts)
@@ -4197,8 +4318,8 @@ function drawMeteogram(container, rows, levelKind)
         bands.push(...offset(part.bands, n));
         n += part.series.length;
       }
-      panel(`Temperature${columns.dewpoint ? ' and dewpoint' : ''} (C)${ensemble ? ', median and 10-90 % of the members' : ''}`,
-            parts.flatMap((p) => p.series), [xs, ...parts.flatMap((p) => p.data)], {unit: 'C', extra: {bands}});
+      panel(`Temperature${columns.dewpoint ? ' and dewpoint' : ''} (${tUnit})${ensemble ? ', median and 10-90 % of the members' : ''}`,
+            parts.flatMap((p) => p.series), [xs, ...parts.flatMap((p) => p.data)], {unit: tUnit, extra: {bands}});
     }
     // Precipitation as bars, for an ensemble the median with the 90 % as a line
     if (columns.precipitation)
@@ -4235,13 +4356,13 @@ function drawMeteogram(container, rows, levelKind)
     }
     if (speeds)
     {
-      const wb = band(speeds, '#7048e8', 'wind speed');
+      const wb = band(inUnit(speeds, toS), '#7048e8', 'wind speed');
       const series = [...wb.series];
       const data = [...wb.data];
       if (columns.gust)
       {
         series.push({label: ensemble ? 'gust median' : 'gust', stroke: '#f08c00', width: 1.5, dash: [5, 3]});
-        data.push(stat(values('gust'), 0.5));
+        data.push(stat(inUnit(values('gust'), toS), 0.5));
       }
       // The mean direction of the members: the direction of the mean unit vector
       const meanDirection = directions ? directions.map((l) => {
@@ -4269,9 +4390,9 @@ function drawMeteogram(container, rows, levelKind)
         });
         u.over.append(layer);
       };
-      panel(`Wind${columns.gust ? ' and gusts' : ''} (m/s)${ensemble ? ', median and 10-90 % of the members' : ''}`,
+      panel(`Wind${columns.gust ? ' and gusts' : ''} (${sUnit})${ensemble ? ', median and 10-90 % of the members' : ''}`,
             series, [xs, ...data],
-            {unit: 'm/s', scales: {y: {range: (u, lo, hi) => [0, Math.max(5, hi * 1.25)]}},
+            {unit: sUnit, scales: {y: {range: (u, lo, hi) => [0, Math.max(5, hi * 1.25)]}},
              extra: {bands: wb.bands, hooks: {draw: [barbs]}}});
     }
   }
@@ -4583,7 +4704,8 @@ function chartLevels(rows, levelKind)
 // The charts of the numeric parameters of the rows, one chart per parameter. 'mode' is "lines",
 // "percentiles" or "probability" (of exceeding a threshold); the default depends on the number
 // of series. "server" draws the percentiles the server computed over an area
-// (AREA_STATISTICS). options: levelKind (the kind of the levels of the rows), level (the level
+// (AREA_STATISTICS). options: labels (the units of the columns), levelKind (the kind of the
+// levels of the rows), level (the level
 // drawn, '' for every level as a series of its own), thresholds and below (of the probability
 // of each parameter), seriesWord (what the series are, e.g. 'producers').
 function drawCharts(container, rows, parameters, mode, options = {})
@@ -4728,6 +4850,8 @@ function drawCharts(container, rows, parameters, mode, options = {})
 
   for (const param of numeric)
   {
+    // The name of the parameter with its unit when not the default
+    const pname = (options.labels || {})[param] ? `${param} (${options.labels[param]})` : param;
     // The value of the parameter at time x of a location, null if none
     const valueOf = (map, x) => {
       const row = map.get(x);
@@ -4815,7 +4939,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
                        gaps: gapsOf(data[i + 1])
                      }))
       ];
-      caption = names.length > 1 ? `${param}, ${names.length} ${what}` : param;
+      caption = names.length > 1 ? `${pname}, ${names.length} ${what}` : pname;
     }
     else if (chosen === 'lines')
     {
@@ -4838,7 +4962,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
         }
       ];
       legend = {show: false};
-      caption = `${param}: ${names.length} ${what}${
+      caption = `${pname}: ${names.length} ${what}${
           byLatitude && what === 'locations' ? ', coloured from south to north' : ''}, and the median`;
     }
     else if (chosen === 'probability')
@@ -4884,7 +5008,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
         }
       ];
       probability = {threshold, below};
-      caption = `${param}: the share of the ${names.length} ${what} ${below ? 'below' : 'above'} ${
+      caption = `${pname}: the share of the ${names.length} ${what} ${below ? 'below' : 'above'} ${
           threshold}`;
     }
     else
@@ -4902,7 +5026,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
         {label: '90 %', stroke: fill(0.5), width: 1, gaps}
       ];
       bands = [{series: [5, 1], fill: fill(0.12)}, {series: [4, 2], fill: fill(0.22)}];
-      caption = `${param}: median and percentiles of ${names.length} ${what}`;
+      caption = `${pname}: median and percentiles of ${names.length} ${what}`;
     }
 
     panel.append(el('div', {class: 'chart-title'}, caption));
@@ -5284,7 +5408,7 @@ function saveFile(blob, name)
 }
 
 // The rows as CSV: the columns of the table, the values quoted when needed
-function rowsCsv(rows)
+function rowsCsv(rows, labels = {})
 {
   const columns = [];
   for (const row of rows)
@@ -5297,7 +5421,8 @@ function rowsCsv(rows)
     const s = String(v);
     return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  return [columns.join(','), ...rows.map((r) => columns.map((c) => quote(r[c])).join(','))].join('\r\n') + '\r\n';
+  const head = columns.map((c) => quote(labels[c] ? `${c} (${labels[c]})` : c));
+  return [head.join(','), ...rows.map((r) => columns.map((c) => quote(r[c])).join(','))].join('\r\n') + '\r\n';
 }
 
 // The SVG properties the stylesheet sets, copied to an exported clone that has no stylesheet
@@ -5427,7 +5552,7 @@ async function viewImage(pane)
 }
 
 // The buttons saving the visible view as an image and the rows as CSV
-function exportButtons(visiblePane, rows, name)
+function exportButtons(visiblePane, rows, name, labels = {})
 {
   const status = el('span', {class: 'muted small'});
   const png = el('button', {type: 'button', class: 'small', title: 'Save the view as a PNG image'}, 'PNG');
@@ -5447,11 +5572,11 @@ function exportButtons(visiblePane, rows, name)
       status.textContent = e.message;
     }
   });
-  csv.addEventListener('click', () => saveFile(new Blob([rowsCsv(rows)], {type: 'text/csv'}), `${name}.csv`));
+  csv.addEventListener('click', () => saveFile(new Blob([rowsCsv(rows, labels)], {type: 'text/csv'}), `${name}.csv`));
   return el('span', {class: 'export-buttons'}, png, csv, status);
 }
 
-function drawTable(container, rows)
+function drawTable(container, rows, labels = {})
 {
   container.replaceChildren();
   if (rows.length === 0)
@@ -5467,7 +5592,7 @@ function drawTable(container, rows)
   const table =
       el('table',
          {class: 'data'},
-         el('thead', null, el('tr', null, columns.map((c) => el('th', null, c)))),
+         el('thead', null, el('tr', null, columns.map((c) => el('th', null, labels[c] ? `${c} (${labels[c]})` : c)))),
          el('tbody',
             null,
             rows.slice(0, MAX_TABLE_ROWS).map((row) => el('tr', null, columns.map((c) => {
@@ -7223,6 +7348,9 @@ function timeSeriesModule(app, api, state, save)
     // then charts, maps, tables and the response itself
     function showResults(rows, text)
     {
+      // The rows in the chosen units for the views of values; the vertical views convert their
+      // heights themselves and draw temperatures in C
+      const shown = displayRows(rows);
       const statistics = serverStatistics();
       // Several levels at each location and time are drawn as profiles first
       const kind = levelKind();
@@ -7269,7 +7397,8 @@ function timeSeriesModule(app, api, state, save)
           if (!statistics && places === 1 && levels <= 1)
             drawComparableCharts(panes.Chart, rows, kind);
           else
-            drawCharts(panes.Chart, rows, dataParams(), statistics ? 'server' : undefined, {levelKind: kind});
+            drawCharts(panes.Chart, shown.rows, dataParams(), statistics ? 'server' : undefined,
+                       {levelKind: kind, labels: shown.labels});
         }
         else if (name === 'Meteogram')
           drawMeteogram(panes.Meteogram, rows, kind);
@@ -7281,14 +7410,14 @@ function timeSeriesModule(app, api, state, save)
           drawCrossSection(panes['Cross section'], rows, dataParams(), kind, mapSettings(app.element),
                            {flight: flightChoice.flight()});
         else if (name === 'Along the path')
-          drawAlongPath(panes['Along the path'], rows, dataParams(), kind,
-                        {onPosition: (p) => map.setCursor(p), flight: flightChoice.flight()});
+          drawAlongPath(panes['Along the path'], shown.rows, dataParams(), kind,
+                        {onPosition: (p) => map.setCursor(p), flight: flightChoice.flight(), labels: shown.labels});
         else if (name === 'Sounding')
           drawSounding(panes.Sounding, rows, kind);
         else if (name === 'Map')
-          drawValueMap(panes.Map, rows, dataParams(), mapSettings(app.element));
+          drawValueMap(panes.Map, shown.rows, dataParams(), mapSettings(app.element));
         else if (name === 'Table')
-          drawTable(panes.Table, rows);
+          drawTable(panes.Table, shown.rows, shown.labels);
         else if (!S.renderTree(panes.Tree, text, 'json'))
           panes.Tree.textContent = text;
       };
@@ -7322,8 +7451,9 @@ function timeSeriesModule(app, api, state, save)
                 {class: 'muted small'},
                 `${rows.length} rows${locationsCount > 1 ? `, ${locationsCount} locations` : ''}${
                     byLevel ? `, ${levelCount} ${kind === 'member' ? 'members' : 'levels'}` : ''}`),
-             exportButtons(() => Object.values(panes).find((p) => !p.hidden), rows,
-                           `${s.producer || 'timeseries'}`)),
+             unitsChooser(() => showResults(rows, text)),
+             exportButtons(() => Object.values(panes).find((p) => !p.hidden), shown.rows,
+                           `${s.producer || 'timeseries'}`, shown.labels)),
           ...Object.values(panes));
       show(s.tab && panes[s.tab] ? s.tab :
                crossSection        ? 'Cross section' :
@@ -7407,12 +7537,15 @@ function timeSeriesModule(app, api, state, save)
                                                name: `${other.name}${r.name && r.name !== s.location ? ` (${r.name})` : ''}`,
                                                level: undefined
                                              }));
-        drawCharts(charts, [...mine, ...theirs], params, 'lines',
-                   {levelKind: kind, seriesWord: theirs.length ? 'producers' : undefined});
+        const both = displayRows([...mine, ...theirs]);
+        drawCharts(charts, both.rows, params, 'lines',
+                   {levelKind: kind, labels: both.labels, seriesWord: theirs.length ? 'producers' : undefined});
         stats.replaceChildren();
         if (!other || theirs.length === 0)
           return;
-        // The differences at the times both have
+        // The differences at the times both have, in the chosen units
+        mine.splice(0, mine.length, ...displayRows(mine).rows);
+        theirs.splice(0, theirs.length, ...displayRows(theirs).rows);
         const at = (list, p) => new Map(list.filter((r) => typeof r[p] === 'number')
                                             .map((r) => [parseTime(r.time).getTime(), r[p]]));
         const lines = params.map((p) => {
@@ -8543,6 +8676,16 @@ function edrModule(app, api, state, save)
                      label: String(r.name || ''),
                      info: {lat: r.lat, lon: r.lon}
                    })));
+      showResults(rows, text);
+    }
+
+    // The results as tabs of views: the vertical views and the path views when the rows have
+    // them, then charts, maps, tables and the response itself
+    function showResults(rows, text)
+    {
+      // The rows in the chosen units for the views of values; the vertical views convert their
+      // heights themselves and draw temperatures in C
+      const shown = displayRows(rows);
       // Several levels at each location and time are drawn as profiles first
       const c = collection();
       const kind = edrLevelKind(c);
@@ -8591,7 +8734,7 @@ function edrModule(app, api, state, save)
           return;
         drawn.add(name);
         if (name === 'Chart')
-          drawCharts(panes.Chart, rows, params, undefined, {levelKind: kind});
+          drawCharts(panes.Chart, shown.rows, params, undefined, {levelKind: kind, labels: shown.labels});
         else if (name === 'Meteogram')
           drawMeteogram(panes.Meteogram, rows, kind);
         else if (name === 'Profile')
@@ -8602,8 +8745,8 @@ function edrModule(app, api, state, save)
           drawCrossSection(panes['Cross section'], rows, params, kind, mapSettings(app.element),
                            {flight: flightChoice.flight()});
         else if (name === 'Along the path')
-          drawAlongPath(panes['Along the path'], rows, params, kind,
-                        {onPosition: (p) => map.setCursor(p), flight: flightChoice.flight()});
+          drawAlongPath(panes['Along the path'], shown.rows, params, kind,
+                        {onPosition: (p) => map.setCursor(p), flight: flightChoice.flight(), labels: shown.labels});
         else if (name === 'Sounding')
           drawSkewT(panes.Sounding, rows, kind, {
             type: s.diagram || 'skewt',
@@ -8613,9 +8756,9 @@ function edrModule(app, api, state, save)
             }
           });
         else if (name === 'Map')
-          drawValueMap(panes.Map, rows, params, mapSettings(app.element));
+          drawValueMap(panes.Map, shown.rows, params, mapSettings(app.element));
         else if (name === 'Table')
-          drawTable(panes.Table, rows);
+          drawTable(panes.Table, shown.rows, shown.labels);
         else if (!S.renderTree(panes.Tree, text, 'json'))
           panes.Tree.textContent = text;
       };
@@ -8649,8 +8792,9 @@ function edrModule(app, api, state, save)
                 {class: 'muted small'},
                 `${rows.length} rows${count > 1 ? `, ${count} locations` : ''}${
                     byLevel ? `, ${levelCount} ${kind === 'member' ? 'members' : 'levels'}` : ''}`),
-             exportButtons(() => Object.values(panes).find((p) => !p.hidden), rows,
-                           `${s.collection || 'edr'}`)),
+             unitsChooser(() => showResults(rows, text)),
+             exportButtons(() => Object.values(panes).find((p) => !p.hidden), shown.rows,
+                           `${s.collection || 'edr'}`, shown.labels)),
           ...Object.values(panes));
       show(s.tab && panes[s.tab] ? s.tab :
                crossSection        ? 'Cross section' :
@@ -9631,6 +9775,9 @@ root.SmartMetExplorer = {
   hasProfiles,
   hasSounding,
   rowsCsv,
+  unitsChooser,
+  displayRows,
+  quantityOf,
   viewImage,
   hasMeteogram,
   drawMeteogram,

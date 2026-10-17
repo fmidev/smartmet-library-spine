@@ -1588,6 +1588,44 @@ async function main()
             exported.csv === 'name,time,v\r\n"a, b",t,1\r\n"say ""x""",t,\r\n',
         exported);
 
+    // Units: temperatures in F, speeds in knots and heights in feet, chosen as a user would
+    const units = await b.evaluate(`(async () => {
+      const E = SmartMetExplorer;
+      const chooser = E.unitsChooser(() => {});
+      const set = (label, v) => { const s = chooser.querySelector('[aria-label="' + label + '"]'); s.value = v; s.dispatchEvent(new Event('change')); };
+      set('Temperature unit', 'F');
+      set('Wind speed unit', 'kt');
+      set('Height unit', 'ft');
+      const rows = [{ name: 'x', time: '2026-10-15T00:00:00Z', temperature: 10, 'T-K': 283.15, windspeedms: 10, geomheight: 1000, humidity: 50, level: 1, pressure: 900 },
+                    { name: 'x', time: '2026-10-15T00:00:00Z', temperature: 0, 'T-K': 273.15, windspeedms: 0, geomheight: 2000, humidity: 60, level: 2, pressure: 800 },
+                    { name: 'x', time: '2026-10-15T00:00:00Z', temperature: -10, 'T-K': 263.15, windspeedms: 5, geomheight: 3000, humidity: 70, level: 3, pressure: 700 }];
+      const shown = E.displayRows(rows);
+      const first = shown.rows[0];
+      const box = document.createElement('div');
+      document.body.append(box);
+      E.drawCharts(box, shown.rows.slice(0, 1), ['temperature'], undefined, { labels: shown.labels });
+      const caption = box.querySelector('.chart-title').textContent;
+      box.remove();
+      const csvHead = E.rowsCsv(shown.rows, shown.labels).split('\\r\\n')[0];
+      const axis = E.verticalAxes(rows, 'hybrid').find((a) => a.id === 'height');
+      const out = { t: Math.round(first.temperature), tk: Math.round(first['T-K']), ws: Math.round(first.windspeedms * 10) / 10,
+                    h: Math.round(first.geomheight), rh: first.humidity, caption, csvHead, axis: [axis.unit, Math.round(axis.value(rows[0]))],
+                    q: [E.quantityOf('nanmedian_a(t2m)'), E.quantityOf('ws_10min'), E.quantityOf('hl-m'), E.quantityOf('humidity')] };
+      set('Temperature unit', 'C');
+      set('Wind speed unit', 'ms');
+      set('Height unit', 'm');
+      out.back = E.displayRows(rows).rows[0].temperature;
+      return out;
+    })()`);
+    check(
+        'units of temperatures, wind speeds and heights',
+        units.t === 50 && units.tk === 50 && units.ws === 19.4 && units.h === 3281 && units.rh === 50 &&
+            units.caption === 'temperature (F)' &&
+            units.csvHead === 'name,time,temperature (F),T-K (F),windspeedms (kt),geomheight (ft),humidity,level,pressure' &&
+            JSON.stringify(units.axis) === '["ft",3281]' &&
+            JSON.stringify(units.q) === '["temperature","speed","height",null]' && units.back === 10,
+        units);
+
     // Locations reporting at different intervals, and a parameter without values
     const mixed = await b.evaluate(`(() => {
       const rows = [];
