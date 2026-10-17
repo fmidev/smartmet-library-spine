@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.17
-Release: 4%{?dist}.fmi
+Release: 5%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-5.fmi
+- Data explorer: tephigram and Stüve diagrams next to the skew-T, the sounding of another
+  producer for comparison, time-height sections, values under the mouse in all vertical
+  diagrams, a top for profiles and sections, and WMO stations of point querydata
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-4.fmi
 - Data explorer skew-T: temperatures named in Kelvins but returned in Celsius (grid T-K) are
   no longer converted twice

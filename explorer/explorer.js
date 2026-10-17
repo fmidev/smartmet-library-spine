@@ -1305,7 +1305,7 @@ const PRESSURE_PA_PARAMS = ['p-pa', 'pres-pa'];
 const HEIGHT_PARAMS = ['geomheight', 'geopheight', 'hl-m', 'z-m', 'height'];
 const SOUNDING_PARAMS = {
   temperature: [['temperature', 0], ['t', 0], ['t-c', 0], ['t-k', -273.15]],
-  dewpoint: [['dewpoint', 0], ['td', 0], ['td-c', 0], ['td-k', -273.15]],
+  dewpoint: [['dewpoint', 0], ['dewpoint2m', 0], ['td', 0], ['td-c', 0], ['td-k', -273.15]],
   humidity: [['humidity', 0], ['rh-prcnt', 0], ['rh', 0]],
   speed: [['windspeedms', 0], ['ff-ms', 0], ['ws', 0]],
   direction: [['winddirection', 0], ['dd-d', 0], ['wd', 0]],
@@ -1445,6 +1445,32 @@ function niceTicks(min, max, count)
 const PRESSURE_TICKS =
     [1000, 925, 850, 700, 500, 400, 300, 250, 200, 150, 100, 70, 50, 30, 20, 10, 5];
 
+// The tops of the vertical axes: how far up (or down) diagrams reach
+function verticalTops(axis)
+{
+  if (axis.id === 'pressure')
+    return [
+      ['', 'All'],
+      ['200', '200 hPa'],
+      ['500', '500 hPa'],
+      ['700', '700 hPa'],
+      ['900', '900 hPa']
+    ];
+  if (axis.id === 'height')
+    return [['', 'All'], ['10000', '10 km'], ['5000', '5 km'], ['3000', '3 km'], ['1000', '1 km']];
+  if (axis.id === 'depth')
+    return [['', 'All'], ['200', '200 m'], ['100', '100 m'], ['50', '50 m']];
+  return [['', 'All']];
+}
+
+// Whether a level is within the top of the axis
+function withinTop(axis, top, z)
+{
+  if (!top)
+    return true;
+  return axis.id === 'pressure' ? z >= Number(top) : z <= Number(top);
+}
+
 // The scale of a vertical axis to pixels 0 (top) ... h (bottom)
 function verticalScale(axis, zmin, zmax, h)
 {
@@ -1559,11 +1585,67 @@ function drawVerticalDiagram(panel, title, axis, valueLabel, series)
     }
     const path =
         svg('path', {class: 'vline', d, stroke: s.colour, 'stroke-opacity': s.opacity ?? 1});
-    const tip = svg('title');
-    tip.textContent = s.label;
-    path.append(tip);
     g.append(path);
   }
+  // The nearest point to the pointer: a marker and its values
+  const points = series.flatMap(
+      (s) => s.points.filter(([v]) => v !== null).map(([v, z]) => ({x: sx(v), y: sy(z), v, z, s})));
+  const marker = svg('circle', {class: 'vmarker', r: 4, visibility: 'hidden'});
+  const tip = svg('g', {class: 'vtip', visibility: 'hidden'});
+  const tipBox = svg('rect', {rx: 3, ry: 3});
+  const tipText = svg('text');
+  tip.append(tipBox, tipText);
+  const hover = svg('rect', {class: 'vhover', x: 0, y: 0, width: w, height: h});
+  g.append(marker, hover, tip);
+  hover.addEventListener('mousemove', (e) => {
+    const r = hover.getBoundingClientRect();
+    const mx = ((e.clientX - r.left) / r.width) * w;
+    const my = ((e.clientY - r.top) / r.height) * h;
+    let best = null;
+    let bestD = Infinity;
+    for (const p of points)
+    {
+      const d = (p.x - mx) ** 2 + (p.y - my) ** 2;
+      if (d < bestD)
+      {
+        bestD = d;
+        best = p;
+      }
+    }
+    if (!best || bestD > 40 * 40)
+    {
+      marker.setAttribute('visibility', 'hidden');
+      tip.setAttribute('visibility', 'hidden');
+      return;
+    }
+    marker.setAttribute('cx', best.x);
+    marker.setAttribute('cy', best.y);
+    marker.setAttribute('stroke', best.s.colour);
+    marker.setAttribute('visibility', 'visible');
+    tipText.replaceChildren();
+    const lines = [
+      best.s.label,
+      `${valueLabel}: ${round(best.v, 2)}`,
+      `${axis.label}: ${round(best.z, 1)}${axis.unit ? ` ${axis.unit}` : ''}`
+    ];
+    lines.forEach((text, i) => {
+      const span = svg('tspan', {x: 6, dy: i === 0 ? 14 : 14});
+      span.textContent = text;
+      tipText.append(span);
+    });
+    const tw = Math.max(...lines.map((l) => l.length)) * 6.2 + 12;
+    const th = lines.length * 14 + 8;
+    tipBox.setAttribute('width', tw);
+    tipBox.setAttribute('height', th);
+    const tx = best.x + 10 + tw > w ? best.x - 10 - tw : best.x + 10;
+    const ty = Math.min(Math.max(0, best.y - th / 2), h - th);
+    tip.setAttribute('transform', `translate(${tx},${ty})`);
+    tip.setAttribute('visibility', 'visible');
+  });
+  hover.addEventListener('mouseleave', () => {
+    marker.setAttribute('visibility', 'hidden');
+    tip.setAttribute('visibility', 'hidden');
+  });
   panel.append(root);
 }
 
@@ -1622,11 +1704,28 @@ function drawProfiles(container, rows, parameters, levelKind)
   const times =
       Array.from(new Set(collectProfiles(rows, axis).map((p) => p.time))).sort((a, b) => a - b);
   const chooser = timeChooser(times, () => draw());
+  const topSelect = el('select', {'aria-label': 'Top of the profiles'});
+  let top = '';
+  const setTops = () => {
+    topSelect.replaceChildren(...verticalTops(axis).map(([v, l]) => el('option', {value: v}, l)));
+    top = '';
+    topSelect.hidden = topSelect.options.length < 2;
+  };
+  setTops();
+  topSelect.addEventListener('change', () => {
+    top = topSelect.value;
+    draw();
+  });
   const tools =
-      el('div', {class: 'row'}, el('label', null, 'Vertical axis', axisSelect), chooser.element);
+      el('div',
+         {class: 'row'},
+         el('label', null, 'Vertical axis', axisSelect),
+         el('label', null, 'Top', topSelect),
+         chooser.element);
   axisSelect.hidden = axes.length < 2;
   axisSelect.addEventListener('change', () => {
     axis = axes.find((a) => a.id === axisSelect.value) || axes[0];
+    setTops();
     draw();
   });
   container.append(tools, diagrams);
@@ -1646,7 +1745,8 @@ function drawProfiles(container, rows, parameters, levelKind)
                      label: `${p.key}, ${formatTime(new Date(p.time))}`,
                      colour: palette[keys.indexOf(p.key) % palette.length],
                      opacity: profileOpacity(chosenTimes.indexOf(p.time), chosenTimes.length),
-                     points: p.rows.map(({z, row}) => [columnValue(row, param), z])
+                     points: p.rows.filter(({z}) => withinTop(axis, top, z))
+                                 .map(({z, row}) => [columnValue(row, param), z])
                    }))
               .filter((s) => s.points.some(([v]) => v !== null));
       if (series.length === 0)
@@ -1668,6 +1768,214 @@ function drawProfiles(container, rows, parameters, levelKind)
     }
     if (diagrams.children.length === 0)
       diagrams.append(el('p', {class: 'muted'}, 'No values to draw.'));
+  }
+  draw();
+}
+
+// A time-height section of a parameter: time horizontally, the vertical coordinate
+// vertically, the values as coloured cells. Each profile keeps its own levels, as the height
+// or pressure of model levels changes in time.
+function drawSection(container, rows, parameters, levelKind)
+{
+  container.replaceChildren();
+  const axes = verticalAxes(rows, levelKind);
+  const numeric = parameters.filter((p) => rows.some((r) => columnValue(r, p) !== null));
+  if (numeric.length === 0)
+  {
+    container.append(el('p', {class: 'muted'}, 'No values to draw.'));
+    return;
+  }
+  const state = {axis: axes[0], param: numeric[0], palette: 'viridis', key: null};
+  const axisSelect =
+      el('select',
+         {'aria-label': 'Vertical axis of the section'},
+         axes.map((a) => el('option', {value: a.id}, a.label)));
+  const paramSelect =
+      el('select',
+         {'aria-label': 'Parameter of the section'},
+         numeric.map((p) => el('option', {value: p}, p)));
+  const paletteSelect =
+      el('select',
+         {'aria-label': 'Colours of the section'},
+         Object.keys(PALETTES).map((p) => el('option', {value: p}, p)));
+  const keySelect = el('select', {'aria-label': 'Location of the section'});
+  const topSelect = el('select', {'aria-label': 'Top of the section'});
+  const setTops = () => {
+    topSelect.replaceChildren(
+        ...verticalTops(state.axis).map(([v, l]) => el('option', {value: v}, l)));
+    state.top = '';
+    topSelect.hidden = topSelect.options.length < 2;
+  };
+  setTops();
+  paletteSelect.value = state.palette;
+  const readout = el('div', {class: 'sk-readout small'});
+  const legend = el('div', {class: 'legend'});
+  const plot = el('div', {class: 'section'});
+  axisSelect.hidden = axes.length < 2;
+  container.append(
+      el('div',
+         {class: 'row'},
+         el('label', null, 'Parameter', paramSelect),
+         el('label', null, 'Vertical axis', axisSelect),
+         el('label', null, 'Top', topSelect),
+         el('label', null, 'Colours', paletteSelect),
+         keySelect),
+      legend,
+      readout,
+      plot);
+  axisSelect.addEventListener('change', () => {
+    state.axis = axes.find((a) => a.id === axisSelect.value) || axes[0];
+    setTops();
+    draw();
+  });
+  topSelect.addEventListener('change', () => {
+    state.top = topSelect.value;
+    draw();
+  });
+  paramSelect.addEventListener('change', () => {
+    state.param = paramSelect.value;
+    draw();
+  });
+  paletteSelect.addEventListener('change', () => {
+    state.palette = paletteSelect.value;
+    draw();
+  });
+  keySelect.addEventListener('change', () => {
+    state.key = keySelect.value;
+    draw();
+  });
+
+  function draw()
+  {
+    plot.replaceChildren();
+    const all = collectProfiles(rows, state.axis);
+    const keys = Array.from(new Set(all.map((p) => p.key)));
+    keySelect.replaceChildren(...keys.map((k) => el('option', {value: k}, k)));
+    keySelect.hidden = keys.length < 2;
+    if (!keys.includes(state.key))
+      state.key = keys[0];
+    keySelect.value = state.key;
+    const profiles = all.filter((p) => p.key === state.key).sort((a, b) => a.time - b.time);
+    if (profiles.length === 0)
+    {
+      plot.append(el('p', {class: 'muted'}, 'No profiles to draw.'));
+      return;
+    }
+    const cells = profiles.map(
+        (p) => p.rows.filter(({z}) => withinTop(state.axis, state.top, z))
+                   .map(({z, row}) => ({z, v: columnValue(row, state.param)}))
+                   .filter((c) => c.v !== null));
+    const values = cells.flat().map((c) => c.v).sort((a, b) => a - b);
+    const zs = cells.flat().map((c) => c.z);
+    if (values.length === 0)
+    {
+      plot.append(el('p', {class: 'muted'}, 'No values to draw.'));
+      return;
+    }
+    const lo = quantile(values, 0.02);
+    const hi = quantile(values, 0.98);
+    const colour = (v) => paletteColour(
+        state.palette, hi > lo ? Math.min(1, Math.max(0, (v - lo) / (hi - lo))) : 0.5, 0);
+
+    const width = Math.max(360, Math.min(900, container.clientWidth || 640));
+    const height = 400;
+    const m = {left: 56, right: 12, top: 10, bottom: 40};
+    const w = width - m.left - m.right;
+    const h = height - m.top - m.bottom;
+    let zmin = Math.min(...zs);
+    const zmax = Math.max(...zs);
+    if (state.axis.id === 'depth' || state.axis.id === 'height')
+      zmin = Math.min(0, zmin);
+    const sy = verticalScale(state.axis, zmin, zmax, h);
+    const times = profiles.map((p) => p.time);
+    // Each time is a column reaching halfway to its neighbours
+    const t0 = times[0];
+    const t1 = times[times.length - 1];
+    const half = times.length > 1 ? (times[1] - times[0]) / 2 : 1800e3;
+    const sx = (t) => ((t - (t0 - half)) / (t1 + half - (t0 - half))) * w;
+
+    const root = svg('svg', {
+      class: 'vdiagram',
+      width,
+      height,
+      viewBox: `0 0 ${width} ${height}`,
+      role: 'img',
+      'aria-label': `${state.param}: time-height section`
+    });
+    const g = svg('g', {transform: `translate(${m.left},${m.top})`});
+    root.append(g);
+    // Cells reach halfway to the neighbouring times and levels, the edges as far outwards
+    const edges = (list) => list.map((v, k) => {
+      const before = k > 0 ? (list[k - 1] + v) / 2 : v - (list.length > 1 ? (list[1] - v) / 2 : 10);
+      const after = k < list.length - 1 ? (v + list[k + 1]) / 2 :
+                                          v + (list.length > 1 ? (v - list[k - 1]) / 2 : 10);
+      return [Math.min(before, after), Math.max(before, after)];
+    });
+    const columns = edges(times.map(sx));
+    profiles.forEach((p, i) => {
+      const [left, right] = columns[i];
+      const levels = cells[i];
+      const ys = edges(levels.map((c) => sy(c.z)));
+      levels.forEach((c, k) => {
+        const [top, bottom] = ys[k];
+        const rect = svg('rect', {
+          class: 'section-cell',
+          x: left,
+          y: top,
+          width: Math.max(1, right - left + 0.5),
+          height: Math.max(1, bottom - top + 0.5),
+          fill: colour(c.v)
+        });
+        rect.addEventListener('mouseenter', () => {
+          readout.textContent =
+              `${formatTime(new Date(p.time))} · ${state.axis.label} ${round(c.z, 1)}${
+                  state.axis.unit ? ` ${state.axis.unit}` : ''} · ${state.param} ${round(c.v, 2)}`;
+        });
+        g.append(rect);
+      });
+    });
+    root.addEventListener('mouseleave', () => {
+      readout.textContent = '';
+    });
+    for (const z of verticalTicks(state.axis, zmin, zmax))
+    {
+      const t = svg('text', {class: 'vtick', x: -6, y: sy(z) + 4, 'text-anchor': 'end'});
+      t.textContent = String(z);
+      g.append(t);
+    }
+    const step = Math.max(1, Math.ceil(times.length / 8));
+    times.forEach((tm, i) => {
+      if (i % step !== 0)
+        return;
+      const label = svg('text', {class: 'vtick', x: sx(tm), y: h + 16, 'text-anchor': 'middle'});
+      const d = new Date(tm);
+      label.textContent = `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)} ${
+          pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+      g.append(label);
+    });
+    g.append(svg('rect', {class: 'vframe', x: 0, y: 0, width: w, height: h}));
+    const ylabel = svg('text', {
+      class: 'vlabel',
+      transform: `translate(${- 44},${h / 2}) rotate(-90)`,
+      'text-anchor': 'middle'
+    });
+    ylabel.textContent = `${state.axis.label}${state.axis.unit ? ` (${state.axis.unit})` : ''}`;
+    g.append(ylabel);
+    const xlabel = svg('text', {class: 'vlabel', x: w / 2, y: h + 34, 'text-anchor': 'middle'});
+    xlabel.textContent = 'Time (UTC)';
+    g.append(xlabel);
+    plot.append(root);
+    const n = 24;
+    legend.replaceChildren(
+        el('span', {class: 'small'}, round(lo, 2)),
+        el('span',
+           {class: 'legend-bar'},
+           Array.from(
+               {length: n}, (_, i) => el('span', {
+                              class: 'legend-step',
+                              style: `background:${paletteColour(state.palette, (i + 0.5) / n, 0)}`
+                            }))),
+        el('span', {class: 'small'}, round(hi, 2)));
   }
   draw();
 }
@@ -1861,11 +2169,94 @@ function hasSounding(rows, levelKind)
   return !!columns.temperature && verticalAxes(rows, levelKind).some((a) => a.id === 'pressure');
 }
 
-// The skew-T log-p diagram of the soundings: temperature (red), dewpoint (green), the path
-// of a parcel lifted from the lowest level (dashed) and wind barbs
-function drawSkewT(container, rows, levelKind)
+// The thermodynamic diagrams of soundings. Each maps a temperature (C) and a pressure (hPa) to
+// coordinates [u, v], v growing upwards:
+// - skew-T log-p: v = -ln p, u = T leaning 45 degrees to the right with height
+// - tephigram: the temperature and the logarithm of the potential temperature turned 45
+//   degrees, isotherms rising to the right and dry adiabats to the left, isobars nearly level
+// - Stuve: v = -p^(R/cp), u = T, so that the dry adiabats are straight lines
+const THERMO_DIAGRAMS = [['skewt', 'Skew-T log-p'], ['tephigram', 'Tephigram'], ['stuve', 'Stüve']];
+
+function thermoProjection(type)
+{
+  if (type === 'tephigram')
+    return (t, p) => {
+      const s = 280 * Math.log((t + KELVIN) * Math.pow(1000 / p, KAPPA));
+      return [t + s, -t + s];
+    };
+  if (type === 'stuve')
+    return (t, p) => [t, -Math.pow(p, KAPPA) * 10];
+  // The skew of the isotherms is set by the scales of the view, see thermoView
+  return (t, p) => [t, -Math.log(p)];
+}
+
+// The view of a diagram in pixels: {x(t, p), y(t, p)} for a plot of w x h pixels. The window
+// covers the pressures pBottom...pTop and the temperatures tmin...tmax at them.
+function thermoView(type, w, h, pBottom, pTop, tmin, tmax, tSurface, points)
+{
+  if (type === 'skewt')
+  {
+    // 80 degrees at the bottom covering the temperatures near the surface, the isotherms at
+    // 45 degrees: the cold upper air is to the left of the surface only by the skew
+    const tLeft = Math.min(-40, Math.floor((tSurface - 30) / 10) * 10);
+    const tRight = tLeft + 80;
+    const y = (p) =>
+        h - (h * (Math.log(pBottom) - Math.log(p))) / (Math.log(pBottom) - Math.log(pTop));
+    return {x: (t, p) => ((t - tLeft) / (tRight - tLeft)) * w + (h - y(p)), y: (t, p) => y(p)};
+  }
+  // The box of the window, the same scale in both directions so that angles are kept. The
+  // tephigram is turned, so its window is fitted to the data rather than to the corners.
+  const proj = thermoProjection(type);
+  const source = type === 'tephigram' && points && points.length ?
+      [...points, [tSurface - 10, pBottom], [tSurface + 15, pBottom]] :
+      [[tmin, pBottom], [tmax, pBottom], [tmin, pTop], [tmax, pTop]];
+  const corners = source.map(([t, p]) => proj(t, p));
+  const umin = Math.min(...corners.map((c) => c[0]));
+  const umax = Math.max(...corners.map((c) => c[0]));
+  const vmin = Math.min(...corners.map((c) => c[1]));
+  const vmax = Math.max(...corners.map((c) => c[1]));
+  if (type === 'stuve')
+  {
+    // Temperature and pressure scales are independent
+    return {
+      x: (t, p) => ((proj(t, p)[0] - umin) / (umax - umin)) * w,
+      y: (t, p) => h - ((proj(t, p)[1] - vmin) / (vmax - vmin)) * h
+    };
+  }
+  const scale = 0.92 * Math.min(w / (umax - umin), h / (vmax - vmin));
+  const u0 = (umin + umax) / 2;
+  const v0 = (vmin + vmax) / 2;
+  return {
+    x: (t, p) => w / 2 + (proj(t, p)[0] - u0) * scale,
+    y: (t, p) => h / 2 - (proj(t, p)[1] - v0) * scale
+  };
+}
+
+// Bisection: the value in [a, b] at which the increasing function f reaches the target
+function solveIncreasing(f, target, a, b)
+{
+  let lo = a;
+  let hi = b;
+  if (f(lo) > target || f(hi) < target)
+    return null;
+  for (let i = 0; i < 50; i++)
+  {
+    const mid = (lo + hi) / 2;
+    if (f(mid) < target)
+      lo = mid;
+    else
+      hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+// The sounding diagram of the profiles: temperature (red), dewpoint (green), the path of a
+// parcel lifted from the lowest level (dashed), wind barbs, and the soundings of another
+// producer for comparison (thin)
+function drawSkewT(container, rows, levelKind, options)
 {
   container.replaceChildren();
+  const opts = options || {};
   const axis = verticalAxes(rows, levelKind).find((a) => a.id === 'pressure');
   const columns = soundingColumns(rows);
   if (!axis || !columns.temperature)
@@ -1880,25 +2271,41 @@ function drawSkewT(container, rows, levelKind)
       el('select',
          {'aria-label': 'Location of the sounding'},
          keys.map((k) => el('option', {value: k}, k)));
+  const typeSelect =
+      el('select',
+         {'aria-label': 'Diagram'},
+         THERMO_DIAGRAMS.map(([v, label]) => el('option', {value: v}, label)));
+  typeSelect.value = opts.type || 'skewt';
   const chooser = timeChooser(times, () => draw());
   const parcelBox = el('input', {type: 'checkbox', checked: true, 'aria-label': 'Lifted parcel'});
   const info = el('p', {class: 'muted small skewt-info'});
   const diagram = el('div', {class: 'skewt'});
+  const extra = el('div', {class: 'row'});
   keySelect.hidden = keys.length < 2;
   keySelect.addEventListener('change', () => draw());
   parcelBox.addEventListener('change', () => draw());
+  typeSelect.addEventListener('change', () => {
+    if (opts.onType)
+      opts.onType(typeSelect.value);
+    draw();
+  });
   container.append(
       el('div',
          {class: 'row'},
+         typeSelect,
          keySelect,
          chooser.element,
          el('label', {class: 'check'}, parcelBox, 'Lifted parcel')),
+      extra,
       diagram,
       info);
+  if (opts.controls)
+    extra.append(...opts.controls);
 
   function draw()
   {
     diagram.replaceChildren();
+    const type = typeSelect.value;
     const chosen = new Set(chooser.value());
     const key = keySelect.value || keys[0];
     const soundings = profiles.filter((p) => p.key === key && chosen.has(p.time))
@@ -1910,26 +2317,42 @@ function drawSkewT(container, rows, levelKind)
       diagram.append(el('p', {class: 'muted'}, 'No sounding at the chosen time.'));
       return;
     }
+    // Soundings to compare with: the nearest time of the other data
+    const others = (opts.compare && opts.compare.soundings) ?
+        opts.compare.soundings(soundings.map((s) => s.time)) :
+        [];
     const width = Math.max(360, Math.min(640, container.clientWidth || 560));
     const height = 560;
     const m = {left: 48, right: 56, top: 10, bottom: 36};
     const w = width - m.left - m.right;
     const h = height - m.top - m.bottom;
-    const pBottom = Math.max(1050, ...soundings.map((s) => s.levels[0].p));
-    const pTop = Math.max(100, Math.min(...soundings.flatMap((s) => s.levels.map((l) => l.p))));
-    const tLeft = -40;
-    const tRight = 40;
-    // Pixels grow downwards: the highest pressure at the bottom
-    const y = (p) =>
-        h - (h * (Math.log(pBottom) - Math.log(p))) / (Math.log(pBottom) - Math.log(pTop));
-    // The isotherms lean 45 degrees to the right
-    const x = (t, p) => ((t - tLeft) / (tRight - tLeft)) * w + (h - y(p));
-    const line = (points, cls, extra) => {
+    const all = [...soundings, ...others].flatMap((s) => s.levels);
+    const pBottom = Math.max(1050, ...all.map((l) => l.p));
+    const pTop = Math.max(100, Math.min(...all.map((l) => l.p)));
+    const temps = all.flatMap((l) => [l.t, l.td]).filter((v) => v !== null);
+    const tmin = Math.min(-40, ...temps) - 5;
+    const tmax = Math.max(30, ...temps) + 5;
+    const near =
+        all.filter((l) => l.p >= 850).flatMap((l) => [l.t, l.td]).filter((v) => v !== null);
+    const tSurface = near.length ? Math.min(...near) : 0;
+    const view = thermoView(
+        type,
+        w,
+        h,
+        pBottom,
+        pTop,
+        tmin,
+        tmax,
+        tSurface,
+        all.flatMap((l) => (l.td === null ? [[l.t, l.p]] : [[l.t, l.p], [l.td, l.p]])));
+    const x = view.x;
+    const y = view.y;
+    const line = (points, cls, attrs) => {
       let d = '';
       points.forEach(([p, t], i) => {
-        d += `${i ? 'L' : 'M'}${x(t, p).toFixed(1)},${y(p).toFixed(1)}`;
+        d += `${i ? 'L' : 'M'}${x(t, p).toFixed(1)},${y(t, p).toFixed(1)}`;
       });
-      return svg('path', Object.assign({class: cls, d}, extra || {}));
+      return svg('path', Object.assign({class: cls, d}, attrs || {}));
     };
     const root = svg('svg', {
       class: 'skewt-diagram',
@@ -1937,7 +2360,7 @@ function drawSkewT(container, rows, levelKind)
       height,
       viewBox: `0 0 ${width} ${height}`,
       role: 'img',
-      'aria-label': 'Skew-T log-p diagram'
+      'aria-label': THERMO_DIAGRAMS.find((d) => d[0] === type)[1]
     });
     const clipId = `skewt-clip-${Math.random().toString(36).slice(2)}`;
     const defs = svg('defs');
@@ -1949,32 +2372,42 @@ function drawSkewT(container, rows, levelKind)
     root.append(g);
     const plot = svg('g', {'clip-path': `url(#${clipId})`});
     g.append(plot);
+    // The background reaches beyond the window, the clip cuts it
     const pressures = [];
-    for (let p = pBottom; p >= pTop - 1e-9; p -= 10)
+    for (let p = pBottom * 1.1; p >= pTop * 0.7; p -= 10)
       pressures.push(p);
-    // Background: isobars, isotherms, dry adiabats, moist adiabats and mixing ratios
+    const isotherm = [];
+    for (let t = -160; t <= 60; t += 5)
+      isotherm.push(t);
     for (const p of PRESSURE_TICKS.filter((q) => q <= pBottom && q >= pTop))
     {
-      plot.append(svg('line', {class: 'sk-isobar', x1: 0, x2: w, y1: y(p), y2: y(p)}));
-      const t = svg('text', {class: 'vtick', x: -6, y: y(p) + 4, 'text-anchor': 'end'});
-      t.textContent = String(p);
-      g.append(t);
+      plot.append(line(isotherm.map((t) => [p, t]), 'sk-isobar'));
+      // The label where the isobar meets the left edge
+      const t = solveIncreasing((tt) => x(tt, p), 0, -200, 100);
+      if (t !== null && y(t, p) >= 0 && y(t, p) <= h)
+      {
+        const label = svg('text', {class: 'vtick', x: -6, y: y(t, p) + 4, 'text-anchor': 'end'});
+        label.textContent = String(p);
+        g.append(label);
+      }
     }
     for (let t = -120; t <= 50; t += 10)
     {
-      plot.append(line([[pBottom, t], [pTop, t]], t === 0 ? 'sk-isotherm zero' : 'sk-isotherm'));
-      const bx = x(t, pBottom);
-      if (bx >= 0 && bx <= w)
+      plot.append(line(pressures.map((p) => [p, t]), t === 0 ? 'sk-isotherm zero' : 'sk-isotherm'));
+      // The label where the isotherm meets the bottom edge
+      const p = solveIncreasing((pp) => y(t, pp), h, pTop * 0.3, pBottom * 1.5);
+      if (p !== null && x(t, p) >= 0 && x(t, p) <= w)
       {
-        const label = svg('text', {class: 'vtick', x: bx, y: h + 16, 'text-anchor': 'middle'});
+        const label = svg('text', {class: 'vtick', x: x(t, p), y: h + 16, 'text-anchor': 'middle'});
         label.textContent = String(t);
         g.append(label);
       }
     }
-    for (let theta = 250; theta <= 470; theta += 10)
+    for (let theta = 230; theta <= 500; theta += 10)
       plot.append(line(pressures.map((p) => [p, dryAdiabat(theta, p)]), 'sk-dry'));
-    for (let t0 = -20; t0 <= 36; t0 += 4)
-      plot.append(line(moistAdiabat(t0, 1000, pTop).filter(([p]) => p <= pBottom), 'sk-moist'));
+    for (let t0 = -24; t0 <= 36; t0 += 4)
+      plot.append(
+          line(moistAdiabat(t0, 1000, pTop * 0.7).filter(([p]) => p <= pBottom * 1.1), 'sk-moist'));
     for (const wgk of [0.4, 1, 2, 4, 7, 10, 16, 24, 32])
     {
       const ps = pressures.filter((p) => p >= 600);
@@ -1983,7 +2416,7 @@ function drawSkewT(container, rows, levelKind)
       const label = svg('text', {
         class: 'sk-mixing-label',
         x: x(mixingRatioTemperature(wgk, lp), lp),
-        y: y(lp) - 3,
+        y: y(mixingRatioTemperature(wgk, lp), lp) - 3,
         'text-anchor': 'middle'
       });
       label.textContent = String(wgk);
@@ -2001,6 +2434,15 @@ function drawSkewT(container, rows, levelKind)
     xlabel.textContent = 'Temperature (C)';
     g.append(xlabel);
 
+    // The soundings to compare with, thin
+    for (const s of others)
+    {
+      const levels = s.levels.filter((l) => l.p >= pTop && l.p <= pBottom);
+      plot.append(line(levels.map((l) => [l.p, l.t]), 'sk-temperature compare'));
+      const dew = levels.filter((l) => l.td !== null);
+      if (dew.length > 1)
+        plot.append(line(dew.map((l) => [l.p, l.td]), 'sk-dewpoint compare'));
+    }
     // The soundings, earlier times fainter
     const infos = [];
     soundings.forEach((s, i) => {
@@ -2016,13 +2458,9 @@ function drawSkewT(container, rows, levelKind)
         const base = levels[0];
         const parcel = parcelPath(base.t, base.td, base.p, pTop);
         plot.append(line(parcel.path, 'sk-parcel'));
-        plot.append(svg('line', {
-          class: 'sk-lcl',
-          x1: x(parcel.lcl.t, parcel.lcl.p) - 8,
-          x2: x(parcel.lcl.t, parcel.lcl.p) + 8,
-          y1: y(parcel.lcl.p),
-          y2: y(parcel.lcl.p)
-        }));
+        const lx = x(parcel.lcl.t, parcel.lcl.p);
+        const ly = y(parcel.lcl.t, parcel.lcl.p);
+        plot.append(svg('line', {class: 'sk-lcl', x1: lx - 8, x2: lx + 8, y1: ly, y2: ly}));
         infos.push(`Lifting condensation level ${Math.round(parcel.lcl.p)} hPa, ${
             parcel.lcl.t.toFixed(1)} C, of a parcel lifted from ${Math.round(base.p)} hPa`);
       }
@@ -2032,16 +2470,91 @@ function drawSkewT(container, rows, levelKind)
     let previous = Infinity;
     for (const l of latest)
     {
-      if (l.speed === null || l.direction === null || l.p < pTop || previous - y(l.p) < 16)
+      const ly = y(l.t, l.p);
+      if (l.speed === null || l.direction === null || ly < 0 || ly > h || previous - ly < 16)
         continue;
-      g.append(windBarb(w + 28, y(l.p), l.speed, l.direction));
-      previous = y(l.p);
+      g.append(windBarb(w + 28, ly, l.speed, l.direction));
+      previous = ly;
     }
     infos.push(`${key}, ${soundings.map((s) => formatTime(new Date(s.time))).join(', ')}`);
+    if (others.length > 0 && opts.compare.label)
+      infos.push(`thin lines: ${opts.compare.label(others)}`);
     info.textContent = infos.join(' · ');
-    diagram.append(root);
+
+    // The pointer: a guide along its isobar, the temperature, pressure and potential
+    // temperature under it, and the values of the nearest level of the latest sounding
+    const guide = svg('path', {class: 'sk-guide', visibility: 'hidden'});
+    const tMark = svg('circle', {class: 'sk-mark temperature', r: 4, visibility: 'hidden'});
+    const dMark = svg('circle', {class: 'sk-mark dewpoint', r: 4, visibility: 'hidden'});
+    const hover = svg('rect', {class: 'vhover', x: 0, y: 0, width: w, height: h});
+    plot.append(guide, tMark, dMark);
+    g.append(hover);
+    const readout = el('div', {class: 'sk-readout small'});
+    const setVisible = (on) => {
+      for (const n of [guide, tMark, dMark])
+        n.setAttribute('visibility', on ? 'visible' : 'hidden');
+    };
+    hover.addEventListener('mousemove', (e) => {
+      const r = hover.getBoundingClientRect();
+      const mx = ((e.clientX - r.left) / r.width) * w;
+      const my = ((e.clientY - r.top) / r.height) * h;
+      // The pressure whose isotherm-crossing at the pointer's x is at the pointer's y
+      const tAt = (p) => solveIncreasing((tt) => x(tt, p), mx, -250, 150);
+      const p = solveIncreasing((pp) => {
+        const tt = tAt(pp);
+        return tt === null ? NaN : y(tt, pp);
+      }, my, pTop * 0.5, pBottom * 1.3);
+      const t = p === null ? null : tAt(p);
+      if (p === null || t === null)
+      {
+        setVisible(false);
+        readout.textContent = '';
+        return;
+      }
+      guide.setAttribute(
+          'd',
+          isotherm.map((tt, i) => `${i ? 'L' : 'M'}${x(tt, p).toFixed(1)},${y(tt, p).toFixed(1)}`)
+              .join(''));
+      const theta = (t + KELVIN) * Math.pow(1000 / p, KAPPA);
+      const parts = [`${Math.round(p)} hPa`, `${t.toFixed(1)} C`, `θ ${theta.toFixed(1)} K`];
+      // The nearest level of the latest sounding
+      let near = null;
+      for (const l of latest)
+        if (!near || Math.abs(Math.log(l.p / p)) < Math.abs(Math.log(near.p / p)))
+          near = l;
+      if (near && Math.abs(Math.log(near.p / p)) < 0.05)
+      {
+        tMark.setAttribute('cx', x(near.t, near.p));
+        tMark.setAttribute('cy', y(near.t, near.p));
+        const level = [`level ${Math.round(near.p)} hPa: T ${near.t.toFixed(1)} C`];
+        if (near.td !== null)
+        {
+          dMark.setAttribute('cx', x(near.td, near.p));
+          dMark.setAttribute('cy', y(near.td, near.p));
+          level.push(`Td ${near.td.toFixed(1)} C`);
+        }
+        if (near.speed !== null && near.direction !== null)
+          level.push(`wind ${Math.round(near.direction)}° ${near.speed.toFixed(1)} m/s`);
+        parts.push(level.join(', '));
+        setVisible(true);
+        dMark.setAttribute('visibility', near.td !== null ? 'visible' : 'hidden');
+      }
+      else
+      {
+        setVisible(true);
+        tMark.setAttribute('visibility', 'hidden');
+        dMark.setAttribute('visibility', 'hidden');
+      }
+      readout.textContent = parts.join(' · ');
+    });
+    hover.addEventListener('mouseleave', () => {
+      setVisible(false);
+      readout.textContent = '';
+    });
+    diagram.append(readout, root);
   }
   draw();
+  return {redraw: draw};
 }
 
 // More locations than this are drawn as percentiles by default, and as a swarm of thin lines
@@ -2870,6 +3383,7 @@ const LOCATION_MODES = [
   ['bbox', 'Box', '21,60,26,62, or drag on the map', 'box'],
   ['keyword', 'Keyword', 'synop_fi', null],
   ['fmisid', 'Station id', '100971,101004', null],
+  ['wmo', 'WMO id', '2963,2974', null],
   ['area', 'Area', 'Uusimaa', null]
 ];
 
@@ -2961,11 +3475,17 @@ function timeSeriesModule(app, api, state, save)
       const p = producer();
       return p && p.source === 'grid' ? details.get(detailsKey(p)) || null : null;
     };
-    // The stations of an observation producer, [] until loaded
+    // The stations of an observation producer or point querydata (by WMO number), [] until
+    // loaded
+    const stationType = () => {
+      const p = producer();
+      return p && p.source === 'observation' ? 'fmisid' : 'qdstation';
+    };
+    const stationMode = () => (stationType() === 'fmisid' ? 'fmisid' : 'wmo');
     const stations = () => {
       const p = producer();
-      const d = p && p.source === 'observation' ? details.get(detailsKey(p)) : null;
-      return d && d.locations ? d.locations.filter((l) => l.type === 'fmisid') : [];
+      const d = p && p.source !== 'grid' ? details.get(detailsKey(p)) : null;
+      return d && d.locations ? d.locations.filter((l) => l.type === stationType()) : [];
     };
     // The stations operating at some time of the chosen period
     const stationsInPeriod = () => {
@@ -2976,13 +3496,13 @@ function timeSeriesModule(app, api, state, save)
               (!start || !l.end || new Date(l.end) >= start));
     };
     const chosenStations = () =>
-        (s.locmode === 'fmisid' ?
+        (s.locmode === stationMode() ?
              String(s.location || '').split(',').map((x) => x.trim()).filter(Boolean) :
              []);
     function toggleStation(id)
     {
       const chosen = chosenStations();
-      s.locmode = 'fmisid';
+      s.locmode = stationMode();
       s.location =
           (chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id]).join(',');
       refresh();
@@ -2990,7 +3510,8 @@ function timeSeriesModule(app, api, state, save)
     function loadDetails()
     {
       const p = producer();
-      if (!p || !['grid', 'observation'].includes(p.source) || details.has(detailsKey(p)))
+      if (!p || !['grid', 'observation', 'querydata'].includes(p.source) ||
+          details.has(detailsKey(p)))
         return;
       const key = detailsKey(p);
       details.set(key, null);
@@ -4139,7 +4660,7 @@ function timeSeriesModule(app, api, state, save)
           ]));
       // Model levels are placed vertically by the pressure and height of each level
       const p = producer();
-      if (p && levelKind() === 'hybrid')
+      if (p && ['hybrid', 'sounding'].includes(levelKind()))
       {
         const extras = [
           PRESSURE_PARAMS.find((n) => p.parameterSet.has(n)),
@@ -4222,7 +4743,7 @@ function timeSeriesModule(app, api, state, save)
       }
       const rows = splitVariants(flattenRows(data), variantColumns());
       // The stations being chosen stay on the map
-      if (!serverStatistics() && !(stations().length > 0 && s.locmode === 'fmisid'))
+      if (!serverStatistics() && !(stations().length > 0 && s.locmode === stationMode()))
         map.setPoints(mapPoints(rows));
       showResults(rows, text);
     }
@@ -4237,7 +4758,9 @@ function timeSeriesModule(app, api, state, save)
       if (vertical)
       {
         panes.Profile = el('div', {class: 'pane'});
-        panes['Skew-T'] = el('div', {class: 'pane'});
+        if (new Set(rows.map((r) => String(r.time))).size > 1)
+          panes.Section = el('div', {class: 'pane'});
+        panes.Sounding = el('div', {class: 'pane'});
       }
       panes.Chart = el('div', {class: 'pane'});
       // The values on a map when there are several located points
@@ -4260,8 +4783,10 @@ function timeSeriesModule(app, api, state, save)
           drawCharts(panes.Chart, rows, dataParams(), statistics ? 'server' : undefined);
         else if (name === 'Profile')
           drawProfiles(panes.Profile, rows, dataParams(), kind);
-        else if (name === 'Skew-T')
-          drawSounding(panes['Skew-T'], rows, kind);
+        else if (name === 'Section')
+          drawSection(panes.Section, rows, dataParams(), kind);
+        else if (name === 'Sounding')
+          drawSounding(panes.Sounding, rows, kind);
         else if (name === 'Map')
           drawValueMap(panes.Map, rows, dataParams(), mapSettings(app.element));
         else if (name === 'Table')
@@ -4300,7 +4825,8 @@ function timeSeriesModule(app, api, state, save)
     {
       if (hasSounding(rows, kind))
       {
-        drawSkewT(pane, rows, kind);
+        const options = soundingOptions();
+        options.diagram = drawSkewT(pane, rows, kind, options);
         return;
       }
       const wanted = soundingParameters(producer());
@@ -4322,6 +4848,121 @@ function timeSeriesModule(app, api, state, save)
                  }
                },
                `Add ${wanted.join(', ')} and run`));
+    }
+
+    // The options of the sounding diagram: its type, and the soundings of another producer to
+    // compare with, fetched for the same location and times
+    function soundingOptions()
+    {
+      const own = producer();
+      const others = Array.from(index.producers.values())
+                         .filter((p) => p !== own && p.source !== 'grid' && soundingCapable(p));
+      const select = el('select', {'aria-label': 'Compare with'}, [
+        el('option', {value: ''}, 'No comparison'),
+        ...others.map((p) => el('option', {value: p.key}, `${p.name} (${p.source})`))
+      ]);
+      const status = el('span', {class: 'muted small'});
+      const compare = {rows: null, kind: '', name: ''};
+      const options = {
+        diagram: null,
+        type: s.diagram || 'skewt',
+        onType: (type) => {
+          s.diagram = type;
+          save();
+        },
+        controls: others.length ? [el('label', null, 'Compare with', select), status] : [],
+        compare: {
+          // The sounding of the other producer nearest each chosen time, within 3 hours
+          soundings: (times) => {
+            if (!compare.rows || compare.rows.length === 0)
+              return [];
+            const axis = verticalAxes(compare.rows, compare.kind).find((a) => a.id === 'pressure');
+            const columns = soundingColumns(compare.rows);
+            if (!axis || !columns.temperature)
+              return [];
+            const profiles = collectProfiles(compare.rows, axis);
+            const out = [];
+            for (const time of times)
+            {
+              let best = null;
+              for (const p of profiles)
+                if (!best || Math.abs(p.time - time) < Math.abs(best.time - time))
+                  best = p;
+              if (best && Math.abs(best.time - time) <= 3 * 3600e3 &&
+                  !out.some((o) => o.time === best.time))
+                out.push({time: best.time, levels: soundingOf(best, columns, axis)});
+            }
+            return out.filter((o) => o.levels.length >= 2);
+          },
+          label: (soundings) =>
+              `${compare.name} ${soundings.map((x) => formatTime(new Date(x.time))).join(', ')}`
+        }
+      };
+      select.addEventListener('change', async () => {
+        compare.rows = null;
+        const p = index.producers.get(select.value);
+        if (p)
+        {
+          status.textContent = 'Loading…';
+          try
+          {
+            const query = [
+              ['producer', p.name],
+              ['source', p.ambiguous && p.source === 'querydata' ? 'querydata' : ''],
+              ['param', ['name', 'time', 'level', ...soundingNames(p)].join(',')],
+              ['starttime', fromInput(s.start)],
+              ['endtime', fromInput(s.end)],
+              ['timestep', 'data'],
+              [locationOption(s.locmode), s.location],
+              ['format', 'json'],
+              ['tz', 'UTC']
+            ];
+            const response =
+                await fetch(`${app.base}${rootPath.replace(/^\//, '')}?${queryString(query)}`);
+            compare.rows = flattenRows(response.ok ? await response.json() : []);
+            compare.kind = (p.levels && p.levels[0] && p.levels[0].type) || '';
+            compare.name = p.name;
+            status.textContent = compare.rows.length ? '' : `No soundings of ${p.name} here`;
+          }
+          catch (e)
+          {
+            status.textContent = e.message;
+          }
+        }
+        if (options.diagram)
+          options.diagram.redraw();
+      });
+      return options;
+    }
+
+    // Whether a producer has soundings: a temperature, and levels with pressures
+    function soundingCapable(p)
+    {
+      const levels = (p.levels || []).filter((l) => l.values.length >= 3);
+      if (levels.length === 0 || !SOUNDING_PARAMS.temperature.some(([n]) => p.parameterSet.has(n)))
+        return false;
+      return levels.some((l) => l.type === 'pressure') ||
+          PRESSURE_PARAMS.some((n) => p.parameterSet.has(n));
+    }
+
+    // The parameters of a sounding of a producer: the vertical coordinates, temperature,
+    // dewpoint or humidity, and wind
+    function soundingNames(p)
+    {
+      const out = [];
+      for (const candidates of [PRESSURE_PARAMS, HEIGHT_PARAMS])
+      {
+        const n = candidates.find((x) => p.parameterSet.has(x));
+        if (n)
+          out.push(n);
+      }
+      for (const what of ['temperature', 'dewpoint', 'humidity', 'speed', 'direction'])
+      {
+        const n = SOUNDING_PARAMS[what].map(([x]) => x).find((x) => p.parameterSet.has(x));
+        if (n)
+          out.push(n);
+      }
+      return Array.from(new Set(out));
     }
 
     // The parameters of a sounding the producer has and the request lacks
@@ -4487,18 +5128,21 @@ function timeSeriesModule(app, api, state, save)
         const chosen = new Set(chosenStations());
         stationNote.textContent = `${operating.length} of the ${known.length} stations of ${
             p.name} operate in the chosen period${
-            s.locmode === 'fmisid' ? ': click them on the map to choose' :
-                                     ', choose "Station id" to pick them on the map'}`;
-        if (s.locmode === 'fmisid')
-          map.setPoints(
-              operating.map((l) => ({
-                              lon: l.lon,
-                              lat: l.lat,
-                              label: l.name,
-                              info: {fmisid: l.id, wsi: l.wsi, since: (l.start || '').slice(0, 10)},
-                              selected: chosen.has(l.id),
-                              onclick: () => toggleStation(l.id)
-                            })));
+            s.locmode === stationMode() ?
+                ': click them on the map to choose' :
+                `, choose "${
+                    stationMode() === 'fmisid' ? 'Station id' :
+                                                 'WMO id'}" to pick them on the map`}`;
+        if (s.locmode === stationMode())
+          map.setPoints(operating.map(
+              (l) => ({
+                lon: l.lon,
+                lat: l.lat,
+                label: l.name,
+                info: {[stationMode()]: l.id, wsi: l.wsi, since: (l.start || '').slice(0, 10)},
+                selected: chosen.has(l.id),
+                onclick: () => toggleStation(l.id)
+              })));
       }
       else if (p && p.source === 'observation' && details.get(detailsKey(p)) === null)
       {
@@ -5089,8 +5733,10 @@ function edrModule(app, api, state, save)
       if (vertical)
       {
         panes.Profile = el('div', {class: 'pane'});
+        if (new Set(rows.map((r) => String(r.time))).size > 1)
+          panes.Section = el('div', {class: 'pane'});
         if (hasSounding(rows, kind))
-          panes['Skew-T'] = el('div', {class: 'pane'});
+          panes.Sounding = el('div', {class: 'pane'});
       }
       panes.Chart = el('div', {class: 'pane'});
       // The values on a map when there are several located points
@@ -5117,8 +5763,16 @@ function edrModule(app, api, state, save)
           drawCharts(panes.Chart, rows, params);
         else if (name === 'Profile')
           drawProfiles(panes.Profile, rows, params, kind);
-        else if (name === 'Skew-T')
-          drawSkewT(panes['Skew-T'], rows, kind);
+        else if (name === 'Section')
+          drawSection(panes.Section, rows, params, kind);
+        else if (name === 'Sounding')
+          drawSkewT(panes.Sounding, rows, kind, {
+            type: s.diagram || 'skewt',
+            onType: (type) => {
+              s.diagram = type;
+              save();
+            }
+          });
         else if (name === 'Map')
           drawValueMap(panes.Map, rows, params, mapSettings(app.element));
         else if (name === 'Table')
@@ -6055,6 +6709,7 @@ root.SmartMetExplorer = {
   drawCharts,
   drawProfiles,
   drawSkewT,
+  drawSection,
   hasProfiles,
   hasSounding,
   verticalAxes,

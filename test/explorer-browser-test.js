@@ -1113,7 +1113,7 @@ async function main()
         week.toString());
 
     // Vertical profiles and the skew-T of model levels: a standard atmosphere on 20 levels
-    const vertical = await b.evaluate(`(() => {
+    const vertical = await b.evaluate(`(() => { try {
       const E = SmartMetExplorer;
       const rows = [];
       for (const hour of [0, 6])
@@ -1142,11 +1142,42 @@ async function main()
         barbs: box.querySelectorAll('.barb').length,
         info: box.querySelector('.skewt-info').textContent,
         has: E.hasSounding(rows, 'hybrid'), noPressure: E.hasSounding(rows.map(({pressure, ...r}) => r), 'depth') };
+      // The other diagrams, the pointer and a sounding to compare with
+      const diagrams = {};
+      for (const type of ['skewt', 'tephigram', 'stuve']) {
+        const d = E.drawSkewT(box, rows, 'hybrid', { type, compare: {
+          soundings: (times) => [{ time: times[0], levels: [{ p: 1000, t: 10, td: 5, speed: null, direction: null },
+                                                           { p: 500, t: -25, td: -35, speed: null, direction: null }] }],
+          label: () => 'other' } });
+        const svgEl = box.querySelector('.skewt-diagram');
+        const hover = svgEl.querySelector('.vhover');
+        const r = hover.getBoundingClientRect();
+        hover.dispatchEvent(new MouseEvent('mousemove', { clientX: r.left + r.width / 2, clientY: r.top + r.height * 0.8, bubbles: true }));
+        diagrams[type] = { label: svgEl.getAttribute('aria-label'), compare: box.querySelectorAll('.sk-temperature.compare').length,
+                           readout: box.querySelector('.sk-readout').textContent, info: box.querySelector('.skewt-info').textContent,
+                           redraw: typeof d.redraw };
+      }
+      E.drawSection(box, rows, ['temperature', 'humidity'], 'hybrid');
+      const cells = box.querySelectorAll('.section-cell');
+      cells[5].dispatchEvent(new MouseEvent('mouseenter'));
+      const top = box.querySelector('[aria-label="Top of the section"]');
+      const section = { cells: cells.length, readout: box.querySelector('.sk-readout').textContent,
+                        tops: [...top.options].map((o) => o.value) };
+      top.value = '500';
+      top.dispatchEvent(new Event('change'));
+      section.limited = box.querySelectorAll('.section-cell').length;
+      E.drawProfiles(box, rows, ['temperature'], 'hybrid');
+      const vh = box.querySelector('.vchart .vhover');
+      const vr = vh.getBoundingClientRect();
+      vh.dispatchEvent(new MouseEvent('mousemove', { clientX: vr.left + vr.width / 2, clientY: vr.top + vr.height / 2, bubbles: true }));
+      const profileTip = box.querySelector('.vtip').getAttribute('visibility') + ' ' + box.querySelector('.vtip text').textContent;
       box.remove();
       const lcl = E.liftingCondensationLevel(20, 10, 1000);
-      return { axes, profiles, skewt, lcl: [Math.round(lcl.p), Math.round(lcl.t * 10) / 10],
+      return { axes, profiles, skewt, diagrams, section, profileTip, lcl: [Math.round(lcl.p), Math.round(lcl.t * 10) / 10],
                moist: Math.round(E.moistAdiabat(20, 1000, 500).pop()[1] * 10) / 10 };
-    })()`);
+    } catch (e) { return { error: String(e.stack) }; } })()`);
+    if (vertical.error)
+      console.log('VERTICAL ERROR', vertical.error);
     check(
         'vertical axes of model levels',
         JSON.stringify(vertical.axes) === '["pressure","height","level"]',
@@ -1182,6 +1213,26 @@ async function main()
         'temperatures in Kelvins or already in Celsius',
         kelvins[0] === kelvins[1] && /^[0-9.]+ C$/.test(kelvins[0]),
         kelvins);
+    check(
+        'three sounding diagrams with the pointer and a comparison',
+        ['skewt', 'tephigram', 'stuve'].every(
+            (type) => vertical.diagrams[type].compare === 1 &&
+                /^\d+ hPa · -?\d+\.\d C · θ \d+\.\d K/.test(vertical.diagrams[type].readout) &&
+                vertical.diagrams[type].info.includes('thin lines: other') &&
+                vertical.diagrams[type].redraw === 'function') &&
+            vertical.diagrams.tephigram.label === 'Tephigram' &&
+            vertical.diagrams.stuve.label === 'Stüve',
+        vertical.diagrams);
+    check(
+        'time-height section and its pointer',
+        vertical.section.cells === 40 && vertical.section.readout.includes('temperature') &&
+            JSON.stringify(vertical.section.tops) === '["","200","500","700","900"]' &&
+            vertical.section.limited > 0 && vertical.section.limited < 40,
+        vertical.section);
+    check(
+        'the values of a profile under the pointer',
+        vertical.profileTip.startsWith('visible Helsinki'),
+        vertical.profileTip);
     check(
         'condensation level and moist adiabat',
         JSON.stringify(vertical.lcl) === '[861,7.8]' && vertical.moist > -9.5 &&

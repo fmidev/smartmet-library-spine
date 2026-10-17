@@ -240,8 +240,8 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .vlegend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
 .vlegend i { display: inline-block; width: 12px; height: 3px; margin-right: 4px; vertical-align: middle; }
 .profile-times input[type="range"] { width: 220px; }
-.sk-isobar { stroke: var(--line); stroke-width: 1; }
-.sk-isotherm { stroke: #b0b8c8; stroke-width: 0.8; }
+.sk-isobar { fill: none; stroke: var(--line); stroke-width: 1; }
+.sk-isotherm { fill: none; stroke: #b0b8c8; stroke-width: 0.8; }
 .sk-isotherm.zero { stroke: #5a7ab8; stroke-width: 1.2; }
 .sk-dry { fill: none; stroke: #d9a35c; stroke-width: 0.7; opacity: 0.7; }
 .sk-moist { fill: none; stroke: #6aa86a; stroke-width: 0.7; stroke-dasharray: 4 3; opacity: 0.7; }
@@ -249,7 +249,21 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .sk-mixing-label { fill: #9a7ab8; font-size: 9px; }
 .sk-temperature { fill: none; stroke: #d62728; stroke-width: 2.2; }
 .sk-dewpoint { fill: none; stroke: #2ca02c; stroke-width: 2.2; }
+.sk-temperature.compare { stroke: #ff7f0e; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.sk-dewpoint.compare { stroke: #17becf; stroke-width: 1.4; stroke-dasharray: 5 3; }
 .sk-parcel { fill: none; stroke: var(--fg); stroke-width: 1.2; stroke-dasharray: 6 4; }
 .sk-lcl { stroke: var(--fg); stroke-width: 2; }
 .barb line, .barb circle { stroke: var(--fg); stroke-width: 1.2; fill: none; }
 .barb .pennant { fill: var(--fg); stroke: none; }
+.vhover { fill: transparent; pointer-events: all; }
+.vmarker { fill: var(--bg); stroke-width: 2; pointer-events: none; }
+.vtip { pointer-events: none; }
+.vtip rect { fill: var(--bg); stroke: var(--line); }
+.vtip text { fill: var(--fg); font-size: 11px; }
+.sk-guide { fill: none; stroke: var(--fg); stroke-width: 0.8; stroke-dasharray: 3 3; pointer-events: none; }
+.sk-mark { fill: none; stroke-width: 2; pointer-events: none; }
+.sk-mark.temperature { stroke: #d62728; }
+.sk-mark.dewpoint { stroke: #2ca02c; }
+.sk-readout { min-height: 1.4em; color: var(--muted); }
+.section-cell { stroke: none; }
+.section-cell:hover { stroke: var(--fg); stroke-width: 1; }
