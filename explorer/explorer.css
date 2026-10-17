@@ -206,6 +206,11 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .xmap-tooltip td { padding: 0 6px 0 0; }
 .xmap-tooltip td:first-child { color: var(--muted); }
 .chart-modes { margin-bottom: 8px; }
+.chart-choices { align-items: center; gap: 12px; margin-bottom: 8px; }
+.chart-choices .chart-modes { margin-bottom: 0; }
+.swarm-hover { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+.swarm-line { fill: none; stroke: var(--accent); stroke-width: 2; }
+.swarm-label { position: absolute; pointer-events: none; white-space: nowrap; background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 1px 4px; }
 .xmap { --sea: #dbe8f1; --land: #f4f1e8; --lake: #dbe8f1; --border: #a7a094; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .xmap { --sea: #0f1d2b; --land: #26292c; --lake: #0f1d2b; --border: #5d636a; } }
 :root[data-theme="dark"] .xmap { --sea: #0f1d2b; --land: #26292c; --lake: #0f1d2b; --border: #5d636a; }

@@ -3377,7 +3377,162 @@ function utcTimeLabels(u, splits)
 // The charts of the numeric parameters of the rows, one chart per parameter. 'mode' is
 // "lines" or "percentiles"; the default depends on the number of locations. "server" draws
 // the percentiles the server computed over an area (AREA_STATISTICS).
-function drawCharts(container, rows, parameters, mode)
+// The lines of a swarm, drawn by the chart directly on its canvas: thousands of locations would
+// be too slow as series of their own (each has its own paths, cursor point and legend value).
+// lines: [{label, values (one per x, null if none), colour, breaks (k: whether the line breaks
+// before x[k])}]. Returns the uPlot hooks and the y range of the lines.
+function swarmLayer(xs, lines)
+{
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const line of lines)
+    for (const v of line.values)
+      if (v !== null)
+      {
+        lo = Math.min(lo, v);
+        hi = Math.max(hi, v);
+      }
+  // The lines grouped by colour, a path each
+  const colours = new Map();
+  for (const line of lines)
+  {
+    if (!colours.has(line.colour))
+      colours.set(line.colour, []);
+    colours.get(line.colour).push(line);
+  }
+  const draw = (u) => {
+    const ctx = u.ctx;
+    const {left, top, width, height} = u.bbox;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(left, top, width, height);
+    ctx.clip();
+    ctx.lineWidth = Math.max(1, (typeof devicePixelRatio === 'number' ? devicePixelRatio : 1));
+    ctx.lineJoin = 'round';
+    const px = xs.map((x) => u.valToPos(x, 'x', true));
+    for (const [colour, group] of colours)
+    {
+      ctx.beginPath();
+      for (const line of group)
+      {
+        let pen = false;
+        line.values.forEach((v, k) => {
+          if (v === null)
+            return;
+          const y = u.valToPos(v, 'y', true);
+          if (pen && !line.breaks[k])
+            ctx.lineTo(px[k], y);
+          else
+            ctx.moveTo(px[k], y);
+          pen = true;
+        });
+      }
+      ctx.strokeStyle = colour;
+      ctx.stroke();
+    }
+    ctx.restore();
+  };
+
+  // The line nearest to the pointer, highlighted with its name and value
+  let overlay = null;
+  let path = null;
+  let label = null;
+  const ready = (u) => {
+    overlay = svg('svg', {class: 'swarm-hover'});
+    path = svg('path', {class: 'swarm-line'});
+    label = el('div', {class: 'swarm-label small'});
+    overlay.append(path);
+    u.over.append(overlay, label);
+  };
+  const setCursor = (u) => {
+    const k = u.cursor.idx;
+    const cy = u.cursor.top;
+    if (!overlay)
+      return;
+    let best = null;
+    let bestD = 12;
+    if (k !== null && k !== undefined && cy !== null && cy >= 0)
+      for (const line of lines)
+      {
+        const v = line.values[k];
+        if (v === null)
+          continue;
+        const d = Math.abs(u.valToPos(v, 'y') - cy);
+        if (d < bestD)
+        {
+          bestD = d;
+          best = line;
+        }
+      }
+    if (!best)
+    {
+      overlay.setAttribute('visibility', 'hidden');
+      label.hidden = true;
+      return;
+    }
+    overlay.setAttribute('width', u.over.clientWidth);
+    overlay.setAttribute('height', u.over.clientHeight);
+    let d = '';
+    let pen = false;
+    best.values.forEach((v, i) => {
+      if (v === null)
+        return;
+      d += `${pen && !best.breaks[i] ? 'L' : 'M'}${u.valToPos(xs[i], 'x').toFixed(1)},${
+          u.valToPos(v, 'y').toFixed(1)}`;
+      pen = true;
+    });
+    path.setAttribute('d', d);
+    overlay.setAttribute('visibility', 'visible');
+    label.hidden = false;
+    label.textContent = `${best.label}: ${round(best.values[k], 2)}`;
+    const x = u.valToPos(xs[k], 'x');
+    label.style.left = `${Math.min(x + 8, Math.max(0, u.over.clientWidth - 220))}px`;
+    label.style.top = `${Math.max(0, u.valToPos(best.values[k], 'y') - 24)}px`;
+  };
+  return {
+    hooks: {drawAxes: [draw], ready: [ready], setCursor: [setCursor]},
+    range: lo <= hi ? [lo, hi] : null
+  };
+}
+
+// Calls draw once the element is near the visible part of the page: charts further down are
+// drawn when scrolled to
+function whenVisible(element, draw)
+{
+  if (typeof IntersectionObserver === 'undefined')
+  {
+    draw();
+    return;
+  }
+  const observer = new IntersectionObserver((entries) => {
+    if (entries.some((e) => e.isIntersecting))
+    {
+      observer.disconnect();
+      draw();
+    }
+  }, {rootMargin: '300px'});
+  observer.observe(element);
+}
+
+// The level of the charts of rows with several levels: a level nearest to the ground for
+// several locations (the median of locations at different levels would mix the surface with the
+// top of the atmosphere), every level as a series of its own for a single location
+function chartLevels(rows, levelKind)
+{
+  const levels = Array.from(new Set(rows.map((r) => r.level).filter((v) => typeof v === 'number')))
+                     .sort((a, b) => a - b);
+  if (levels.length < 2)
+    return {levels: [], fallback: ''};
+  const places = new Set(rows.map((r) => locationOf(Object.assign({}, r, {level: null})))).size;
+  // Model levels and pressures grow downwards
+  const down = ['hybrid', 'pressure', 'pressure-pa', 'sounding'].includes(levelKind);
+  const lowest = down ? levels[levels.length - 1] : levels[0];
+  return {levels, fallback: places > 1 ? String(lowest) : ''};
+}
+
+// Charts of the parameters over time. options: levelKind (the kind of the levels of the rows),
+// level (the level drawn, '' for every level as a series of its own)
+function drawCharts(container, rows, parameters, mode, options = {})
 {
   if (mode === 'server')
   {
@@ -3389,6 +3544,31 @@ function drawCharts(container, rows, parameters, mode)
   {
     container.append(el('p', {class: 'muted'}, 'No data.'));
     return;
+  }
+
+  // Several levels: one of them, or all
+  const allRows = rows;
+  const {levels, fallback} = chartLevels(rows, options.levelKind);
+  const level = levels.length === 0 ? '' :
+      options.level !== undefined && (options.level === '' || levels.includes(Number(options.level))) ?
+                                      String(options.level) :
+                                      fallback;
+  let levelChooser = null;
+  if (levels.length > 0)
+  {
+    const unit = {pressure: ' hPa', 'pressure-pa': ' Pa', height: ' m', depth: ' m'}[options.levelKind] || '';
+    const select = el('select',
+                      {'aria-label': 'Level of the charts'},
+                      [['', 'All levels, a line each'],
+                       ...levels.map((v) => [String(v), `${v}${unit}`])]
+                          .map(([v, l]) => el('option', {value: v}, l)));
+    select.value = level;
+    // The drawing chosen stays when the level changes
+    select.addEventListener('change', () => drawCharts(
+        container, allRows, parameters, chosen, Object.assign({}, options, {level: select.value})));
+    levelChooser = el('label', null, 'Level', select);
+    if (level !== '')
+      rows = rows.filter((r) => r.level === Number(level));
   }
 
   const times = new Map();  // epoch seconds -> null
@@ -3436,7 +3616,8 @@ function drawCharts(container, rows, parameters, mode)
   const many = names.length > MAX_LINES;
   const chosen = mode || (many ? 'percentiles' : 'lines');
 
-  // The choice of the drawing for several locations
+  // The choice of the drawing for several locations, and of the level
+  const choices = el('div', {class: 'row chart-choices'});
   if (names.length > 2)
   {
     const toolbar = el('div', {class: 'tabs chart-modes', role: 'tablist'});
@@ -3450,11 +3631,15 @@ function drawCharts(container, rows, parameters, mode)
                role: 'tab',
                'data-mode': m,
                'aria-selected': m === chosen ? 'true' : 'false',
-               onclick: () => drawCharts(container, rows, parameters, m)
+               onclick: () => drawCharts(container, allRows, parameters, m, Object.assign({}, options, {level}))
              },
              label));
-    container.append(toolbar);
+    choices.append(toolbar);
   }
+  if (levelChooser)
+    choices.append(levelChooser);
+  if (choices.children.length > 0)
+    container.append(choices);
 
   // A swarm is ordered by latitude so that the gradient runs from south to north
   const ordered = names.slice();
@@ -3542,6 +3727,20 @@ function drawCharts(container, rows, parameters, mode)
       return (u, sidx, idx0, idx1, nullGaps) =>
                  nullGaps.filter(([a, b]) => u.posToVal(b, 'x') - u.posToVal(a, 'x') > longest);
     };
+    // The same for a line drawn directly: whether it breaks before each time
+    const breaksOf = (values) => {
+      const own = xs.filter((x, i) => values[i] !== null);
+      const steps = own.slice(1).map((x, i) => x - own[i]).sort((a, b) => a - b);
+      const longest = Math.max(3 * (quantile(steps, 0.5) || 0), 1);
+      let previous = null;
+      return values.map((v, i) => {
+        if (v === null)
+          return false;
+        const gap = previous !== null && xs[i] - previous > longest;
+        previous = xs[i];
+        return gap;
+      });
+    };
 
     const panel = el('div', {class: 'chart', 'data-param': param, 'data-mode': chosen});
     container.append(panel);
@@ -3550,6 +3749,7 @@ function drawCharts(container, rows, parameters, mode)
     let bands = [];
     let caption;
     let legend = {live: true};
+    let swarm = null;
 
     if (chosen === 'lines' && !many)
     {
@@ -3568,28 +3768,22 @@ function drawCharts(container, rows, parameters, mode)
     }
     else if (chosen === 'lines')
     {
-      // Every location as a thin line without points, and the median on top
-      data = [
-        xs,
-        ...ordered.map((n) => xs.map((x) => valueOf(locations.get(n), x))),
-        percentiles([0.5])[0]
-      ];
+      // Every location as a thin line drawn on the canvas, and the median on top
+      const median = percentiles([0.5])[0];
+      const lines = ordered.map((n, i) => {
+        const values = xs.map((x) => valueOf(locations.get(n), x));
+        return {label: n, values, colour: swarmColour(i, ordered.length), breaks: breaksOf(values)};
+      });
+      swarm = swarmLayer(xs, lines);
+      data = [xs, median];
       series = [
         timeSeries,
-        ...ordered.map((n, i) => ({
-                         label: n,
-                         stroke: swarmColour(i, ordered.length),
-                         width: 1,
-                         points: {show: false},
-                         spanGaps: false,
-                         gaps: gapsOf(data[i + 1])
-                       })),
         {
           label: 'median',
           stroke: css.getPropertyValue('--fg').trim() || '#000',
           width: 2,
           points: {show: false},
-          gaps: gapsOf(data[data.length - 1])
+          gaps: gapsOf(median)
         }
       ];
       legend = {show: false};
@@ -3615,22 +3809,28 @@ function drawCharts(container, rows, parameters, mode)
     }
 
     panel.append(el('div', {class: 'chart-title'}, caption));
-    const plot = el('div', {class: 'chart-plot'});
+    const plot = el('div', {class: 'chart-plot', style: 'min-height: 260px'});
     panel.append(plot);
-    // eslint-disable-next-line no-new
-    new root.uPlot(
-        {
-          width: width,
-          height: 260,
-          series: series,
-          bands: bands,
-          axes: axes,
-          scales: {x: {time: true}},
-          legend: legend,
-          tzDate: (ts) => root.uPlot.tzDate(new Date(ts * 1000), 'Etc/UTC')
-        },
-        data,
-        plot);
+    const scales = {x: {time: true}};
+    if (swarm && swarm.range)
+    {
+      // The range of all the lines, not only of the median
+      const [lo, hi] = swarm.range;
+      const pad = (hi - lo || Math.abs(hi) || 1) * 0.05;
+      scales.y = {range: () => [lo - pad, hi + pad]};
+    }
+    const opts = {
+      width: width,
+      height: 260,
+      series: series,
+      bands: bands,
+      axes: axes,
+      scales: scales,
+      legend: legend,
+      hooks: swarm ? swarm.hooks : {},
+      tzDate: (ts) => root.uPlot.tzDate(new Date(ts * 1000), 'Etc/UTC')
+    };
+    whenVisible(plot, () => new root.uPlot(opts, data, plot));
   }
   if (empty.length > 0)
     container.append(
@@ -5506,7 +5706,7 @@ function timeSeriesModule(app, api, state, save)
           return;
         drawn.add(name);
         if (name === 'Chart')
-          drawCharts(panes.Chart, rows, dataParams(), statistics ? 'server' : undefined);
+          drawCharts(panes.Chart, rows, dataParams(), statistics ? 'server' : undefined, {levelKind: kind});
         else if (name === 'Profile')
           drawProfiles(panes.Profile, rows, dataParams(), kind);
         else if (name === 'Section')
@@ -6597,10 +6797,13 @@ function edrModule(app, api, state, save)
       panes.Tree = el('div', {class: 'pane tree-pane'});
       const tabs = el('div', {class: 'tabs', role: 'tablist'});
       const drawn = new Set();
+      // The pressure and height requested with model levels place them, they are not drawn
+      const placing = [...PRESSURE_PARAMS, ...PRESSURE_PA_PARAMS, ...HEIGHT_PARAMS].filter(
+          (n) => !s.params.includes(n));
       const params = Array.from(new Set(rows.flatMap((r) => Object.keys(r))))
                          .filter(
                              (k) => !['name', 'time', 'lat', 'lon', 'level'].includes(k) &&
-                                 !k.startsWith('_'));
+                                 !k.startsWith('_') && !placing.includes(k.toLowerCase()));
       const show = (name) => {
         for (const [n, pane] of Object.entries(panes))
           pane.hidden = n !== name;
@@ -6611,7 +6814,7 @@ function edrModule(app, api, state, save)
           return;
         drawn.add(name);
         if (name === 'Chart')
-          drawCharts(panes.Chart, rows, params);
+          drawCharts(panes.Chart, rows, params, undefined, {levelKind: kind});
         else if (name === 'Profile')
           drawProfiles(panes.Profile, rows, params, kind);
         else if (name === 'Section')

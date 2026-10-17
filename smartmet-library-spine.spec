@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.17
-Release: 13%{?dist}.fmi
+Release: 14%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-14.fmi
+- Data explorer: charts of areas with several levels show one level at a time (the lowest by
+  default); swarms of thousands of locations are drawn on the canvas and hover in milliseconds;
+  charts are drawn when scrolled to
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-13.fmi
 - Data explorer: the hover readouts and guides of diagrams stay under a resting pointer and
   follow the times of an animation

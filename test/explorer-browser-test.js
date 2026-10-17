@@ -712,15 +712,34 @@ async function main()
       return { mode: document.querySelector('.chart').dataset.mode,
                title: document.querySelector('.chart-title').textContent,
                legends: [...document.querySelectorAll('.chart .u-legend')].filter((l) => l.offsetParent !== null).length,
-               canvases: document.querySelectorAll('.chart canvas').length };
+               canvases: document.querySelectorAll('.chart canvas').length,
+               // The lines are drawn on the canvas: no cursor point of each
+               cursorPoints: document.querySelectorAll('.chart .u-cursor-pt').length };
     })()`);
     check(
         'swarm of all locations',
         swarm.mode === 'lines' &&
             swarm.title ===
                 'temperature: 30 locations, coloured from south to north, and the median' &&
-            swarm.legends === 0 && swarm.canvases === 2,
+            swarm.legends === 0 && swarm.canvases === 2 && swarm.cursorPoints <= 2,
         swarm);
+    // The line under the pointer is highlighted with its name and value
+    const swarmHover = await b.evaluate(`(async () => {
+      const over = document.querySelector('.chart .u-over');
+      const r = over.getBoundingClientRect();
+      const label = document.querySelector('.chart .swarm-label');
+      // The pointer on the lines at the middle time, then scanned upwards until a line is near
+      for (let f = 0.95; f > 0.05; f -= 0.02)
+      {
+        over.dispatchEvent(new MouseEvent('mousemove', { clientX: r.left + r.width / 2, clientY: r.top + r.height * f, bubbles: true }));
+        await new Promise((r) => requestAnimationFrame(r));
+        if (!label.hidden)
+          break;
+      }
+      return { label: label.hidden ? '' : label.textContent,
+               path: (document.querySelector('.chart .swarm-line').getAttribute('d') || '').length };
+    })()`);
+    check('the swarm line under the pointer', /: -?[0-9.]+$/.test(swarmHover.label) && swarmHover.path > 10, swarmHover);
     const backToPercentiles = await b.evaluate(`(async () => {
       document.querySelector('.chart-modes [data-mode="percentiles"]').click();
       await new Promise((r) => setTimeout(r, 300));
@@ -1372,6 +1391,40 @@ async function main()
             hover.guide === 'visible',
         hover);
     await mouse(b, 'mouseMoved', 1, 1, 0);
+
+    // Charts of several levels: the lowest level for an area, every level for one location
+    const chartLevels = await b.evaluate(`(async () => {
+      const E = SmartMetExplorer;
+      const rows = [];
+      for (let i = 0; i < 25; i++)
+        for (let k = 1; k <= 3; k++)
+          for (let h = 0; h < 4; h++)
+            rows.push({ name: null, time: new Date(Date.UTC(2026, 9, 15, h)).toISOString(), lat: 60 + i * 0.01,
+                        lon: 25, level: k, temperature: 10 - k * 20 + h });
+      const box = document.createElement('div');
+      box.style.width = '700px';
+      document.body.append(box);
+      E.drawCharts(box, rows, ['temperature'], undefined, { levelKind: 'hybrid' });
+      await new Promise((r) => setTimeout(r, 300));
+      const select = box.querySelector('[aria-label="Level of the charts"]');
+      const area = { level: select.value, title: box.querySelector('.chart-title').textContent };
+      select.value = '';
+      select.dispatchEvent(new Event('change'));
+      await new Promise((r) => setTimeout(r, 300));
+      const all = box.querySelector('.chart-title').textContent;
+      E.drawCharts(box, rows.filter((r) => r.lat === 60), ['temperature'], undefined, { levelKind: 'hybrid' });
+      const single = box.querySelector('[aria-label="Level of the charts"]').value;
+      E.drawCharts(box, rows, ['temperature'], undefined, { levelKind: 'height' });
+      const height = box.querySelector('[aria-label="Level of the charts"]').value;
+      box.remove();
+      return { area, all, single, height };
+    })()`);
+    check(
+        'charts of several levels',
+        chartLevels.area.level === '3' && chartLevels.area.title.includes('of 25 locations') &&
+            chartLevels.all.includes('of 75 locations') && chartLevels.single === '' &&
+            chartLevels.height === '1',
+        chartLevels);
 
     // Locations reporting at different intervals, and a parameter without values
     const mixed = await b.evaluate(`(() => {
