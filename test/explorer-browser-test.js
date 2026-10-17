@@ -1355,6 +1355,12 @@ async function main()
                     cells: cells.length, readout: box.querySelector('.sk-readout').textContent,
                     colours: box.querySelector('[aria-label="Colours of the cross section"]').value,
                     has: E.hasCrossSection(rows) };
+      // Isotherms over the cross section (on by default), and the overlays the rows allow
+      out.overlays = [...box.querySelectorAll('.overlay-checks label')].map((l) => l.textContent);
+      out.zero = box.querySelectorAll('.xs-isotherm.zero').length;
+      out.isotherms = [...box.querySelectorAll('.xs-isotherm-label')].map((l) => l.textContent).join(' ');
+      // A contour of 0.5 through a square of 0 and 1 corners: one segment through the middle
+      out.contour = E.contourSegments([[{ x: 0, y: 0, v: 0 }, { x: 0, y: 10, v: 0 }], [{ x: 10, y: 0, v: 1 }, { x: 10, y: 10, v: 1 }]], 0.5);
       const check = box.querySelector('input[aria-label="Flight levels"]');
       check.click();
       out.flightLevels = [...box.querySelectorAll('.flight-level-label')].map((x) => x.textContent);
@@ -1370,6 +1376,11 @@ async function main()
         cross.points === 5 && cross.km > 40 && cross.cells === 50 && cross.has &&
             /^\d+ km \(/.test(cross.readout) && cross.colours === 'production:temperature',
         cross);
+    check(
+        'isotherms on the cross section',
+        JSON.stringify(cross.overlays) === '["Isotherms"]' && cross.zero === 1 &&
+            cross.isotherms.includes('0°') && JSON.stringify(cross.contour) === '[[5,0,5,10]]',
+        {overlays: cross.overlays, zero: cross.zero, isotherms: cross.isotherms, contour: cross.contour});
     check(
         'flight levels on the cross section',
         cross.flightLevels.join(',') === 'FL050,FL100,FL150,FL200,FL250,FL300,FL350' &&

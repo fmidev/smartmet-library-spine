@@ -2336,6 +2336,208 @@ function drawFlightLevels(g, columns, axis, sy, w)
 // A time-height section at one location: time horizontally, the vertical coordinate
 // vertically, the values of a parameter as coloured cells, with the colour scale, axis, top,
 // location and flight level choices
+// The overlays of vertical sections, shared by the sections of the page and remembered by the
+// browser: isotherms (0 C stands out for icing), wind barbs, and the edge of air of 90 % relative
+// humidity or more (likely cloud)
+const OVERLAYS_KEY = 'smartmet-explorer-section-overlays';
+let sectionOverlays = (() => {
+  try
+  {
+    return Object.assign({isotherms: true, wind: false, moist: false},
+                         JSON.parse(localStorage.getItem(OVERLAYS_KEY) || '{}'));
+  }
+  catch (e)
+  {
+    return {isotherms: true, wind: false, moist: false};
+  }
+})();
+
+// The checkboxes of the overlays the rows allow: {element, columns}
+function overlayChecks(rows, onChange)
+{
+  const columns = soundingColumns(rows);
+  const moist = !!columns.humidity || (!!columns.temperature && !!columns.dewpoint);
+  const wind = (!!columns.speed && !!columns.direction) || (!!columns.u && !!columns.v);
+  const box = el('span', {class: 'row overlay-checks'});
+  for (const [key, label, available] of [
+           ['isotherms', 'Isotherms', !!columns.temperature],
+           ['wind', 'Wind', wind],
+           ['moist', 'Humidity 90 %', moist]])
+  {
+    if (!available)
+      continue;
+    const input = el('input', {type: 'checkbox', 'aria-label': label});
+    input.checked = !!sectionOverlays[key];
+    input.addEventListener('change', () => {
+      sectionOverlays = Object.assign({}, sectionOverlays, {[key]: input.checked});
+      try
+      {
+        localStorage.setItem(OVERLAYS_KEY, JSON.stringify(sectionOverlays));
+      }
+      catch (e)
+      {
+        // Not remembered
+      }
+      onChange();
+    });
+    box.append(el('label', {class: 'check'}, input, label));
+  }
+  return {element: box, columns};
+}
+
+// The values the overlays need from a row: temperature (C), relative humidity (%), wind speed
+// (m/s) and direction (deg), null when missing
+function overlayValues(row, columns)
+{
+  const value = (what) => {
+    if (!columns[what])
+      return null;
+    const [name, offset] = columns[what];
+    const v = columnValue(row, name);
+    return v === null ? null : v + offset;
+  };
+  const t = value('temperature');
+  const td = value('dewpoint');
+  let rh = value('humidity');
+  if (rh === null && t !== null && td !== null)
+    rh = (100 * saturationPressure(td)) / saturationPressure(t);
+  let speed = value('speed');
+  let direction = value('direction');
+  const u = value('u');
+  const v = value('v');
+  if ((speed === null || direction === null) && u !== null && v !== null)
+  {
+    speed = Math.hypot(u, v);
+    direction = (Math.atan2(-u, -v) * 180) / Math.PI;
+    direction = (direction + 360) % 360;
+  }
+  return {t, rh, speed, direction};
+}
+
+// Contour lines by marching squares on a grid of points: nodes[i][k] = {x, y, v} or null, the
+// columns i side by side and the levels k one above the other. Returns the segments
+// [[x1, y1, x2, y2]] of the value c.
+function contourSegments(nodes, c)
+{
+  const out = [];
+  const cross = (a, b) => {
+    const f = (c - a.v) / (b.v - a.v);
+    return [a.x + f * (b.x - a.x), a.y + f * (b.y - a.y)];
+  };
+  for (let i = 0; i + 1 < nodes.length; i++)
+    for (let k = 0; k + 1 < Math.min(nodes[i].length, nodes[i + 1].length); k++)
+    {
+      const corners = [nodes[i][k], nodes[i + 1][k], nodes[i + 1][k + 1], nodes[i][k + 1]];
+      if (corners.some((n) => !n || n.v === null))
+        continue;
+      // The crossings on the edges a-b, b-c, c-d, d-a
+      const points = [];
+      for (let e = 0; e < 4; e++)
+      {
+        const a = corners[e];
+        const b = corners[(e + 1) % 4];
+        if ((a.v < c) !== (b.v < c))
+          points.push(cross(a, b));
+      }
+      if (points.length === 2)
+        out.push([...points[0], ...points[1]]);
+      else if (points.length === 4)
+      {
+        // A saddle: the mean of the corners decides which corners are joined
+        const mean = corners.reduce((s, n) => s + n.v, 0) / 4;
+        const firstBelow = corners[0].v < c;
+        if ((mean < c) === firstBelow)
+          out.push([...points[0], ...points[1]], [...points[2], ...points[3]]);
+        else
+          out.push([...points[0], ...points[3]], [...points[1], ...points[2]]);
+      }
+    }
+  return out;
+}
+
+// Draws the chosen overlays on a section. columns: [{x, levels: [{y, row}]}] with the levels of
+// each column in the same order (by their level), w and h the size of the plot.
+let overlayClips = 0;
+function drawSectionOverlays(target, columns, rowColumns, w, h)
+{
+  // Clipped to the plot: barbs at the edges would reach out of it
+  const id = `xs-clip-${++overlayClips}`;
+  const clip = svg('clipPath', {id});
+  clip.append(svg('rect', {x: 0, y: 0, width: w, height: h}));
+  const g = svg('g', {'clip-path': `url(#${id})`});
+  target.append(clip, g);
+  const grid = columns.map((c) => c.levels.map((l) => Object.assign(
+                                                    {x: c.x, y: l.y}, overlayValues(l.row, rowColumns))));
+  const path = (segments, cls) => {
+    if (segments.length === 0)
+      return null;
+    const d = segments.map(([x1, y1, x2, y2]) => `M${x1.toFixed(1)},${y1.toFixed(1)}L${
+                               x2.toFixed(1)},${y2.toFixed(1)}`)
+                  .join('');
+    const p = svg('path', {class: cls, d});
+    g.append(p);
+    return p;
+  };
+  // A label of a contour at its segment nearest to the middle of the plot
+  const label = (segments, text, cls) => {
+    let best = null;
+    let bestD = Infinity;
+    for (const [x1, y1, x2, y2] of segments)
+    {
+      const x = (x1 + x2) / 2;
+      const y = (y1 + y2) / 2;
+      const d = Math.abs(x - w / 2) + Math.abs(y - h / 2) / 4;
+      if (x > 20 && x < w - 20 && y > 10 && y < h - 4 && d < bestD)
+      {
+        bestD = d;
+        best = [x, y];
+      }
+    }
+    if (!best)
+      return;
+    const t = svg('text', {class: cls, x: best[0], y: best[1] + 3, 'text-anchor': 'middle'});
+    t.textContent = text;
+    g.append(t);
+  };
+  if (sectionOverlays.moist && rowColumns && grid.some((c) => c.some((n) => n.rh !== null)))
+  {
+    const segments = contourSegments(grid.map((c) => c.map((n) => Object.assign({}, n, {v: n.rh}))), 90);
+    path(segments, 'xs-moist');
+  }
+  if (sectionOverlays.isotherms && grid.some((c) => c.some((n) => n.t !== null)))
+  {
+    const ts = grid.flat().map((n) => n.t).filter((v) => v !== null);
+    const lo = Math.min(...ts);
+    const hi = Math.max(...ts);
+    const step = hi - lo > 60 ? 10 : 5;
+    const nodes = grid.map((c) => c.map((n) => Object.assign({}, n, {v: n.t})));
+    for (let c = Math.ceil(lo / step) * step; c <= hi; c += step)
+    {
+      const segments = contourSegments(nodes, c);
+      path(segments, c === 0 ? 'xs-isotherm zero' : 'xs-isotherm');
+      label(segments, `${c}°`, c === 0 ? 'xs-isotherm-label zero' : 'xs-isotherm-label');
+    }
+  }
+  if (sectionOverlays.wind)
+  {
+    // Barbs at least 40 pixels apart horizontally and 30 vertically
+    let lastX = -Infinity;
+    for (const column of grid)
+    {
+      if (column.length === 0 || column[0].x - lastX < 40)
+        continue;
+      lastX = column[0].x;
+      let lastY = Infinity;
+      for (const n of column.slice().sort((a, b) => b.y - a.y))
+        if (n.speed !== null && n.direction !== null && lastY - n.y >= 30 && n.y > 14 && n.y < h - 4)
+        {
+          g.append(windBarb(n.x, n.y, n.speed, n.direction));
+          lastY = n.y;
+        }
+    }
+  }
+}
+
 function drawSection(container, rows, parameters, levelKind, settings)
 {
   container.replaceChildren();
@@ -2349,6 +2551,7 @@ function drawSection(container, rows, parameters, levelKind, settings)
   const state = {axis: axes[0], param: numeric[0], palette: 'viridis', key: null};
   const pressureAxis = axes.find((a) => a.id === 'pressure');
   const flightLevels = flightLevelCheck(pressureAxis, () => draw());
+  const overlays = overlayChecks(rows, () => draw());
   const axisSelect =
       el('select',
          {'aria-label': 'Vertical axis of the section'},
@@ -2381,7 +2584,8 @@ function drawSection(container, rows, parameters, levelKind, settings)
          el('label', null, 'Top', topSelect),
          el('label', null, 'Colours', paletteSelect),
          keySelect,
-         flightLevels),
+         flightLevels,
+         overlays.element),
       legend,
       readout,
       plot);
@@ -2425,7 +2629,8 @@ function drawSection(container, rows, parameters, levelKind, settings)
                    .map(({z, row}) => ({
                           z,
                           v: columnValue(row, state.param),
-                          p: pressureAxis ? pressureAxis.value(row) : null
+                          p: pressureAxis ? pressureAxis.value(row) : null,
+                          row
                         }))
                    .filter((c) => c.v !== null));
     const values = cells.flat().map((c) => c.v).sort((a, b) => a - b);
@@ -2498,6 +2703,12 @@ function drawSection(container, rows, parameters, levelKind, settings)
     root.addEventListener('mouseleave', () => {
       readout.textContent = '';
     });
+    drawSectionOverlays(
+        g,
+        profiles.map((p, i) => ({x: sx(p.time), levels: cells[i].map((c) => ({y: sy(c.z), row: c.row}))})),
+        overlays.columns,
+        w,
+        h);
     if (showFlightLevels && pressureAxis)
       drawFlightLevels(
           g, profiles.map((p, i) => ({x: sx(p.time), levels: cells[i]})), state.axis, sy, w);
@@ -2752,6 +2963,7 @@ function drawCrossSection(container, rows, parameters, levelKind, settings, opti
   const state = {axis: axes[0], param: numeric[0], palette: 'viridis', top: '', time: 0};
   const pressureAxis = axes.find((a) => a.id === 'pressure');
   const flightLevels = flightLevelCheck(pressureAxis, () => draw());
+  const overlays = overlayChecks(rows, () => draw());
   const select = (label, items, value) => {
     const s = el('select', {'aria-label': label}, items.map(([v, l]) => el('option', {value: v}, l)));
     s.value = value;
@@ -2803,7 +3015,8 @@ function drawCrossSection(container, rows, parameters, levelKind, settings, opti
                       el('label', null, 'Vertical axis', axisSelect),
                       el('label', null, 'Top', topSelect),
                       el('label', null, 'Colours', paletteSelect),
-                      flightLevels),
+                      flightLevels,
+                      overlays.element),
                    flightLabel,
                    slider.element,
                    legend,
@@ -2916,6 +3129,12 @@ function drawCrossSection(container, rows, parameters, levelKind, settings, opti
     root.addEventListener('mouseleave', () => {
       readout.textContent = '';
     });
+    drawSectionOverlays(
+        g,
+        points.map((p, i) => ({x: sx(p.km), levels: columns[i].map((c) => ({y: sy(c.z), row: c.row}))})),
+        overlays.columns,
+        w,
+        h);
     if (showFlightLevels && pressureAxis)
       drawFlightLevels(
           g, points.map((p, i) => ({x: sx(p.km), levels: columns[i]})), state.axis, sy, w);
@@ -8571,6 +8790,7 @@ root.SmartMetExplorer = {
   hasProfiles,
   hasSounding,
   drawAlongPath,
+  contourSegments,
   flightRows,
   flightTimes,
   flightLevelPressure,
