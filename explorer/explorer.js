@@ -2929,20 +2929,31 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
     // On a flight, the time each point is passed is marked on its charts
     const passed = options.flight ? flightTimes(points, options.flight) : null;
     let current = 0;
-    const markPassed = (u) => {
+    // The passing time and the value met there marked on a time series of parameter p
+    const markPassed = (p) => (u) => {
       if (!passed)
         return;
       const x = u.valToPos(passed[current] / 1000, 'x', true);
       const {top, height} = u.bbox;
       const ctx = u.ctx;
+      const ratio = typeof devicePixelRatio === 'number' ? devicePixelRatio : 1;
       ctx.save();
       ctx.strokeStyle = '#d9480f';
-      ctx.lineWidth = 2 * (typeof devicePixelRatio === 'number' ? devicePixelRatio : 1);
+      ctx.lineWidth = 2 * ratio;
       ctx.setLineDash([6, 4]);
       ctx.beginPath();
       ctx.moveTo(x, top);
       ctx.lineTo(x, top + height);
       ctx.stroke();
+      const v = met(p, current);
+      if (v !== null)
+      {
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#d9480f';
+        ctx.beginPath();
+        ctx.arc(x, u.valToPos(v, 'y', true), 5 * ratio, 0, 2 * Math.PI);
+        ctx.fill();
+      }
       ctx.restore();
     };
     const times = Array.from(new Set(chosen.map((r) => {
@@ -2967,6 +2978,24 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
         if (typeof r[p] === 'number' && isFinite(r[p]))
           values[p][i][k] = r[p];
     }
+    // The value of parameter p met at point i of a flight: interpolated to the time the point is
+    // passed, directions the shorter way round; null outside the times of the data
+    const directions = new Set(SOUNDING_PARAMS.direction.map(([n]) => n));
+    const met = (p, i) => {
+      if (!passed)
+        return null;
+      const tp = passed[i] / 1000;
+      const series = values[p][i];
+      for (let k = 0; k + 1 < times.length; k++)
+        if (times[k] <= tp && tp <= times[k + 1] && series[k] !== null && series[k + 1] !== null)
+        {
+          const f = (tp - times[k]) / (times[k + 1] - times[k]);
+          if (directions.has(p.toLowerCase()))
+            return (series[k] + f * ((((series[k + 1] - series[k]) % 360) + 540) % 360 - 180) + 360) % 360;
+          return series[k] + f * (series[k + 1] - series[k]);
+        }
+      return tp === times[times.length - 1] ? series[times.length - 1] : null;
+    };
     const css = getComputedStyle(document.documentElement);
     const fg = css.getPropertyValue('--fg').trim() || '#000';
     const accent = css.getPropertyValue('--accent').trim() || '#0969da';
@@ -3013,7 +3042,7 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
             ],
             scales: {x: {time: true}, y: {range: () => [lo - pad, hi + pad]}},
             legend: {live: true},
-            hooks: {draw: [markPassed]},
+            hooks: {draw: [markPassed(p)]},
             tzDate: (ts) => root.uPlot.tzDate(new Date(ts * 1000), 'Etc/UTC')
           },
           [times, stats.map((s) => s[0]), stats.map((s) => s[2]), stats.map((s) => s[1]), values[p][0]],
@@ -3025,6 +3054,88 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
       charts.append(el('p', {class: 'muted'}, 'No values to draw.'));
       return;
     }
+    // A flight: the values met along it, each point at the time it is passed, against the
+    // distance, the current point marked. Drawn above the time series of the points.
+    const flightPlots = [];
+    if (passed)
+    {
+      const kms = points.map((pt) => pt.km);
+      const total = kms[kms.length - 1] || 1;
+      const timeAt = (km) => new Date(options.flight.departure +
+                                      ((options.flight.arrival - options.flight.departure) * km) / total);
+      const flightBox = el('div', {class: 'along-flight'});
+      charts.prepend(flightBox);
+      for (const p of numeric)
+      {
+        const series = points.map((_, i) => met(p, i));
+        if (series.every((v) => v === null))
+          continue;
+        const unit = (options.labels || {})[p];
+        const panel = el('div', {class: 'chart', 'data-param': `flight-${p}`});
+        const title = el('div', {class: 'chart-title'},
+                         `${p}${unit ? ` (${unit})` : ''} met on the flight, ${formatTime(new Date(options.flight.departure))} – ${
+                             formatTime(new Date(options.flight.arrival))}`);
+        const plot = el('div', {class: 'chart-plot'});
+        panel.append(title, plot);
+        flightBox.append(panel);
+        const markCurrent = (u) => {
+          const x = u.valToPos(kms[current], 'x', true);
+          const v = series[current];
+          const ctx = u.ctx;
+          const ratio = typeof devicePixelRatio === 'number' ? devicePixelRatio : 1;
+          ctx.save();
+          ctx.strokeStyle = '#d9480f';
+          ctx.lineWidth = 2 * ratio;
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          ctx.moveTo(x, u.bbox.top);
+          ctx.lineTo(x, u.bbox.top + u.bbox.height);
+          ctx.stroke();
+          if (v !== null)
+          {
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#d9480f';
+            ctx.beginPath();
+            ctx.arc(x, u.valToPos(v, 'y', true), 5 * ratio, 0, 2 * Math.PI);
+            ctx.fill();
+          }
+          ctx.restore();
+        };
+        const u = new root.uPlot(
+            {
+              width,
+              height: 200,
+              series: [
+                {value: (u, km) => (km === null ? '--' : `${Math.round(km)} km, ${formatTime(timeAt(km))}`)},
+                // Directions as points: a line from 350 to 10 degrees would cross the chart
+                directions.has(p.toLowerCase()) ?
+                    {label: `${p} met`, stroke: accent, width: 0, paths: () => null, points: {show: true, size: 6, fill: accent}} :
+                    {label: `${p} met`, stroke: accent, width: 2.5, spanGaps: true}
+              ],
+              axes: [
+                {
+                  stroke: axisColor,
+                  grid: {stroke: gridColor, width: 1},
+                  ticks: {stroke: gridColor},
+                  size: 50,
+                  // The distance and the time it is passed
+                  values: (u, splits) => splits.map((km) => {
+                    const d = timeAt(km);
+                    return `${Math.round(km)} km\n${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+                  })
+                },
+                {stroke: axisColor, grid: {stroke: gridColor, width: 1}, ticks: {stroke: gridColor}, size: 60}
+              ],
+              scales: {x: {time: false}},
+              legend: {live: true},
+              hooks: {draw: [markCurrent]}
+            },
+            [kms, series], plot);
+        flightPlots.push(u);
+      }
+      if (flightPlots.length)
+        flightBox.append(el('div', {class: 'chart-title'}, 'The time series of the point, against the path'));
+    }
     // Shows point i: its series in each chart, and its place on the map
     const show = (i) => {
       const point = points[i];
@@ -3035,9 +3146,12 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
         // Redrawn on the same scales: the times do not change, the vertical range is fixed
         u.setData([times, stats.map((s) => s[0]), stats.map((s) => s[2]), stats.map((s) => s[1]), values[p][i]]);
         const unit = (options.labels || {})[p];
+        const v = met(p, i);
         title.textContent = `${p}${unit ? ` (${unit})` : ''} at ${Math.round(point.km)} km of ${Math.round(points[points.length - 1].km)} km (${
-            point.lat.toFixed(3)}, ${point.lon.toFixed(3)})${when}, against the median and 10-90 % of the path`;
+            point.lat.toFixed(3)}, ${point.lon.toFixed(3)})${when}${v !== null ? `: ${round(v, 1)}` : ''}, against the median and 10-90 % of the path`;
       }
+      for (const u of flightPlots)
+        u.redraw(false);
       if (options.onPosition)
         options.onPosition({lat: point.lat, lon: point.lon});
     };
@@ -5878,7 +5992,12 @@ function flightChooser(s, onChange, margin)
     arrival.value = s.arrival || '';
     const f = flight();
     const km = sel && sel.points.length >= 2 ? pathLength(sel.points) : 0;
-    note.textContent = f && km ?
+    const start = s.start ? new Date(fromInput(s.start)).getTime() : -Infinity;
+    const end = s.end ? new Date(fromInput(s.end)).getTime() : Infinity;
+    note.className = f && (f.departure < start || f.arrival > end) ? 'warn small' : 'muted small';
+    note.textContent = f && (f.departure < start || f.arrival > end) ?
+        'The flight is not within the period of the request: set its times again, or the period' :
+        f && km ?
         `${Math.round(km)} km in ${Math.round((f.arrival - f.departure) / 60000)} min, ${
             Math.round(km / ((f.arrival - f.departure) / 3600000))} km/h: the views show the values ` +
             'at the times the points are passed' :

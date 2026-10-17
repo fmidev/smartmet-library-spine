@@ -1626,6 +1626,39 @@ async function main()
             JSON.stringify(units.q) === '["temperature","speed","height",null]' && units.back === 10,
         units);
 
+    // The values met on a flight: a chart against the distance, the value met in the titles
+    const flightView = await b.evaluate(`(async () => {
+      const E = SmartMetExplorer;
+      const rows = [];
+      for (const [lon, k] of [[25, 0], [26, 1], [27, 2]])
+        for (const h of [0, 3])
+          rows.push({ name: 'p', time: new Date(Date.UTC(2026, 9, 15, h)).toISOString(), lat: 60, lon,
+                      temperature: 10 * k + h });
+      const box = document.createElement('div');
+      box.style.width = '700px';
+      document.body.append(box);
+      // Passing the points at 00:30, 01:30 and 02:30
+      E.drawAlongPath(box, rows, ['temperature'], '', { flight: { departure: Date.UTC(2026, 9, 15, 0, 30), arrival: Date.UTC(2026, 9, 15, 2, 30) } });
+      await new Promise((r) => setTimeout(r, 300));
+      const flightCanvas = () => box.querySelector('.along-flight canvas').toDataURL();
+      const out = { charts: box.querySelectorAll('.along-flight .chart').length,
+                    flightTitle: box.querySelector('.along-flight .chart-title').textContent,
+                    title: [...box.querySelectorAll('.chart-title')].pop().textContent };
+      const before = flightCanvas();
+      box.querySelector('input[type="range"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+      await new Promise((r) => requestAnimationFrame(r));
+      out.last = [...box.querySelectorAll('.chart-title')].pop().textContent;
+      out.moved = flightCanvas() !== before;
+      box.remove();
+      return out;
+    })()`);
+    check(
+        'the values met on a flight',
+        flightView.charts === 1 && flightView.flightTitle.startsWith('temperature met on the flight') &&
+            /passed 2026-10-15 00:30 UTC: 0.5,/.test(flightView.title) &&
+            /passed 2026-10-15 02:30 UTC: 22.5,/.test(flightView.last) && flightView.moved,
+        flightView);
+
     // Locations reporting at different intervals, and a parameter without values
     const mixed = await b.evaluate(`(() => {
       const rows = [];

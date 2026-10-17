@@ -186,8 +186,8 @@ make %{_smp_mflags}
   time-height sections
 - Data explorer: ensembles with their members stored as levels (leveltype ensemble): the
   members as series, their spread, and the probability of exceeding a threshold
-- Data explorer: flights along paths: departure and arrival times, the cross section and the
-  time series at the times the points are passed
+- Data explorer: flights along paths: departure and arrival times, the cross section, the values
+  met along the flight and the time series at the times the points are passed
 - Data explorer: EDR trajectory queries drawn on the map; paths at their marked points or every
   N km; an animated view of the time series along a path; trajectory CoverageJSON read
 - Data explorer: charts of areas with several levels show one level at a time (the lowest by
