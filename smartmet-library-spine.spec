@@ -173,6 +173,8 @@ make %{_smp_mflags}
 
 %changelog
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
+- Data explorer: ensembles with their members stored as levels (leveltype ensemble): the
+  members as series, their spread, and the probability of exceeding a threshold
 - Data explorer: flights along paths: departure and arrival times, the cross section and the
   time series at the times the points are passed
 - Data explorer: EDR trajectory queries drawn on the map; paths at their marked points or every

@@ -1459,6 +1459,9 @@ function edrLevelKind(collection)
   const type = collection && collection.levels && collection.levels[0] ?
       String(collection.levels[0].type).toLowerCase() :
       '';
+  // Members of an ensemble stored as levels
+  if (type.includes('ensemble member'))
+    return 'member';
   // Model levels first: hybrid sigma-pressure levels are named after the pressure too
   if (type.includes('hybrid') || type.includes('model'))
     return 'hybrid';
@@ -1563,6 +1566,9 @@ function collectProfiles(rows, axis)
 // Whether the rows have profiles worth drawing
 function hasProfiles(rows, levelKind)
 {
+  // The levels of an ensemble are its members
+  if (levelKind === 'member')
+    return false;
   if (!rows.some((r) => typeof r.level === 'number'))
     return false;
   const axes = verticalAxes(rows, levelKind);
@@ -2551,21 +2557,6 @@ function pathPoints(rows)
     p.km = km;
   });
   return points;
-}
-
-// The labels of a time axis of a chart: UTC times in 24 hour format, with the date where the
-// day changes
-function utcTimeLabels(u, splits)
-{
-  let previous = '';
-  return splits.map((x) => {
-    const d = new Date(x * 1000);
-    const day = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
-    const time = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
-    const label = day !== previous ? `${time}\n${day}` : time;
-    previous = day;
-    return label;
-  });
 }
 
 // The time series along a path: a slider (and an animation) over the points of the path by
@@ -3672,9 +3663,16 @@ function drawServerStatisticsGroup(container, series, parameters, label)
   }
 }
 
-// UTC times in 24 hour format, with the date where the day changes
+// The labels of a time axis of a chart: UTC times in 24 hour format, with the date where the
+// day changes. Ticks of whole days are dates only, the year once.
 function utcTimeLabels(u, splits)
 {
+  if (splits.length > 1 && splits.every((x) => x % 86400 === 0))
+    return splits.map((x, i) => {
+      const d = new Date(x * 1000);
+      const md = `${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+      return i === 0 ? `${d.getUTCFullYear()}-${md}` : md;
+    });
   let previous = '';
   return splits.map((x) => {
     const d = new Date(x * 1000);
@@ -3686,9 +3684,6 @@ function utcTimeLabels(u, splits)
   });
 }
 
-// The charts of the numeric parameters of the rows, one chart per parameter. 'mode' is
-// "lines" or "percentiles"; the default depends on the number of locations. "server" draws
-// the percentiles the server computed over an area (AREA_STATISTICS).
 // The lines of a swarm, drawn by the chart directly on its canvas: thousands of locations would
 // be too slow as series of their own (each has its own paths, cursor point and legend value).
 // lines: [{label, values (one per x, null if none), colour, breaks (k: whether the line breaks
@@ -3840,14 +3835,21 @@ function chartLevels(rows, levelKind)
   if (levels.length < 2)
     return {levels: [], fallback: ''};
   const places = new Set(rows.map((r) => locationOf(Object.assign({}, r, {level: null})))).size;
+  // The members of an ensemble are series of their own
+  if (levelKind === 'member')
+    return {levels, fallback: ''};
   // Model levels and pressures grow downwards
   const down = ['hybrid', 'pressure', 'pressure-pa', 'sounding'].includes(levelKind);
   const lowest = down ? levels[levels.length - 1] : levels[0];
   return {levels, fallback: places > 1 ? String(lowest) : ''};
 }
 
-// Charts of the parameters over time. options: levelKind (the kind of the levels of the rows),
-// level (the level drawn, '' for every level as a series of its own)
+// The charts of the numeric parameters of the rows, one chart per parameter. 'mode' is "lines",
+// "percentiles" or "probability" (of exceeding a threshold); the default depends on the number
+// of series. "server" draws the percentiles the server computed over an area
+// (AREA_STATISTICS). options: levelKind (the kind of the levels of the rows), level (the level
+// drawn, '' for every level as a series of its own), thresholds and below (of the probability
+// of each parameter).
 function drawCharts(container, rows, parameters, mode, options = {})
 {
   if (mode === 'server')
@@ -3873,16 +3875,17 @@ function drawCharts(container, rows, parameters, mode, options = {})
   if (levels.length > 0)
   {
     const unit = {pressure: ' hPa', 'pressure-pa': ' Pa', height: ' m', depth: ' m'}[options.levelKind] || '';
+    const member = options.levelKind === 'member';
     const select = el('select',
                       {'aria-label': 'Level of the charts'},
-                      [['', 'All levels, a line each'],
-                       ...levels.map((v) => [String(v), `${v}${unit}`])]
+                      [[ '', member ? 'All members' : 'All levels, a line each'],
+                       ...levels.map((v) => [String(v), member ? `Member ${v}` : `${v}${unit}`])]
                           .map(([v, l]) => el('option', {value: v}, l)));
     select.value = level;
     // The drawing chosen stays when the level changes
     select.addEventListener('change', () => drawCharts(
         container, allRows, parameters, chosen, Object.assign({}, options, {level: select.value})));
-    levelChooser = el('label', null, 'Level', select);
+    levelChooser = el('label', null, member ? 'Member' : 'Level', select);
     if (level !== '')
       rows = rows.filter((r) => r.level === Number(level));
   }
@@ -3930,6 +3933,9 @@ function drawCharts(container, rows, parameters, mode, options = {})
 
   const names = Array.from(locations.keys());
   const many = names.length > MAX_LINES;
+  // The series are the members of an ensemble at one place, or locations
+  const places = new Set(rows.map((r) => locationOf(Object.assign({}, r, {level: null})))).size;
+  const what = options.levelKind === 'member' && level === '' && places === 1 ? 'members' : 'locations';
   const chosen = mode || (many ? 'percentiles' : 'lines');
 
   // The choice of the drawing for several locations, and of the level
@@ -3938,8 +3944,9 @@ function drawCharts(container, rows, parameters, mode, options = {})
   {
     const toolbar = el('div', {class: 'tabs chart-modes', role: 'tablist'});
     for (const [m, label] of [
-             ['lines', many ? 'All locations' : 'Lines'],
-             ['percentiles', 'Percentiles']])
+             ['lines', many ? `All ${what}` : 'Lines'],
+             ['percentiles', 'Percentiles'],
+             ['probability', 'Probability']])
       toolbar.append(
           el('button',
              {
@@ -4056,6 +4063,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
     let caption;
     let legend = {live: true};
     let swarm = null;
+    let probability = null;
 
     if (chosen === 'lines' && !many)
     {
@@ -4070,7 +4078,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
                        gaps: gapsOf(data[i + 1])
                      }))
       ];
-      caption = names.length > 1 ? `${param}, ${names.length} locations` : param;
+      caption = names.length > 1 ? `${param}, ${names.length} ${what}` : param;
     }
     else if (chosen === 'lines')
     {
@@ -4093,8 +4101,54 @@ function drawCharts(container, rows, parameters, mode, options = {})
         }
       ];
       legend = {show: false};
-      caption = `${param}: ${names.length} locations${
-          byLatitude ? ', coloured from south to north' : ''}, and the median`;
+      caption = `${param}: ${names.length} ${what}${
+          byLatitude && what === 'locations' ? ', coloured from south to north' : ''}, and the median`;
+    }
+    else if (chosen === 'probability')
+    {
+      // The share of the locations (members) whose value is above (or below) a threshold
+      const all = [];
+      for (const map of locations.values())
+        for (const x of xs)
+        {
+          const v = valueOf(map, x);
+          if (v !== null)
+            all.push(v);
+        }
+      all.sort((a, b) => a - b);
+      const ticks = niceTicks(all[0], all[all.length - 1], 4);
+      const fallback = ticks[Math.floor(ticks.length / 2)] ?? 0;
+      const threshold = (options.thresholds || {})[param] ?? fallback;
+      const below = !!(options.below || {})[param];
+      const counts = xs.map(
+          (x) => Array.from(locations.values()).filter((map) => valueOf(map, x) !== null).length);
+      const typical = Math.max(1, ...counts);
+      const shares = xs.map((x, k) => {
+        if (counts[k] < Math.ceil(typical / 2))
+          return null;
+        let n = 0;
+        for (const map of locations.values())
+        {
+          const v = valueOf(map, x);
+          if (v !== null && (below ? v < threshold : v > threshold))
+            n++;
+        }
+        return (100 * n) / counts[k];
+      });
+      data = [xs, shares];
+      series = [
+        timeSeries,
+        {
+          label: `${below ? 'below' : 'above'} ${threshold} (%)`,
+          stroke: palette[0],
+          fill: 'rgba(47, 111, 223, 0.15)',
+          width: 2,
+          gaps: gapsOf(shares)
+        }
+      ];
+      probability = {threshold, below};
+      caption = `${param}: the share of the ${names.length} ${what} ${below ? 'below' : 'above'} ${
+          threshold}`;
     }
     else
     {
@@ -4111,13 +4165,42 @@ function drawCharts(container, rows, parameters, mode, options = {})
         {label: '90 %', stroke: fill(0.5), width: 1, gaps}
       ];
       bands = [{series: [5, 1], fill: fill(0.12)}, {series: [4, 2], fill: fill(0.22)}];
-      caption = `${param}: median and percentiles of ${names.length} locations`;
+      caption = `${param}: median and percentiles of ${names.length} ${what}`;
     }
 
     panel.append(el('div', {class: 'chart-title'}, caption));
+    if (probability)
+    {
+      // The threshold of the parameter, kept when the charts are drawn again
+      const side = el('select', {'aria-label': `Side of the threshold of ${param}`},
+                      [['above', 'Above'], ['below', 'Below']].map(([v, l]) => el('option', {value: v}, l)));
+      side.value = probability.below ? 'below' : 'above';
+      const value = el('input', {
+        type: 'number',
+        step: 'any',
+        value: String(probability.threshold),
+        'aria-label': `Threshold of ${param}`,
+        style: 'width: 7em'
+      });
+      const redraw = () => {
+        const v = Number(value.value);
+        if (value.value === '' || !isFinite(v))
+          return;
+        drawCharts(container, allRows, parameters, 'probability', Object.assign({}, options, {
+                     level,
+                     thresholds: Object.assign({}, options.thresholds, {[param]: v}),
+                     below: Object.assign({}, options.below, {[param]: side.value === 'below'})
+                   }));
+      };
+      side.addEventListener('change', redraw);
+      value.addEventListener('change', redraw);
+      panel.append(el('div', {class: 'row'}, side, value));
+    }
     const plot = el('div', {class: 'chart-plot', style: 'min-height: 260px'});
     panel.append(plot);
     const scales = {x: {time: true}};
+    if (probability)
+      scales.y = {range: () => [0, 100]};
     if (swarm && swarm.range)
     {
       // The range of all the lines, not only of the median
@@ -5499,9 +5582,11 @@ function timeSeriesModule(app, api, state, save)
                      }
                    },
                    v.value)));
+        // The members of an ensemble stored as levels are no levels to the user
+        const levelWord = type.type === 'member' ? 'members' : `${type.type} levels`;
         levelNote.textContent = chosen.size === 0 ?
-            `No level chosen: the values of all ${type.values.length} ${type.type} levels` :
-            `${chosen.size} of ${type.values.length} ${type.type} levels${
+            `None chosen: the values of all ${type.values.length} ${levelWord}` :
+            `${chosen.size} of ${type.values.length} ${levelWord}${
                 type.unit ? ` (${type.unit})` : ''}, a series each`;
       }
       // Sounding diagrams of the levels, the missing parameters added when chosen
@@ -6216,7 +6301,7 @@ function timeSeriesModule(app, api, state, save)
       const kind = levelKind();
       const vertical = hasProfiles(rows, kind);
       const panes = {};
-      const crossSection = s.locmode === 'path' && hasCrossSection(rows);
+      const crossSection = s.locmode === 'path' && kind !== 'member' && hasCrossSection(rows);
       if (crossSection)
         panes['Cross section'] = el('div', {class: 'pane'});
       const alongPath = s.locmode === 'path' && pathPoints(rows).length >= 2;
@@ -6284,9 +6369,10 @@ function timeSeriesModule(app, api, state, save)
                          }
                        },
                        name));
-      // Profiles are counted by their levels, not as locations
+      // Profiles are counted by their levels, and ensembles by their members, not as locations
       const levelCount = new Set(rows.map((r) => r.level)).size;
-      const locationsCount = vertical ?
+      const byLevel = vertical || kind === 'member';
+      const locationsCount = byLevel ?
           new Set(rows.map((r) => locationOf({name: r.name, lat: r.lat, lon: r.lon}))).size :
           new Set(rows.map(locationOf)).size;
       results.replaceChildren(
@@ -6296,7 +6382,7 @@ function timeSeriesModule(app, api, state, save)
              el('span',
                 {class: 'muted small'},
                 `${rows.length} rows${locationsCount > 1 ? `, ${locationsCount} locations` : ''}${
-                    vertical ? `, ${levelCount} levels` : ''}`)),
+                    byLevel ? `, ${levelCount} ${kind === 'member' ? 'members' : 'levels'}` : ''}`)),
           ...Object.values(panes));
       show(s.tab && panes[s.tab] ? s.tab :
                crossSection        ? 'Cross section' :
@@ -7411,7 +7497,7 @@ function edrModule(app, api, state, save)
       const vertical = hasProfiles(rows, kind);
       const panes = {};
       const trajectory = query()[0] === 'trajectory';
-      const crossSection = trajectory && hasCrossSection(rows);
+      const crossSection = trajectory && kind !== 'member' && hasCrossSection(rows);
       if (crossSection)
         panes['Cross section'] = el('div', {class: 'pane'});
       const alongPath = trajectory && pathPoints(rows).length >= 2;
@@ -7493,8 +7579,9 @@ function edrModule(app, api, state, save)
                          }
                        },
                        name));
-      // Profiles are counted by their levels, not as locations
-      const count = vertical ?
+      // Profiles are counted by their levels, and ensembles by their members, not as locations
+      const byLevel = vertical || kind === 'member';
+      const count = byLevel ?
           new Set(rows.map((r) => locationOf({name: r.name, lat: r.lat, lon: r.lon}))).size :
           new Set(rows.map(locationOf)).size;
       const levelCount = new Set(rows.map((r) => r.level)).size;
@@ -7505,7 +7592,7 @@ function edrModule(app, api, state, save)
              el('span',
                 {class: 'muted small'},
                 `${rows.length} rows${count > 1 ? `, ${count} locations` : ''}${
-                    vertical ? `, ${levelCount} levels` : ''}`)),
+                    byLevel ? `, ${levelCount} ${kind === 'member' ? 'members' : 'levels'}` : ''}`)),
           ...Object.values(panes));
       show(s.tab && panes[s.tab] ? s.tab :
                crossSection        ? 'Cross section' :

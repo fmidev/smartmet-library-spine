@@ -1467,6 +1467,41 @@ async function main()
             chartLevels.height === '1',
         chartLevels);
 
+    // An ensemble with its members stored as levels: the members are series, their spread the
+    // percentiles, and the share of them above a threshold the probability
+    const ensemble = await b.evaluate(`(async () => {
+      const E = SmartMetExplorer;
+      const rows = [];
+      for (let m = 1; m <= 30; m++)
+        for (let h = 0; h < 4; h++)
+          rows.push({ name: 'Helsinki', time: new Date(Date.UTC(2014, 1, 20, 6 * h)).toISOString(), lat: 60.17, lon: 24.94,
+                      level: m, temperature: m <= 10 ? -2 + h : 3 + h });
+      const box = document.createElement('div');
+      box.style.width = '700px';
+      document.body.append(box);
+      E.drawCharts(box, rows, ['temperature'], undefined, { levelKind: 'member' });
+      const spread = box.querySelector('.chart-title').textContent;
+      const members = box.querySelector('[aria-label="Level of the charts"]');
+      const menu = [members.closest('label').firstChild.textContent, members.value, members.options[1].textContent];
+      box.querySelector('[data-mode="probability"]').click();
+      await new Promise((r) => setTimeout(r, 200));
+      const threshold = box.querySelector('[aria-label="Threshold of temperature"]');
+      threshold.value = '0';
+      threshold.dispatchEvent(new Event('change'));
+      await new Promise((r) => setTimeout(r, 200));
+      const probability = box.querySelector('.chart-title').textContent;
+      box.remove();
+      const kind = E.edrLevelKind({ levels: [{ type: 'PARAMETRICCRS["Ensemble member",PDATUM["Members of an ensemble forecast"],CS[parametric,1],AXIS["ensemble member (n)",up],PARAMETRICUNIT["unity",1.0]]' }] });
+      return { spread, menu, probability, kind, profiles: E.hasProfiles(rows, 'member') };
+    })()`);
+    check(
+        'an ensemble of members',
+        ensemble.spread === 'temperature: median and percentiles of 30 members' &&
+            JSON.stringify(ensemble.menu) === JSON.stringify(['Member', '', 'Member 1']) &&
+            ensemble.probability === 'temperature: the share of the 30 members above 0' &&
+            ensemble.kind === 'member' && ensemble.profiles === false,
+        ensemble);
+
     // Locations reporting at different intervals, and a parameter without values
     const mixed = await b.evaluate(`(() => {
       const rows = [];
