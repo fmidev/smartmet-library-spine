@@ -357,3 +357,6 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 760px) { .coverage-panels.panels-2, .coverage-panels.panels-3, .coverage-panels.panels-4 { grid-template-columns: 1fr; } }
 .coverage-panel { min-width: 0; }
 .xmap-raster { pointer-events: none; }
+.xmap-clickable .xmap-svg { cursor: crosshair; }
+.xmap-hint { margin-top: 4px; font-style: italic; color: var(--muted); }
+.map-hint { margin: 4px 0; }

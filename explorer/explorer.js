@@ -1114,7 +1114,7 @@ function createMap(settings, onSelect)
         }
         shape.addEventListener('mouseover', () => {
           const [sx, sy] = screenOf(cell.lon, cell.lat);
-          showTooltip({label: cell.label, info: cell.info}, sx, sy);
+          showTooltip({label: cell.label, info: cell.info, hint: cell.onclick ? cell.hint : ''}, sx, sy);
         });
         shape.addEventListener('mouseout', () => {
           tooltip.hidden = true;
@@ -1181,7 +1181,8 @@ function createMap(settings, onSelect)
     const rows = Object.entries(point.info || {})
                      .filter(([k, v]) => k !== 'name' && v !== null && v !== undefined && v !== '')
                      .map(([k, v]) => el('tr', null, el('td', null, k), el('td', null, v)));
-    tooltip.replaceChildren(el('strong', null, point.label || ''), el('table', null, rows));
+    tooltip.replaceChildren(el('strong', null, point.label || ''), el('table', null, rows),
+                            point.hint ? el('div', {class: 'xmap-hint'}, point.hint) : '');
     tooltip.hidden = false;
     const left = sx + 12 + tooltip.offsetWidth > width() ? sx - 12 - tooltip.offsetWidth : sx + 12;
     tooltip.style.left = `${Math.max(0, left)}px`;
@@ -1562,6 +1563,7 @@ function createMap(settings, onSelect)
     // Calls fn(lon, lat) on a click that does not drag the map with the move tool
     onClick(fn) {
       hooks.click = fn;
+      box.classList.toggle('xmap-clickable', !!fn);
     },
     fit,
     redraw,
@@ -5916,10 +5918,10 @@ function drawValueMap(container, rows, parameters, settings, options = {})
          el('label', null, 'Max', maxInput)),
       slider.element,
       legend,
+      el('p', {class: 'map-hint'},
+         times.length === 1 && levels.length > 1 ? 'Click a value on the map for the profile of the point.' :
+                                                   'Click a value on the map for the time series of the point.'),
       map.element,
-      el('p', {class: 'muted small'},
-         times.length === 1 && levels.length > 1 ? 'Click a value for the profile of the point' :
-                                                   'Click a value for the time series of the point'),
       probeBox);
 
   // The default range: the 2nd and the 98th percentiles of all times, so that the colours
@@ -5954,6 +5956,7 @@ function drawValueMap(container, rows, parameters, settings, options = {})
         color: color,
         label: `${state.param}: ${ok ? v : 'missing'}`,
         info: {name: r.name, lat: r.lat, lon: r.lon},
+        hint: times.length === 1 && levels.length > 1 ? 'Click for the profile' : 'Click for the time series',
         onclick: () => probe.show({lat: r.lat, lon: r.lon, name: r.name})
       };
     });
@@ -10091,8 +10094,8 @@ function drawCoverageMaps(container, tiff, settings, options = {})
       el('div', {class: 'row'}, el('label', null, 'Panels', count), slider.element),
       el('p', {class: 'muted small'},
          `${tiff.width} × ${tiff.height} cells, ${params.length} parameter${params.length === 1 ? '' : 's'}, ` +
-             `${times.length} time${times.length === 1 ? '' : 's'}. ` +
-             'The maps move together; click a value for the time series of the point'),
+             `${times.length} time${times.length === 1 ? '' : 's'}. The maps move together.`),
+      el('p', {class: 'map-hint'}, 'Click a value on a map for the time series of the point in every panel.'),
       grid);
 
   let panels = [];
@@ -10207,7 +10210,7 @@ function drawCoverageMaps(container, tiff, settings, options = {})
             return null;
           const v = b.values[cell.row * tiff.width + cell.col];
           return {label: `${state.param}: ${isFinite(v) ? round(v, 2) : 'missing'}`,
-                  info: {lon: round(lon, 3), lat: round(lat, 3)}};
+                  info: {lon: round(lon, 3), lat: round(lat, 3)}, hint: 'Click for the time series'};
         }
       });
       const n = 24;
@@ -10643,6 +10646,8 @@ function coveragesModule(app, api, state, save)
     const showMaps = el('button', {type: 'button', class: 'small'}, 'Show maps');
     const mapsNote = el('p', {class: 'muted small'});
     const maps = el('div', {class: 'coverage-maps'});
+    // The request of the maps drawn, to tell when they no longer match the form
+    let shownMaps = null;
     // The URL of the maps: the request in EPSG:4326 on a grid of at most COVERAGE_MAP_SIZE cells a side
     function mapsUrl()
     {
@@ -10676,6 +10681,8 @@ function coveragesModule(app, api, state, save)
           throw new Error(`${response.status} ${(await response.text()).slice(0, 200)}`);
         const tiff = await readGeoTiff(await response.arrayBuffer());
         mapsNote.textContent = '';
+        shownMaps = url;
+        showMaps.textContent = 'Update the maps';
         const c = collection();
         drawCoverageMaps(maps, tiff, mapSettings(app.element),
                          {levelKind: c && c.levels.length ? c.levels[0].type : ''});
@@ -10855,6 +10862,10 @@ function coveragesModule(app, api, state, save)
       }
       codeTabs(code, url);
       showMaps.disabled = !mapsPossible();
+      if (shownMaps && mapsUrl() !== shownMaps)
+        mapsNote.textContent = 'The request has changed: update the maps to show it';
+      else if (shownMaps)
+        mapsNote.textContent = '';
       showMaps.title = mapsPossible() ? mapsUrl() :
           'The maps need a collection with GeoTIFF output and a parameter';
       if (c)
