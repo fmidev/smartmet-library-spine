@@ -736,7 +736,22 @@ function selectionBox(sel)
     const e = destination(sel.lon, sel.lat, sel.km, 90);
     return [2 * sel.lon - e[0], 2 * sel.lat - n[1], e[0], n[1]];
   }
+  if (sel.type === 'path' && sel.points.length > 0)
+  {
+    const lons = sel.points.map((p) => p[0]);
+    const lats = sel.points.map((p) => p[1]);
+    return [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)];
+  }
   return null;
+}
+
+// The length of a path in kilometres
+function pathLength(points)
+{
+  let km = 0;
+  for (let i = 1; i < points.length; i++)
+    km += distanceKm(points[i - 1][0], points[i - 1][1], points[i][0], points[i][1]);
+  return km;
 }
 
 function boxesIntersect(a, b)
@@ -924,6 +939,19 @@ function createMap(settings, onSelect)
       g.append(rect(sel.bbox, cls));
     else if (sel.type === 'circle')
       g.append(circlePath(sel, cls));
+    else if (sel.type === 'path')
+    {
+      // The legs of the path and its vertices
+      g.append(svg('polyline', {
+        class: `${cls} xmap-path`,
+        fill: 'none',
+        points: sel.points.map(([lon, lat]) => screenOf(lon, lat).join(',')).join(' ')
+      }));
+      sel.points.forEach(([lon, lat], i) => {
+        const [sx, sy] = screenOf(lon, lat);
+        g.append(svg('circle', {class: i === 0 ? 'xmap-centre start' : 'xmap-centre', cx: sx, cy: sy, r: 4}));
+      });
+    }
     if (sel.type === 'point' || sel.type === 'circle')
     {
       const [sx, sy] = screenOf(sel.lon, sel.lat);
@@ -1141,6 +1169,16 @@ function createMap(settings, onSelect)
       const [lon, lat] = lonLatOf(sx, sy);
       shape = {type: 'point', lon: round(lon, 4), lat: round(lat, 4)};
     }
+    else if (t === 'line' && !drag.moved)
+    {
+      // Each click adds a vertex to the path
+      const [lon, lat] = lonLatOf(sx, sy);
+      const points = state.selection && state.selection.type === 'path' ?
+          state.selection.points.slice() :
+          [];
+      points.push([round(lon, 3), round(lat, 3)]);
+      shape = {type: 'path', points};
+    }
     drag = null;
     if (shape && onSelect)
       onSelect(shape);
@@ -1185,7 +1223,8 @@ function createMap(settings, onSelect)
     ['move', 'Move', 'Move the map'],
     ['point', 'Point', 'Click to choose a point'],
     ['circle', 'Radius', 'Drag from the centre to choose a radius'],
-    ['box', 'Box', 'Drag to choose a box']
+    ['box', 'Box', 'Drag to choose a box'],
+    ['line', 'Path', 'Click the vertices of a path']
   ];
 
   const api = {
@@ -1206,6 +1245,32 @@ function createMap(settings, onSelect)
                                            label)));
       state.tool = current;
       surface.dataset.tool = current;
+      // A path is drawn vertex by vertex: the last one can be undone, or all
+      if (allowed.includes('line'))
+      {
+        const edit = (fn) => () => {
+          const sel = state.selection;
+          if (sel && sel.type === 'path' && onSelect)
+            onSelect(fn(sel.points.slice()));
+        };
+        tools.append(
+            el('button',
+               {
+                 type: 'button',
+                 class: 'small',
+                 title: 'Remove the last vertex',
+                 onclick: edit((points) => ({type: 'path', points: points.slice(0, -1)}))
+               },
+               'Undo'),
+            el('button',
+               {
+                 type: 'button',
+                 class: 'small',
+                 title: 'Remove the path',
+                 onclick: edit(() => ({type: 'path', points: []}))
+               },
+               'Clear'));
+      }
     },
     setRegions(regions) {
       // The boxes of the polygons for fitting the map
@@ -1772,10 +1837,96 @@ function drawProfiles(container, rows, parameters, levelKind)
   draw();
 }
 
+// The colours of sections: the production isoband scale of the parameter, as on the value
+// maps, unless much of the data is outside it (the production temperature scale does not
+// reach the upper atmosphere), when a continuous scale fitted to the data is used. All the
+// scales can be chosen.
+function colourScale(settings, label, onChange)
+{
+  let production = {palettes: {}, parameters: {}};
+  let chosen = null;  // null: chosen automatically
+  const select = el('select', {'aria-label': label});
+  const productionGroup = el('optgroup', {label: 'Production isobands'});
+  const continuousGroup = el('optgroup',
+                             {label: 'Continuous, fitted to the data'},
+                             Object.keys(PALETTES).map((p) => el('option', {value: p}, p)));
+  select.append(continuousGroup);
+  select.addEventListener('change', () => {
+    chosen = select.value;
+    onChange();
+  });
+  if (settings && settings.palettes)
+    loadPalettes(settings.palettes).then((doc) => {
+      production = doc;
+      const names = Object.keys(doc.palettes || {}).sort();
+      productionGroup.replaceChildren(...names.map((n) => el('option', {value: `production:${n}`}, n)));
+      if (names.length > 0)
+        select.prepend(productionGroup);
+      onChange();
+    });
+  const bandsOf = (name) => production.palettes[name.replace(/^production:/, '')];
+  // values: the values of the parameter, sorted
+  function prepare(param, values)
+  {
+    const own = production.parameters[String(param).toLowerCase()];
+    const ownBands = own ? production.palettes[own] : null;
+    // The share of the values the production scale covers
+    const covered = ownBands ? values.filter((v) => ownBands.some((b) => v >= b[0] && v < b[1])).length /
+            Math.max(1, values.length) :
+                               0;
+    let name = chosen;
+    if (!name)
+      name = ownBands && covered >= 0.8 ? `production:${own}` :
+          /temp|t-k|^t$|^td/i.test(param) && PALETTES.temperature ? 'temperature' : 'viridis';
+    select.value = name;
+    let note = '';
+    if (!chosen && ownBands && covered < 0.8)
+      note = `${Math.round(100 * (1 - covered))} % of the values are outside the production scale ${
+          own}: a continuous scale fitted to the data is used`;
+    if (name.startsWith('production:') && bandsOf(name))
+    {
+      const bands = bandsOf(name);
+      const text = (v) => (Math.abs(v) >= 999 ? '' : String(v));
+      return {
+        colour: (v) => {
+          const band = bands.find((b) => v >= b[0] && v < b[1]);
+          return band ? `rgb(${band[2]},${band[3]},${band[4]})` : 'transparent';
+        },
+        legend: [el('span',
+                    {class: 'legend-bar legend-bands'},
+                    bands.map((b) => el('span',
+                                        {
+                                          class: 'legend-step',
+                                          style: `background:rgb(${b[2]},${b[3]},${b[4]})`,
+                                          title: `${text(b[0]) || '…'} – ${text(b[1]) || '…'}`
+                                        },
+                                        el('span', {class: 'legend-label'}, text(b[0])))))],
+        note
+      };
+    }
+    const lo = quantile(values, 0.02);
+    const hi = quantile(values, 0.98);
+    const n = 24;
+    return {
+      colour: (v) => paletteColour(name, hi > lo ? Math.min(1, Math.max(0, (v - lo) / (hi - lo))) : 0.5, 0),
+      legend: [el('span', {class: 'small'}, round(lo, 2)),
+               el('span',
+                  {class: 'legend-bar'},
+                  Array.from({length: n}, (_, i) => el('span', {
+                    class: 'legend-step',
+                    style: `background:${paletteColour(name, (i + 0.5) / n, 0)}`
+                  }))),
+               el('span', {class: 'small'}, round(hi, 2))],
+      note
+    };
+  }
+  return {select, prepare};
+}
+
 // A time-height section of a parameter: time horizontally, the vertical coordinate
 // vertically, the values as coloured cells. Each profile keeps its own levels, as the height
 // or pressure of model levels changes in time.
-function drawSection(container, rows, parameters, levelKind)
+function drawSection(container, rows, parameters, levelKind, settings)
 {
   container.replaceChildren();
   const axes = verticalAxes(rows, levelKind);
@@ -1794,10 +1945,8 @@ function drawSection(container, rows, parameters, levelKind)
       el('select',
          {'aria-label': 'Parameter of the section'},
          numeric.map((p) => el('option', {value: p}, p)));
-  const paletteSelect =
-      el('select',
-         {'aria-label': 'Colours of the section'},
-         Object.keys(PALETTES).map((p) => el('option', {value: p}, p)));
+  const scale = colourScale(settings, 'Colours of the section', () => draw());
+  const paletteSelect = scale.select;
   const keySelect = el('select', {'aria-label': 'Location of the section'});
   const topSelect = el('select', {'aria-label': 'Top of the section'});
   const setTops = () => {
@@ -1807,7 +1956,6 @@ function drawSection(container, rows, parameters, levelKind)
     topSelect.hidden = topSelect.options.length < 2;
   };
   setTops();
-  paletteSelect.value = state.palette;
   const readout = el('div', {class: 'sk-readout small'});
   const legend = el('div', {class: 'legend'});
   const plot = el('div', {class: 'section'});
@@ -1834,10 +1982,6 @@ function drawSection(container, rows, parameters, levelKind)
   });
   paramSelect.addEventListener('change', () => {
     state.param = paramSelect.value;
-    draw();
-  });
-  paletteSelect.addEventListener('change', () => {
-    state.palette = paletteSelect.value;
     draw();
   });
   keySelect.addEventListener('change', () => {
@@ -1872,10 +2016,8 @@ function drawSection(container, rows, parameters, levelKind)
       plot.append(el('p', {class: 'muted'}, 'No values to draw.'));
       return;
     }
-    const lo = quantile(values, 0.02);
-    const hi = quantile(values, 0.98);
-    const colour = (v) => paletteColour(
-        state.palette, hi > lo ? Math.min(1, Math.max(0, (v - lo) / (hi - lo))) : 0.5, 0);
+    const prepared = scale.prepare(state.param, values);
+    const colour = prepared.colour;
 
     const width = Math.max(360, Math.min(900, container.clientWidth || 640));
     const height = 400;
@@ -1965,17 +2107,227 @@ function drawSection(container, rows, parameters, levelKind)
     xlabel.textContent = 'Time (UTC)';
     g.append(xlabel);
     plot.append(root);
-    const n = 24;
-    legend.replaceChildren(
-        el('span', {class: 'small'}, round(lo, 2)),
-        el('span',
-           {class: 'legend-bar'},
-           Array.from(
-               {length: n}, (_, i) => el('span', {
-                              class: 'legend-step',
-                              style: `background:${paletteColour(state.palette, (i + 0.5) / n, 0)}`
-                            }))),
-        el('span', {class: 'small'}, round(hi, 2)));
+    legend.replaceChildren(...prepared.legend, prepared.note ? el('span', {class: 'small warn'}, prepared.note) : '');
+  }
+  draw();
+}
+
+// The points of a path in the order of the path: [{lat, lon, km}] with the distance from the
+// start. The rows of a path query are its points at each level, possibly in several rows.
+function pathPoints(rows)
+{
+  const points = [];
+  const seen = new Set();
+  for (const r of rows)
+  {
+    if (typeof r.lat !== 'number' || typeof r.lon !== 'number')
+      continue;
+    const key = `${r.lat.toFixed(5)},${r.lon.toFixed(5)}`;
+    if (seen.has(key))
+      continue;
+    seen.add(key);
+    points.push({lat: r.lat, lon: r.lon, key});
+  }
+  let km = 0;
+  points.forEach((p, i) => {
+    if (i > 0)
+      km += distanceKm(points[i - 1].lon, points[i - 1].lat, p.lon, p.lat);
+    p.km = km;
+  });
+  return points;
+}
+
+// Whether the rows are a vertical cross section: several levels at several points of a path
+function hasCrossSection(rows)
+{
+  return pathPoints(rows).length >= 3 &&
+      new Set(rows.map((r) => r.level).filter((v) => typeof v === 'number')).size >= 3;
+}
+
+// A cross section along a path: the distance along the path horizontally, the vertical
+// coordinate vertically, the values of a parameter at a time as coloured cells
+function drawCrossSection(container, rows, parameters, levelKind, settings)
+{
+  container.replaceChildren();
+  const axes = verticalAxes(rows, levelKind);
+  const numeric = parameters.filter((p) => rows.some((r) => columnValue(r, p) !== null));
+  if (numeric.length === 0)
+  {
+    container.append(el('p', {class: 'muted'}, 'No values to draw.'));
+    return;
+  }
+  const points = pathPoints(rows);
+  const index = new Map(points.map((p, i) => [p.key, i]));
+  const times = Array.from(new Set(rows.map((r) => parseTime(r.time)).filter(Boolean).map((d) => d.getTime())))
+                    .sort((a, b) => a - b);
+  const state = {axis: axes[0], param: numeric[0], palette: 'viridis', top: '', time: 0};
+  const select = (label, items, value) => {
+    const s = el('select', {'aria-label': label}, items.map(([v, l]) => el('option', {value: v}, l)));
+    s.value = value;
+    return s;
+  };
+  const paramSelect = select('Parameter of the cross section', numeric.map((p) => [p, p]), state.param);
+  const axisSelect = select('Vertical axis of the cross section', axes.map((a) => [a.id, a.label]), state.axis.id);
+  const scale = colourScale(settings, 'Colours of the cross section', () => draw());
+  const paletteSelect = scale.select;
+  const topSelect = el('select', {'aria-label': 'Top of the cross section'});
+  const setTops = () => {
+    topSelect.replaceChildren(...verticalTops(state.axis).map(([v, l]) => el('option', {value: v}, l)));
+    state.top = '';
+    topSelect.hidden = topSelect.options.length < 2;
+  };
+  setTops();
+  axisSelect.hidden = axes.length < 2;
+  const slider = el('input', {
+    type: 'range',
+    min: 0,
+    max: Math.max(0, times.length - 1),
+    value: 0,
+    'aria-label': 'Time of the cross section'
+  });
+  const timeLabel = el('span', {class: 'small'});
+  slider.hidden = times.length < 2;
+  const readout = el('div', {class: 'sk-readout small'});
+  const legend = el('div', {class: 'legend'});
+  const plot = el('div', {class: 'section'});
+  container.append(el('div',
+                      {class: 'row'},
+                      el('label', null, 'Parameter', paramSelect),
+                      el('label', null, 'Vertical axis', axisSelect),
+                      el('label', null, 'Top', topSelect),
+                      el('label', null, 'Colours', paletteSelect)),
+                   el('div', {class: 'row profile-times'}, slider, timeLabel),
+                   legend,
+                   readout,
+                   plot);
+  for (const [control, apply] of [
+           [paramSelect, () => (state.param = paramSelect.value)],
+           [axisSelect, () => {
+              state.axis = axes.find((a) => a.id === axisSelect.value) || axes[0];
+              setTops();
+            }],
+           [topSelect, () => (state.top = topSelect.value)]])
+    control.addEventListener('change', () => {
+      apply();
+      draw();
+    });
+  slider.addEventListener('input', () => {
+    state.time = Number(slider.value);
+    draw();
+  });
+
+  function draw()
+  {
+    plot.replaceChildren();
+    const time = times[state.time];
+    timeLabel.textContent = time === undefined ? '' : formatTime(new Date(time));
+    // The levels of each point of the path at the chosen time
+    const columns = points.map(() => []);
+    // The colours are kept for all times, so that they keep their meaning
+    const all = [];
+    for (const r of rows)
+    {
+      const i = typeof r.lat === 'number' ? index.get(`${r.lat.toFixed(5)},${r.lon.toFixed(5)}`) : undefined;
+      const z = state.axis.value(r);
+      const v = columnValue(r, state.param);
+      if (i === undefined || z === null || v === null || !withinTop(state.axis, state.top, z))
+        continue;
+      all.push(v);
+      const t = parseTime(r.time);
+      if (t && t.getTime() === time)
+        columns[i].push({z, v});
+    }
+    for (const c of columns)
+      c.sort((a, b) => a.z - b.z);
+    if (all.length === 0)
+    {
+      plot.append(el('p', {class: 'muted'}, 'No values to draw.'));
+      return;
+    }
+    all.sort((a, b) => a - b);
+    const prepared = scale.prepare(state.param, all);
+    const colour = prepared.colour;
+
+    const width = Math.max(360, Math.min(900, container.clientWidth || 640));
+    const height = 400;
+    const m = {left: 56, right: 12, top: 10, bottom: 40};
+    const w = width - m.left - m.right;
+    const h = height - m.top - m.bottom;
+    const zs = columns.flat().map((c) => c.z);
+    let zmin = Math.min(...zs);
+    const zmax = Math.max(...zs);
+    if (state.axis.id === 'depth' || state.axis.id === 'height')
+      zmin = Math.min(0, zmin);
+    const sy = verticalScale(state.axis, zmin, zmax, h);
+    const total = points[points.length - 1].km || 1;
+    const sx = (km) => (km / total) * w;
+    // Cells reach halfway to the neighbouring points and levels
+    const edges = (list) => list.map((v, k) => {
+      const before = k > 0 ? (list[k - 1] + v) / 2 : v - (list.length > 1 ? (list[1] - v) / 2 : 10);
+      const after = k < list.length - 1 ? (v + list[k + 1]) / 2 : v + (list.length > 1 ? (v - list[k - 1]) / 2 : 10);
+      return [Math.max(0, Math.min(before, after)), Math.min(w, Math.max(before, after))];
+    });
+    const xs = edges(points.map((p) => sx(p.km)));
+    const root = svg('svg', {
+      class: 'vdiagram',
+      width,
+      height,
+      viewBox: `0 0 ${width} ${height}`,
+      role: 'img',
+      'aria-label': `${state.param}: cross section along the path`
+    });
+    const g = svg('g', {transform: `translate(${m.left},${m.top})`});
+    root.append(g);
+    points.forEach((p, i) => {
+      const levels = columns[i];
+      if (levels.length === 0)
+        return;
+      const ys = edges(levels.map((c) => sy(c.z)));
+      levels.forEach((c, k) => {
+        const rect = svg('rect', {
+          class: 'section-cell',
+          x: xs[i][0],
+          y: ys[k][0],
+          width: Math.max(1, xs[i][1] - xs[i][0] + 0.5),
+          height: Math.max(1, ys[k][1] - ys[k][0] + 0.5),
+          fill: colour(c.v)
+        });
+        rect.addEventListener('mouseenter', () => {
+          readout.textContent = `${Math.round(p.km)} km (${p.lat.toFixed(3)}, ${p.lon.toFixed(3)}) · ${
+              state.axis.label} ${round(c.z, 1)}${state.axis.unit ? ` ${state.axis.unit}` : ''} · ${
+              state.param} ${round(c.v, 2)}`;
+        });
+        g.append(rect);
+      });
+    });
+    root.addEventListener('mouseleave', () => {
+      readout.textContent = '';
+    });
+    for (const z of verticalTicks(state.axis, zmin, zmax))
+    {
+      const label = svg('text', {class: 'vtick', x: -6, y: sy(z) + 4, 'text-anchor': 'end'});
+      label.textContent = String(z);
+      g.append(label);
+    }
+    for (const km of niceTicks(0, total, 8))
+    {
+      const label = svg('text', {class: 'vtick', x: sx(km), y: h + 16, 'text-anchor': 'middle'});
+      label.textContent = String(km);
+      g.append(label);
+    }
+    g.append(svg('rect', {class: 'vframe', x: 0, y: 0, width: w, height: h}));
+    const ylabel = svg('text', {
+      class: 'vlabel',
+      transform: `translate(${-44},${h / 2}) rotate(-90)`,
+      'text-anchor': 'middle'
+    });
+    ylabel.textContent = `${state.axis.label}${state.axis.unit ? ` (${state.axis.unit})` : ''}`;
+    g.append(ylabel);
+    const xlabel = svg('text', {class: 'vlabel', x: w / 2, y: h + 34, 'text-anchor': 'middle'});
+    xlabel.textContent = 'Distance along the path (km)';
+    g.append(xlabel);
+    plot.append(root);
+    legend.replaceChildren(...prepared.legend, prepared.note ? el('span', {class: 'small warn'}, prepared.note) : '');
   }
   draw();
 }
@@ -3381,6 +3733,7 @@ const LOCATION_MODES = [
   ['lonlat', 'Point', '24.94,60.17, or click the map', 'point'],
   ['radius', 'Radius', '24.94,60.17:25 (km), or drag on the map', 'circle'],
   ['bbox', 'Box', '21,60,26,62, or drag on the map', 'box'],
+  ['path', 'Path', '24.3,60.0,25.0,60.2,25.8,60.3 (lon,lat,...), or click the map', 'line'],
   ['keyword', 'Keyword', 'synop_fi', null],
   ['fmisid', 'Station id', '100971,101004', null],
   ['wmo', 'WMO id', '2963,2974', null],
@@ -3402,6 +3755,17 @@ function parseSelection(mode, text)
     return {type: 'point', lon: Number(m[1]), lat: Number(m[2])};
   if (mode === 'radius' && (m = new RegExp(`^${NUMBER},${NUMBER}:${NUMBER}$`).exec(text)))
     return {type: 'circle', lon: Number(m[1]), lat: Number(m[2]), km: Number(m[3])};
+  if (mode === 'path')
+  {
+    const numbers = text.split(',').map((v) => v.trim()).filter((v) => v !== '').map(Number);
+    // A single vertex is a path being drawn
+    if (numbers.length < 2 || numbers.length % 2 !== 0 || numbers.some((v) => !isFinite(v)))
+      return null;
+    const points = [];
+    for (let i = 0; i < numbers.length; i += 2)
+      points.push([numbers[i], numbers[i + 1]]);
+    return {type: 'path', points};
+  }
   if (mode === 'bbox' && (m = new RegExp(`^${NUMBER},${NUMBER},${NUMBER},${NUMBER}$`).exec(text)))
   {
     const [a, b, c, d] = m.slice(1, 5).map(Number);
@@ -3412,6 +3776,8 @@ function parseSelection(mode, text)
 
 function formatSelection(sel)
 {
+  if (sel.type === 'path')
+    return sel.points.map((p) => p.join(',')).join(',');
   if (sel.type === 'point')
     return `${sel.lon},${sel.lat}`;
   if (sel.type === 'circle')
@@ -3522,10 +3888,14 @@ function timeSeriesModule(app, api, state, save)
           .then((doc) => {
             details.set(key, doc);
             refresh(false);
+            if (pendingSounding)
+              startSounding(pendingSounding);
           })
           .catch((e) => {
             details.set(key, {error: e.message});
             refresh(false);
+            if (pendingSounding)
+              startSounding(pendingSounding);
           });
     }
 
@@ -3961,6 +4331,11 @@ function timeSeriesModule(app, api, state, save)
     const geometryRow = el('label', null, 'Geometry', geometrySelect);
     const levelTypeRow = el('label', null, 'Level type', levelTypeSelect);
     const levelsRow = el('div', null, el('label', null, 'Levels'), levelButtons, levelNote);
+    const diagramButtons =
+        el('div', {class: 'level-buttons', role: 'group', 'aria-label': 'Sounding diagrams'});
+    const diagramNote = el('p', {class: 'muted small'});
+    const diagramsRow =
+        el('div', null, el('label', null, 'Sounding diagrams'), diagramButtons, diagramNote);
     const forecastRow = el('label', null, 'Forecast', forecastSelect);
     const membersRow = el('div', null, el('label', null, 'Members', membersInput), membersNote);
     const detailsBox =
@@ -3970,6 +4345,7 @@ function timeSeriesModule(app, api, state, save)
            geometryRow,
            levelTypeRow,
            levelsRow,
+           diagramsRow,
            forecastRow,
            membersRow,
            sensorsRow,
@@ -4090,6 +4466,25 @@ function timeSeriesModule(app, api, state, save)
             `${chosen.size} of ${type.values.length} ${type.type} levels${
                 type.unit ? ` (${type.unit})` : ''}, a series each`;
       }
+      // Sounding diagrams of the levels, the missing parameters added when chosen
+      diagramsRow.hidden = !(p && p.source !== 'observation' && soundingCapable(p));
+      if (!diagramsRow.hidden)
+      {
+        const missingNames = soundingParameters(p);
+        diagramButtons.replaceChildren(...THERMO_DIAGRAMS.map(
+            ([type, label]) =>
+                el('button',
+                   {
+                     type: 'button',
+                     class: 'small',
+                     'data-diagram': type,
+                     onclick: () => startSounding(type)
+                   },
+                   label)));
+        diagramNote.textContent = missingNames.length > 0 ?
+            `Adds ${missingNames.join(', ')} to the parameters and runs the request` :
+            'Runs the request and draws the soundings';
+      }
       // Ensembles
       const forecasts = forecastTypes();
       const forecast = chosenForecast();
@@ -4162,6 +4557,7 @@ function timeSeriesModule(app, api, state, save)
         geometryRow,
         levelTypeRow,
         levelsRow,
+        diagramsRow,
         forecastRow,
         membersRow,
         sensorsRow,
@@ -4519,7 +4915,8 @@ function timeSeriesModule(app, api, state, save)
     // Areas: the statistics computed by the server, or every point
     // The default is the statistics for areas, every point for keywords and station lists
     const areaValuesOf = () =>
-        s.areavalues || (['keyword', 'fmisid'].includes(s.locmode) ? 'points' : 'statistics');
+        s.areavalues ||
+        (['keyword', 'fmisid', 'path'].includes(s.locmode) ? 'points' : 'statistics');
     const areaValues =
         el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': 'Area values'});
     for (const [value, label] of [['statistics', 'Statistics'], ['points', 'Every point']])
@@ -4538,7 +4935,7 @@ function timeSeriesModule(app, api, state, save)
     const areaValuesRow = el('div', null, el('label', null, 'Values of an area'), areaValues);
 
     // An area, radius or box, or several locations, whose values the server can aggregate
-    const isArea = () => ['bbox', 'radius', 'area'].includes(s.locmode) ||
+    const isArea = () => ['bbox', 'radius', 'area', 'path'].includes(s.locmode) ||
         (s.locmode === 'place' && /:\s*\d/.test(s.location || '')) ||
         (s.locmode === 'keyword' && !!s.location) ||
         (s.locmode === 'fmisid' && (s.location || '').includes(','));
@@ -4681,12 +5078,22 @@ function timeSeriesModule(app, api, state, save)
         ['endtime', fromInput(s.end)],
         ['timestep', s.timestep],
         [locationOption(s.locmode), s.location],
+        ['step', pathStep()],
         ['grouplocations', groupLocations() ? '1' : ''],
         ['lang', s.lang],
         ['format', 'json'],
         ['tz', 'UTC'],
         ['timeformat', 'xml']
       ];
+    }
+
+    // The spacing of the points of a path: about 40 points, at least 1 km apart
+    function pathStep()
+    {
+      const sel = s.locmode === 'path' ? selection() : null;
+      if (!sel || sel.points.length < 2)
+        return '';
+      return String(Math.max(1, Math.round(pathLength(sel.points) / 40)));
     }
 
     // The server reads querydata unless told otherwise, or unless it is configured to prefer grid
@@ -4711,6 +5118,8 @@ function timeSeriesModule(app, api, state, save)
         out.push('a parameter');
       if (!s.location)
         out.push('a location');
+      else if (s.locmode === 'path' && (selection() || {points: []}).points.length < 2)
+        out.push('a second vertex of the path');
       return out;
     }
 
@@ -4755,6 +5164,9 @@ function timeSeriesModule(app, api, state, save)
       const kind = levelKind();
       const vertical = hasProfiles(rows, kind);
       const panes = {};
+      const crossSection = s.locmode === 'path' && hasCrossSection(rows);
+      if (crossSection)
+        panes['Cross section'] = el('div', {class: 'pane'});
       if (vertical)
       {
         panes.Profile = el('div', {class: 'pane'});
@@ -4784,7 +5196,9 @@ function timeSeriesModule(app, api, state, save)
         else if (name === 'Profile')
           drawProfiles(panes.Profile, rows, dataParams(), kind);
         else if (name === 'Section')
-          drawSection(panes.Section, rows, dataParams(), kind);
+          drawSection(panes.Section, rows, dataParams(), kind, mapSettings(app.element));
+        else if (name === 'Cross section')
+          drawCrossSection(panes['Cross section'], rows, dataParams(), kind, mapSettings(app.element));
         else if (name === 'Sounding')
           drawSounding(panes.Sounding, rows, kind);
         else if (name === 'Map')
@@ -4810,7 +5224,12 @@ function timeSeriesModule(app, api, state, save)
                 `${rows.length} rows${locationsCount > 1 ? `, ${locationsCount} locations` : ''}${
                     vertical ? `, ${levelCount} levels` : ''}`)),
           ...Object.values(panes));
-      show(vertical ? 'Profile' : 'Chart');
+      const wantedTab = resultTab;
+      resultTab = null;
+      show(wantedTab && panes[wantedTab] ? wantedTab :
+               crossSection                 ? 'Cross section' :
+               vertical                     ? 'Profile' :
+                                              'Chart');
     }
 
     // The kind of the levels of the request: pressure, hybrid, height, depth, ...
@@ -4963,6 +5382,56 @@ function timeSeriesModule(app, api, state, save)
           out.push(n);
       }
       return Array.from(new Set(out));
+    }
+
+    // A sounding diagram chosen before the request: the parameters of a sounding are added, the
+    // levels chosen so that there are enough of them, and the result opens on the diagram
+    let pendingSounding = null;
+    let resultTab = null;
+    function startSounding(type)
+    {
+      const p = producer();
+      if (!p)
+        return;
+      s.params = Array.from(new Set([...s.params, ...soundingParameters(p)]));
+      s.diagram = type;
+      // The levels of grid parameters are known once the details have been loaded
+      const d = gridDetails();
+      if (p.source === 'grid' && !(d && (d.parameters || d.error)))
+      {
+        pendingSounding = type;
+        refresh();
+        return;
+      }
+      pendingSounding = null;
+      const types = levelTypes();
+      const chosen = chosenLevelType();
+      if (!chosen || chosen.values.length < 3)
+      {
+        const best = types.find((x) => x.values.length >= 3 && x.type === 'hybrid') ||
+            types.find((x) => x.values.length >= 3 && x.type === 'pressure') ||
+            types.find((x) => x.values.length >= 3);
+        if (best)
+        {
+          s.leveltype = best.id;
+          s.levels = '';
+        }
+      }
+      // Fewer than three chosen levels make no sounding: all of them then
+      if (chosenLevels().length > 0 && chosenLevels().length < 3)
+        s.levels = '';
+      // Model levels get their pressures with the request, other levels need the parameter
+      if (!['pressure', 'hybrid', 'sounding'].includes(levelKind()))
+      {
+        const pressure =
+            [...PRESSURE_PARAMS, ...PRESSURE_PA_PARAMS].find((n) => p.parameterSet.has(n));
+        if (pressure && !s.params.includes(pressure))
+          s.params.push(pressure);
+      }
+      resultTab = 'Sounding';
+      refresh();
+      if (missingParts().length === 0)
+        run();
     }
 
     // The parameters of a sounding the producer has and the request lacks
@@ -5491,6 +5960,11 @@ function edrModule(app, api, state, save)
     const dataPeriod = el('span', {class: 'muted small'});
     const levels = el('div', {class: 'chips'});
     const levelRow = el('div', null, el('label', null, 'Levels'), levels);
+    const diagramButtons =
+        el('div', {class: 'level-buttons', role: 'group', 'aria-label': 'Sounding diagrams'});
+    const diagramNote = el('p', {class: 'muted small'});
+    const diagramRow =
+        el('div', null, el('label', null, 'Sounding diagrams'), diagramButtons, diagramNote);
     startInput.addEventListener('change', () => {
       s.start = startInput.value;
       refresh();
@@ -5670,6 +6144,59 @@ function edrModule(app, api, state, save)
       return new URL(`${path}?${queryString(params)}`, app.base).href;
     }
 
+    // Whether a collection has soundings: a temperature, and levels with pressures
+    function soundingCapable(c)
+    {
+      if (!c || !c.levels.length || c.levels[0].values.length < 3 ||
+          !SOUNDING_PARAMS.temperature.some(([n]) => c.parameterSet.has(n)))
+        return false;
+      return ['pressure', 'pressure-pa'].includes(edrLevelKind(c)) ||
+          [...PRESSURE_PARAMS, ...PRESSURE_PA_PARAMS].some((n) => c.parameterSet.has(n));
+    }
+
+    // The parameters of a sounding the collection has and the request lacks
+    function soundingParameters(c)
+    {
+      const out = [];
+      for (const what of ['temperature', 'dewpoint', 'humidity', 'speed', 'direction'])
+      {
+        // A dewpoint makes the humidity unnecessary
+        if (what === 'humidity' && SOUNDING_PARAMS.dewpoint.some(([n]) => c.parameterSet.has(n)))
+          continue;
+        const found = SOUNDING_PARAMS[what].map(([n]) => n).find((n) => c.parameterSet.has(n));
+        if (found && !s.params.includes(found))
+          out.push(found);
+      }
+      return out;
+    }
+
+    // A sounding diagram chosen before the request: the parameters of a sounding are added, and
+    // the result opens on the diagram
+    let resultTab = null;
+    function startSounding(type)
+    {
+      const c = collection();
+      if (!c)
+        return;
+      s.params = Array.from(new Set([...s.params, ...soundingParameters(c)]));
+      // Model levels get their pressures with the request, other levels need the parameter
+      if (!['pressure', 'pressure-pa', 'hybrid'].includes(edrLevelKind(c)))
+      {
+        const pressure =
+            [...PRESSURE_PARAMS, ...PRESSURE_PA_PARAMS].find((n) => c.parameterSet.has(n));
+        if (pressure && !s.params.includes(pressure))
+          s.params.push(pressure);
+      }
+      // Fewer than three chosen levels make no sounding: all of them then
+      if ((s.levels || []).length < 3)
+        s.levels = [];
+      s.diagram = type;
+      resultTab = 'Sounding';
+      refresh();
+      if (missingParts().length === 0)
+        run();
+    }
+
     function missingParts()
     {
       const out = [];
@@ -5764,7 +6291,7 @@ function edrModule(app, api, state, save)
         else if (name === 'Profile')
           drawProfiles(panes.Profile, rows, params, kind);
         else if (name === 'Section')
-          drawSection(panes.Section, rows, params, kind);
+          drawSection(panes.Section, rows, params, kind, mapSettings(app.element));
         else if (name === 'Sounding')
           drawSkewT(panes.Sounding, rows, kind, {
             type: s.diagram || 'skewt',
@@ -5796,7 +6323,9 @@ function edrModule(app, api, state, save)
                 `${rows.length} rows${count > 1 ? `, ${count} locations` : ''}${
                     vertical ? `, ${levelCount} levels` : ''}`)),
           ...Object.values(panes));
-      show(vertical ? 'Profile' : 'Chart');
+      const wantedTab = resultTab;
+      resultTab = null;
+      show(wantedTab && panes[wantedTab] ? wantedTab : vertical ? 'Profile' : 'Chart');
     }
 
     function refresh(rerender = true)
@@ -5901,6 +6430,25 @@ function edrModule(app, api, state, save)
                  },
                  v)));
       levelRow.hidden = values.length === 0;
+      // Sounding diagrams of the levels, the missing parameters added when chosen
+      diagramRow.hidden = !soundingCapable(c);
+      if (!diagramRow.hidden)
+      {
+        const missingNames = soundingParameters(c);
+        diagramButtons.replaceChildren(...THERMO_DIAGRAMS.map(
+            ([type, label]) =>
+                el('button',
+                   {
+                     type: 'button',
+                     class: 'small',
+                     'data-diagram': type,
+                     onclick: () => startSounding(type)
+                   },
+                   label)));
+        diagramNote.textContent = missingNames.length > 0 ?
+            `Adds ${missingNames.join(', ')} to the parameters and runs the request` :
+            'Runs the request and draws the soundings';
+      }
 
       // Location
       const isLocations = q === 'locations';
@@ -5961,7 +6509,8 @@ function edrModule(app, api, state, save)
                   el('label', null, 'Start (UTC)', startInput),
                   el('label', null, 'End (UTC)', endInput)),
                dataPeriod,
-               levelRow),
+               levelRow,
+               diagramRow),
            section(
                'Where',
                queryButtons,
@@ -6710,6 +7259,9 @@ root.SmartMetExplorer = {
   drawProfiles,
   drawSkewT,
   drawSection,
+  drawCrossSection,
+  hasCrossSection,
+  pathPoints,
   hasProfiles,
   hasSounding,
   verticalAxes,

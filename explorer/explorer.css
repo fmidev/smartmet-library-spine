@@ -192,6 +192,8 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .xmap-selection { fill: rgba(217, 72, 15, 0.15); stroke: #d9480f; stroke-width: 2; }
 .xmap-draft { fill: rgba(217, 72, 15, 0.08); stroke: #d9480f; stroke-width: 1.5; stroke-dasharray: 4 3; }
 .xmap-centre { fill: #d9480f; stroke: #fff; stroke-width: 1.5; }
+.xmap-path { fill: none; stroke: #d9480f; stroke-width: 2.5; stroke-linejoin: round; }
+.xmap-centre.start { fill: #2b8a3e; }
 .xmap-point { fill: #2f6fdf; stroke: #fff; stroke-width: 1; cursor: pointer; }
 .xmap-point:hover { fill: #e67700; }
 .xmap-point.selected { fill: #e67700; stroke-width: 1.5; }

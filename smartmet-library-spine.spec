@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.17
-Release: 6%{?dist}.fmi
+Release: 7%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,13 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-7.fmi
+- Data explorer: TimeSeries paths clicked on the map (e.g. a flight path) with a cross section
+  of the levels along the path
+- Data explorer: sections use the production isoband colours of the parameter when they cover
+  the values, with continuous scales fitted to the data as alternatives
+- Data explorer: sounding diagram buttons for level data add the parameters of a sounding,
+  run the request and open the chosen diagram
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-6.fmi
 - Data explorer: model levels of grid data are placed by their pressure in Pa (P-PA)
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-5.fmi

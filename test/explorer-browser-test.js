@@ -74,7 +74,7 @@ const producers = {
     {
       name: 'hybrid',
       source: 'querydata',
-      parameters: ['geomheight', 'pressure', 'temperature'],
+      parameters: ['geomheight', 'pressure', 'temperature', 'dewpoint', 'windspeedms', 'winddirection'],
       levels: [{type: 'hybrid', values: Array.from({length: 65}, (_, i) => String(i + 1))}],
       time: {start: iso(now - 6 * hour), end: iso(now.getTime() + 48 * hour), step: 60}
     },
@@ -1245,6 +1245,34 @@ async function main()
             vertical.moist < -7.5,
         vertical);
 
+    // A cross section along a path: 5 points of a path at 10 levels
+    const cross = await b.evaluate(`(async () => {
+      const E = SmartMetExplorer;
+      const rows = [];
+      for (let i = 0; i < 5; i++)
+        for (let k = 1; k <= 10; k++)
+          rows.push({ name: 'path1', time: '2026-10-15T06:00:00Z', lat: 60 + i * 0.1, lon: 24 + i * 0.2,
+                      level: k, pressure: 1000 - (k - 1) * 90, temperature: 15 - k * 5 + i });
+      const box = document.createElement('div');
+      box.style.width = '700px';
+      document.body.append(box);
+      E.drawCrossSection(box, rows, ['temperature'], 'hybrid', { palettes: '/api/explorer/palettes.json' });
+      await new Promise((r) => setTimeout(r, 500));
+      const cells = box.querySelectorAll('.section-cell');
+      cells[12].dispatchEvent(new MouseEvent('mouseenter'));
+      const out = { points: E.pathPoints(rows).length, km: Math.round(E.pathPoints(rows).pop().km),
+                    cells: cells.length, readout: box.querySelector('.sk-readout').textContent,
+                    colours: box.querySelector('[aria-label="Colours of the cross section"]').value,
+                    has: E.hasCrossSection(rows) };
+      box.remove();
+      return out;
+    })()`);
+    check(
+        'cross section along a path with the production colours',
+        cross.points === 5 && cross.km > 40 && cross.cells === 50 && cross.has &&
+            /^\d+ km \(/.test(cross.readout) && cross.colours === 'production:temperature',
+        cross);
+
     // Locations reporting at different intervals, and a parameter without values
     const mixed = await b.evaluate(`(() => {
       const rows = [];
@@ -1280,6 +1308,53 @@ async function main()
         'pressure and height of model levels',
         hq.get('param') === 'name,time,lat,lon,level,temperature,pressure,geomheight',
         hq.get('param'));
+
+    // A sounding diagram chosen before the request adds the parameters of a sounding
+    const diagramNote = await b.evaluate(
+        `document.querySelector('[data-diagram="tephigram"]') ? document.querySelector('[data-diagram="tephigram"]').parentElement.nextElementSibling.textContent : ''`);
+    await b.evaluate(`document.querySelector('[data-diagram="tephigram"]').click()`);
+    await sleep(300);
+    const tq = await currentQuery(b);
+    const dhash = new URLSearchParams((await b.evaluate('location.hash')).slice(1));
+    check(
+        'a tephigram chosen before the request',
+        diagramNote.includes('dewpoint, windspeedms, winddirection') &&
+            dhash.get('params') === 'temperature,dewpoint,windspeedms,winddirection' &&
+            dhash.get('diagram') === 'tephigram' &&
+            tq.get('param') ===
+                'name,time,lat,lon,level,temperature,dewpoint,windspeedms,winddirection,pressure,geomheight',
+        {note: diagramNote, params: dhash.get('params'), diagram: dhash.get('diagram'), param: tq.get('param')});
+
+    // A path clicked on the map, vertex by vertex
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {
+      url: `${base}/api/explorer#api=/timeseries&producer=pal&source=querydata&params=temperature&locmode=path`
+    });
+    await waitFor(b, `!!document.querySelector('.xmap-tools [data-tool="line"]')`, 'the path tool');
+    let pm = await mapRect(b);
+    for (const [fx, fy] of [[0.4, 0.5], [0.5, 0.45], [0.6, 0.5]])
+    {
+      await mouse(b, 'mouseMoved', pm.x + pm.w * fx, pm.y + pm.h * fy, 0);
+      await mouse(b, 'mousePressed', pm.x + pm.w * fx, pm.y + pm.h * fy, 1);
+      await mouse(b, 'mouseReleased', pm.x + pm.w * fx, pm.y + pm.h * fy, 0);
+      await sleep(250);
+    }
+    let pq = await currentQuery(b);
+    const vertices = await b.evaluate(`document.querySelectorAll('.xmap-centre').length`);
+    check(
+        'a path of three clicks',
+        (pq.get('path') || '').split(',').length === 6 && Number(pq.get('step')) >= 1 &&
+            vertices === 3,
+        {path: pq.get('path'), step: pq.get('step'), vertices});
+    await b.evaluate(`[...document.querySelectorAll('.xmap-tools button')].find((x) => x.textContent === 'Undo').click()`);
+    await sleep(250);
+    pq = await currentQuery(b);
+    check('the last vertex undone', (pq.get('path') || '').split(',').length === 4, pq.get('path'));
+    await b.evaluate(`[...document.querySelectorAll('.xmap-tools button')].find((x) => x.textContent === 'Clear').click()`);
+    await sleep(250);
+    const cleared = await b.evaluate(`document.querySelector('.missing').textContent`);
+    check('the path cleared', cleared.includes('a location'), cleared);
 
     // The levels of a querydata producer are requested with the levels option
     await b.send('Page.navigate', {url: `${base}/api`});
