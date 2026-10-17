@@ -177,7 +177,8 @@ make %{_smp_mflags}
   view, location examples, Coverages projections, clock, units) with neutral built-in defaults;
   a settings menu with the 12/24-hour clock, the units, the language and the licences; times
   entered as text in the chosen clock; temperatures in K and pressures in Pa shown in the
-  chosen units (C/F/K, m/s/kt/km/h/mph, hPa/Pa/inHg, m/ft), also on the Coverages maps
+  chosen units (C/F/K, m/s/kt/km/h/mph, hPa/Pa/inHg, m/ft), also on the Coverages maps;
+  the last view opens again when the page is opened without one (local storage, no cookies)
 - Data explorer: maps of a Coverages request in up to four linked panels (shared view, time and
   point, a parameter, level and colours each), read by the browser from a small GeoTIFF in
   longitude and latitude, with the time series of the point clicked

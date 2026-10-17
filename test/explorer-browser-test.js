@@ -2458,6 +2458,20 @@ async function main()
             JSON.stringify(coverageMaps.again) === '["Temperature","Pressure"]',
         coverageMaps);
 
+    // The page opened again without a view shows the last one, kept in the local storage
+    const lastView = await b.evaluate(`location.hash`);
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {url: `${base}/api/explorer`});
+    await waitFor(b, `!!document.querySelector('[aria-label="Collection"]')`, 'the last view');
+    const reopened = await b.evaluate(`({ hash: location.hash, cookies: document.cookie,
+      stored: localStorage.getItem('smartmet-explorer-view') })`);
+    check(
+        'the last view opened again, no cookies',
+        reopened.hash === lastView && lastView.includes('api=%2Fcoverages') && reopened.cookies === '' &&
+            `#${reopened.stored}` === lastView,
+        {lastView, reopened});
+
     // Narrow screens
     await b.send(
         'Emulation.setDeviceMetricsOverride',

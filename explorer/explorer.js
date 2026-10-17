@@ -11260,10 +11260,29 @@ const MODULES = {
   coverages: coveragesModule
 };
 
-// The state of the explorer from the address of the page (#api=...&params=a,b)
+// The last view of the explorer, opened again when the page is opened without one. The
+// preferences of the page are kept in the local storage of the browser; no cookies are used.
+const VIEW_KEY = 'smartmet-explorer-view';
+
+// The state of the explorer from the address of the page (#api=...&params=a,b), or the last
+// view shown when the address has none
 function readState()
 {
-  const p = new URLSearchParams(location.hash.slice(1));
+  let hash = location.hash.slice(1);
+  if (!hash)
+  {
+    try
+    {
+      hash = localStorage.getItem(VIEW_KEY) || '';
+    }
+    catch (e)
+    {
+      hash = '';
+    }
+    if (hash)
+      history.replaceState(null, '', `#${hash}`);
+  }
+  const p = new URLSearchParams(hash);
   const s = {};
   for (const [k, v] of p)
     s[k] = v;
@@ -11283,10 +11302,16 @@ function writeState(s)
     p.set(k, Array.isArray(v) ? v.join(',') : v);
   }
   history.replaceState(null, '', `#${p.toString()}`);
+  try
+  {
+    localStorage.setItem(VIEW_KEY, p.toString());
+  }
+  catch (e)
+  {
+    // Not remembered
+  }
 }
 
-// Starts the explorer: reads the API catalog, offers its APIs, and shows the module of the
-// chosen one, keeping the choices in the address of the page
 // The settings of the page: the clock, the units, the language and the licences of the parts
 function settingsMenu()
 {
@@ -11351,6 +11376,8 @@ function settingsMenu()
   return el('span', {class: 'settings'}, button, panel);
 }
 
+// Starts the explorer: reads the API catalog, offers its APIs, and shows the module of the
+// chosen one, keeping the choices in the address of the page
 async function main()
 {
   const element = document.getElementById('explorer');
