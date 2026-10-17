@@ -1313,6 +1313,15 @@ Json::Value parseExplorerDefaults(const libconfig::Setting& group)
         throw Fmi::Exception(BCP, "zoom must be 0-18").addParameter("path", where(name));
       out["zoom"] = zoom;
     }
+    else if (name == "language")
+    {
+      const std::string value = static_cast<const char*>(item);
+      if (value.size() != 2 || !std::islower(static_cast<unsigned char>(value[0])) ||
+          !std::islower(static_cast<unsigned char>(value[1])))
+        throw Fmi::Exception(BCP, "language must be a two letter code such as fi")
+            .addParameter("path", where(name));
+      out["language"] = value;
+    }
     else if (name == "clock")
     {
       const std::string value = static_cast<const char*>(item);
@@ -1605,6 +1614,27 @@ Catalog::Catalog(CatalogSettings settings) : itsSettings(std::move(settings))
       f.contentType = "application/json";
       f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
       loaded.emplace("basemap.json", std::move(f));
+    }
+  }
+
+  // The translations of the page: explorer-<language>.js, e.g. explorer-fi.js
+  {
+    std::error_code ec;
+    for (const auto& entry : std::filesystem::directory_iterator(itsSettings.explorer_dir, ec))
+    {
+      const auto name = entry.path().filename().string();
+      if (name.size() != 14 || name.compare(0, 9, "explorer-") != 0 ||
+          name.compare(11, 3, ".js") != 0 || !std::islower(static_cast<unsigned char>(name[9])) ||
+          !std::islower(static_cast<unsigned char>(name[10])))
+        continue;
+      std::ifstream in(entry.path(), std::ios::binary);
+      if (!in)
+        continue;
+      ExplorerFile f;
+      f.content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+      f.contentType = "text/javascript; charset=UTF-8";
+      f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
+      loaded.emplace(name, std::move(f));
     }
   }
 
@@ -1977,6 +2007,13 @@ void Catalog::handleExplorer(const HTTP::Request& request, HTTP::Response& respo
     map += fmt::format(R"( data-basemap="{}basemap.json?v={}")", a, v("basemap.json"));
   if (itsExplorerFiles.count("palettes.json") > 0)
     map += fmt::format(R"( data-palettes="{}palettes.json?v={}")", a, v("palettes.json"));
+  // The translations, loaded before the explorer which takes its language from them
+  std::string translations;
+  for (const auto& file : itsExplorerFiles)
+    if (file.first.size() == 14 && file.first.compare(0, 9, "explorer-") == 0 &&
+        file.first.compare(11, 3, ".js") == 0)
+      translations += fmt::format("<script src=\"{}{}?v={}\"></script>\n", a, file.first, v(file.first));
+
   // The defaults of the region and the users of the server
   if (!itsSettings.explorer_defaults.isNull())
   {
@@ -2006,7 +2043,7 @@ void Catalog::handleExplorer(const HTTP::Request& request, HTTP::Response& respo
 <div id="explorer" data-catalog="{2}" data-title="{0}"{8}></div>
 <script src="{1}uPlot.iife.min.js?v={5}"></script>
 <script src="{1}smartmet-swagger-ui.js?v={6}"></script>
-<script src="{1}explorer.js?v={7}"></script>
+{9}<script src="{1}explorer.js?v={7}"></script>
 </body>
 </html>
 )HTML",
@@ -2018,7 +2055,8 @@ void Catalog::handleExplorer(const HTTP::Request& request, HTTP::Response& respo
       v("uPlot.iife.min.js"),
       v(PLUGIN_FILE),
       v("explorer.js"),
-      map);
+      map,
+      translations);
 
   response.setHeader("Cache-Control", cacheControl(request));
   if (etagOnly(request, response, quotedETag(Fmi::hash_value(html), "explorerhtml")))

@@ -445,6 +445,8 @@ const server = http.createServer((req, res) => {
     return send(200, 'application/linkset+json', JSON.stringify(catalog));
   if (p === '/api/explorer')
     return send(200, 'text/html; charset=UTF-8', fs.readFileSync(path.join(dir, 'explorer.html')));
+  if (/^\/api\/explorer\/explorer-[a-z][a-z]\.js$/.test(p))
+    return send(200, 'text/javascript', fs.readFileSync(path.join(explorerDir, path.basename(p))));
   if (p === '/api/explorer/explorer.js')
     return send(200, 'text/javascript', fs.readFileSync(path.join(explorerDir, 'explorer.js')));
   if (p === '/api/explorer/palettes.json')
@@ -2471,6 +2473,69 @@ async function main()
         reopened.hash === lastView && lastView.includes('api=%2Fcoverages') && reopened.cookies === '' &&
             `#${reopened.stored}` === lastView,
         {lastView, reopened});
+
+    // The languages: every text of explorer.js in the translations, and none missing when the
+    // views are shown in Finnish and Swedish
+    const source = fs.readFileSync(path.join(explorerDir, 'explorer.js'), 'utf8');
+    const literals = new Set();
+    for (const m of source.matchAll(/\bL\('((?:[^'\\]|\\.)*)'\)/g))
+      literals.add(m[1].replace(/\\(.)/g, '$1'));
+    const sandbox = {};
+    for (const code of ['fi', 'sv'])
+      require('node:vm').runInNewContext(
+          fs.readFileSync(path.join(explorerDir, `explorer-${code}.js`), 'utf8'), sandbox);
+    const translations = sandbox.SmartMetExplorerTranslations;
+    const untranslated = Object.fromEntries(['fi', 'sv'].map(
+        (code) => [code, [...literals].filter((k) => !Object.prototype.hasOwnProperty.call(translations[code].strings, k))]));
+    check(
+        'every text in the translations',
+        literals.size > 300 && untranslated.fi.length === 0 && untranslated.sv.length === 0 &&
+            translations.fi.name === 'Suomi' && translations.sv.name === 'Svenska',
+        {texts: literals.size, untranslated});
+    const languages = {};
+    for (const [code, what, run] of [['fi', 'Mitä', 'Suorita'], ['sv', 'Vad', 'Kör']])
+    {
+      await b.evaluate(`localStorage.setItem('smartmet-explorer-language', '${code}')`);
+      // A TimeSeries request with its results, the EDR and Coverages forms, and the settings
+      await b.send('Page.navigate', {url: `${base}/api`});
+      await sleep(200);
+      await b.send('Page.navigate', {
+        url: `${base}/api/explorer#api=/timeseries&producer=opendata&source=observation&params=temperature&locmode=fmisid&location=101004`
+      });
+      await waitFor(b, `!!document.querySelector('button.primary')`, `the TimeSeries module in ${code}`);
+      await b.evaluate(`document.querySelector('button.primary').click()`);
+      await waitFor(b, `document.querySelectorAll('.chart canvas').length >= 1`, `the chart in ${code}`);
+      const tsView = await b.evaluate(`({ lang: document.documentElement.lang,
+        heading: document.querySelector('.form .step h2').textContent,
+        run: document.querySelector('button.primary').textContent,
+        tabs: [...document.querySelectorAll('.results-head .tabs button')].map((x) => x.textContent),
+        language: SmartMetExplorer.language() })`);
+      await b.evaluate(`[...document.querySelectorAll('.results-head .tabs button')].find((x) => x.dataset.tab === 'Table').click()`);
+      await b.evaluate(`document.querySelector('[aria-label="${code === 'fi' ? 'Asetukset' : 'Inställningar'}"]').click()`);
+      const settingsLanguage = await b.evaluate(`document.querySelector('.settings-panel select[aria-label]:last-of-type') &&
+        [...document.querySelectorAll('.settings-panel select')].pop().value`);
+      await b.send('Page.navigate', {url: `${base}/api/explorer#api=/edr`});
+      await sleep(200);
+      await b.evaluate(`location.reload()`);
+      await waitFor(b, `!!document.querySelector('.form .step h2')`, `the EDR module in ${code}`);
+      await b.send('Page.navigate', {url: `${base}/api/explorer#api=/coverages`});
+      await sleep(200);
+      await b.evaluate(`location.reload()`);
+      await waitFor(b, `!!document.querySelector('.form .step h2')`, `the Coverages module in ${code}`);
+      await sleep(500);
+      languages[code] = Object.assign(tsView, { settingsLanguage,
+        missing: await b.evaluate(`SmartMetExplorer.missingTexts()`) });
+    }
+    await b.evaluate(`localStorage.removeItem('smartmet-explorer-language')`);
+    check(
+        'the views in Finnish and Swedish',
+        languages.fi.lang === 'fi' && languages.fi.heading === 'Mitä' && languages.fi.run === 'Suorita' &&
+            languages.fi.tabs.includes('Kaavio') && languages.fi.tabs.includes('Taulukko') &&
+            languages.fi.settingsLanguage === 'fi' && languages.fi.missing.length === 0 &&
+            languages.sv.lang === 'sv' && languages.sv.heading === 'Vad' && languages.sv.run === 'Kör' &&
+            languages.sv.tabs.includes('Diagram') && languages.sv.settingsLanguage === 'sv' &&
+            languages.sv.missing.length === 0,
+        languages);
 
     // Narrow screens
     await b.send(

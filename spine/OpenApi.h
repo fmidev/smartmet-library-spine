@@ -361,6 +361,7 @@ class Publisher
  *       // Output projections offered by the Coverages module besides the native grid,
  *       // EPSG:4326 and EPSG:3857: "code label"
  *       projections = ["EPSG:3067 ETRS-TM35FIN", "EPSG:3035 ETRS89 LAEA Europe"];
+ *       language    = "fi";              // en, or one of the translations explorer-<code>.js
  *       clock       = "24";              // "24" or "12" hours, by default that of the browser
  *       // The units shown until the user chooses: temperature C|F|K, speed ms|kt|kmh|mph,
  *       // pressure hPa|Pa|inHg, height m|ft. By default C, m/s, hPa and m, or F, mph and ft

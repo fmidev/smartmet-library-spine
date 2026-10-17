@@ -541,7 +541,7 @@ BOOST_AUTO_TEST_CASE(explorer_defaults)
   for (const auto* bad : {R"(center = [25.0];)", R"(center = [200.0, 0.0];)", R"(zoom = 30;)",
                           R"(clock = "13";)", R"(units: { speed = "furlongs"; };)",
                           R"(units: { colour = "C"; };)", R"(examples: { city = "x"; };)",
-                          R"(projections = ["EPSG:3067\" onload=x"];)", R"(language = "fi";)"})
+                          R"(projections = ["EPSG:3067\" onload=x"];)", R"(language = "finnish";)", R"(colour = "red";)"})
     BOOST_CHECK_THROW(parsed(bad), Fmi::Exception);
 
   libconfig::Config none;

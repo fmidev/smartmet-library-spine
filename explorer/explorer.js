@@ -32,6 +32,74 @@
 const S = root.SmartMetSwaggerUI;
 
 // ------------------------------------------------------------------
+// Languages
+// ------------------------------------------------------------------
+
+// The languages of the page: English, and those of the translation files explorer-<code>.js
+// loaded before this file, each {name, strings: {English text: translation}}. A text with
+// values has them as {0}, {1}, ... in the order of a template literal.
+const TRANSLATIONS = root.SmartMetExplorerTranslations || {};
+const LANGUAGE_KEY = 'smartmet-explorer-language';
+
+// The language of the page: the choice of the user, else the default of the server, else
+// the first language of the browser that has a translation, else English
+const LANGUAGE = (() => {
+  const known = (code) => code === 'en' || Object.prototype.hasOwnProperty.call(TRANSLATIONS, code);
+  try
+  {
+    const stored = localStorage.getItem(LANGUAGE_KEY);
+    if (stored && known(stored))
+      return stored;
+  }
+  catch (e)
+  {
+    // Not remembered
+  }
+  try
+  {
+    const page = typeof document !== 'undefined' ? document.getElementById('explorer') : null;
+    const server = page && page.dataset.defaults ? JSON.parse(page.dataset.defaults).language : '';
+    if (server && known(server))
+      return server;
+  }
+  catch (e)
+  {
+    // No defaults
+  }
+  const browser = typeof navigator !== 'undefined' ? navigator.languages || [navigator.language] : [];
+  for (const tag of browser)
+  {
+    const code = String(tag || '').toLowerCase().split(/[-_]/)[0];
+    if (known(code))
+      return code;
+  }
+  return 'en';
+})();
+const STRINGS = (TRANSLATIONS[LANGUAGE] && TRANSLATIONS[LANGUAGE].strings) || {};
+
+// A count with the word for one or many: counted(3, L('member'), L('members')), '3 members'
+function counted(n, one, many)
+{
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+// A text of the page in its language (L for localized): L("Text"), or as the tag of a template literal,
+// L`${n} rows`, whose translation key is '{0} rows'. A text without a translation is English.
+function L(text, ...values)
+{
+  const template = Array.isArray(text) && text.raw;
+  const key = template ? text.reduce((out, part, i) => (i === 0 ? part : `${out}{${i - 1}}${part}`), '') : text;
+  const found = Object.prototype.hasOwnProperty.call(STRINGS, key);
+  // The texts without a translation are listed for the tests of the translations
+  if (!found && LANGUAGE !== 'en')
+    MISSING_TEXTS.add(key);
+  const translated = found ? STRINGS[key] : key;
+  return template ? translated.replace(/\{(\d+)\}/g, (m, i) => (i < values.length ? String(values[i]) : m)) :
+                    translated;
+}
+const MISSING_TEXTS = new Set();
+
+// ------------------------------------------------------------------
 // Utilities
 // ------------------------------------------------------------------
 
@@ -90,8 +158,8 @@ function apiKeyField(onChange)
 {
   const input = el('input', {
     type: 'password',
-    'aria-label': 'API key',
-    placeholder: 'API key (optional)',
+    'aria-label': L('API key'),
+    placeholder: L('API key (optional)'),
     autocomplete: 'off',
     spellcheck: 'false',
     value: apiKey
@@ -288,15 +356,15 @@ const timeFields = new Set();
 function timeInput(attrs)
 {
   const label = attrs['aria-label'] || 'Time (UTC)';
-  const text = el('input', {type: 'text', class: 'time-text', size: 18, 'aria-label': `${label} text`,
+  const text = el('input', {type: 'text', class: 'time-text', size: 18, 'aria-label': L`${label} text`,
                             spellcheck: 'false', autocomplete: 'off'});
   const picker = el('input', {type: 'datetime-local', class: 'time-picker', tabindex: '-1', 'aria-hidden': 'true'});
-  const button = el('button', {type: 'button', class: 'small time-pick', 'aria-label': `Choose the ${label.toLowerCase()}`,
-                               title: 'Choose from a calendar'}, calendarIcon());
+  const button = el('button', {type: 'button', class: 'small time-pick', 'aria-label': L`Choose the ${label.toLowerCase()}`,
+                               title: L('Choose from a calendar')}, calendarIcon());
   const box = el('span', {class: 'time-input', 'aria-label': label}, text, button, picker);
   let current = '';
   const placeholder = () => {
-    text.placeholder = clock === '12' ? 'YYYY-MM-DD h:mm AM' : 'YYYY-MM-DD HH:MM';
+    text.placeholder = clock === '12' ? L('YYYY-MM-DD h:mm AM') : L('YYYY-MM-DD HH:MM');
   };
   Object.defineProperty(box, 'value', {
     get: () => current,
@@ -520,14 +588,14 @@ function parameterKind(key, entry, info)
 // The functions over a period offered by the explorer: label, the TimeSeries function, and
 // for directions its circular variant
 const TIME_FUNCTIONS = [
-  ['mean', 'Mean', 'mean_t', 'meandir_t'],
-  ['min', 'Minimum', 'min_t'],
-  ['max', 'Maximum', 'max_t'],
-  ['sum', 'Sum', 'sum_t'],
-  ['median', 'Median', 'median_t'],
-  ['percentile', 'Percentile', 'percentile_t'],
-  ['sdev', 'Standard deviation', 'sdev_t', 'sdevdir_t'],
-  ['change', 'Change', 'change_t']
+  ['mean', L('Mean'), 'mean_t', 'meandir_t'],
+  ['min', L('Minimum'), 'min_t'],
+  ['max', L('Maximum'), 'max_t'],
+  ['sum', L('Sum'), 'sum_t'],
+  ['median', L('Median'), 'median_t'],
+  ['percentile', L('Percentile'), 'percentile_t'],
+  ['sdev', L('Standard deviation'), 'sdev_t', 'sdevdir_t'],
+  ['change', L('Change'), 'change_t']
 ];
 
 // The function recommended for a kind of parameter
@@ -544,13 +612,13 @@ const RECOMMENDED_FUNCTION = {
 function functionWarning(fn, kind)
 {
   if (kind === 'category' && fn !== 'max' && fn !== 'min')
-    return 'is a category: its mean or sum means nothing, the maximum gives the most severe class';
+    return L('is a category: its mean or sum means nothing, the maximum gives the most severe class');
   if (kind === 'direction' && (fn === 'sum' || fn === 'change'))
-    return 'is a direction: its sum or change means nothing';
+    return L('is a direction: its sum or change means nothing');
   if (kind === 'amount' && fn === 'mean')
-    return 'is an amount: the sum gives the total of the period';
+    return L('is an amount: the sum gives the total of the period');
   if (kind !== 'amount' && fn === 'sum')
-    return 'is not an amount: its sum means nothing';
+    return L('is not an amount: its sum means nothing');
   return '';
 }
 
@@ -721,64 +789,64 @@ function autocomplete(options)
 // group to producers of those sources
 const META_GROUPS = [
   {
-    title: 'The data',
+    title: L('The data'),
     sources: ['querydata', 'grid'],
     params: [
-      ['producer', 'Producer of the value'],
-      ['model', 'Model of the value'],
-      ['origintime', 'Origin time of the model run'],
-      ['modtime', 'Modification time of the data'],
-      ['level', 'Level']
+      ['producer', L('Producer of the value')],
+      ['model', L('Model of the value')],
+      ['origintime', L('Origin time of the model run')],
+      ['modtime', L('Modification time of the data')],
+      ['level', L('Level')]
     ]
   },
   {
-    title: 'The location',
+    title: L('The location'),
     params: [
-      ['name', 'Location name'],
-      ['lat', 'Latitude'],
-      ['lon', 'Longitude'],
-      ['latlon', 'Latitude and longitude'],
-      ['geoid', 'Location id'],
-      ['elevation', 'Elevation of the location'],
-      ['dem', 'Elevation from the elevation model'],
-      ['region', 'Region'],
-      ['country', 'Country'],
-      ['iso2', 'Country code'],
-      ['localtz', 'Time zone of the location'],
-      ['population', 'Population']
+      ['name', L('Location name')],
+      ['lat', L('Latitude')],
+      ['lon', L('Longitude')],
+      ['latlon', L('Latitude and longitude')],
+      ['geoid', L('Location id')],
+      ['elevation', L('Elevation of the location')],
+      ['dem', L('Elevation from the elevation model')],
+      ['region', L('Region')],
+      ['country', L('Country')],
+      ['iso2', L('Country code')],
+      ['localtz', L('Time zone of the location')],
+      ['population', L('Population')]
     ]
   },
   {
-    title: 'The station',
+    title: L('The station'),
     sources: ['observation'],
     params: [
-      ['fmisid', 'FMI station id'],
-      ['wmo', 'WMO station id'],
-      ['lpnn', 'LPNN station id'],
-      ['stationname', 'Name of the observation station'],
-      ['stationlat', 'Latitude of the station'],
-      ['stationlon', 'Longitude of the station'],
-      ['station_elevation', 'Elevation of the station'],
-      ['distance', 'Distance to the station'],
-      ['direction', 'Direction to the station'],
-      ['stationtype', 'Type of the station'],
-      ['modifiedlast', 'Last modification of the value']
+      ['fmisid', L('FMI station id')],
+      ['wmo', L('WMO station id')],
+      ['lpnn', L('LPNN station id')],
+      ['stationname', L('Name of the observation station')],
+      ['stationlat', L('Latitude of the station')],
+      ['stationlon', L('Longitude of the station')],
+      ['station_elevation', L('Elevation of the station')],
+      ['distance', L('Distance to the station')],
+      ['direction', L('Direction to the station')],
+      ['stationtype', L('Type of the station')],
+      ['modifiedlast', L('Last modification of the value')]
     ]
   },
   {
-    title: 'The time and the sun',
+    title: L('The time and the sun'),
     params: [
-      ['time', 'Time'],
-      ['localtime', 'Local time'],
-      ['epochtime', 'Seconds since 1970'],
-      ['weekday', 'Day of the week'],
-      ['sunelevation', 'Elevation angle of the sun'],
-      ['sunazimuth', 'Azimuth of the sun'],
-      ['dark', 'Dark (1) or light (0)'],
-      ['sunrise', 'Time of sunrise'],
-      ['sunset', 'Time of sunset'],
-      ['daylength', 'Length of the day'],
-      ['moonphase', 'Phase of the moon']
+      ['time', L('Time')],
+      ['localtime', L('Local time')],
+      ['epochtime', L('Seconds since 1970')],
+      ['weekday', L('Day of the week')],
+      ['sunelevation', L('Elevation angle of the sun')],
+      ['sunazimuth', L('Azimuth of the sun')],
+      ['dark', L('Dark (1) or light (0)')],
+      ['sunrise', L('Time of sunrise')],
+      ['sunset', L('Time of sunset')],
+      ['daylength', L('Length of the day')],
+      ['moonphase', L('Phase of the moon')]
     ]
   }
 ];
@@ -787,17 +855,17 @@ const META_PARAMETERS = META_GROUPS.flatMap((g) => g.params);
 
 // The details of the grid data of a column N, requested as @code-N
 const GRID_DETAILS = [
-  ['AT', 'model run', 'Analysis time of the model run'],
-  ['LT', 'level type', 'Level type'],
-  ['L', 'level', 'Level in the units of parameter keys'],
-  ['FT', 'forecast type', 'Forecast type'],
-  ['FN', 'member', 'Forecast (ensemble member) number'],
-  ['GM', 'geometry', 'Geometry id of the grid'],
-  ['P', 'producer', 'Producer'],
-  ['G', 'generation', 'Generation (model run) name'],
-  ['I', 'parameter key', 'The full parameter key'],
-  ['F', 'file', 'The grid file'],
-  ['LATLON', 'grid point', 'Coordinates of the grid point(s) used']
+  ['AT', 'model run', L('Analysis time of the model run')],
+  ['LT', 'level type', L('Level type')],
+  ['L', 'level', L('Level in the units of parameter keys')],
+  ['FT', 'forecast type', L('Forecast type')],
+  ['FN', 'member', L('Forecast (ensemble member) number')],
+  ['GM', 'geometry', L('Geometry id of the grid')],
+  ['P', 'producer', L('Producer')],
+  ['G', 'generation', L('Generation (model run) name')],
+  ['I', 'parameter key', L('The full parameter key')],
+  ['F', 'file', L('The grid file')],
+  ['LATLON', 'grid point', L('Coordinates of the grid point(s) used')]
 ];
 const META = new Map(META_PARAMETERS);
 
@@ -1051,7 +1119,7 @@ const round = (v, decimals) => Number(v.toFixed(decimals));
 function createMap(settings, onSelect)
 {
   const box = el('div', {class: 'xmap'});
-  const surface = svg('svg', {class: 'xmap-svg', role: 'img', 'aria-label': 'Map'});
+  const surface = svg('svg', {class: 'xmap-svg', role: 'img', 'aria-label': L('Map')});
   const layers = {
     background: svg('g'),
     raster: svg('g'),
@@ -1065,7 +1133,7 @@ function createMap(settings, onSelect)
   for (const layer of Object.values(layers))
     surface.append(layer);
   const tooltip = el('div', {class: 'xmap-tooltip', hidden: true});
-  const tools = el('div', {class: 'xmap-tools', role: 'toolbar', 'aria-label': 'Map tools'});
+  const tools = el('div', {class: 'xmap-tools', role: 'toolbar', 'aria-label': L('Map tools')});
   const zoom = el('div', {class: 'xmap-zoom'});
   const attribution = settings && settings.attribution ?
       el('div', {class: 'xmap-attribution'}, settings.attribution) :
@@ -1637,16 +1705,16 @@ function createMap(settings, onSelect)
          {type: 'button', class: 'small', title: title, 'aria-label': title, onclick: fn},
          label);
   zoom.append(
-      button('+', 'Zoom in', () => zoomAt(state.zoom + 1, width() / 2, MAP_HEIGHT / 2)),
-      button('−', 'Zoom out', () => zoomAt(state.zoom - 1, width() / 2, MAP_HEIGHT / 2)),
-      button('Fit', 'Show everything on the map', () => fit(api.extent())));
+      button('+', L('Zoom in'), () => zoomAt(state.zoom + 1, width() / 2, MAP_HEIGHT / 2)),
+      button('−', L('Zoom out'), () => zoomAt(state.zoom - 1, width() / 2, MAP_HEIGHT / 2)),
+      button(L('Fit'), L('Show everything on the map'), () => fit(api.extent())));
 
   const TOOLS = [
-    ['move', 'Move', 'Move the map'],
-    ['point', 'Point', 'Click to choose a point'],
-    ['circle', 'Radius', 'Drag from the centre to choose a radius'],
-    ['box', 'Box', 'Drag to choose a box'],
-    ['line', 'Path', 'Click the vertices of a path']
+    ['move', L('Move'), L('Move the map')],
+    ['point', L('Point'), L('Click to choose a point')],
+    ['circle', L('Radius'), L('Drag from the centre to choose a radius')],
+    ['box', L('Box'), L('Drag to choose a box')],
+    ['line', L('Path'), L('Click the vertices of a path')]
   ];
 
   const api = {
@@ -1680,18 +1748,18 @@ function createMap(settings, onSelect)
                {
                  type: 'button',
                  class: 'small',
-                 title: 'Remove the last vertex',
+                 title: L('Remove the last vertex'),
                  onclick: edit((points) => ({type: 'path', points: points.slice(0, -1)}))
                },
-               'Undo'),
+               L('Undo')),
             el('button',
                {
                  type: 'button',
                  class: 'small',
-                 title: 'Remove the path',
+                 title: L('Remove the path'),
                  onclick: edit(() => ({type: 'path', points: []}))
                },
-               'Clear'));
+               L('Clear')));
       }
     },
     setRegions(regions) {
@@ -1954,8 +2022,8 @@ function displayUnit(param, values)
 function unitsChooser(onChange)
 {
   const box = el('span', {class: 'units-chooser'});
-  for (const [quantity, label] of [['temperature', 'Temperature unit'], ['speed', 'Wind speed unit'],
-                                   ['pressure', 'Pressure unit'], ['height', 'Height unit']])
+  for (const [quantity, label] of [['temperature', L('Temperature unit')], ['speed', L('Wind speed unit')],
+                                   ['pressure', L('Pressure unit')], ['height', L('Height unit')]])
   {
     const select = el('select', {'aria-label': label, title: label},
                       UNIT_CHOICES[quantity].map(([id, text]) => el('option', {value: id}, text)));
@@ -2050,11 +2118,11 @@ function verticalAxes(rows, levelKind)
   const height = findColumn(rows, HEIGHT_PARAMS);
   if (levelKind === 'pressure')
     axes.push(
-        {id: 'pressure', label: 'Pressure', unit: 'hPa', value: level, log: true, down: true});
+        {id: 'pressure', label: L('Pressure'), unit: 'hPa', value: level, log: true, down: true});
   else if (levelKind === 'pressure-pa')
     axes.push({
       id: 'pressure',
-      label: 'Pressure',
+      label: L('Pressure'),
       unit: 'hPa',
       value: (r) => (typeof r.level === 'number' ? r.level / 100 : null),
       log: true,
@@ -2063,7 +2131,7 @@ function verticalAxes(rows, levelKind)
   else if (pressure)
     axes.push({
       id: 'pressure',
-      label: 'Pressure',
+      label: L('Pressure'),
       unit: 'hPa',
       value: (r) => columnValue(r, pressure),
       log: true,
@@ -2072,7 +2140,7 @@ function verticalAxes(rows, levelKind)
   else if (pressurePa)
     axes.push({
       id: 'pressure',
-      label: 'Pressure',
+      label: L('Pressure'),
       unit: 'hPa',
       value: (r) => {
         const v = columnValue(r, pressurePa);
@@ -2085,12 +2153,12 @@ function verticalAxes(rows, levelKind)
   const [, heightUnit, toHeight] = unitOf('height');
   const inHeightUnit = (v) => (v === null ? null : toHeight(v));
   if (levelKind === 'height' || levelKind === 'altitude')
-    axes.push({id: 'height', label: 'Height', unit: heightUnit, value: (r) => inHeightUnit(level(r)),
+    axes.push({id: 'height', label: L('Height'), unit: heightUnit, value: (r) => inHeightUnit(level(r)),
                log: false, down: false});
   else if (height)
     axes.push({
       id: 'height',
-      label: 'Height',
+      label: L('Height'),
       unit: heightUnit,
       value: (r) => inHeightUnit(columnValue(r, height)),
       log: false,
@@ -2099,14 +2167,14 @@ function verticalAxes(rows, levelKind)
   if (levelKind === 'depth' || levelKind === 'ground depth')
     axes.push({
       id: 'depth',
-      label: 'Depth',
+      label: L('Depth'),
       unit: levelKind === 'depth' ? 'm' : 'cm',
       value: level,
       log: false,
       down: true
     });
   if (levelKind === 'hybrid' || axes.length === 0)
-    axes.push({id: 'level', label: 'Model level', unit: '', value: level, log: false, down: true});
+    axes.push({id: 'level', label: L('Model level'), unit: '', value: level, log: false, down: true});
   return axes;
 }
 
@@ -2166,19 +2234,19 @@ function verticalTops(axis)
 {
   if (axis.id === 'pressure')
     return [
-      ['', 'All'],
+      ['', L('All')],
       ['200', '200 hPa'],
       ['500', '500 hPa'],
       ['700', '700 hPa'],
       ['900', '900 hPa']
     ];
   if (axis.id === 'height' && axis.unit === 'ft')
-    return [['', 'All'], ['40000', '40000 ft'], ['20000', '20000 ft'], ['10000', '10000 ft'], ['5000', '5000 ft']];
+    return [['', L('All')], ['40000', '40000 ft'], ['20000', '20000 ft'], ['10000', '10000 ft'], ['5000', '5000 ft']];
   if (axis.id === 'height')
-    return [['', 'All'], ['10000', '10 km'], ['5000', '5 km'], ['3000', '3 km'], ['1000', '1 km']];
+    return [['', L('All')], ['10000', '10 km'], ['5000', '5 km'], ['3000', '3 km'], ['1000', '1 km']];
   if (axis.id === 'depth')
-    return [['', 'All'], ['200', '200 m'], ['100', '100 m'], ['50', '50 m']];
-  return [['', 'All']];
+    return [['', L('All')], ['200', '200 m'], ['100', '100 m'], ['50', '50 m']];
+  return [['', L('All')]];
 }
 
 // Whether a level is within the top of the axis
@@ -2447,7 +2515,7 @@ function timeSlider(times, options = {})
     max: span,
     step: 'any',
     value: 0,
-    'aria-label': options.label || 'Time',
+    'aria-label': options.label || L('Time'),
     'aria-valuetext': formatAt(0)
   });
   const ticks = el('div', {class: 'time-ticks', 'aria-hidden': 'true'});
@@ -2462,22 +2530,22 @@ function timeSlider(times, options = {})
   });
   const track = el('div', {class: 'time-track'}, slider, ticks);
   const label = el('span', {class: 'small time-label'});
-  const play = el('button', {type: 'button', class: 'small time-play', 'aria-label': 'Play'}, '▶');
+  const play = el('button', {type: 'button', class: 'small time-play', 'aria-label': L('Play')}, '▶');
   // One time back or forward, stopping at the ends
   const back =
-      el('button', {type: 'button', class: 'small time-step', 'aria-label': 'Previous time'}, '‹');
+      el('button', {type: 'button', class: 'small time-step', 'aria-label': L('Previous time')}, '‹');
   const forward =
-      el('button', {type: 'button', class: 'small time-step', 'aria-label': 'Next time'}, '›');
-  const speed = el('select', {'aria-label': 'Animation speed'},
+      el('button', {type: 'button', class: 'small time-step', 'aria-label': L('Next time')}, '›');
+  const speed = el('select', {'aria-label': L('Animation speed')},
                    ANIMATION_SPEEDS.map(([v, l]) => el('option', {value: v}, l)));
   speed.value = String(animationDelay);
-  const allBox = el('input', {type: 'checkbox', 'aria-label': 'All times'});
+  const allBox = el('input', {type: 'checkbox', 'aria-label': L('All times')});
 
   // Shows the chosen step on the slider and in the label
   const update = () => {
     slider.value = String(positions[index]);
     slider.setAttribute('aria-valuetext', formatAt(index));
-    label.textContent = all ? `${times.length} times` : formatAt(index);
+    label.textContent = all ? L`${times.length} times` : formatAt(index);
     slider.disabled = all;
     play.disabled = all;
     back.disabled = all || index === 0;
@@ -2584,7 +2652,7 @@ function timeSlider(times, options = {})
   update();
   box.append(back, play, forward, speed, track, label);
   if (options.all)
-    box.append(el('label', {class: 'check'}, allBox, 'All times'));
+    box.append(el('label', {class: 'check'}, allBox, L('All times')));
   return {element: box, index: () => index, all: () => all};
 }
 
@@ -2592,7 +2660,7 @@ function timeSlider(times, options = {})
 // starting from the time of index 'initial'
 function timeChooser(times, onChange, initial)
 {
-  const slider = timeSlider(times, {label: 'Time of the profile', all: true, onChange, initial});
+  const slider = timeSlider(times, {label: L('Time of the profile'), all: true, onChange, initial});
   return {
     element: slider.element,
     index: () => slider.index(),
@@ -2608,13 +2676,13 @@ function drawProfiles(container, rows, parameters, levelKind)
   let axis = axes[0];
   const axisSelect =
       el('select',
-         {'aria-label': 'Vertical axis'},
+         {'aria-label': L('Vertical axis')},
          axes.map((a) => el('option', {value: a.id}, a.label)));
   const diagrams = el('div', {class: 'vdiagrams'});
   const times =
       Array.from(new Set(collectProfiles(rows, axis).map((p) => p.time))).sort((a, b) => a - b);
   const chooser = timeChooser(times, () => draw());
-  const topSelect = el('select', {'aria-label': 'Top of the profiles'});
+  const topSelect = el('select', {'aria-label': L('Top of the profiles')});
   let top = '';
   // The tops the axis offers; the top is reset when the axis changes
   const setTops = () => {
@@ -2630,8 +2698,8 @@ function drawProfiles(container, rows, parameters, levelKind)
   const tools =
       el('div',
          {class: 'row'},
-         el('label', null, 'Vertical axis', axisSelect),
-         el('label', null, 'Top', topSelect),
+         el('label', null, L('Vertical axis'), axisSelect),
+         el('label', null, L('Top'), topSelect),
          chooser.element);
   axisSelect.hidden = axes.length < 2;
   axisSelect.addEventListener('change', () => {
@@ -2664,7 +2732,7 @@ function drawProfiles(container, rows, parameters, levelKind)
       if (series.length === 0)
         continue;
       const panel = el('div', {class: 'chart vchart', 'data-param': param});
-      panel.append(el('div', {class: 'chart-title'}, `${param}: vertical profile`));
+      panel.append(el('div', {class: 'chart-title'}, L`${param}: vertical profile`));
       diagrams.append(panel);
       drawVerticalDiagram(panel, param, axis, param, series);
       if (keys.length > 1)
@@ -2679,7 +2747,7 @@ function drawProfiles(container, rows, parameters, levelKind)
                           k))));
     }
     if (diagrams.children.length === 0)
-      diagrams.append(el('p', {class: 'muted'}, 'No values to draw.'));
+      diagrams.append(el('p', {class: 'muted'}, L('No values to draw.')));
   }
   draw();
 }
@@ -2693,9 +2761,9 @@ function colourScale(settings, label, onChange)
   let production = {palettes: {}, parameters: {}};
   let chosen = null;  // null: chosen automatically
   const select = el('select', {'aria-label': label});
-  const productionGroup = el('optgroup', {label: 'Production isobands'});
+  const productionGroup = el('optgroup', {label: L('Production isobands')});
   const continuousGroup = el('optgroup',
-                             {label: 'Continuous, fitted to the data'},
+                             {label: L('Continuous, fitted to the data')},
                              Object.keys(PALETTES).map((p) => el('option', {value: p}, p)));
   select.append(continuousGroup);
   select.addEventListener('change', () => {
@@ -2728,7 +2796,7 @@ function colourScale(settings, label, onChange)
     select.value = name;
     let note = '';
     if (!chosen && ownBands && covered < 0.8)
-      note = `${Math.round(100 * (1 - covered))} % of the values are outside the production scale ${
+      note = L`${Math.round(100 * (1 - covered))} % of the values are outside the production scale ${
           own}: a continuous scale fitted to the data is used`;
     if (name.startsWith('production:') && bandsOf(name))
     {
@@ -2822,7 +2890,7 @@ let showFlightLevels = (() => {
 // A checkbox for the flight levels of a section, hidden when there are no pressures
 function flightLevelCheck(pressureAxis, onChange)
 {
-  const input = el('input', {type: 'checkbox', 'aria-label': 'Flight levels'});
+  const input = el('input', {type: 'checkbox', 'aria-label': L('Flight levels')});
   input.checked = showFlightLevels;
   input.addEventListener('change', () => {
     showFlightLevels = input.checked;
@@ -2836,7 +2904,7 @@ function flightLevelCheck(pressureAxis, onChange)
     }
     onChange();
   });
-  const label = el('label', {class: 'check'}, input, 'Flight levels');
+  const label = el('label', {class: 'check'}, input, L('Flight levels'));
   label.hidden = !pressureAxis;
   return label;
 }
@@ -2916,7 +2984,7 @@ function drawFlightLevels(g, columns, axis, sy, w)
       y: y < 12 ? y + 11 : y - 3,
       'text-anchor': 'end'
     });
-    label.textContent = `FL${String(fl).padStart(3, '0')}`;
+    label.textContent = L`FL${String(fl).padStart(3, '0')}`;
     g.append(label);
   }
 }
@@ -2948,9 +3016,9 @@ function overlayChecks(rows, onChange)
   const wind = (!!columns.speed && !!columns.direction) || (!!columns.u && !!columns.v);
   const box = el('span', {class: 'row overlay-checks'});
   for (const [key, label, available] of [
-           ['isotherms', 'Isotherms', !!columns.temperature],
-           ['wind', 'Wind', wind],
-           ['moist', 'Humidity 90 %', moist]])
+           ['isotherms', L('Isotherms'), !!columns.temperature],
+           ['wind', L('Wind'), wind],
+           ['moist', L('Humidity 90 %'), moist]])
   {
     if (!available)
       continue;
@@ -3133,7 +3201,7 @@ function drawSection(container, rows, parameters, levelKind, settings)
   const numeric = parameters.filter((p) => rows.some((r) => columnValue(r, p) !== null));
   if (numeric.length === 0)
   {
-    container.append(el('p', {class: 'muted'}, 'No values to draw.'));
+    container.append(el('p', {class: 'muted'}, L('No values to draw.')));
     return;
   }
   const state = {axis: axes[0], param: numeric[0], palette: 'viridis', key: null};
@@ -3142,16 +3210,16 @@ function drawSection(container, rows, parameters, levelKind, settings)
   const overlays = overlayChecks(rows, () => draw());
   const axisSelect =
       el('select',
-         {'aria-label': 'Vertical axis of the section'},
+         {'aria-label': L('Vertical axis of the section')},
          axes.map((a) => el('option', {value: a.id}, a.label)));
   const paramSelect =
       el('select',
-         {'aria-label': 'Parameter of the section'},
+         {'aria-label': L('Parameter of the section')},
          numeric.map((p) => el('option', {value: p}, p)));
-  const scale = colourScale(settings, 'Colours of the section', () => draw());
+  const scale = colourScale(settings, L('Colours of the section'), () => draw());
   const paletteSelect = scale.select;
-  const keySelect = el('select', {'aria-label': 'Location of the section'});
-  const topSelect = el('select', {'aria-label': 'Top of the section'});
+  const keySelect = el('select', {'aria-label': L('Location of the section')});
+  const topSelect = el('select', {'aria-label': L('Top of the section')});
   // The tops the axis offers; the top is reset when the axis changes
   const setTops = () => {
     topSelect.replaceChildren(
@@ -3167,10 +3235,10 @@ function drawSection(container, rows, parameters, levelKind, settings)
   container.append(
       el('div',
          {class: 'row'},
-         el('label', null, 'Parameter', paramSelect),
-         el('label', null, 'Vertical axis', axisSelect),
-         el('label', null, 'Top', topSelect),
-         el('label', null, 'Colours', paletteSelect),
+         el('label', null, L('Parameter'), paramSelect),
+         el('label', null, L('Vertical axis'), axisSelect),
+         el('label', null, L('Top'), topSelect),
+         el('label', null, L('Colours'), paletteSelect),
          keySelect,
          flightLevels,
          overlays.element),
@@ -3209,7 +3277,7 @@ function drawSection(container, rows, parameters, levelKind, settings)
     const profiles = all.filter((p) => p.key === state.key).sort((a, b) => a.time - b.time);
     if (profiles.length === 0)
     {
-      plot.append(el('p', {class: 'muted'}, 'No profiles to draw.'));
+      plot.append(el('p', {class: 'muted'}, L('No profiles to draw.')));
       return;
     }
     const cells = profiles.map(
@@ -3225,7 +3293,7 @@ function drawSection(container, rows, parameters, levelKind, settings)
     const zs = cells.flat().map((c) => c.z);
     if (values.length === 0)
     {
-      plot.append(el('p', {class: 'muted'}, 'No values to draw.'));
+      plot.append(el('p', {class: 'muted'}, L('No values to draw.')));
       return;
     }
     const prepared = scale.prepare(state.param, values);
@@ -3254,7 +3322,7 @@ function drawSection(container, rows, parameters, levelKind, settings)
       height,
       viewBox: `0 0 ${width} ${height}`,
       role: 'img',
-      'aria-label': `${state.param}: time-height section`
+      'aria-label': L`${state.param}: time-height section`
     });
     const g = svg('g', {transform: `translate(${m.left},${m.top})`});
     root.append(g);
@@ -3325,7 +3393,7 @@ function drawSection(container, rows, parameters, levelKind, settings)
     ylabel.textContent = `${state.axis.label}${state.axis.unit ? ` (${state.axis.unit})` : ''}`;
     g.append(ylabel);
     const xlabel = svg('text', {class: 'vlabel', x: w / 2, y: h + 34, 'text-anchor': 'middle'});
-    xlabel.textContent = 'Time (UTC)';
+    xlabel.textContent = L('Time (UTC)');
     g.append(xlabel);
     plot.append(root);
     legend.replaceChildren(...prepared.legend, prepared.note ? el('span', {class: 'small warn'}, prepared.note) : '');
@@ -3370,15 +3438,15 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
   const root = typeof window !== 'undefined' ? window : globalThis;
   const {levels, fallback} = chartLevels(rows, levelKind);
   let level = levels.length > 0 ? fallback || String(levels[0]) : '';
-  const levelSelect = el('select', {'aria-label': 'Level along the path'},
+  const levelSelect = el('select', {'aria-label': L('Level along the path')},
                          levels.map((v) => el('option', {value: String(v)}, String(v))));
   levelSelect.value = level;
-  const levelLabel = el('label', null, 'Level', levelSelect);
+  const levelLabel = el('label', null, L('Level'), levelSelect);
   levelLabel.hidden = levels.length === 0;
   const charts = el('div', {class: 'along-path'});
   // The distance along the path, and the level of the values
   const distance = el('div', {class: 'along-path-distance'});
-  const head = el('div', {class: 'row'}, el('label', null, 'Distance', distance), levelLabel);
+  const head = el('div', {class: 'row'}, el('label', null, L('Distance'), distance), levelLabel);
   container.append(head, charts);
   levelSelect.addEventListener('change', () => {
     level = levelSelect.value;
@@ -3395,7 +3463,7 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
     const points = pathPoints(chosen);
     if (points.length < 2)
     {
-      charts.append(el('p', {class: 'muted'}, 'The path has fewer than two points with values.'));
+      charts.append(el('p', {class: 'muted'}, L('The path has fewer than two points with values.')));
       return;
     }
     const index = new Map(points.map((p, i) => [p.key, i]));
@@ -3497,9 +3565,9 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
             height: 220,
             series: [
               {value: (u, x) => (x === null ? '--' : formatTime(new Date(x * 1000)))},
-              {label: '10 % of the path', stroke: 'transparent', points: {show: false}},
-              {label: '90 % of the path', stroke: 'transparent', points: {show: false}},
-              {label: 'median of the path', stroke: axisColor, width: 1, dash: [4, 3], points: {show: false}},
+              {label: L('10 % of the path'), stroke: 'transparent', points: {show: false}},
+              {label: L('90 % of the path'), stroke: 'transparent', points: {show: false}},
+              {label: L('median of the path'), stroke: axisColor, width: 1, dash: [4, 3], points: {show: false}},
               {label: p, stroke: accent, width: 2.5}
             ],
             bands: [{series: [2, 1], fill: band}],
@@ -3524,7 +3592,7 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
     });
     if (plots.length === 0)
     {
-      charts.append(el('p', {class: 'muted'}, 'No values to draw.'));
+      charts.append(el('p', {class: 'muted'}, L('No values to draw.')));
       return;
     }
     // A flight: the values met along it, each point at the time it is passed, against the
@@ -3546,7 +3614,7 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
         const unit = (options.labels || {})[p];
         const panel = el('div', {class: 'chart', 'data-param': `flight-${p}`});
         const title = el('div', {class: 'chart-title'},
-                         `${p}${unit ? ` (${unit})` : ''} met on the flight, ${formatTime(new Date(options.flight.departure))} – ${
+                         L`${p}${unit ? ` (${unit})` : ''} met on the flight, ${formatTime(new Date(options.flight.departure))} – ${
                              formatTime(new Date(options.flight.arrival))}`);
         const plot = el('div', {class: 'chart-plot'});
         panel.append(title, plot);
@@ -3582,8 +3650,8 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
                 {value: (u, km) => (km === null ? '--' : `${Math.round(km)} km, ${formatTime(timeAt(km))}`)},
                 // Directions as points: a line from 350 to 10 degrees would cross the chart
                 directions.has(p.toLowerCase()) ?
-                    {label: `${p} met`, stroke: accent, width: 0, paths: () => null, points: {show: true, size: 6, fill: accent}} :
-                    {label: `${p} met`, stroke: accent, width: 2.5, spanGaps: true}
+                    {label: L`${p} met`, stroke: accent, width: 0, paths: () => null, points: {show: true, size: 6, fill: accent}} :
+                    {label: L`${p} met`, stroke: accent, width: 2.5, spanGaps: true}
               ],
               axes: [
                 {
@@ -3607,7 +3675,7 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
         flightPlots.push(u);
       }
       if (flightPlots.length)
-        flightBox.append(el('div', {class: 'chart-title'}, 'The time series of the point, against the path'));
+        flightBox.append(el('div', {class: 'chart-title'}, L('The time series of the point, against the path')));
     }
     // Shows point i: its series in each chart, and its place on the map
     const show = (i) => {
@@ -3620,7 +3688,7 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
         u.setData([times, stats.map((s) => s[0]), stats.map((s) => s[2]), stats.map((s) => s[1]), values[p][i]]);
         const unit = (options.labels || {})[p];
         const v = met(p, i);
-        title.textContent = `${p}${unit ? ` (${unit})` : ''} at ${Math.round(point.km)} km of ${Math.round(points[points.length - 1].km)} km (${
+        title.textContent = L`${p}${unit ? ` (${unit})` : ''} at ${Math.round(point.km)} km of ${Math.round(points[points.length - 1].km)} km (${
             point.lat.toFixed(3)}, ${point.lon.toFixed(3)})${when}${v !== null ? `: ${round(v, 1)}` : ''}, against the median and 10-90 % of the path`;
       }
       for (const u of flightPlots)
@@ -3629,7 +3697,7 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
         options.onPosition({lat: point.lat, lon: point.lon});
     };
     slider = timeSlider(points.map((pt) => pt.km), {
-      label: 'Position along the path',
+      label: L('Position along the path'),
       positions: points.map((pt) => pt.km),
       format: (km, i) => `${Math.round(km)} km (${points[i].lat.toFixed(3)}, ${points[i].lon.toFixed(3)})${
           passed ? `, ${formatTime(new Date(passed[i]))}` : ''}`,
@@ -3657,7 +3725,7 @@ function drawCrossSection(container, rows, parameters, levelKind, settings, opti
   const numeric = parameters.filter((p) => rows.some((r) => columnValue(r, p) !== null));
   if (numeric.length === 0)
   {
-    container.append(el('p', {class: 'muted'}, 'No values to draw.'));
+    container.append(el('p', {class: 'muted'}, L('No values to draw.')));
     return;
   }
   const points = pathPoints(rows);
@@ -3673,11 +3741,11 @@ function drawCrossSection(container, rows, parameters, levelKind, settings, opti
     s.value = value;
     return s;
   };
-  const paramSelect = select('Parameter of the cross section', numeric.map((p) => [p, p]), state.param);
-  const axisSelect = select('Vertical axis of the cross section', axes.map((a) => [a.id, a.label]), state.axis.id);
-  const scale = colourScale(settings, 'Colours of the cross section', () => draw());
+  const paramSelect = select(L('Parameter of the cross section'), numeric.map((p) => [p, p]), state.param);
+  const axisSelect = select(L('Vertical axis of the cross section'), axes.map((a) => [a.id, a.label]), state.axis.id);
+  const scale = colourScale(settings, L('Colours of the cross section'), () => draw());
   const paletteSelect = scale.select;
-  const topSelect = el('select', {'aria-label': 'Top of the cross section'});
+  const topSelect = el('select', {'aria-label': L('Top of the cross section')});
   // The tops the axis offers; the top is reset when the axis changes
   const setTops = () => {
     topSelect.replaceChildren(...verticalTops(state.axis).map(([v, l]) => el('option', {value: v}, l)));
@@ -3687,7 +3755,7 @@ function drawCrossSection(container, rows, parameters, levelKind, settings, opti
   setTops();
   axisSelect.hidden = axes.length < 2;
   const slider = timeSlider(times, {
-    label: 'Time of the cross section',
+    label: L('Time of the cross section'),
     onChange: () => {
       state.time = slider.index();
       draw();
@@ -3697,10 +3765,10 @@ function drawCrossSection(container, rows, parameters, levelKind, settings, opti
   const flight = options.flight || null;
   const flown = flight ? flightRows(rows, flight) : [];
   state.flight = flown.length > 0;
-  const flightBox = el('input', {type: 'checkbox', 'aria-label': 'At the times of the flight'});
+  const flightBox = el('input', {type: 'checkbox', 'aria-label': L('At the times of the flight')});
   flightBox.checked = state.flight;
   const flightLabel = el('label', {class: 'check'}, flightBox, flight ?
-      `At the times of the flight, ${formatTime(new Date(flight.departure))} – ${
+      L`At the times of the flight, ${formatTime(new Date(flight.departure))} – ${
           formatTime(new Date(flight.arrival))}` :
       '');
   flightLabel.hidden = flown.length === 0;
@@ -3715,10 +3783,10 @@ function drawCrossSection(container, rows, parameters, levelKind, settings, opti
   const plot = el('div', {class: 'section'});
   container.append(el('div',
                       {class: 'row'},
-                      el('label', null, 'Parameter', paramSelect),
-                      el('label', null, 'Vertical axis', axisSelect),
-                      el('label', null, 'Top', topSelect),
-                      el('label', null, 'Colours', paletteSelect),
+                      el('label', null, L('Parameter'), paramSelect),
+                      el('label', null, L('Vertical axis'), axisSelect),
+                      el('label', null, L('Top'), topSelect),
+                      el('label', null, L('Colours'), paletteSelect),
                       flightLevels,
                       overlays.element),
                    flightLabel,
@@ -3770,7 +3838,7 @@ function drawCrossSection(container, rows, parameters, levelKind, settings, opti
       c.sort((a, b) => a.z - b.z);
     if (all.length === 0)
     {
-      plot.append(el('p', {class: 'muted'}, 'No values to draw.'));
+      plot.append(el('p', {class: 'muted'}, L('No values to draw.')));
       return;
     }
     all.sort((a, b) => a - b);
@@ -3803,7 +3871,7 @@ function drawCrossSection(container, rows, parameters, levelKind, settings, opti
       height,
       viewBox: `0 0 ${width} ${height}`,
       role: 'img',
-      'aria-label': `${state.param}: cross section along the path`
+      'aria-label': L`${state.param}: cross section along the path`
     });
     const g = svg('g', {transform: `translate(${m.left},${m.top})`});
     root.append(g);
@@ -3822,8 +3890,8 @@ function drawCrossSection(container, rows, parameters, levelKind, settings, opti
           fill: colour(c.v)
         });
         rect.addEventListener('mouseenter', () => {
-          readout.textContent = `${Math.round(p.km)} km (${p.lat.toFixed(3)}, ${p.lon.toFixed(3)}) · ${
-              state.flight ? `passed ${formatTime(new Date(c.row.time))} · ` : ''}${
+          readout.textContent = L`${Math.round(p.km)} km (${p.lat.toFixed(3)}, ${p.lon.toFixed(3)}) · ${
+              state.flight ? L`passed ${formatTime(new Date(c.row.time))} · ` : ''}${
               state.axis.label} ${round(c.z, 1)}${state.axis.unit ? ` ${state.axis.unit}` : ''} · ${
               state.param} ${round(c.v, 2)}`;
         });
@@ -3864,8 +3932,8 @@ function drawCrossSection(container, rows, parameters, levelKind, settings, opti
     g.append(ylabel);
     const xlabel = svg('text', {class: 'vlabel', x: w / 2, y: h + 34, 'text-anchor': 'middle'});
     xlabel.textContent = state.flight ?
-        `Distance along the flight (km), the values at the times the points are passed` :
-        'Distance along the path (km)';
+        L`Distance along the flight (km), the values at the times the points are passed` :
+        L('Distance along the path (km)');
     g.append(xlabel);
     plot.append(root);
     legend.replaceChildren(...prepared.legend, prepared.note ? el('span', {class: 'small warn'}, prepared.note) : '');
@@ -4129,7 +4197,7 @@ function drawHodograph(levels)
   const max = Math.max(10, Math.ceil(Math.max(...winds.map((w) => Math.hypot(w.u, w.v))) / 10) * 10);
   const scale = (c - 14) / max;
   const root = svg('svg', {class: 'hodograph', width: size, height: size, viewBox: `0 0 ${size} ${size}`,
-                           role: 'img', 'aria-label': 'Hodograph'});
+                           role: 'img', 'aria-label': L('Hodograph')});
   for (let r = 10; r <= max; r += 10)
   {
     root.append(svg('circle', {class: 'hodo-ring', cx: c, cy: c, r: r * scale}));
@@ -4157,8 +4225,8 @@ function drawHodograph(levels)
   }
   const legend = el('div', {class: 'vlegend small'},
                     bands.map(([lo, hi, colour]) => el('span', null, el('i', {style: `background:${colour}`}),
-                                                       `${lo}-${hi} km`)));
-  return el('div', {class: 'hodograph-box'}, el('div', {class: 'small muted'}, 'Hodograph (m/s)'), root, legend);
+                                                       L`${lo}-${hi} km`)));
+  return el('div', {class: 'hodograph-box'}, el('div', {class: 'small muted'}, L('Hodograph (m/s)')), root, legend);
 }
 
 // ----------------------------------------------------------------------
@@ -4277,7 +4345,7 @@ function hasSounding(rows, levelKind)
 // - tephigram: the temperature and the logarithm of the potential temperature turned 45
 //   degrees, isotherms rising to the right and dry adiabats to the left, isobars nearly level
 // - Stuve: v = -p^(R/cp), u = T, so that the dry adiabats are straight lines
-const THERMO_DIAGRAMS = [['skewt', 'Skew-T log-p'], ['tephigram', 'Tephigram'], ['stuve', 'Stüve']];
+const THERMO_DIAGRAMS = [['skewt', L('Skew-T log-p')], ['tephigram', L('Tephigram')], ['stuve', L('Stüve')]];
 
 // The projection of a thermodynamic diagram: (T C, p hPa) -> [u, v] before scaling, v growing
 // upwards
@@ -4365,7 +4433,7 @@ function drawSkewT(container, rows, levelKind, options)
   const columns = soundingColumns(rows);
   if (!axis || !columns.temperature)
   {
-    container.append(el('p', {class: 'muted'}, 'A sounding needs temperatures on pressures.'));
+    container.append(el('p', {class: 'muted'}, L('A sounding needs temperatures on pressures.')));
     return {redraw: () => {}};
   }
   const profiles = collectProfiles(rows, axis);
@@ -4382,7 +4450,7 @@ function drawSkewT(container, rows, levelKind, options)
   };
   const panels = [];
   const panelsBox = el('div', {class: 'sk-panels'});
-  const add = el('button', {type: 'button', class: 'small'}, 'Add a panel');
+  const add = el('button', {type: 'button', class: 'small'}, L('Add a panel'));
   const head = el('div', {class: 'row'}, add);
   if (opts.controls)
     head.append(...opts.controls);
@@ -4440,16 +4508,16 @@ function skewTPanel(container, profiles, keys, times, columns, axis, options)
   const opts = options;
   const keySelect =
       el('select',
-         {'aria-label': 'Location of the sounding'},
+         {'aria-label': L('Location of the sounding')},
          keys.map((k) => el('option', {value: k}, k)));
   keySelect.value = opts.key;
   const typeSelect =
       el('select',
-         {'aria-label': 'Diagram'},
+         {'aria-label': L('Diagram')},
          THERMO_DIAGRAMS.map(([v, label]) => el('option', {value: v}, label)));
   typeSelect.value = opts.type || 'skewt';
   const chooser = timeChooser(times, () => draw(), opts.time);
-  const parcelBox = el('input', {type: 'checkbox', checked: true, 'aria-label': 'Lifted parcel'});
+  const parcelBox = el('input', {type: 'checkbox', checked: true, 'aria-label': L('Lifted parcel')});
   const info = el('p', {class: 'muted small skewt-info'});
   const diagram = el('div', {class: 'skewt'});
   let tableOpen = false;
@@ -4462,7 +4530,7 @@ function skewTPanel(container, profiles, keys, times, columns, axis, options)
     draw();
   });
   const remove = opts.onRemove ?
-      el('button', {type: 'button', class: 'small', 'aria-label': 'Remove the panel', onclick: opts.onRemove}, '×') :
+      el('button', {type: 'button', class: 'small', 'aria-label': L('Remove the panel'), onclick: opts.onRemove}, '×') :
       '';
   container.append(
       el('div',
@@ -4470,7 +4538,7 @@ function skewTPanel(container, profiles, keys, times, columns, axis, options)
          typeSelect,
          keySelect,
          chooser.element,
-         el('label', {class: 'check'}, parcelBox, 'Lifted parcel'),
+         el('label', {class: 'check'}, parcelBox, L('Lifted parcel')),
          remove),
       diagram,
       info);
@@ -4488,14 +4556,14 @@ function skewTPanel(container, profiles, keys, times, columns, axis, options)
                           .filter((s) => s.levels.length >= 2);
     if (soundings.length === 0)
     {
-      diagram.append(el('p', {class: 'muted'}, 'No sounding at the chosen time.'));
+      diagram.append(el('p', {class: 'muted'}, L('No sounding at the chosen time.')));
       return;
     }
     // The diagrams reach up to 100 hPa
     if (!soundings.some((s) => s.levels.filter((l) => l.p >= 100).length >= 2))
     {
       diagram.append(
-          el('p', {class: 'muted'}, 'The sounding has no pressures below 100 hPa to draw.'));
+          el('p', {class: 'muted'}, L('The sounding has no pressures below 100 hPa to draw.')));
       return;
     }
     // Soundings to compare with: the nearest time of the other data
@@ -4611,10 +4679,10 @@ function skewTPanel(container, profiles, keys, times, columns, axis, options)
       transform: `translate(${- 38},${h / 2}) rotate(-90)`,
       'text-anchor': 'middle'
     });
-    ylabel.textContent = 'Pressure (hPa)';
+    ylabel.textContent = L('Pressure (hPa)');
     g.append(ylabel);
     const xlabel = svg('text', {class: 'vlabel', x: w / 2, y: h + 32, 'text-anchor': 'middle'});
-    xlabel.textContent = 'Temperature (C)';
+    xlabel.textContent = L('Temperature (C)');
     g.append(xlabel);
 
     // The soundings to compare with, thin
@@ -4646,7 +4714,7 @@ function skewTPanel(container, profiles, keys, times, columns, axis, options)
         const lx = x(parcel.lcl.t, parcel.lcl.p);
         const ly = y(parcel.lcl.t, parcel.lcl.p);
         plot.append(svg('line', {class: 'sk-lcl', x1: lx - 8, x2: lx + 8, y1: ly, y2: ly}));
-        infos.push(`Lifting condensation level ${Math.round(parcel.lcl.p)} hPa, ${
+        infos.push(L`Lifting condensation level ${Math.round(parcel.lcl.p)} hPa, ${
             parcel.lcl.t.toFixed(1)} C, of a parcel lifted from ${Math.round(base.p)} hPa`);
       }
     });
@@ -4663,7 +4731,7 @@ function skewTPanel(container, profiles, keys, times, columns, axis, options)
     }
     infos.push(`${key}, ${soundings.map((s) => formatTime(new Date(s.time))).join(', ')}`);
     if (others.length > 0 && opts.compare.label)
-      infos.push(`thin lines: ${opts.compare.label(others)}`);
+      infos.push(L`thin lines: ${opts.compare.label(others)}`);
     info.textContent = infos.join(' · ');
 
     // The pointer: a guide along its isobar, the temperature, pressure and potential
@@ -4749,21 +4817,21 @@ function skewTPanel(container, profiles, keys, times, columns, axis, options)
       ['CIN', fmt(analysis.cin, 0, ' J/kg')],
       ['LFC', fmt(analysis.lfc, 0, ' hPa')],
       ['EL', fmt(analysis.el, 0, ' hPa')],
-      ['Lifted index', fmt(analysis.li, 1, '')],
-      ['Freezing level', analysis.freezing ?
+      [L('Lifted index'), fmt(analysis.li, 1, '')],
+      [L('Freezing level'), analysis.freezing ?
            `${Math.round(unitOf('height')[2](analysis.freezing.height))} ${unitOf('height')[1]}${
                analysis.dataHeights ? '' : '*'} (${Math.round(analysis.freezing.p)} hPa)` :
            '–'],
-      ['K-index', fmt(analysis.k, 0, '')],
-      ['Total totals', fmt(analysis.tt, 0, '')],
-      ['Precipitable water', fmt(analysis.pw, 1, ' mm')],
-      ['Shear 0-6 km', fmt(analysis.shear, 0, ' m/s')]
+      [L('K-index'), fmt(analysis.k, 0, '')],
+      [L('Total totals'), fmt(analysis.tt, 0, '')],
+      [L('Precipitable water'), fmt(analysis.pw, 1, ' mm')],
+      [L('Shear 0-6 km'), fmt(analysis.shear, 0, ' m/s')]
     ];
     const analysisBox = el('div', {class: 'sk-analysis small'},
                            el('dl', null, items.map(([k, v]) => el('div', null, el('dt', null, k), el('dd', null, v)))),
                            analysis.dataHeights ? '' :
                                                   el('p', {class: 'muted'},
-                                                     '* Height above the lowest level, from the hypsometric equation'));
+                                                     L('* Height above the lowest level, from the hypsometric equation')));
     const hodograph = drawHodograph(levelsWithHeights.filter((l) => l.h !== undefined));
 
     // The values of the levels of the latest sounding; a row pointed marks its level
@@ -4800,10 +4868,10 @@ function skewTPanel(container, profiles, keys, times, columns, axis, options)
       tableRows.set(latest[i], tr);
       body.append(tr);
     });
-    const head = el('tr', null, ['hPa', `Height (${heightUnit})`, 'T (C)', 'Td (C)', 'RH (%)', 'Wind (°)', `Wind (${speedUnit})`, 'θ (K)']
+    const head = el('tr', null, ['hPa', `Height (${heightUnit})`, 'T (C)', L('Td (C)'), 'RH (%)', L('Wind (°)'), `Wind (${speedUnit})`, 'θ (K)']
                                     .map((t) => el('th', null, t)));
     const table = el('details', {class: 'sk-values', open: tableOpen},
-                     el('summary', null, `Values of the ${levelsWithHeights.length} levels`),
+                     el('summary', null, L`Values of the ${levelsWithHeights.length} levels`),
                      el('div', {class: 'table-wrap'}, el('table', {class: 'data'}, el('thead', null, head), body)));
     table.addEventListener('toggle', () => {
       tableOpen = table.open;
@@ -4891,7 +4959,7 @@ function meteogramParameters(parameterSet, chosen)
 // update(parameterSet, chosen)}.
 function meteogramButton(start)
 {
-  const button = el('button', {type: 'button', class: 'small', 'data-meteogram': '1'}, 'Meteogram');
+  const button = el('button', {type: 'button', class: 'small', 'data-meteogram': '1'}, L('Meteogram'));
   const note = el('span', {class: 'small meteogram-note'});
   const element = el('div', {class: 'row meteogram-button'}, button, note);
   let missing = [];
@@ -4901,8 +4969,8 @@ function meteogramButton(start)
     if (element.hidden)
       return;
     missing = meteogramParameters(parameterSet, chosen);
-    note.textContent = missing.length ? `Adds ${missing.join(', ')} and runs the request` :
-                                        'Runs the request and draws a meteogram';
+    note.textContent = missing.length ? L`Adds ${missing.join(', ')} and runs the request` :
+                                        L('Runs the request and draws a meteogram');
   };
   return {element, update};
 }
@@ -4924,7 +4992,7 @@ function drawMeteogram(container, rows, levelKind)
   const root = typeof window !== 'undefined' ? window : globalThis;
   const placeOf = (r) => locationOf(Object.assign({}, r, {level: null}));
   const places = Array.from(new Set(rows.map(placeOf)));
-  const placeSelect = el('select', {'aria-label': 'Place of the meteogram'},
+  const placeSelect = el('select', {'aria-label': L('Place of the meteogram')},
                          places.map((p) => el('option', {value: p}, p)));
   placeSelect.hidden = places.length < 2;
   const panels = el('div', {class: 'meteogram'});
@@ -5015,7 +5083,7 @@ function drawMeteogram(container, rows, levelKind)
         series: [
           {label: `${label} 10 %`, stroke: 'transparent', points: {show: false}},
           {label: `${label} 90 %`, stroke: 'transparent', points: {show: false}},
-          {label: `${label} median`, stroke: colour, width: 2}
+          {label: L`${label} median`, stroke: colour, width: 2}
         ],
         data: [stat(lists, 0.1), stat(lists, 0.9), stat(lists, 0.5)],
         bands: [{series: [2, 1], fill: `${colour}33`}]
@@ -5026,10 +5094,10 @@ function drawMeteogram(container, rows, levelKind)
     // Temperature and dewpoint
     if (columns.temperature)
     {
-      const tb = band(inUnit(scaled('temperature', values('temperature')), toT), '#e03131', 'temperature');
+      const tb = band(inUnit(scaled('temperature', values('temperature')), toT), '#e03131', L('temperature'));
       const parts = [tb];
       if (columns.dewpoint)
-        parts.push(band(inUnit(scaled('dewpoint', values('dewpoint')), toT), '#2f9e44', 'dewpoint'));
+        parts.push(band(inUnit(scaled('dewpoint', values('dewpoint')), toT), '#2f9e44', L('dewpoint')));
       let n = 0;
       const bands = [];
       for (const part of parts)
@@ -5037,7 +5105,7 @@ function drawMeteogram(container, rows, levelKind)
         bands.push(...offset(part.bands, n));
         n += part.series.length;
       }
-      panel(`Temperature${columns.dewpoint ? ' and dewpoint' : ''} (${tUnit})${ensemble ? ', median and 10-90 % of the members' : ''}`,
+      panel(L`Temperature${columns.dewpoint ? L(' and dewpoint') : ''} (${tUnit})${ensemble ? L(', median and 10-90 % of the members') : ''}`,
             parts.flatMap((p) => p.series), [xs, ...parts.flatMap((p) => p.data)], {unit: tUnit, extra: {bands}});
     }
     // Precipitation as bars, for an ensemble the median with the 90 % as a line
@@ -5045,22 +5113,22 @@ function drawMeteogram(container, rows, levelKind)
     {
       const lists = values('precipitation');
       const bars = root.uPlot.paths.bars({size: [0.6, 40]});
-      const series = [{label: ensemble ? 'median' : 'precipitation', stroke: '#1971c2', fill: '#1971c288', paths: bars, points: {show: false}}];
+      const series = [{label: ensemble ? L('median') : L('precipitation'), stroke: '#1971c2', fill: '#1971c288', paths: bars, points: {show: false}}];
       const data = [stat(lists, 0.5)];
       if (ensemble)
       {
         series.push({label: '90 %', stroke: '#1971c2', width: 1, dash: [4, 3], points: {show: false}});
         data.push(stat(lists, 0.9));
       }
-      panel(`Precipitation (mm)${ensemble ? ', the median and 90 % of the members' : ''}`, series, [xs, ...data],
+      panel(L`Precipitation (mm)${ensemble ? L(', the median and 90 % of the members') : ''}`, series, [xs, ...data],
             {unit: 'mm', scales: {y: {range: (u, lo, hi) => [0, Math.max(1, hi * 1.1)]}}});
     }
     // Cloud cover
     if (columns.cloud)
     {
-      const cb = band(scaled('cloud', values('cloud')), '#495057', 'cloud cover');
+      const cb = band(scaled('cloud', values('cloud')), '#495057', L('cloud cover'));
       cb.series[cb.series.length - 1].fill = ensemble ? undefined : '#49505733';
-      panel(`Cloud cover (%)${ensemble ? ', median and 10-90 % of the members' : ''}`, cb.series, [xs, ...cb.data],
+      panel(L`Cloud cover (%)${ensemble ? L(', median and 10-90 % of the members') : ''}`, cb.series, [xs, ...cb.data],
             {unit: '%', scales: {y: {range: () => [0, 100]}}, extra: {bands: cb.bands}});
     }
     // Wind and gusts, with barbs of the median wind at the bottom
@@ -5075,12 +5143,12 @@ function drawMeteogram(container, rows, levelKind)
     }
     if (speeds)
     {
-      const wb = band(inUnit(speeds, toS), '#7048e8', 'wind speed');
+      const wb = band(inUnit(speeds, toS), '#7048e8', L('wind speed'));
       const series = [...wb.series];
       const data = [...wb.data];
       if (columns.gust)
       {
-        series.push({label: ensemble ? 'gust median' : 'gust', stroke: '#f08c00', width: 1.5, dash: [5, 3]});
+        series.push({label: ensemble ? L('gust median') : L('gust'), stroke: '#f08c00', width: 1.5, dash: [5, 3]});
         data.push(stat(inUnit(values('gust'), toS), 0.5));
       }
       // The mean direction of the members: the direction of the mean unit vector
@@ -5109,7 +5177,7 @@ function drawMeteogram(container, rows, levelKind)
         });
         u.over.append(layer);
       };
-      panel(`Wind${columns.gust ? ' and gusts' : ''} (${sUnit})${ensemble ? ', median and 10-90 % of the members' : ''}`,
+      panel(L`Wind${columns.gust ? L(' and gusts') : ''} (${sUnit})${ensemble ? L(', median and 10-90 % of the members') : ''}`,
             series, [xs, ...data],
             {unit: sUnit, scales: {y: {range: (u, lo, hi) => [0, Math.max(5, hi * 1.25)]}},
              extra: {bands: wb.bands, hooks: {draw: [barbs]}}});
@@ -5129,8 +5197,8 @@ function drawMeteogram(container, rows, levelKind)
 function drawComparison(pane, rows, options)
 {
   const {params, kind, ownName, others} = options;
-  const select = el('select', {'aria-label': 'Compare with'}, [
-    el('option', {value: ''}, 'No comparison'),
+  const select = el('select', {'aria-label': L('Compare with')}, [
+    el('option', {value: ''}, L('No comparison')),
     ...others.map((o) => el('option', {value: o.key}, o.label))
   ]);
   select.value = options.chosen && others.some((o) => o.key === options.chosen) ? options.chosen : '';
@@ -5138,7 +5206,7 @@ function drawComparison(pane, rows, options)
   const stats = el('div', {class: 'compare-stats small'});
   const charts = el('div');
   pane.replaceChildren(
-      others.length ? el('div', {class: 'row'}, el('label', null, 'Compare with', select), status) : '',
+      others.length ? el('div', {class: 'row'}, el('label', null, L('Compare with'), select), status) : '',
       stats, charts);
   const draw = (other, otherRows) => {
     // The series are named by their producers, observations also by their stations
@@ -5161,11 +5229,11 @@ function drawComparison(pane, rows, options)
       const b = at(theirs, p);
       const diffs = Array.from(a.keys()).filter((x) => b.has(x)).map((x) => a.get(x) - b.get(x));
       if (diffs.length === 0)
-        return `${p}: no common times`;
+        return L`${p}: no common times`;
       const mean = diffs.reduce((s, d) => s + d, 0) / diffs.length;
       const mae = diffs.reduce((s, d) => s + Math.abs(d), 0) / diffs.length;
       return `${p}: ${ownName} − ${other.name} on average ${mean >= 0 ? '+' : ''}${mean.toFixed(2)}, ` +
-          `mean absolute difference ${mae.toFixed(2)} at ${diffs.length} times`;
+          L`mean absolute difference ${mae.toFixed(2)} at ${diffs.length} times`;
     });
     stats.replaceChildren(...lines.map((l) => el('div', null, l)));
   };
@@ -5178,11 +5246,11 @@ function drawComparison(pane, rows, options)
       draw(null, null);
       return;
     }
-    status.textContent = 'Loading…';
+    status.textContent = L('Loading…');
     try
     {
       const otherRows = await options.fetchRows(other);
-      status.textContent = otherRows.length ? '' : `No values of ${other.name} here`;
+      status.textContent = otherRows.length ? '' : L`No values of ${other.name} here`;
       draw(other, otherRows);
     }
     catch (e)
@@ -5246,13 +5314,13 @@ function drawServerStatistics(container, rows, parameters)
   }
   if (groups.size === 0)
   {
-    container.append(el('p', {class: 'muted'}, 'No data.'));
+    container.append(el('p', {class: 'muted'}, L('No data.')));
     return;
   }
   for (const [label, series] of groups)
     drawServerStatisticsGroup(container, series.sort((a, b) => a[0] - b[0]), parameters, label);
   if (container.children.length === 0)
-    container.append(el('p', {class: 'muted'}, 'No numeric values to draw.'));
+    container.append(el('p', {class: 'muted'}, L('No numeric values to draw.')));
 }
 
 // The charts of statistics computed by the server for one group of locations: the median and
@@ -5278,8 +5346,7 @@ function drawServerStatisticsGroup(container, series, parameters, label)
     panel.append(
         el('div',
            {class: 'chart-title'},
-           `${param}${label ? ` · ${label}` : ''}: median and percentiles of the area, ` +
-               'computed by the server'));
+           L`${param}${label ? ` · ${label}` : ''}: median and percentiles of the area, computed by the server`));
     const plot = el('div', {class: 'chart-plot'});
     panel.append(plot);
     // eslint-disable-next-line no-new
@@ -5291,7 +5358,7 @@ function drawServerStatisticsGroup(container, series, parameters, label)
             {value: (u, x) => (x === null ? '--' : formatTime(new Date(x * 1000)))},
             {label: '10 %', stroke: fill(0.5), width: 1},
             {label: '25 %', stroke: fill(0.7), width: 1},
-            {label: 'median', stroke: palette[0], width: 2},
+            {label: L('median'), stroke: palette[0], width: 2},
             {label: '75 %', stroke: fill(0.7), width: 1},
             {label: '90 %', stroke: fill(0.5), width: 1}
           ],
@@ -5518,7 +5585,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
   container.replaceChildren();
   if (rows.length === 0)
   {
-    container.append(el('p', {class: 'muted'}, 'No data.'));
+    container.append(el('p', {class: 'muted'}, L('No data.')));
     return;
   }
 
@@ -5535,15 +5602,15 @@ function drawCharts(container, rows, parameters, mode, options = {})
     const unit = {pressure: ' hPa', 'pressure-pa': ' Pa', height: ' m', depth: ' m'}[options.levelKind] || '';
     const member = options.levelKind === 'member';
     const select = el('select',
-                      {'aria-label': 'Level of the charts'},
-                      [[ '', member ? 'All members' : 'All levels, a line each'],
+                      {'aria-label': L('Level of the charts')},
+                      [[ '', member ? L('All members') : L('All levels, a line each')],
                        ...levels.map((v) => [String(v), member ? `Member ${v}` : `${v}${unit}`])]
                           .map(([v, l]) => el('option', {value: v}, l)));
     select.value = level;
     // The drawing chosen stays when the level changes
     select.addEventListener('change', () => drawCharts(
         container, allRows, parameters, chosen, Object.assign({}, options, {level: select.value})));
-    levelChooser = el('label', null, member ? 'Member' : 'Level', select);
+    levelChooser = el('label', null, member ? L('Member') : L('Level'), select);
     if (level !== '')
       rows = rows.filter((r) => r.level === Number(level));
   }
@@ -5573,7 +5640,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
     container.append(
         el('p',
            {class: 'muted'},
-           'The response has no times to draw: include time in the parameters.'));
+           L('The response has no times to draw: include time in the parameters.')));
     return;
   }
 
@@ -5585,7 +5652,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
     container.append(
         el('p',
            {class: 'muted'},
-           `No numeric values to draw${empty.length ? ` for ${empty.join(', ')}` : ''}.`));
+           L`No numeric values to draw${empty.length ? L` for ${empty.join(', ')}` : ''}.`));
     return;
   }
 
@@ -5604,8 +5671,8 @@ function drawCharts(container, rows, parameters, mode, options = {})
     const toolbar = el('div', {class: 'tabs chart-modes', role: 'tablist'});
     for (const [m, label] of [
              ['lines', many ? `All ${what}` : 'Lines'],
-             ['percentiles', 'Percentiles'],
-             ['probability', 'Probability']])
+             ['percentiles', L('Percentiles')],
+             ['probability', L('Probability')]])
       toolbar.append(
           el('button',
              {
@@ -5754,7 +5821,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
       series = [
         timeSeries,
         {
-          label: 'median',
+          label: L('median'),
           stroke: css.getPropertyValue('--fg').trim() || '#000',
           width: 2,
           points: {show: false},
@@ -5762,8 +5829,8 @@ function drawCharts(container, rows, parameters, mode, options = {})
         }
       ];
       legend = {show: false};
-      caption = `${pname}: ${names.length} ${what}${
-          byLatitude && what === 'locations' ? ', coloured from south to north' : ''}, and the median`;
+      caption = L`${pname}: ${names.length} ${L(what)}${
+          byLatitude && what === 'locations' ? L(', coloured from south to north') : ''}, and the median`;
     }
     else if (chosen === 'probability')
     {
@@ -5808,7 +5875,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
         }
       ];
       probability = {threshold, below};
-      caption = `${pname}: the share of the ${names.length} ${what} ${below ? 'below' : 'above'} ${
+      caption = L`${pname}: the share of the ${names.length} ${L(what)} ${below ? L('below') : L('above')} ${
           threshold}`;
     }
     else
@@ -5821,26 +5888,26 @@ function drawCharts(container, rows, parameters, mode, options = {})
         timeSeries,
         {label: '10 %', stroke: fill(0.5), width: 1, gaps},
         {label: '25 %', stroke: fill(0.7), width: 1, gaps},
-        {label: 'median', stroke: palette[0], width: 2, gaps},
+        {label: L('median'), stroke: palette[0], width: 2, gaps},
         {label: '75 %', stroke: fill(0.7), width: 1, gaps},
         {label: '90 %', stroke: fill(0.5), width: 1, gaps}
       ];
       bands = [{series: [5, 1], fill: fill(0.12)}, {series: [4, 2], fill: fill(0.22)}];
-      caption = `${pname}: median and percentiles of ${names.length} ${what}`;
+      caption = L`${pname}: median and percentiles of ${names.length} ${L(what)}`;
     }
 
     panel.append(el('div', {class: 'chart-title'}, caption));
     if (probability)
     {
       // The threshold of the parameter, kept when the charts are drawn again
-      const side = el('select', {'aria-label': `Side of the threshold of ${param}`},
-                      [['above', 'Above'], ['below', 'Below']].map(([v, l]) => el('option', {value: v}, l)));
+      const side = el('select', {'aria-label': L`Side of the threshold of ${param}`},
+                      [['above', L('Above')], ['below', L('Below')]].map(([v, l]) => el('option', {value: v}, l)));
       side.value = probability.below ? 'below' : 'above';
       const value = el('input', {
         type: 'number',
         step: 'any',
         value: String(probability.threshold),
-        'aria-label': `Threshold of ${param}`,
+        'aria-label': L`Threshold of ${param}`,
         style: 'width: 7em'
       });
       const redraw = () => {
@@ -5884,7 +5951,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
   }
   if (empty.length > 0)
     container.append(
-        el('p', {class: 'muted small'}, `No values in the result: ${empty.join(', ')}`));
+        el('p', {class: 'muted small'}, L`No values in the result: ${empty.join(', ')}`));
 }
 
 // ------------------------------------------------------------------
@@ -6015,7 +6082,7 @@ function valueProbe(box, rows, state, times, options)
   let plot = null;
   let series = [];
   let title = null;
-  const close = el('button', {type: 'button', class: 'small', 'aria-label': 'Close the series'}, '×');
+  const close = el('button', {type: 'button', class: 'small', 'aria-label': L('Close the series')}, '×');
   close.addEventListener('click', () => {
     state.probe = null;
     plot = null;
@@ -6033,8 +6100,8 @@ function valueProbe(box, rows, state, times, options)
       return;
     const v = series[state.time];
     const unit = options.unit ? options.unit(state.param) : '';
-    title.textContent = `${state.param}${unit ? ` (${unit})` : ''} at ${place()}, ${formatTime(new Date(epochs[state.time] * 1000))}: ${
-        v === null || v === undefined ? 'missing' : `${round(v, 2)}${unit ? ` ${unit}` : ''}`}`;
+    title.textContent = L`${state.param}${unit ? ` (${unit})` : ''} at ${place()}, ${formatTime(new Date(epochs[state.time] * 1000))}: ${
+        v === null || v === undefined ? L('missing') : `${round(v, 2)}${unit ? ` ${unit}` : ''}`}`;
     plot.redraw(false);
   };
   // Draws the series of the point clicked
@@ -6062,7 +6129,7 @@ function valueProbe(box, rows, state, times, options)
     body.append(el('div', {class: 'chart', 'data-param': state.param}, title, target));
     if (!root.uPlot || epochs.some((x) => x === null))
     {
-      title.textContent = `${state.param} at ${place()}`;
+      title.textContent = L`${state.param} at ${place()}`;
       return;
     }
     const css = getComputedStyle(document.documentElement);
@@ -6131,7 +6198,7 @@ function drawValueMap(container, rows, parameters, settings, options = {})
   const {levels, fallback} = chartLevels(located, options.levelKind);
   if (numeric.length === 0 || located.length === 0)
   {
-    container.append(el('p', {class: 'muted'}, 'No located numeric values to show.'));
+    container.append(el('p', {class: 'muted'}, L('No located numeric values to show.')));
     return;
   }
 
@@ -6156,29 +6223,29 @@ function drawValueMap(container, rows, parameters, settings, options = {})
   const map = createMap(settings, null);
   map.setTools(['move'], 'move');
   const paramSelect =
-      el('select', {'aria-label': 'Parameter'}, numeric.map((p) => el('option', {value: p}, p)));
+      el('select', {'aria-label': L('Parameter')}, numeric.map((p) => el('option', {value: p}, p)));
   const paletteSelect =
       el('select',
-         {'aria-label': 'Colours'},
+         {'aria-label': L('Colours')},
          Object.keys(PALETTES).map((p) => el('option', {value: p}, p)));
-  const productionGroup = el('optgroup', {label: 'Production isobands'});
+  const productionGroup = el('optgroup', {label: L('Production isobands')});
   const stepsSelect =
       el('select',
-         {'aria-label': 'Classes'},
-         [['0', 'Continuous'], ['5', '5 classes'], ['8', '8 classes'], ['12', '12 classes']].map(
+         {'aria-label': L('Classes')},
+         [['0', L('Continuous')], ['5', '5 classes'], ['8', '8 classes'], ['12', '12 classes']].map(
              ([v, t]) => el('option', {value: v}, t)));
   const unit = {pressure: ' hPa', 'pressure-pa': ' Pa', height: ' m', depth: ' m'}[options.levelKind] || '';
   const member = options.levelKind === 'member';
-  const levelSelect = el('select', {'aria-label': member ? 'Member of the map' : 'Level of the map'},
-                         levels.map((v) => el('option', {value: String(v)}, member ? `Member ${v}` : `${v}${unit}`)));
+  const levelSelect = el('select', {'aria-label': member ? L('Member of the map') : L('Level of the map')},
+                         levels.map((v) => el('option', {value: String(v)}, member ? L`Member ${v}` : `${v}${unit}`)));
   levelSelect.value = state.level;
-  const minInput = el('input', {type: 'number', step: 'any', 'aria-label': 'Minimum', size: 6});
-  const maxInput = el('input', {type: 'number', step: 'any', 'aria-label': 'Maximum', size: 6});
+  const minInput = el('input', {type: 'number', step: 'any', 'aria-label': L('Minimum'), size: 6});
+  const maxInput = el('input', {type: 'number', step: 'any', 'aria-label': L('Maximum'), size: 6});
   const slider = timeSlider(times.map((tm) => {
     const d = parseTime(tm);
     return d ? d.getTime() : null;
   }), {
-    label: 'Time of the map',
+    label: L('Time of the map'),
     format: (tm, i) => (typeof tm === 'number' ? formatTime(new Date(tm)) : times[i]),
     onChange: () => {
       state.time = slider.index();
@@ -6191,17 +6258,17 @@ function drawValueMap(container, rows, parameters, settings, options = {})
   container.append(
       el('div',
          {class: 'row'},
-         el('label', null, 'Parameter', paramSelect),
-         levels.length ? el('label', null, member ? 'Member' : 'Level', levelSelect) : '',
-         el('label', null, 'Colours', paletteSelect),
-         el('label', null, 'Scale', stepsSelect),
-         el('label', null, 'Min', minInput),
-         el('label', null, 'Max', maxInput)),
+         el('label', null, L('Parameter'), paramSelect),
+         levels.length ? el('label', null, member ? L('Member') : L('Level'), levelSelect) : '',
+         el('label', null, L('Colours'), paletteSelect),
+         el('label', null, L('Scale'), stepsSelect),
+         el('label', null, L('Min'), minInput),
+         el('label', null, L('Max'), maxInput)),
       slider.element,
       legend,
       el('p', {class: 'map-hint'},
-         times.length === 1 && levels.length > 1 ? 'Click a value on the map for the profile of the point.' :
-                                                   'Click a value on the map for the time series of the point.'),
+         times.length === 1 && levels.length > 1 ? L('Click a value on the map for the profile of the point.') :
+                                                   L('Click a value on the map for the time series of the point.')),
       map.element,
       probeBox);
 
@@ -6237,7 +6304,7 @@ function drawValueMap(container, rows, parameters, settings, options = {})
         color: color,
         label: `${state.param}: ${ok ? `${round(v, 2)}${(options.labels || {})[state.param] ? ` ${options.labels[state.param]}` : ''}` : 'missing'}`,
         info: {name: r.name, lat: r.lat, lon: r.lon},
-        hint: times.length === 1 && levels.length > 1 ? 'Click for the profile' : 'Click for the time series',
+        hint: times.length === 1 && levels.length > 1 ? L('Click for the profile') : L('Click for the time series'),
         onclick: () => probe.show({lat: r.lat, lon: r.lon, name: r.name})
       };
     });
@@ -6523,8 +6590,8 @@ async function viewImage(pane)
 function exportButtons(visiblePane, rows, name, labels = {})
 {
   const status = el('span', {class: 'muted small'});
-  const png = el('button', {type: 'button', class: 'small', title: 'Save the view as a PNG image'}, 'PNG');
-  const csv = el('button', {type: 'button', class: 'small', title: 'Save all the rows as CSV'}, 'CSV');
+  const png = el('button', {type: 'button', class: 'small', title: L('Save the view as a PNG image')}, 'PNG');
+  const csv = el('button', {type: 'button', class: 'small', title: L('Save all the rows as CSV')}, 'CSV');
   png.addEventListener('click', async () => {
     status.textContent = '';
     try
@@ -6533,7 +6600,7 @@ function exportButtons(visiblePane, rows, name, labels = {})
       if (blob)
         saveFile(blob, `${name}.png`);
       else
-        status.textContent = 'Nothing to draw in this view';
+        status.textContent = L('Nothing to draw in this view');
     }
     catch (e)
     {
@@ -6549,7 +6616,7 @@ function drawTable(container, rows, labels = {})
   container.replaceChildren();
   if (rows.length === 0)
   {
-    container.append(el('p', {class: 'muted'}, 'No data.'));
+    container.append(el('p', {class: 'muted'}, L('No data.')));
     return;
   }
   const columns = [];
@@ -6573,7 +6640,7 @@ function drawTable(container, rows, labels = {})
   container.append(el('div', {class: 'table-wrap'}, table));
   if (rows.length > MAX_TABLE_ROWS)
     container.append(
-        el('p', {class: 'muted'}, `The first ${MAX_TABLE_ROWS} of ${rows.length} rows.`));
+        el('p', {class: 'muted'}, L`The first ${MAX_TABLE_ROWS} of ${rows.length} rows.`));
 }
 
 // ------------------------------------------------------------------
@@ -6622,7 +6689,7 @@ function codeTabs(container, url)
   container.replaceChildren();
   const items = snippets(url);
   const pre = el('pre', {class: 'code'});
-  const copy = el('button', {type: 'button', class: 'small'}, 'Copy');
+  const copy = el('button', {type: 'button', class: 'small'}, L('Copy'));
   const tabs = el('div', {class: 'tabs', role: 'tablist'});
   let current = 0;
   // Shows the code of language i
@@ -6638,9 +6705,9 @@ function codeTabs(container, url)
   copy.addEventListener('click', () => {
     navigator.clipboard.writeText(items[current][1])
         .then(() => {
-          copy.textContent = 'Copied';
+          copy.textContent = L('Copied');
           setTimeout(() => {
-            copy.textContent = 'Copy';
+            copy.textContent = L('Copy');
           }, 1200);
         })
         .catch(() => {});
@@ -6661,16 +6728,16 @@ function locationModes()
   const [lon, lat] = DEFAULTS.center || [10.75, 59.91];
   const c = (x, y) => `${round(x, 2)},${round(y, 2)}`;
   return [
-    ['place', 'Place', ex.place ? `${ex.place} or ${ex.place}:20 for a 20 km radius` :
-                                  'A place name, or name:20 for a 20 km radius', null],
-    ['lonlat', 'Point', `${c(lon, lat)}, or click the map`, 'point'],
-    ['radius', 'Radius', `${c(lon, lat)}:25 (km), or drag on the map`, 'circle'],
-    ['bbox', 'Box', `${[lon - 2, lat - 1, lon + 2, lat + 1].map((v) => round(v, 1)).join(',')}, or drag on the map`, 'box'],
-    ['path', 'Path', `${c(lon - 0.5, lat - 0.2)},${c(lon, lat)},${c(lon + 0.5, lat + 0.1)} (lon,lat,...), or click the map`, 'line'],
-    ['keyword', 'Keyword', ex.keyword || 'A location keyword of the server', null],
-    ['fmisid', 'Station id', ex.fmisid || 'Station ids, e.g. 1234,5678', null],
-    ['wmo', 'WMO id', ex.wmo || 'WMO station ids, e.g. 1234,5678', null],
-    ['area', 'Area', ex.area || 'An area name of the server', null]
+    ['place', L('Place'), ex.place ? L`${ex.place} or ${ex.place}:20 for a 20 km radius` :
+                                  L('A place name, or name:20 for a 20 km radius'), null],
+    ['lonlat', L('Point'), L`${c(lon, lat)}, or click the map`, 'point'],
+    ['radius', L('Radius'), L`${c(lon, lat)}:25 (km), or drag on the map`, 'circle'],
+    ['bbox', L('Box'), L`${[lon - 2, lat - 1, lon + 2, lat + 1].map((v) => round(v, 1)).join(',')}, or drag on the map`, 'box'],
+    ['path', L('Path'), L`${c(lon - 0.5, lat - 0.2)},${c(lon, lat)},${c(lon + 0.5, lat + 0.1)} (lon,lat,...), or click the map`, 'line'],
+    ['keyword', L('Keyword'), ex.keyword || L('A location keyword of the server'), null],
+    ['fmisid', L('Station id'), ex.fmisid || L('Station ids, e.g. 1234,5678'), null],
+    ['wmo', L('WMO id'), ex.wmo || L('WMO station ids, e.g. 1234,5678'), null],
+    ['area', L('Area'), ex.area || L('An area name of the server'), null]
   ];
 }
 
@@ -6679,25 +6746,25 @@ function locationModes()
 // (km, '' for about 40 points). Returns {element, update(sel)}.
 function pathPointsChooser(s, onChange)
 {
-  const marked = el('button', {type: 'button', role: 'radio', 'data-pathpoints': 'marked'}, 'The marked points');
-  const every = el('button', {type: 'button', role: 'radio', 'data-pathpoints': 'every'}, 'Every');
+  const marked = el('button', {type: 'button', role: 'radio', 'data-pathpoints': 'marked'}, L('The marked points'));
+  const every = el('button', {type: 'button', role: 'radio', 'data-pathpoints': 'every'}, L('Every'));
   const stepInput = el('input', {
     type: 'number',
     min: '0.1',
     step: 'any',
-    'aria-label': 'Distance between the points (km)',
+    'aria-label': L('Distance between the points (km)'),
     style: 'width: 6em'
   });
   const note = el('span', {class: 'muted small'});
   const element = el('div',
                      null,
-                     el('label', null, 'Points along the path'),
+                     el('label', null, L('Points along the path')),
                      el('div',
                         {class: 'row'},
-                        el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': 'Points along the path'},
+                        el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': L('Points along the path')},
                            marked, every),
                         stepInput,
-                        el('span', {class: 'small'}, 'km'),
+                        el('span', {class: 'small'}, L('km')),
                         note));
   marked.addEventListener('click', () => {
     s.pathpoints = 'marked';
@@ -6725,10 +6792,10 @@ function pathPointsChooser(s, onChange)
     const step = pathStepOf(s, sel);
     if (rerender)
       stepInput.value = s.pathstep || '';
-    stepInput.placeholder = step ? `${step} (auto)` : 'auto';
+    stepInput.placeholder = step ? L`${step} (auto)` : L('auto');
     note.textContent = !length ? '' : isMarked ?
-        `${sel.points.length} points, ${Math.round(length)} km` :
-        `about ${Math.floor(length / Number(step)) + 1} points, ${Math.round(length)} km`;
+        L`${sel.points.length} points, ${Math.round(length)} km` :
+        L`about ${Math.floor(length / Number(step)) + 1} points, ${Math.round(length)} km`;
   };
   return {element, update};
 }
@@ -6740,15 +6807,15 @@ function pathPointsChooser(s, onChange)
 // and arrival as the values of the time fields. Returns {element, update(sel), flight()}.
 function flightChooser(s, onChange, margin)
 {
-  const departure = timeInput({'aria-label': 'Departure (UTC)'});
-  const arrival = timeInput({'aria-label': 'Arrival (UTC)'});
+  const departure = timeInput({'aria-label': L('Departure (UTC)')});
+  const arrival = timeInput({'aria-label': L('Arrival (UTC)')});
   const note = el('p', {class: 'muted small'});
   const element = el('div',
                      null,
                      el('div',
                         {class: 'row'},
-                        el('label', null, 'Departure (UTC)', departure),
-                        el('label', null, 'Arrival (UTC)', arrival)),
+                        el('label', null, L('Departure (UTC)'), departure),
+                        el('label', null, L('Arrival (UTC)'), arrival)),
                      note);
   const flight = () => {
     const a = s.departure ? new Date(fromInput(s.departure)) : null;
@@ -6779,13 +6846,12 @@ function flightChooser(s, onChange, margin)
     const end = s.end ? new Date(fromInput(s.end)).getTime() : Infinity;
     note.className = f && (f.departure < start || f.arrival > end) ? 'warn small' : 'muted small';
     note.textContent = f && (f.departure < start || f.arrival > end) ?
-        'The flight is not within the period of the request: set its times again, or the period' :
+        L('The flight is not within the period of the request: set its times again, or the period') :
         f && km ?
-        `${Math.round(km)} km in ${Math.round((f.arrival - f.departure) / 60000)} min, ${
-            Math.round(km / ((f.arrival - f.departure) / 3600000))} km/h: the views show the values ` +
-            'at the times the points are passed' :
-        (s.departure || s.arrival) && !f ? 'The arrival must be after the departure' :
-                                         'Optional: the values met along a flight';
+        L`${Math.round(km)} km in ${Math.round((f.arrival - f.departure) / 60000)} min, ${
+            Math.round(km / ((f.arrival - f.departure) / 3600000))} km/h: the views show the values at the times the points are passed` :
+        (s.departure || s.arrival) && !f ? L('The arrival must be after the departure') :
+                                         L('Optional: the values met along a flight');
   };
   return {element, update, flight};
 }
@@ -6924,13 +6990,13 @@ function timeSeriesModule(app, api, state, save)
 {
   const rootPath = api.root;
   const view = el('div', {class: 'module'});
-  const status = el('p', {class: 'muted'}, 'Loading the producers…');
+  const status = el('p', {class: 'muted'}, L('Loading the producers…'));
   view.append(status);
 
   fetchJson(`${app.base}${rootPath.replace(/^\//, '')}/api/producers`)
       .then((doc) => build(buildIndex(doc)))
       .catch((e) => {
-        status.textContent = `The producers could not be loaded: ${e.message}`;
+        status.textContent = L`The producers could not be loaded: ${e.message}`;
       });
 
   // Builds the module once the producer listing has been loaded
@@ -7192,7 +7258,7 @@ function timeSeriesModule(app, api, state, save)
                    .map((m) => ({
                           type: own_forecast.type,
                           number: m,
-                          label: own_forecast.members.length > 1 ? `member ${m}` : ''
+                          label: own_forecast.members.length > 1 ? L`member ${m}` : ''
                         }));
         for (const l of lv)
           for (const m of mv)
@@ -7308,8 +7374,8 @@ function timeSeriesModule(app, api, state, save)
     }
 
     const paramSearch = autocomplete({
-      label: 'Parameter',
-      placeholder: 'Type a parameter name or description, e.g. temp',
+      label: L('Parameter'),
+      placeholder: L('Type a parameter name or description, e.g. temp'),
       search: (text) => {
         const q = text.toLowerCase();
         const p = producer();
@@ -7330,7 +7396,7 @@ function timeSeriesModule(app, api, state, save)
             detail: [entry.description, entry.unit && `[${entry.unit}]`].filter(Boolean).join(' '),
             badge: p ?
                 null :
-                `${entry.producers.length} producer${entry.producers.length === 1 ? '' : 's'}`
+                counted(entry.producers.length, L('producer'), L('producers'))
           });
         }
         for (const [key, desc] of META)
@@ -7355,13 +7421,13 @@ function timeSeriesModule(app, api, state, save)
         s.params.push(item.key);
         refresh();
       },
-      empty: (text) => producer() ? `${s.producer} has no parameter matching "${text}"` :
-                                    `No parameter matches "${text}"`
+      empty: (text) => producer() ? L`${s.producer} has no parameter matching "${text}"` :
+                                    L`No parameter matches "${text}"`
     });
 
     const modelSearch = autocomplete({
-      label: 'Producer',
-      placeholder: 'Type a model or producer name',
+      label: L('Producer'),
+      placeholder: L('Type a model or producer name'),
       search: (text) => {
         const q = text.toLowerCase();
         return candidates()
@@ -7383,8 +7449,8 @@ function timeSeriesModule(app, api, state, save)
       select: (item) => {
         setProducer(item.key);
       },
-      empty: () => selection() ? 'No producer has all the chosen parameters in the selected area' :
-                                 'No producer has all the chosen parameters',
+      empty: () => selection() ? L('No producer has all the chosen parameters in the selected area') :
+                                 L('No producer has all the chosen parameters'),
       limit: 200
     });
 
@@ -7434,41 +7500,41 @@ function timeSeriesModule(app, api, state, save)
     }
 
     // The choices of the model: shown only when there is something to choose
-    const runSelect = el('select', {'aria-label': 'Model run'});
-    const geometrySelect = el('select', {'aria-label': 'Geometry'});
-    const levelTypeSelect = el('select', {'aria-label': 'Level type'});
-    const levelButtons = el('div', {class: 'level-buttons', role: 'group', 'aria-label': 'Levels'});
+    const runSelect = el('select', {'aria-label': L('Model run')});
+    const geometrySelect = el('select', {'aria-label': L('Geometry')});
+    const levelTypeSelect = el('select', {'aria-label': L('Level type')});
+    const levelButtons = el('div', {class: 'level-buttons', role: 'group', 'aria-label': L('Levels')});
     const levelNote = el('p', {class: 'muted small'});
-    const forecastSelect = el('select', {'aria-label': 'Forecast'});
+    const forecastSelect = el('select', {'aria-label': L('Forecast')});
     const membersInput = el(
         'input',
-        {type: 'text', 'aria-label': 'Members', spellcheck: 'false', placeholder: 'e.g. 1-10, 15'});
+        {type: 'text', 'aria-label': L('Members'), spellcheck: 'false', placeholder: 'e.g. 1-10, 15'});
     const membersNote = el('p', {class: 'muted small'});
     const detailsNote = el('p', {class: 'muted small'});
     // Observations: the sensors and the quality of the values
     const sensorsInput = el('input', {
       type: 'text',
-      'aria-label': 'Sensors',
+      'aria-label': L('Sensors'),
       spellcheck: 'false',
-      placeholder: 'the default sensor, or e.g. 1, 11'
+      placeholder: L('the default sensor, or e.g. 1, 11')
     });
     const sensorsNote = el('p', {class: 'muted small'});
-    const qualitySelect = el('select', {'aria-label': 'Quality'}, [
-      ['', 'The default filter of the server'],
-      ['all', 'All values, whatever their quality'],
-      ['custom', 'A filter of the quality codes']
+    const qualitySelect = el('select', {'aria-label': L('Quality')}, [
+      ['', L('The default filter of the server')],
+      ['all', L('All values, whatever their quality')],
+      ['custom', L('A filter of the quality codes')]
     ].map(([v, label]) => el('option', {value: v}, label)));
     const qualityInput = el('input', {
       type: 'text',
-      'aria-label': 'Quality filter',
+      'aria-label': L('Quality filter'),
       spellcheck: 'false',
-      placeholder: 'e.g. le 1, or in 0,1'
+      placeholder: L('e.g. le 1, or in 0,1')
     });
-    const qualityCodes = el('input', {type: 'checkbox', 'aria-label': 'Quality codes'});
+    const qualityCodes = el('input', {type: 'checkbox', 'aria-label': L('Quality codes')});
     // The sensors of the chosen stations, listed by the observation engine
     const sensorsList = el('div', {class: 'sensors-list'});
     const sensorsRow =
-        el('div', null, el('label', null, 'Sensors', sensorsInput), sensorsNote, sensorsList);
+        el('div', null, el('label', null, L('Sensors'), sensorsInput), sensorsNote, sensorsList);
     const sensorDetails = new Map();
     // Loads the sensors of the chosen stations and parameters once, and shows them
     function renderSensors()
@@ -7479,7 +7545,7 @@ function timeSeriesModule(app, api, state, save)
       if (!p || ids.length === 0 || params.length === 0)
       {
         sensorsList.replaceChildren(ids.length === 0 ?
-            el('p', {class: 'muted small'}, 'Choose stations to see their sensors') : '');
+            el('p', {class: 'muted small'}, L('Choose stations to see their sensors')) : '');
         return;
       }
       const query = queryString([
@@ -7495,7 +7561,7 @@ function timeSeriesModule(app, api, state, save)
         sensorDetails.set(key, null);
         fetchJson(`${app.base}${rootPath.replace(/^\//, '')}/api/producers/${encodeURIComponent(p.name)}?${query}`)
             .then((doc) => {
-              sensorDetails.set(key, doc.sensors || {available: false, note: 'No sensors listed'});
+              sensorDetails.set(key, doc.sensors || {available: false, note: L('No sensors listed')});
               refresh(false);
             })
             .catch((e) => {
@@ -7506,12 +7572,12 @@ function timeSeriesModule(app, api, state, save)
       const found = sensorDetails.get(key);
       if (!found)
       {
-        sensorsList.replaceChildren(el('p', {class: 'muted small'}, 'Loading the sensors…'));
+        sensorsList.replaceChildren(el('p', {class: 'muted small'}, L('Loading the sensors…')));
         return;
       }
       if (!found.available)
       {
-        sensorsList.replaceChildren(el('p', {class: 'muted small'}, found.note || 'No sensors listed'));
+        sensorsList.replaceChildren(el('p', {class: 'muted small'}, found.note || L('No sensors listed')));
         return;
       }
       const chosen = new Set((s.sensors ? parseNumberList(s.sensors, SENSOR_NUMBERS) : []) || []);
@@ -7540,7 +7606,7 @@ function timeSeriesModule(app, api, state, save)
             continue;
           const name = (stations().find((st) => String(st.id) === String(id)) || {}).name || id;
           lines.push(el('div', {class: 'row sensors-line'},
-                        el('span', {class: 'small'}, `${param} at ${name}:`),
+                        el('span', {class: 'small'}, L`${param} at ${name}:`),
                         ...Array.from(sensors.values()).sort((a, b) => a.sensor - b.sensor).map((x) => {
                           // A sensor whose values ended before the period is marked
                           const ended = x.last && new Date(x.last).getTime() < end - 86400e3;
@@ -7549,37 +7615,37 @@ function timeSeriesModule(app, api, state, save)
                             class: `small${chosen.has(x.sensor) ? '' : ' meta'}`,
                             'aria-pressed': chosen.has(x.sensor) ? 'true' : 'false',
                             'data-sensor': String(x.sensor),
-                            title: [x.default ? 'The default sensor' : 'An additional sensor',
+                            title: [x.default ? L('The default sensor') : L('An additional sensor'),
                                     x.configuration_start ? `configured ${x.configuration_start.slice(0, 10)}` : '',
-                                    x.last ? `values until ${x.last.slice(0, 10)}` : '',
+                                    x.last ? L`values until ${x.last.slice(0, 10)}` : '',
                                     x.values ? `${x.values} values` : ''].filter(Boolean).join(', '),
                             onclick: () => toggle(x.sensor)
                           }, `${x.sensor}${x.default ? ' (default)' : ''}${ended ? ` · until ${x.last.slice(0, 10)}` : ''}`);
                         }),
                         Array.from(sensors.values()).some((x) => x.default) ? '' :
-                            el('span', {class: 'warn small'}, 'no default sensor: give one')));
+                            el('span', {class: 'warn small'}, L('no default sensor: give one'))));
         }
       sensorsList.replaceChildren(...(lines.length ? lines :
-          [el('p', {class: 'muted small'}, 'No sensors of the parameters at the stations in the period')]));
+          [el('p', {class: 'muted small'}, L('No sensors of the parameters at the stations in the period'))]));
     }
     const qualityRow =
         el('div',
            {class: 'row'},
-           el('label', null, 'Quality', qualitySelect),
-           el('label', null, 'Filter', qualityInput));
+           el('label', null, L('Quality'), qualitySelect),
+           el('label', null, L('Filter'), qualityInput));
     const qualityCodesRow =
-        el('label', {class: 'check'}, qualityCodes, 'Show the quality codes in the table');
-    const runRow = el('label', null, 'Model run', runSelect);
-    const geometryRow = el('label', null, 'Geometry', geometrySelect);
-    const levelTypeRow = el('label', null, 'Level type', levelTypeSelect);
-    const levelsRow = el('div', null, el('label', null, 'Levels'), levelButtons, levelNote);
+        el('label', {class: 'check'}, qualityCodes, L('Show the quality codes in the table'));
+    const runRow = el('label', null, L('Model run'), runSelect);
+    const geometryRow = el('label', null, L('Geometry'), geometrySelect);
+    const levelTypeRow = el('label', null, L('Level type'), levelTypeSelect);
+    const levelsRow = el('div', null, el('label', null, L('Levels')), levelButtons, levelNote);
     const diagramButtons =
-        el('div', {class: 'level-buttons', role: 'group', 'aria-label': 'Sounding diagrams'});
+        el('div', {class: 'level-buttons', role: 'group', 'aria-label': L('Sounding diagrams')});
     const diagramNote = el('p', {class: 'muted small'});
     const diagramsRow =
-        el('div', null, el('label', null, 'Sounding diagrams'), diagramButtons, diagramNote);
-    const forecastRow = el('label', null, 'Forecast', forecastSelect);
-    const membersRow = el('div', null, el('label', null, 'Members', membersInput), membersNote);
+        el('div', null, el('label', null, L('Sounding diagrams')), diagramButtons, diagramNote);
+    const forecastRow = el('label', null, L('Forecast'), forecastSelect);
+    const membersRow = el('div', null, el('label', null, L('Members'), membersInput), membersNote);
     const detailsBox =
         el('div',
            {class: 'model-details'},
@@ -7654,7 +7720,7 @@ function timeSeriesModule(app, api, state, save)
         options(
             runSelect,
             [
-              ['', 'The latest'],
+              ['', L('The latest')],
               ...runs.map(
                   (r) =>
                       [r.origintime,
@@ -7668,7 +7734,7 @@ function timeSeriesModule(app, api, state, save)
         options(
             geometrySelect,
             [
-              ['', 'The default'],
+              ['', L('The default')],
               ...geometries.map((g) => [String(g.id), g.name ? `${g.name} (${g.id})` : g.id])
             ],
             s.geometry || '');
@@ -7706,10 +7772,15 @@ function timeSeriesModule(app, api, state, save)
                    },
                    v.value)));
         // The members of an ensemble stored as levels are no levels to the user
-        const levelWord = type.type === 'member' ? 'members' : `${type.type} levels`;
+        const levelWord = type.type === 'member' ? L('members') :
+            type.type === 'pressure'             ? L('pressure levels') :
+            type.type === 'hybrid'               ? L('model levels') :
+            type.type === 'height'               ? L('height levels') :
+            type.type === 'depth'                ? L('depth levels') :
+                                                   L`${type.type} levels`;
         levelNote.textContent = chosen.size === 0 ?
-            `None chosen: the values of all ${type.values.length} ${levelWord}` :
-            `${chosen.size} of ${type.values.length} ${levelWord}${
+            L`None chosen: the values of all ${type.values.length} ${levelWord}` :
+            L`${chosen.size} of ${type.values.length} ${levelWord}${
                 type.unit ? ` (${type.unit})` : ''}, a series each`;
       }
       // Sounding diagrams of the levels, the missing parameters added when chosen
@@ -7728,8 +7799,8 @@ function timeSeriesModule(app, api, state, save)
                    },
                    label)));
         diagramNote.textContent = missingNames.length > 0 ?
-            `Adds ${missingNames.join(', ')} to the parameters and runs the request` :
-            'Runs the request and draws the soundings';
+            L`Adds ${missingNames.join(', ')} to the parameters and runs the request` :
+            L('Runs the request and draws the soundings');
       }
       // Ensembles
       const forecasts = forecastTypes();
@@ -7749,12 +7820,12 @@ function timeSeriesModule(app, api, state, save)
       {
         if (document.activeElement !== membersInput)
           membersInput.value = s.members || '';
-        membersInput.placeholder = `all ${forecast.members.length} members, or e.g. ${
+        membersInput.placeholder = L`all ${forecast.members.length} members, or e.g. ${
             forecast.members[0]}-${forecast.members[Math.min(9, forecast.members.length - 1)]}`;
         const list = s.members ? parseNumberList(s.members, forecast.members) : forecast.members;
         membersNote.textContent = list === null ?
-            'Not a list of members: numbers and ranges separated by commas' :
-            `${list.length} member${list.length === 1 ? '' : 's'}, a series each`;
+            L('Not a list of members: numbers and ranges separated by commas') :
+            L`${counted(list.length, L('member'), L('members'))}, a series each`;
       }
       // Observations
       const obs = isObservation();
@@ -7767,11 +7838,10 @@ function timeSeriesModule(app, api, state, save)
           sensorsInput.value = s.sensors || '';
         const sensors = s.sensors ? parseNumberList(s.sensors, SENSOR_NUMBERS) : [];
         sensorsNote.textContent = sensors === null ?
-            'Not a list of sensors: numbers and ranges separated by commas' :
+            L('Not a list of sensors: numbers and ranges separated by commas') :
             sensors.length === 0 ?
-            'The default sensor of each station' :
-            `${sensors.length} sensor${sensors.length === 1 ? '' : 's'}, a series each; ` +
-                'a sensor without values gives no rows';
+            L('The default sensor of each station') :
+            L`${counted(sensors.length, L('sensor'), L('sensors'))}, a series each; a sensor without values gives no rows`;
         renderSensors();
         qualitySelect.value = s.quality || '';
         qualityInput.closest('label').hidden = s.quality !== 'custom';
@@ -7782,9 +7852,9 @@ function timeSeriesModule(app, api, state, save)
       // What the data of the parameters is, and too large requests
       const notes = [];
       if (p && p.source === 'grid' && d === null)
-        notes.push('Loading the model details…');
+        notes.push(L('Loading the model details…'));
       if (d && d.error)
-        notes.push(`The model details could not be loaded: ${d.error}`);
+        notes.push(L`The model details could not be loaded: ${d.error}`);
       for (const name of dataParams())
       {
         const info = d && d.parameters && d.parameters[name];
@@ -7796,7 +7866,7 @@ function timeSeriesModule(app, api, state, save)
       }
       const grid = gridColumns();
       if (grid && grid.length >= MAX_KEYS)
-        notes.push(`Only the first ${MAX_KEYS} combinations of levels and members are requested`);
+        notes.push(L`Only the first ${MAX_KEYS} combinations of levels and members are requested`);
       detailsNote.textContent = notes.join(' · ');
       detailsNote.hidden = notes.length === 0;
       detailsBox.hidden = [
@@ -7813,17 +7883,17 @@ function timeSeriesModule(app, api, state, save)
     }
 
     // --- When ------------------------------------------------------
-    const startInput = timeInput({'aria-label': 'Start time (UTC)'});
-    const endInput = timeInput({'aria-label': 'End time (UTC)'});
-    const stepSelect = el('select', {'aria-label': 'Time step'}, [
-      ['data', 'Times of the data'],
-      ['10', '10 minutes'],
-      ['30', '30 minutes'],
-      ['60', '1 hour'],
-      ['180', '3 hours'],
-      ['360', '6 hours'],
-      ['720', '12 hours'],
-      ['1440', '1 day']
+    const startInput = timeInput({'aria-label': L('Start time (UTC)')});
+    const endInput = timeInput({'aria-label': L('End time (UTC)')});
+    const stepSelect = el('select', {'aria-label': L('Time step')}, [
+      ['data', L('Times of the data')],
+      ['10', L('10 minutes')],
+      ['30', L('30 minutes')],
+      ['60', L('1 hour')],
+      ['180', L('3 hours')],
+      ['360', L('6 hours')],
+      ['720', L('12 hours')],
+      ['1440', L('1 day')]
     ].map(([v, t]) => el('option', {value: v}, t)));
     const dataPeriod = el('span', {class: 'muted small'});
 
@@ -7857,17 +7927,19 @@ function timeSeriesModule(app, api, state, save)
     }
 
     // A button setting the period
+    // A button of a period, known by its English name
     const preset = (label, fn) =>
         el('button',
            {
              type: 'button',
              class: 'small',
+             'data-preset': label,
              onclick: () => {
                fn();
                refresh();
              }
            },
-           label);
+           L(label));
     const presets = el('div', {class: 'row'}, preset('Whole data', () => {
                          const p = producer();
                          if (p && p.time)
@@ -7914,15 +7986,15 @@ function timeSeriesModule(app, api, state, save)
 
     // --- Values over a period: the time functions, chosen per kind of parameter -----
     const PERIODS = [
-      ['60', '1 hour'],
-      ['180', '3 hours'],
-      ['360', '6 hours'],
-      ['720', '12 hours'],
-      ['1440', '24 hours']
+      ['60', L('1 hour')],
+      ['180', L('3 hours')],
+      ['360', L('6 hours')],
+      ['720', L('12 hours')],
+      ['1440', L('24 hours')]
     ];
     const aggModes =
-        el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': 'Values over time'});
-    for (const [value, label] of [['', 'As in the data'], ['period', 'Over a period']])
+        el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': L('Values over time')});
+    for (const [value, label] of [['', L('As in the data')], ['period', L('Over a period')]])
       aggModes.append(
           el('button',
              {
@@ -7939,31 +8011,31 @@ function timeSeriesModule(app, api, state, save)
              label));
     const periodSelect =
         el('select',
-           {'aria-label': 'Period'},
+           {'aria-label': L('Period')},
            PERIODS.map(([v, label]) => el('option', {value: v}, label)));
-    const windowSelect = el('select', {'aria-label': 'Period placement'}, [
-      ['end', 'ending at each time'],
-      ['centre', 'centred on each time'],
-      ['start', 'starting at each time']
+    const windowSelect = el('select', {'aria-label': L('Period placement')}, [
+      ['end', L('ending at each time')],
+      ['centre', L('centred on each time')],
+      ['start', L('starting at each time')]
     ].map(([v, label]) => el('option', {value: v}, label)));
-    const functionSelect = el('select', {'aria-label': 'Function'}, [
-      ['auto', 'Recommended for each parameter'],
+    const functionSelect = el('select', {'aria-label': L('Function')}, [
+      ['auto', L('Recommended for each parameter')],
       ...TIME_FUNCTIONS.map(([v, label]) => [v, label])
     ].map(([v, label]) => el('option', {value: v}, label)));
     const percentileInput = el(
-        'input', {type: 'number', min: 0, max: 100, step: 1, size: 4, 'aria-label': 'Percentile'});
-    const percentileLabel = el('label', null, 'Percentile', percentileInput);
+        'input', {type: 'number', min: 0, max: 100, step: 1, size: 4, 'aria-label': L('Percentile')});
+    const percentileLabel = el('label', null, L('Percentile'), percentileInput);
     const aggSummary = el('ul', {class: 'agg-summary small'});
     const aggDetails = el(
         'div',
         {class: 'agg-details'},
         el('div',
            {class: 'row'},
-           el('label', null, 'Period', periodSelect),
-           el('label', null, 'Placement', windowSelect)),
-        el('div', {class: 'row'}, el('label', null, 'Function', functionSelect), percentileLabel),
+           el('label', null, L('Period'), periodSelect),
+           el('label', null, L('Placement'), windowSelect)),
+        el('div', {class: 'row'}, el('label', null, L('Function'), functionSelect), percentileLabel),
         aggSummary);
-    const aggRow = el('div', null, el('label', null, 'Values over time'), aggModes, aggDetails);
+    const aggRow = el('div', null, el('label', null, L('Values over time')), aggModes, aggDetails);
 
     // A daily maximum is wanted once a day: the time step follows the period
     function periodChanged()
@@ -8021,35 +8093,35 @@ function timeSeriesModule(app, api, state, save)
           window === 'start'                   ? [0, span] :
                                                  [Math.floor(period / 2), Math.floor(period / 2)];
       const label = (PERIODS.find((x) => x[0] === String(period)) || [null, `${period} min`])[1];
-      const what = choice === 'percentile' ? `${pct} % percentile` : def[1].toLowerCase();
-      const placement = window === 'end' ? 'ending at' :
-          window === 'start'             ? 'starting at' :
-                                           'centred on';
+      const what = choice === 'percentile' ? L`${pct} % percentile` : def[1].toLowerCase();
+      const placement = window === 'end' ? L('ending at') :
+          window === 'start'             ? L('starting at') :
+                                           L('centred on');
       const warnings = [];
       const warning = functionWarning(choice, kind);
       if (warning)
         warnings.push(`${name} ${warning}`);
       if (step > 0 && step >= period)
         warnings.push(
-            `the data has a value every ${step} min: a period of ${period} min has only one`);
+            L`the data has a value every ${step} min: a period of ${period} min has only one`);
       return {
         expression: (base) => `${prefix}(${base}/${before}m/${after}m)`,
-        text: `${name}: ${what} of the ${label} ${placement} each time${
-            kind === 'state' ? '' : ` (${kind})`}`,
+        text: L`${name}: ${what} of the ${label} ${placement} each time${
+            kind === 'state' ? '' : ` (${L(kind)})`}`,
         warnings
       };
     }
 
     // --- Where -----------------------------------------------------
     s.locmode = s.locmode || 'place';
-    const locInput = el('input', {type: 'text', 'aria-label': 'Location', spellcheck: 'false'});
+    const locInput = el('input', {type: 'text', 'aria-label': L('Location'), spellcheck: 'false'});
     const locModes =
-        el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': 'Location type'});
-    const showButton = el('button', {type: 'button', class: 'small'}, 'Show locations');
+        el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': L('Location type')});
+    const showButton = el('button', {type: 'button', class: 'small'}, L('Show locations'));
     const stationNote = el('p', {class: 'muted small'});
     const stationSearch = autocomplete({
-      label: 'Station',
-      placeholder: 'Type a station name or id',
+      label: L('Station'),
+      placeholder: L('Type a station name or id'),
       search: (text) => {
         const q = text.toLowerCase();
         const chosen = new Set(chosenStations());
@@ -8063,7 +8135,7 @@ function timeSeriesModule(app, api, state, save)
                     ({key: l.id, label: l.name, detail: `${l.id}${l.wsi ? ` · ${l.wsi}` : ''}`}));
       },
       select: (item) => toggleStation(item.key),
-      empty: (text) => `No station of the period matches "${text}"`,
+      empty: (text) => L`No station of the period matches "${text}"`,
       limit: 50
     });
     const areaNote = el('p', {class: 'warn small'});
@@ -8111,7 +8183,7 @@ function timeSeriesModule(app, api, state, save)
       fetchJson(app.base + url.replace(/^\//, ''))
           .then((data) => {
             const points = mapPoints(flattenRows(data));
-            areaNote.textContent = points.length === 0 ? 'No locations found.' : '';
+            areaNote.textContent = points.length === 0 ? L('No locations found.') : '';
             map.setPoints(points);
             map.fit(map.extent());
           })
@@ -8169,8 +8241,8 @@ function timeSeriesModule(app, api, state, save)
         s.areavalues ||
         (['keyword', 'fmisid', 'path'].includes(s.locmode) ? 'points' : 'statistics');
     const areaValues =
-        el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': 'Area values'});
-    for (const [value, label] of [['statistics', 'Statistics'], ['points', 'Every point']])
+        el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': L('Area values')});
+    for (const [value, label] of [['statistics', L('Statistics')], ['points', L('Every point')]])
       areaValues.append(
           el('button',
              {
@@ -8183,7 +8255,7 @@ function timeSeriesModule(app, api, state, save)
                }
              },
              label));
-    const areaValuesRow = el('div', null, el('label', null, 'Values of an area'), areaValues);
+    const areaValuesRow = el('div', null, el('label', null, L('Values of an area')), areaValues);
     const pathChooser = pathPointsChooser(s, (rerender) => refresh(rerender));
     const flightChoice = flightChooser(s, () => refresh(), () => dataStep());
     // A meteogram of the chosen place with the parameters it needs
@@ -8207,7 +8279,7 @@ function timeSeriesModule(app, api, state, save)
     // Extra columns: the meta parameters by group, and the details of the grid data
     const extraGroups = el('div', {class: 'extra-groups'});
     const extraDetails =
-        el('details', {class: 'extra-columns'}, el('summary', null, 'Extra columns'), extraGroups);
+        el('details', {class: 'extra-columns'}, el('summary', null, L('Extra columns')), extraGroups);
     const toggleButton = (label, title, pressed, onclick, data) =>
         el('button',
            Object.assign(
@@ -8261,14 +8333,14 @@ function timeSeriesModule(app, api, state, save)
         groups.push(
             el('div',
                {class: 'extra-group'},
-               el('div', {class: 'muted small'}, 'Details of the grid data of each parameter'),
+               el('div', {class: 'muted small'}, L('Details of the grid data of each parameter')),
                el('div', {class: 'level-buttons'}, buttons)));
       }
       extraGroups.replaceChildren(...groups);
     }
 
     const langInput =
-        el('input', {type: 'text', 'aria-label': 'Language', placeholder: 'fi, sv, en', size: 6});
+        el('input', {type: 'text', 'aria-label': L('Language'), placeholder: L('fi, sv, en'), size: 6});
     langInput.addEventListener('input', () => {
       s.lang = langInput.value.trim();
       refreshSoon();
@@ -8277,11 +8349,11 @@ function timeSeriesModule(app, api, state, save)
     // --- Request and results ----------------------------------------
     const urlBox = el('code', {class: 'url'});
     const missing = el('p', {class: 'missing'});
-    const runButton = el('button', {type: 'button', class: 'primary'}, 'Run');
-    const copyUrl = el('button', {type: 'button', class: 'small'}, 'Copy URL');
+    const runButton = el('button', {type: 'button', class: 'primary'}, L('Run'));
+    const copyUrl = el('button', {type: 'button', class: 'small'}, L('Copy URL'));
     const code = el('div', {class: 'code-box'});
     const codeDetails =
-        el('details', {class: 'code-details'}, el('summary', null, 'Code for this request'), code);
+        el('details', {class: 'code-details'}, el('summary', null, L('Code for this request')), code);
     const results = el('div', {class: 'results'});
 
     copyUrl.addEventListener(
@@ -8391,7 +8463,7 @@ function timeSeriesModule(app, api, state, save)
     // Runs the request and shows its results
     async function run()
     {
-      results.replaceChildren(el('p', {class: 'muted'}, 'Running…'));
+      results.replaceChildren(el('p', {class: 'muted'}, L('Running…')));
       map.setCursor(null);
       const url = currentUrl();
       let text;
@@ -8467,7 +8539,7 @@ function timeSeriesModule(app, api, state, save)
           pane.hidden = n !== name;
         Array.from(tabs.children)
             .forEach(
-                (b) => b.setAttribute('aria-selected', b.textContent === name ? 'true' : 'false'));
+                (b) => b.setAttribute('aria-selected', b.dataset.tab === name ? 'true' : 'false'));
         if (drawn.has(name))
           return;
         drawn.add(name);
@@ -8508,6 +8580,7 @@ function timeSeriesModule(app, api, state, save)
                        {
                          type: 'button',
                          role: 'tab',
+                         'data-tab': name,
                          onclick: () => {
                            // A view of the data chosen opens first with later results too
                            if (REMEMBERED_TABS.includes(name))
@@ -8518,7 +8591,7 @@ function timeSeriesModule(app, api, state, save)
                            show(name);
                          }
                        },
-                       name));
+                       L(name)));
       // Profiles are counted by their levels, and ensembles by their members, not as locations
       const levelCount = new Set(rows.map((r) => r.level)).size;
       const byLevel = vertical || kind === 'member';
@@ -8531,8 +8604,8 @@ function timeSeriesModule(app, api, state, save)
              tabs,
              el('span',
                 {class: 'muted small'},
-                `${rows.length} rows${locationsCount > 1 ? `, ${locationsCount} locations` : ''}${
-                    byLevel ? `, ${levelCount} ${kind === 'member' ? 'members' : 'levels'}` : ''}`),
+                L`${rows.length} rows${locationsCount > 1 ? L`, ${locationsCount} locations` : ''}${
+                    byLevel ? `, ${levelCount} ${kind === 'member' ? L('members') : L('levels')}` : ''}`),
              unitsChooser(settingsChanged),
              exportButtons(() => Object.values(panes).find((p) => !p.hidden), shown.rows,
                            `${s.producer || 'timeseries'}`, shown.labels)),
@@ -8564,8 +8637,7 @@ function timeSeriesModule(app, api, state, save)
       pane.replaceChildren(
           el('p',
              {class: 'muted'},
-             'A sounding needs temperatures on pressure levels, or a pressure ' +
-                 'on each level.'));
+             L('A sounding needs temperatures on pressure levels, or a pressure on each level.')));
       if (wanted.length > 0)
         pane.append(
             el('button',
@@ -8578,7 +8650,7 @@ function timeSeriesModule(app, api, state, save)
                    run();
                  }
                },
-               `Add ${wanted.join(', ')} and run`));
+               L`Add ${wanted.join(', ')} and run`));
     }
 
     // The options of the sounding diagram: its type, and the soundings of another producer to
@@ -8638,8 +8710,8 @@ function timeSeriesModule(app, api, state, save)
       const own = producer();
       const others = Array.from(index.producers.values())
                          .filter((p) => p !== own && p.source !== 'grid' && soundingCapable(p));
-      const select = el('select', {'aria-label': 'Compare with'}, [
-        el('option', {value: ''}, 'No comparison'),
+      const select = el('select', {'aria-label': L('Compare with')}, [
+        el('option', {value: ''}, L('No comparison')),
         ...others.map((p) => el('option', {value: p.key}, `${p.name} (${p.source})`))
       ]);
       const status = el('span', {class: 'muted small'});
@@ -8651,7 +8723,7 @@ function timeSeriesModule(app, api, state, save)
           s.diagram = type;
           save();
         },
-        controls: others.length ? [el('label', null, 'Compare with', select), status] : [],
+        controls: others.length ? [el('label', null, L('Compare with'), select), status] : [],
         compare: {
           // The sounding of the other producer nearest each chosen time, within 3 hours
           soundings: (times) => {
@@ -8684,7 +8756,7 @@ function timeSeriesModule(app, api, state, save)
         const p = index.producers.get(select.value);
         if (p)
         {
-          status.textContent = 'Loading…';
+          status.textContent = L('Loading…');
           try
           {
             const query = [
@@ -8704,7 +8776,7 @@ function timeSeriesModule(app, api, state, save)
             compare.rows = flattenRows(response.ok ? await response.json() : []);
             compare.kind = (p.levels && p.levels[0] && p.levels[0].type) || '';
             compare.name = p.name;
-            status.textContent = compare.rows.length ? '' : `No soundings of ${p.name} here`;
+            status.textContent = compare.rows.length ? '' : L`No soundings of ${p.name} here`;
           }
           catch (e)
           {
@@ -8835,7 +8907,7 @@ function timeSeriesModule(app, api, state, save)
                {
                  type: 'button',
                  class: 'chip-x',
-                 'aria-label': `Remove ${label}`,
+                 'aria-label': L`Remove ${label}`,
                  onclick: () => {
                    s.params = s.params.filter((x) => x !== key);
                    refresh();
@@ -8847,10 +8919,10 @@ function timeSeriesModule(app, api, state, save)
       const n = candidates().length;
       const inArea = selection() ? ' in the selected area' : '';
       candidatesNote.textContent = dataParams().length > 0 ?
-          `${n} of ${index.producers.size} producers have ${
-              dataParams().length === 1 ? 'this parameter' : 'all these parameters'}${inArea}` :
-          (inArea ? `${n} of ${index.producers.size} producers cover the selected area` :
-                    `${index.producers.size} producers`);
+          L`${n} of ${index.producers.size} producers have ${
+              dataParams().length === 1 ? L('this parameter') : L('all these parameters')}${inArea}` :
+          (inArea ? L`${n} of ${index.producers.size} producers cover the selected area` :
+                    L`${index.producers.size} producers`);
       if (p)
       {
         const levels =
@@ -8871,7 +8943,7 @@ function timeSeriesModule(app, api, state, save)
                       refresh();
                     }
                   },
-                  'Change')),
+                  L('Change'))),
             p.title && p.title !== p.name ? el('div', null, p.title) : '',
             el('div',
                {class: 'muted small'},
@@ -8923,18 +8995,18 @@ function timeSeriesModule(app, api, state, save)
       // and forecasts have no past weeks
       const observation = !!p && p.source === 'observation';
       for (const button of presets.children)
-        button.hidden = observation ? ['Whole data', 'Next 24 h'].includes(button.textContent) :
-                                      ['Last week', 'Last month'].includes(button.textContent);
+        button.hidden = observation ? ['Whole data', 'Next 24 h'].includes(button.dataset.preset) :
+                                      ['Last week', 'Last month'].includes(button.dataset.preset);
       dataPeriod.textContent = !p || !timeRange(p) ?
           '' :
           p.source === 'observation' ?
-          `Recent data: ${timeRange(p)}, older by station` :
-          `Data: ${
+          L`Recent data: ${timeRange(p)}, older by station` :
+          L`Data: ${
               timeRange(p)}`;  // A long period of observations is a large request: warn about it
       const days = s.start && s.end ? (new Date(`${s.end}Z`) - new Date(`${s.start}Z`)) / 864e5 : 0;
       if (p && p.source === 'observation' && days > 32)
-        dataPeriod.textContent += ` · ${Math.round(days)} days of observations is a large ` +
-            'request: consider a longer step or values over a period';
+        dataPeriod.textContent +=
+            L` · ${Math.round(days)} days of observations is a large request: consider a longer step or values over a period`;
 
       // Location
       Array.from(locModes.children)
@@ -8949,7 +9021,7 @@ function timeSeriesModule(app, api, state, save)
       map.setTools(mode[3] ? ['move', mode[3]] : ['move'], mode[3] || 'move');
       const sel = selection();
       map.setSelection(sel);
-      map.setRegions(p && p.bbox ? [{bbox: p.bbox, label: `The area of ${p.name}`}] : []);
+      map.setRegions(p && p.bbox ? [{bbox: p.bbox, label: L`The area of ${p.name}`}] : []);
       showButton.hidden = mode[3] !== null;
       // The stations of an observation producer: chosen on the map or by name
       const known = stations();
@@ -8960,13 +9032,13 @@ function timeSeriesModule(app, api, state, save)
       if (pickStations)
       {
         const chosen = new Set(chosenStations());
-        stationNote.textContent = `${operating.length} of the ${known.length} stations of ${
+        stationNote.textContent = L`${operating.length} of the ${known.length} stations of ${
             p.name} operate in the chosen period${
             s.locmode === stationMode() ?
-                ': click them on the map to choose' :
-                `, choose "${
-                    stationMode() === 'fmisid' ? 'Station id' :
-                                                 'WMO id'}" to pick them on the map`}`;
+                L(': click them on the map to choose') :
+                L`, choose "${
+                    stationMode() === 'fmisid' ? L('Station id') :
+                                                 L('WMO id')}" to pick them on the map`}`;
         if (s.locmode === stationMode())
           map.setPoints(operating.map(
               (l) => ({
@@ -8981,12 +9053,12 @@ function timeSeriesModule(app, api, state, save)
       else if (p && p.source === 'observation' && details.get(detailsKey(p)) === null)
       {
         stationNote.hidden = false;
-        stationNote.textContent = 'Loading the stations…';
+        stationNote.textContent = L('Loading the stations…');
       }
       showButton.disabled = !s.location;
       areaNote.textContent = p && sel && !covers(p, sel) ?
-          `The selection is outside the area of ${p.name}` :
-          (s.location && mode[3] && !sel ? `Not a valid ${mode[1].toLowerCase()}: ${mode[2]}` : '');
+          L`The selection is outside the area of ${p.name}` :
+          (s.location && mode[3] && !sel ? L`Not a valid ${mode[1].toLowerCase()}: ${mode[2]}` : '');
       if (rerender !== false)
         langInput.value = s.lang || '';
       areaValuesRow.hidden = !isArea();
@@ -9005,7 +9077,7 @@ function timeSeriesModule(app, api, state, save)
       const url = currentUrl();
       urlBox.textContent = url;
       const absent = missingParts();
-      missing.textContent = absent.length ? `Still needed: ${absent.join(', ')}` : '';
+      missing.textContent = absent.length ? L`Still needed: ${absent.join(', ')}` : '';
       runButton.disabled = absent.length > 0;
       codeTabs(code, url);
       save();
@@ -9018,27 +9090,27 @@ function timeSeriesModule(app, api, state, save)
         el('div',
            {class: 'form'},
            section(
-               'What',
-               el('label', null, 'Parameters'),
+               L('What'),
+               el('label', null, L('Parameters')),
                chips,
                paramSearch.element,
                meteogram.element,
-               el('label', null, 'Producer'),
+               el('label', null, L('Producer')),
                candidatesNote,
                modelSearch.element,
                modelCard,
                detailsBox),
            section(
-               'When',
+               L('When'),
                el('div',
                   {class: 'row'},
-                  el('label', null, 'Start (UTC)', startInput),
-                  el('label', null, 'End (UTC)', endInput)),
-               el('div', {class: 'row'}, el('label', null, 'Step', stepSelect), dataPeriod),
+                  el('label', null, L('Start (UTC)'), startInput),
+                  el('label', null, L('End (UTC)'), endInput)),
+               el('div', {class: 'row'}, el('label', null, L('Step'), stepSelect), dataPeriod),
                presets,
                aggRow),
            section(
-               'Where',
+               L('Where'),
                locModes,
                el('div', {class: 'row'}, locInput, showButton),
                pathChooser.element,
@@ -9048,9 +9120,9 @@ function timeSeriesModule(app, api, state, save)
                areaNote,
                map.element),
            section(
-               'Output',
+               L('Output'),
                areaValuesRow,
-               el('div', {class: 'row'}, el('label', null, 'Language of the names', langInput)),
+               el('div', {class: 'row'}, el('label', null, L('Language of the names'), langInput)),
                extraDetails)),
         el('div',
            {class: 'request'},
@@ -9234,12 +9306,12 @@ function coverageRows(doc)
 
 // The query types the explorer can make, and their map tools
 const EDR_QUERIES = [
-  ['position', 'Position', 'point'],
-  ['radius', 'Radius', 'circle'],
-  ['area', 'Area', 'box'],
-  ['cube', 'Cube', 'box'],
-  ['trajectory', 'Trajectory', 'line'],
-  ['locations', 'Locations', null]
+  ['position', L('Position'), 'point'],
+  ['radius', L('Radius'), 'circle'],
+  ['area', L('Area'), 'box'],
+  ['cube', L('Cube'), 'box'],
+  ['trajectory', L('Trajectory'), 'line'],
+  ['locations', L('Locations'), null]
 ];
 
 // The EDR module: collections and parameters narrowing each other, times and levels, the query
@@ -9249,13 +9321,13 @@ function edrModule(app, api, state, save)
 {
   const rootPath = api.root;
   const view = el('div', {class: 'module'});
-  const status = el('p', {class: 'muted'}, 'Loading the collections…');
+  const status = el('p', {class: 'muted'}, L('Loading the collections…'));
   view.append(status);
 
   fetchJson(`${app.base}${rootPath.replace(/^\//, '')}/collections?f=json`)
       .then((doc) => build(buildEdrIndex(doc)))
       .catch((e) => {
-        status.textContent = `The collections could not be loaded: ${e.message}`;
+        status.textContent = L`The collections could not be loaded: ${e.message}`;
       });
 
   // Builds the module once the collections have been loaded
@@ -9304,8 +9376,8 @@ function edrModule(app, api, state, save)
     const card = el('div', {class: 'model-card'});
 
     const paramSearch = autocomplete({
-      label: 'Parameter',
-      placeholder: 'Type a parameter name or description',
+      label: L('Parameter'),
+      placeholder: L('Type a parameter name or description'),
       search: (text) => {
         const q = text.toLowerCase();
         const c = collection();
@@ -9324,7 +9396,7 @@ function edrModule(app, api, state, save)
                   [entry.description, entry.unit && `[${entry.unit}]`].filter(Boolean).join(' '),
               badge: c ?
                   null :
-                  `${entry.producers.length} collection${entry.producers.length === 1 ? '' : 's'}`
+                  counted(entry.producers.length, L('collection'), L('collections'))
             });
         }
         out.sort((a, b) => a.score - b.score || a.label.localeCompare(b.label));
@@ -9334,12 +9406,12 @@ function edrModule(app, api, state, save)
         s.params.push(item.key);
         refresh();
       },
-      empty: (text) => `No parameter matches "${text}"`
+      empty: (text) => L`No parameter matches "${text}"`
     });
 
     const collectionSearch = autocomplete({
-      label: 'Collection',
-      placeholder: 'Type a collection name',
+      label: L('Collection'),
+      placeholder: L('Type a collection name'),
       search: (text) => {
         const q = text.toLowerCase();
         return candidates()
@@ -9365,7 +9437,7 @@ function edrModule(app, api, state, save)
         refresh();
         fitMap();
       },
-      empty: () => 'No collection has all the chosen parameters',
+      empty: () => L('No collection has all the chosen parameters'),
       limit: 200
     });
 
@@ -9378,19 +9450,19 @@ function edrModule(app, api, state, save)
     }
 
     // --- How: the query type -------------------------------------------------
-    const queryButtons = el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': 'Query'});
+    const queryButtons = el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': L('Query')});
 
     // --- When and the levels -------------------------------------------------
-    const startInput = timeInput({'aria-label': 'Start time (UTC)'});
-    const endInput = timeInput({'aria-label': 'End time (UTC)'});
+    const startInput = timeInput({'aria-label': L('Start time (UTC)')});
+    const endInput = timeInput({'aria-label': L('End time (UTC)')});
     const dataPeriod = el('span', {class: 'muted small'});
     const levels = el('div', {class: 'chips'});
-    const levelRow = el('div', null, el('label', null, 'Levels'), levels);
+    const levelRow = el('div', null, el('label', null, L('Levels')), levels);
     const diagramButtons =
-        el('div', {class: 'level-buttons', role: 'group', 'aria-label': 'Sounding diagrams'});
+        el('div', {class: 'level-buttons', role: 'group', 'aria-label': L('Sounding diagrams')});
     const diagramNote = el('p', {class: 'muted small'});
     const diagramRow =
-        el('div', null, el('label', null, 'Sounding diagrams'), diagramButtons, diagramNote);
+        el('div', null, el('label', null, L('Sounding diagrams')), diagramButtons, diagramNote);
     startInput.addEventListener('change', () => {
       s.start = startInput.value;
       refresh();
@@ -9419,7 +9491,7 @@ function edrModule(app, api, state, save)
     }
 
     // --- Where -------------------------------------------------------------
-    const locInput = el('input', {type: 'text', 'aria-label': 'Location', spellcheck: 'false'});
+    const locInput = el('input', {type: 'text', 'aria-label': L('Location'), spellcheck: 'false'});
     const areaNote = el('p', {class: 'warn small'});
     const pathChooser = pathPointsChooser(s, (rerender) => refresh(rerender));
     const flightChoice = flightChooser(s, () => refresh(), () => 180);
@@ -9489,13 +9561,13 @@ function edrModule(app, api, state, save)
             refresh();
           })
           .catch((e) => {
-            areaNote.textContent = `The locations could not be loaded: ${e.message}`;
+            areaNote.textContent = L`The locations could not be loaded: ${e.message}`;
           });
     }
 
     const locationSearch = autocomplete({
-      label: 'Location id',
-      placeholder: 'Type a location name or id',
+      label: L('Location id'),
+      placeholder: L('Type a location name or id'),
       search: (text) => {
         const q = text.toLowerCase();
         return ((locationsOf && locationsOf.list) || [])
@@ -9508,7 +9580,7 @@ function edrModule(app, api, state, save)
         s.location = item.key;
         refresh();
       },
-      empty: () => 'No location matches',
+      empty: () => L('No location matches'),
       limit: 50
     });
 
@@ -9521,18 +9593,18 @@ function edrModule(app, api, state, save)
     }
 
     // --- Request ---------------------------------------------------------------
-    const formatSelect = el('select', {'aria-label': 'Output format'});
+    const formatSelect = el('select', {'aria-label': L('Output format')});
     formatSelect.addEventListener('change', () => {
       s.format = formatSelect.value;
       refresh();
     });
     const urlBox = el('code', {class: 'url'});
     const missing = el('p', {class: 'missing'});
-    const runButton = el('button', {type: 'button', class: 'primary'}, 'Run');
-    const copyUrl = el('button', {type: 'button', class: 'small'}, 'Copy URL');
+    const runButton = el('button', {type: 'button', class: 'primary'}, L('Run'));
+    const copyUrl = el('button', {type: 'button', class: 'small'}, L('Copy URL'));
     const code = el('div', {class: 'code-box'});
     const codeDetails =
-        el('details', {class: 'code-details'}, el('summary', null, 'Code for this request'), code);
+        el('details', {class: 'code-details'}, el('summary', null, L('Code for this request')), code);
     const results = el('div', {class: 'results'});
     copyUrl.addEventListener(
         'click', () => navigator.clipboard.writeText(currentUrl()).catch(() => {}));
@@ -9657,11 +9729,11 @@ function edrModule(app, api, state, save)
       if (q === 'locations' ? !s.location : !sel)
         out.push(
             q === 'locations' ? 'a location' :
-                                `a ${
-                                    q === 'position'       ? 'point' :
-                                        q === 'radius'     ? 'radius' :
-                                        q === 'trajectory' ? 'path' :
-                                                             'box'} on the map`);
+                                L`a ${
+                                    q === 'position'       ? L('point') :
+                                        q === 'radius'     ? L('radius') :
+                                        q === 'trajectory' ? L('path') :
+                                                             L('box')} on the map`);
       else if (q === 'trajectory' && sel.points.length < 2)
         out.push('a second point of the path');
       return out;
@@ -9670,7 +9742,7 @@ function edrModule(app, api, state, save)
     // Runs the request and shows its results
     async function run()
     {
-      results.replaceChildren(el('p', {class: 'muted'}, 'Running…'));
+      results.replaceChildren(el('p', {class: 'muted'}, L('Running…')));
       map.setCursor(null);
       let text;
       try
@@ -9761,7 +9833,7 @@ function edrModule(app, api, state, save)
           pane.hidden = n !== name;
         Array.from(tabs.children)
             .forEach(
-                (b) => b.setAttribute('aria-selected', b.textContent === name ? 'true' : 'false'));
+                (b) => b.setAttribute('aria-selected', b.dataset.tab === name ? 'true' : 'false'));
         if (drawn.has(name))
           return;
         drawn.add(name);
@@ -9807,6 +9879,7 @@ function edrModule(app, api, state, save)
                        {
                          type: 'button',
                          role: 'tab',
+                         'data-tab': name,
                          onclick: () => {
                            // A view of the data chosen opens first with later results too
                            if (REMEMBERED_TABS.includes(name))
@@ -9817,7 +9890,7 @@ function edrModule(app, api, state, save)
                            show(name);
                          }
                        },
-                       name));
+                       L(name)));
       // Profiles are counted by their levels, and ensembles by their members, not as locations
       const byLevel = vertical || kind === 'member';
       const count = byLevel ?
@@ -9830,8 +9903,8 @@ function edrModule(app, api, state, save)
              tabs,
              el('span',
                 {class: 'muted small'},
-                `${rows.length} rows${count > 1 ? `, ${count} locations` : ''}${
-                    byLevel ? `, ${levelCount} ${kind === 'member' ? 'members' : 'levels'}` : ''}`),
+                L`${rows.length} rows${count > 1 ? L`, ${count} locations` : ''}${
+                    byLevel ? `, ${levelCount} ${kind === 'member' ? L('members') : L('levels')}` : ''}`),
              unitsChooser(settingsChanged),
              exportButtons(() => Object.values(panes).find((p) => !p.hidden), shown.rows,
                            `${s.collection || 'edr'}`, shown.labels)),
@@ -9894,7 +9967,7 @@ function edrModule(app, api, state, save)
                {
                  type: 'button',
                  class: 'chip-x',
-                 'aria-label': `Remove ${label}`,
+                 'aria-label': L`Remove ${label}`,
                  onclick: () => {
                    s.params = s.params.filter((x) => x !== key);
                    refresh();
@@ -9905,11 +9978,11 @@ function edrModule(app, api, state, save)
       const n = candidates().length;
       const inArea = selection() ? ' in the selected area' : '';
       note.textContent = s.params.length > 0 || inArea ?
-          `${n} of ${index.producers.size} collections${
+          L`${n} of ${index.producers.size} collections${
               s.params.length ?
-                  ` have ${s.params.length === 1 ? 'this parameter' : 'all these parameters'}` :
-                  ' cover the selected area'}${s.params.length ? inArea : ''}` :
-          `${index.producers.size} collections`;
+                  L` have ${s.params.length === 1 ? L('this parameter') : L('all these parameters')}` :
+                  L(' cover the selected area')}${s.params.length ? inArea : ''}` :
+          L`${index.producers.size} collections`;
       if (c)
       {
         card.replaceChildren(
@@ -9925,7 +9998,7 @@ function edrModule(app, api, state, save)
                       refresh();
                     }
                   },
-                  'Change')),
+                  L('Change'))),
             c.title && c.title !== c.name ? el('div', null, c.title) : '',
             el('div', {class: 'muted small'}, [
               timeRangeOf(c),
@@ -9964,7 +10037,7 @@ function edrModule(app, api, state, save)
       // Times and levels
       startInput.value = s.start || '';
       endInput.value = s.end || '';
-      dataPeriod.textContent = c && timeRangeOf(c) ? `Data: ${timeRangeOf(c)}` : '';
+      dataPeriod.textContent = c && timeRangeOf(c) ? L`Data: ${timeRangeOf(c)}` : '';
       const values = c && c.levels.length ? c.levels[0].values : [];
       s.levels = (s.levels || []).filter((v) => values.includes(v));
       levels.replaceChildren(...values.map(
@@ -9998,18 +10071,20 @@ function edrModule(app, api, state, save)
                    },
                    label)));
         diagramNote.textContent = missingNames.length > 0 ?
-            `Adds ${missingNames.join(', ')} to the parameters and runs the request` :
-            'Runs the request and draws the soundings';
+            L`Adds ${missingNames.join(', ')} to the parameters and runs the request` :
+            L('Runs the request and draws the soundings');
       }
 
       // Location
       const isLocations = q === 'locations';
       locInput.hidden = isLocations;
       locationSearch.element.hidden = !isLocations;
-      locInput.placeholder = q === 'position' ? '24.94,60.17, or click the map' :
-          q === 'radius'                      ? '24.94,60.17:25 (km), or drag on the map' :
-          q === 'trajectory'                  ? '24.3,60.0,25.0,60.2,25.8,60.3 (lon,lat,...), or click the map' :
-                                                '21,60,26,62, or drag on the map';
+      // The examples of the modes of locations of the TimeSeries module
+      const example = (mode) => locationModes().find((m) => m[0] === mode)[2];
+      locInput.placeholder = q === 'position' ? example('lonlat') :
+          q === 'radius'                      ? example('radius') :
+          q === 'trajectory'                  ? example('path') :
+                                                example('bbox');
       pathChooser.element.hidden = q !== 'trajectory';
       flightChoice.element.hidden = q !== 'trajectory';
       if (q === 'trajectory')
@@ -10022,15 +10097,15 @@ function edrModule(app, api, state, save)
       map.setTools(tool ? ['move', tool] : ['move'], tool || 'move');
       const sel = selection();
       map.setSelection(sel);
-      map.setRegions(c && c.bbox ? [{bbox: c.bbox, label: `The area of ${c.name}`}] : []);
+      map.setRegions(c && c.bbox ? [{bbox: c.bbox, label: L`The area of ${c.name}`}] : []);
       // The locations of the collection name the results of all queries
       if (c && c.queries.includes('locations'))
         loadLocations();
       if (isLocations && locationsOf && locationsOf.list)
         map.setPoints(locationsOf.list);
       areaNote.textContent = c && sel && !covers(c, sel) ?
-          `The selection is outside the area of ${c.name}` :
-          (isLocations && s.location ? `Location ${s.location}` : '');
+          L`The selection is outside the area of ${c.name}` :
+          (isLocations && s.location ? L`Location ${s.location}` : '');
 
       // Formats
       const formats = c ? c.formats : ['CoverageJSON', 'GeoJSON'];
@@ -10042,7 +10117,7 @@ function edrModule(app, api, state, save)
       const url = currentUrl();
       urlBox.textContent = url;
       const absent = missingParts();
-      missing.textContent = absent.length ? `Still needed: ${absent.join(', ')}` : '';
+      missing.textContent = absent.length ? L`Still needed: ${absent.join(', ')}` : '';
       runButton.disabled = absent.length > 0;
       codeTabs(code, url);
       save();
@@ -10055,26 +10130,26 @@ function edrModule(app, api, state, save)
         el('div',
            {class: 'form'},
            section(
-               'What',
-               el('label', null, 'Parameters'),
+               L('What'),
+               el('label', null, L('Parameters')),
                chips,
                paramSearch.element,
                meteogram.element,
-               el('label', null, 'Collection'),
+               el('label', null, L('Collection')),
                note,
                collectionSearch.element,
                card),
            section(
-               'When',
+               L('When'),
                el('div',
                   {class: 'row'},
-                  el('label', null, 'Start (UTC)', startInput),
-                  el('label', null, 'End (UTC)', endInput)),
+                  el('label', null, L('Start (UTC)'), startInput),
+                  el('label', null, L('End (UTC)'), endInput)),
                dataPeriod,
                levelRow,
                diagramRow),
            section(
-               'Where',
+               L('Where'),
                queryButtons,
                el('div', {class: 'row'}, locInput),
                pathChooser.element,
@@ -10082,7 +10157,7 @@ function edrModule(app, api, state, save)
                locationSearch.element,
                areaNote,
                map.element),
-           section('Output', el('div', {class: 'row'}, el('label', null, 'Format', formatSelect)))),
+           section(L('Output'), el('div', {class: 'row'}, el('label', null, L('Format'), formatSelect)))),
         el('div',
            {class: 'request'},
            el('div', {class: 'url-row'}, urlBox, copyUrl),
@@ -10131,9 +10206,9 @@ async function readGeoTiff(buffer)
   const view = new DataView(buffer);
   const little = view.getUint16(0) === 0x4949;
   if (!little && view.getUint16(0) !== 0x4d4d)
-    throw new Error('Not a TIFF file');
+    throw new Error(L('Not a TIFF file'));
   if (view.getUint16(2, little) !== 42)
-    throw new Error('BigTIFF files are not supported');
+    throw new Error(L('BigTIFF files are not supported'));
   const u16 = (o) => view.getUint16(o, little);
   const u32 = (o) => view.getUint32(o, little);
   const SIZES = {1: 1, 2: 1, 3: 2, 4: 4, 11: 4, 12: 8, 16: 8};
@@ -10165,11 +10240,11 @@ async function readGeoTiff(buffer)
   const compression = one(259, 1);
   const predictor = one(317, 1);
   if (one(258, 32) !== 32 || one(339, 1) !== 3)
-    throw new Error('Only 32 bit floating point GeoTIFF files are supported');
+    throw new Error(L('Only 32 bit floating point GeoTIFF files are supported'));
   if (![1, 8, 32946].includes(compression))
-    throw new Error(`TIFF compression ${compression} is not supported`);
+    throw new Error(L`TIFF compression ${compression} is not supported`);
   if (![1, 3].includes(predictor))
-    throw new Error(`TIFF predictor ${predictor} is not supported`);
+    throw new Error(L`TIFF predictor ${predictor} is not supported`);
   const tiled = !!tags[322];
   const blockWidth = tiled ? one(322) : width;
   const blockHeight = tiled ? one(323) : Math.min(height, one(278, height));
@@ -10219,7 +10294,7 @@ async function readGeoTiff(buffer)
   const scale = tags[33550];
   const tie = tags[33922];
   if (!scale || !tie)
-    throw new Error('The GeoTIFF file has no georeferencing');
+    throw new Error(L('The GeoTIFF file has no georeferencing'));
   const west = tie[3] - tie[0] * scale[0];
   const north = tie[4] + tie[1] * scale[1];
   const bbox = [west, north - height * scale[1], west + width * scale[0], north];
@@ -10259,9 +10334,9 @@ const COVERAGE_FORMATS = {
 function coverageCrs()
 {
   const out = [
-    ['', 'Native grid of the model'],
-    ['EPSG:4326', 'Longitude and latitude (EPSG:4326)'],
-    ['EPSG:3857', 'Web Mercator (EPSG:3857)']
+    ['', L('Native grid of the model')],
+    ['EPSG:4326', L('Longitude and latitude (EPSG:4326)')],
+    ['EPSG:3857', L('Web Mercator (EPSG:3857)')]
   ];
   // The projections of the region of the server
   for (const [code, label] of DEFAULTS.projections || [])
@@ -10393,12 +10468,12 @@ function drawCoverageMaps(container, tiff, settings, options = {})
     return ls.length ? ls.map((l) => ({param: p, level: String(l)})) : [{param: p, level: ''}];
   });
   const shared = {time: 0, point: null};
-  const count = el('select', {'aria-label': 'Panels'},
+  const count = el('select', {'aria-label': L('Panels')},
                    COVERAGE_PANELS.filter((n) => n <= combinations.length)
-                       .map((n) => el('option', {value: String(n)}, n === 1 ? '1 map' : `${n} maps`)));
+                       .map((n) => el('option', {value: String(n)}, n === 1 ? L('1 map') : L`${n} maps`)));
   count.value = String(Math.min(2, combinations.length));
   const slider = timeSlider(times.map((t) => new Date(t).getTime()), {
-    label: 'Time of the maps',
+    label: L('Time of the maps'),
     onChange: () => {
       shared.time = slider.index();
       panels.forEach((p) => p.draw());
@@ -10406,11 +10481,11 @@ function drawCoverageMaps(container, tiff, settings, options = {})
   });
   const grid = el('div', {class: 'coverage-panels'});
   container.append(
-      el('div', {class: 'row'}, el('label', null, 'Panels', count), slider.element),
+      el('div', {class: 'row'}, el('label', null, L('Panels'), count), slider.element),
       el('p', {class: 'muted small'},
-         `${tiff.width} × ${tiff.height} cells, ${params.length} parameter${params.length === 1 ? '' : 's'}, ` +
-             `${times.length} time${times.length === 1 ? '' : 's'}. The maps move together.`),
-      el('p', {class: 'map-hint'}, 'Click a value on a map for the time series of the point in every panel.'),
+         L`${tiff.width} × ${tiff.height} cells, ${counted(params.length, L('parameter'), L('parameters'))}, ${
+             counted(times.length, L('time'), L('times'))}. The maps move together.`),
+      el('p', {class: 'map-hint'}, L('Click a value on a map for the time series of the point in every panel.')),
       grid);
 
   let panels = [];
@@ -10434,11 +10509,11 @@ function drawCoverageMaps(container, tiff, settings, options = {})
     const box = el('div', {class: 'coverage-panel'});
     const map = createMap(settings, null);
     map.setTools(['move'], 'move');
-    const paramSelect = el('select', {'aria-label': 'Parameter of the map'},
+    const paramSelect = el('select', {'aria-label': L('Parameter of the map')},
                            params.map((p) => el('option', {value: p}, p)));
     paramSelect.value = state.param;
-    const levelSelect = el('select', {'aria-label': 'Level of the map'});
-    const paletteSelect = el('select', {'aria-label': 'Colours of the map'},
+    const levelSelect = el('select', {'aria-label': L('Level of the map')});
+    const paletteSelect = el('select', {'aria-label': L('Colours of the map')},
                              Object.keys(PALETTES).map((p) => el('option', {value: p}, p)));
     paletteSelect.value = state.palette;
     const legend = el('div', {class: 'legend'});
@@ -10526,7 +10601,7 @@ function drawCoverageMaps(container, tiff, settings, options = {})
             return null;
           const v = b.values[cell.row * tiff.width + cell.col];
           return {label: `${state.param}: ${isFinite(v) ? `${round(v, 2)}${unitText(state.param)}` : 'missing'}`,
-                  info: {lon: round(lon, 3), lat: round(lat, 3)}, hint: 'Click for the time series'};
+                  info: {lon: round(lon, 3), lat: round(lat, 3)}, hint: L('Click for the time series')};
         }
       });
       const n = 24;
@@ -10538,7 +10613,7 @@ function drawCoverageMaps(container, tiff, settings, options = {})
                style: `background:${paletteColour(state.palette, (i + 0.5) / n, 0)}`
              }))),
           el('span', {class: 'small'}, hi === null ? '' : `${round(hi, 2)}${unitText(state.param)}`),
-          b ? '' : el('span', {class: 'muted small'}, ' no values at this time'));
+          b ? '' : el('span', {class: 'muted small'}, L(' no values at this time')));
       if (probe)
       {
         state.time = shared.time;
@@ -10626,11 +10701,11 @@ function coveragesModule(app, api, state, save)
   const rootPath = api.root;
   const base = `${app.base}${rootPath.replace(/^\//, '')}`;
   const view = el('div', {class: 'module'});
-  const status = el('p', {class: 'muted'}, 'Loading the collections…');
+  const status = el('p', {class: 'muted'}, L('Loading the collections…'));
   view.append(status);
 
   fetchJson(`${base}/collections`).then((doc) => build(buildCoverageIndex(doc))).catch((e) => {
-    status.textContent = `The collections could not be loaded: ${e.message}`;
+    status.textContent = L`The collections could not be loaded: ${e.message}`;
   });
 
   // Builds the module once the collections have been loaded
@@ -10713,8 +10788,8 @@ function coveragesModule(app, api, state, save)
     const card = el('div', {class: 'model-card'});
 
     const paramSearch = autocomplete({
-      label: 'Parameter',
-      placeholder: 'Type a parameter name or description',
+      label: L('Parameter'),
+      placeholder: L('Type a parameter name or description'),
       search: (text) => {
         const q = text.toLowerCase();
         const c = collection();
@@ -10733,7 +10808,7 @@ function coveragesModule(app, api, state, save)
                   [entry.description, entry.unit && `[${entry.unit}]`].filter(Boolean).join(' '),
               badge: c ?
                   null :
-                  `${entry.producers.length} collection${entry.producers.length === 1 ? '' : 's'}`
+                  counted(entry.producers.length, L('collection'), L('collections'))
             });
         }
         out.sort((a, b) => a.score - b.score || a.label.localeCompare(b.label));
@@ -10743,12 +10818,12 @@ function coveragesModule(app, api, state, save)
         s.params.push(item.key);
         refresh();
       },
-      empty: (text) => `No parameter matches "${text}"`
+      empty: (text) => L`No parameter matches "${text}"`
     });
 
     const collectionSearch = autocomplete({
-      label: 'Collection',
-      placeholder: 'Type a collection name',
+      label: L('Collection'),
+      placeholder: L('Type a collection name'),
       search: (text) => {
         const q = text.toLowerCase();
         return candidates()
@@ -10771,7 +10846,7 @@ function coveragesModule(app, api, state, save)
         refresh();
         loadNative();
       },
-      empty: () => 'No collection has all the chosen parameters',
+      empty: () => L('No collection has all the chosen parameters'),
       limit: 200
     });
 
@@ -10784,11 +10859,11 @@ function coveragesModule(app, api, state, save)
     }
 
     // --- When and the levels -------------------------------------------------
-    const startInput = timeInput({'aria-label': 'Start time (UTC)'});
-    const endInput = timeInput({'aria-label': 'End time (UTC)'});
+    const startInput = timeInput({'aria-label': L('Start time (UTC)')});
+    const endInput = timeInput({'aria-label': L('End time (UTC)')});
     const dataPeriod = el('span', {class: 'muted small'});
     const levels = el('div', {class: 'chips'});
-    const levelRow = el('div', null, el('label', null, 'Levels (all if none is chosen)'), levels);
+    const levelRow = el('div', null, el('label', null, L('Levels (all if none is chosen)')), levels);
     startInput.addEventListener('change', () => {
       s.start = startInput.value;
       refresh();
@@ -10814,23 +10889,23 @@ function coveragesModule(app, api, state, save)
     // --- Where -------------------------------------------------------------
     const locInput = el('input', {
       type: 'text',
-      'aria-label': 'Box',
+      'aria-label': L('Box'),
       spellcheck: 'false',
-      placeholder: 'The whole area, or minlon,minlat,maxlon,maxlat: drag on the map'
+      placeholder: L('The whole area, or minlon,minlat,maxlon,maxlat: drag on the map')
     });
     const crsSelect =
         el('select',
-           {'aria-label': 'Output projection'},
+           {'aria-label': L('Output projection')},
            coverageCrs().map(([v, label]) => el('option', {value: v}, label)),
-           el('option', {value: 'other'}, 'Other EPSG code…'));
+           el('option', {value: 'other'}, L('Other EPSG code…')));
     const crsInput =
-        el('input', {type: 'text', 'aria-label': 'EPSG code', placeholder: 'EPSG:3006', size: 12});
+        el('input', {type: 'text', 'aria-label': L('EPSG code'), placeholder: 'EPSG:3006', size: 12});
     const widthInput =
         el('input',
-           {type: 'number', min: 1, 'aria-label': 'Grid width', placeholder: 'width', size: 6});
+           {type: 'number', min: 1, 'aria-label': L('Grid width'), placeholder: L('width'), size: 6});
     const heightInput =
         el('input',
-           {type: 'number', min: 1, 'aria-label': 'Grid height', placeholder: 'height', size: 6});
+           {type: 'number', min: 1, 'aria-label': L('Grid height'), placeholder: L('height'), size: 6});
     const areaNote = el('p', {class: 'warn small'});
     const estimate = el('p', {class: 'size-estimate small'});
     const map = createMap(mapSettings(app.element), (shape) => {
@@ -10891,13 +10966,14 @@ function coveragesModule(app, api, state, save)
               return;
             const p = doc.properties || {};
             const grid = p.grid ?
-                `${p.grid.width} × ${p.grid.height}${p.grid.estimated ? ' (estimated)' : ''} grid` :
-                'grid of an unknown size';
+                (p.grid.estimated ? L`${p.grid.width} × ${p.grid.height} grid (estimated)` :
+                                    L`${p.grid.width} × ${p.grid.height} grid`) :
+                L('grid of an unknown size');
             estimate.textContent =
-                `${grid}, ${p.parameters} parameter${p.parameters === 1 ? '' : 's'}, ${
-                    p.times} time${p.times === 1 ? '' : 's'}${
-                    p.levels > 1 ? `, ${p.levels} levels` : ''}` +
-                (p.values ? `: ${Math.round(p.values).toLocaleString('en')} values, about ${
+                L`${grid}, ${counted(p.parameters, L('parameter'), L('parameters'))}, ${
+                    counted(p.times, L('time'), L('times'))}${
+                    p.levels > 1 ? L`, ${p.levels} levels` : ''}` +
+                (p.values ? L`: ${Math.round(p.values).toLocaleString('en')} values, about ${
                                 formatBytes(p.bytes)} as 32 bit floats` :
                             '');
             outline = doc.geometry && doc.geometry.coordinates && doc.geometry.coordinates[0];
@@ -10920,14 +10996,14 @@ function coveragesModule(app, api, state, save)
     {
       const regions = [];
       if (nativeOutline)
-        regions.push({polygon: nativeOutline, label: 'The native grid'});
+        regions.push({polygon: nativeOutline, label: L('The native grid')});
       if (outline && (s.location || s.crs))
-        regions.push({polygon: outline, label: 'The area of the download', cls: 'xmap-outline'});
+        regions.push({polygon: outline, label: L('The area of the download'), cls: 'xmap-outline'});
       map.setRegions(regions);
     }
 
     // --- Output and the request ----------------------------------------------
-    const formatSelect = el('select', {'aria-label': 'Output format'});
+    const formatSelect = el('select', {'aria-label': L('Output format')});
     formatSelect.addEventListener('change', () => {
       s.format = formatSelect.value;
       refresh();
@@ -10935,7 +11011,7 @@ function coveragesModule(app, api, state, save)
     const urlBox = el('code', {class: 'url'});
     const missing = el('p', {class: 'missing'});
     const download =
-        el('a', {class: 'download', download: '', 'aria-disabled': 'true'}, 'Download');
+        el('a', {class: 'download', download: '', 'aria-disabled': 'true'}, L('Download'));
     // A link cannot send the API key: with a key the file is fetched with it and saved
     download.addEventListener('click', async (e) => {
       if (!apiKey || download.getAttribute('aria-disabled') === 'true')
@@ -10948,18 +11024,18 @@ function coveragesModule(app, api, state, save)
           new URL(download.href).pathname.split('/').pop() || 'download';
       saveFile(await response.blob(), name);
     });
-    const copyUrl = el('button', {type: 'button', class: 'small'}, 'Copy URL');
+    const copyUrl = el('button', {type: 'button', class: 'small'}, L('Copy URL'));
     const code = el('div', {class: 'code-box'});
     const codeDetails =
         el('details',
            {class: 'code-details', open: true},
-           el('summary', null, 'Code for this request'),
+           el('summary', null, L('Code for this request')),
            code);
     copyUrl.addEventListener(
         'click', () => navigator.clipboard.writeText(currentUrl()).catch(() => {}));
 
     // The maps of the coverage: a small GeoTIFF in longitude and latitude read by the browser
-    const showMaps = el('button', {type: 'button', class: 'small'}, 'Show maps');
+    const showMaps = el('button', {type: 'button', class: 'small'}, L('Show maps'));
     const mapsNote = el('p', {class: 'muted small'});
     const maps = el('div', {class: 'coverage-maps'});
     // The request of the maps drawn, to tell when they no longer match the form
@@ -10989,7 +11065,7 @@ function coveragesModule(app, api, state, save)
       if (!url)
         return;
       showMaps.disabled = true;
-      mapsNote.textContent = 'Loading the maps…';
+      mapsNote.textContent = L('Loading the maps…');
       try
       {
         const response = await fetch(url, {headers: apiHeaders()});
@@ -10998,7 +11074,7 @@ function coveragesModule(app, api, state, save)
         const tiff = await readGeoTiff(await response.arrayBuffer());
         mapsNote.textContent = '';
         shownMaps = url;
-        showMaps.textContent = 'Update the maps';
+        showMaps.textContent = L('Update the maps');
         const c = collection();
         const draw = () => drawCoverageMaps(maps, tiff, mapSettings(app.element),
                                             {levelKind: c && c.levels.length ? c.levels[0].type : ''});
@@ -11008,7 +11084,7 @@ function coveragesModule(app, api, state, save)
       }
       catch (e)
       {
-        mapsNote.textContent = `The maps could not be drawn: ${e.message}`;
+        mapsNote.textContent = L`The maps could not be drawn: ${e.message}`;
       }
       showMaps.disabled = !mapsPossible();
     });
@@ -11053,7 +11129,7 @@ function coveragesModule(app, api, state, save)
                {
                  type: 'button',
                  class: 'chip-x',
-                 'aria-label': `Remove ${label}`,
+                 'aria-label': L`Remove ${label}`,
                  onclick: () => {
                    s.params = s.params.filter((x) => x !== key);
                    refresh();
@@ -11062,14 +11138,14 @@ function coveragesModule(app, api, state, save)
                '×'));
       }));
       const n = candidates().length;
-      const pending = loading > 0 ? ` (reading the parameters of ${loading} more)` : '';
+      const pending = loading > 0 ? L` (reading the parameters of ${loading} more)` : '';
       note.textContent =
           (s.params.length > 0 ?
-               `${n} of ${index.producers.size} collections have ${
+               L`${n} of ${index.producers.size} collections have ${
                    s.params.length === 1 ?
-                       'this parameter' :
-                       'all these parameters'}${selection() ? ' in the selected area' : ''}` :
-               `${index.producers.size} collections`) +
+                       L('this parameter') :
+                       L('all these parameters')}${selection() ? L(' in the selected area') : ''}` :
+               L`${index.producers.size} collections`) +
           pending;
 
       if (c)
@@ -11089,7 +11165,7 @@ function coveragesModule(app, api, state, save)
                       refresh();
                     }
                   },
-                  'Change')),
+                  L('Change'))),
             el('div',
                {class: 'muted small'},
                [
@@ -11115,7 +11191,7 @@ function coveragesModule(app, api, state, save)
 
       startInput.value = s.start || '';
       endInput.value = s.end || '';
-      dataPeriod.textContent = c && timeRangeOf(c) ? `Data: ${timeRangeOf(c)}` : '';
+      dataPeriod.textContent = c && timeRangeOf(c) ? L`Data: ${timeRangeOf(c)}` : '';
       const values = c && c.levels.length ? c.levels[0].values : [];
       s.levels = (s.levels || []).filter((v) => values.includes(v));
       levels.replaceChildren(...values.map(
@@ -11149,8 +11225,8 @@ function coveragesModule(app, api, state, save)
       const sel = selection();
       map.setSelection(sel);
       areaNote.textContent = c && sel && !covers(c, sel) ?
-          `The box is outside the area of ${c.name}` :
-          (s.location && !sel ? 'Not a valid box: minlon,minlat,maxlon,maxlat' : '');
+          L`The box is outside the area of ${c.name}` :
+          (s.location && !sel ? L('Not a valid box: minlon,minlat,maxlon,maxlat') : '');
       drawRegions();
 
       const formats = c ? c.formats : Object.keys(COVERAGE_FORMATS);
@@ -11168,7 +11244,7 @@ function coveragesModule(app, api, state, save)
         absent.push('a collection');
       if (s.params.length === 0)
         absent.push('a parameter');
-      missing.textContent = absent.length ? `Still needed: ${absent.join(', ')}` : '';
+      missing.textContent = absent.length ? L`Still needed: ${absent.join(', ')}` : '';
       if (absent.length === 0)
       {
         download.setAttribute('href', url);
@@ -11182,11 +11258,11 @@ function coveragesModule(app, api, state, save)
       codeTabs(code, url);
       showMaps.disabled = !mapsPossible();
       if (shownMaps && mapsUrl() !== shownMaps)
-        mapsNote.textContent = 'The request has changed: update the maps to show it';
+        mapsNote.textContent = L('The request has changed: update the maps to show it');
       else if (shownMaps)
         mapsNote.textContent = '';
       showMaps.title = mapsPossible() ? mapsUrl() :
-          'The maps need a collection with GeoTIFF output and a parameter';
+          L('The maps need a collection with GeoTIFF output and a parameter');
       if (c)
         updateOutline();
       else
@@ -11201,33 +11277,33 @@ function coveragesModule(app, api, state, save)
         el('div',
            {class: 'form'},
            section(
-               'What',
-               el('label', null, 'Parameters'),
+               L('What'),
+               el('label', null, L('Parameters')),
                chips,
                paramSearch.element,
-               el('label', null, 'Collection'),
+               el('label', null, L('Collection')),
                note,
                collectionSearch.element,
                card),
            section(
-               'When',
+               L('When'),
                el('div',
                   {class: 'row'},
-                  el('label', null, 'Start (UTC)', startInput),
-                  el('label', null, 'End (UTC)', endInput)),
+                  el('label', null, L('Start (UTC)'), startInput),
+                  el('label', null, L('End (UTC)'), endInput)),
                dataPeriod,
                levelRow),
-           section('Where', el('div', {class: 'row'}, locInput), areaNote, map.element),
+           section(L('Where'), el('div', {class: 'row'}, locInput), areaNote, map.element),
            section(
-               'Output',
-               el('div', {class: 'row'}, el('label', null, 'Projection', crsSelect), crsInput),
+               L('Output'),
+               el('div', {class: 'row'}, el('label', null, L('Projection'), crsSelect), crsInput),
                el('div',
                   {class: 'row'},
                   el('label',
                      null,
-                     'Grid size (optional)',
+                     L('Grid size (optional)'),
                      el('span', {class: 'row'}, widthInput, '×', heightInput))),
-               el('div', {class: 'row'}, el('label', null, 'Format', formatSelect)))),
+               el('div', {class: 'row'}, el('label', null, L('Format'), formatSelect)))),
         el('div',
            {class: 'request'},
            el('div', {class: 'url-row'}, urlBox, copyUrl),
@@ -11236,10 +11312,9 @@ function coveragesModule(app, api, state, save)
            el('div', {class: 'row'}, download),
            codeDetails,
            el('section', {class: 'coverage-maps-step'},
-           el('h2', null, 'Maps'),
+           el('h2', null, L('Maps')),
            el('p', {class: 'muted small'},
-              `The request in longitude and latitude on a grid of at most ${COVERAGE_MAP_SIZE} cells a side, ` +
-                  'in up to four linked maps'),
+              L`The request in longitude and latitude on a grid of at most ${COVERAGE_MAP_SIZE} cells a side, in up to four linked maps`),
            el('div', {class: 'row'}, showMaps),
            mapsNote,
            maps)));
@@ -11315,19 +11390,35 @@ function writeState(s)
 // The settings of the page: the clock, the units, the language and the licences of the parts
 function settingsMenu()
 {
-  const panel = el('div', {class: 'settings-panel', role: 'dialog', 'aria-label': 'Settings', hidden: true});
+  const panel = el('div', {class: 'settings-panel', role: 'dialog', 'aria-label': L('Settings'), hidden: true});
   const button = el('button', {type: 'button', class: 'small', 'aria-expanded': 'false',
-                               'aria-label': 'Settings'}, '⚙ Settings');
+                               'aria-label': L('Settings')}, L('⚙ Settings'));
   const close = () => {
     panel.hidden = true;
     button.setAttribute('aria-expanded', 'false');
   };
   // The panel is built when opened, so that it shows the current choices
   const build = () => {
-    const clockSelect = el('select', {'aria-label': 'Clock'},
+    const clockSelect = el('select', {'aria-label': L('Clock')},
                            [['24', '24-hour (13:00)'], ['12', '12-hour (1:00 PM)']].map(
                                ([v, l]) => el('option', {value: v}, l)));
     clockSelect.value = clock;
+    // The languages, each by its own name; a new language reloads the page in it
+    const languageSelect = el('select', {'aria-label': L('Language')},
+                              [['en', 'English'], ...Object.entries(TRANSLATIONS).map(([code, l]) => [code, l.name || code])]
+                                  .map(([v, l]) => el('option', {value: v}, l)));
+    languageSelect.value = LANGUAGE;
+    languageSelect.addEventListener('change', () => {
+      try
+      {
+        localStorage.setItem(LANGUAGE_KEY, languageSelect.value);
+      }
+      catch (e)
+      {
+        // Not remembered
+      }
+      location.reload();
+    });
     clockSelect.addEventListener('change', () => {
       clock = clockSelect.value;
       try
@@ -11345,19 +11436,18 @@ function settingsMenu()
        'https://github.com/fmidev/smartmet-library-spine'],
       ['uPlot charts', 'MIT', 'Leon Sorokin', 'https://github.com/leeoniya/uPlot'],
       ['Swagger UI API documentation', 'Apache 2.0', 'SmartBear Software', 'https://github.com/swagger-api/swagger-ui'],
-      ['Natural Earth background map', 'Public domain', 'Natural Earth', 'https://www.naturalearthdata.com/']
+      ['Natural Earth background map', L('Public domain'), 'Natural Earth', 'https://www.naturalearthdata.com/']
     ];
     panel.replaceChildren(
-        el('div', {class: 'row settings-head'}, el('strong', null, 'Settings'),
-           el('button', {type: 'button', class: 'small', 'aria-label': 'Close the settings', onclick: close}, '×')),
-        el('label', null, 'Time', clockSelect),
-        el('div', null, el('div', {class: 'small muted'}, 'Units'), unitsChooser(settingsChanged)),
-        el('label', null, 'Language', el('select', {'aria-label': 'Language', disabled: true},
-                                          el('option', null, 'English'))),
-        el('details', {class: 'small'}, el('summary', null, 'About and licences'),
+        el('div', {class: 'row settings-head'}, el('strong', null, L('Settings')),
+           el('button', {type: 'button', class: 'small', 'aria-label': L('Close the settings'), onclick: close}, '×')),
+        el('label', null, L('Time'), clockSelect),
+        el('div', null, el('div', {class: 'small muted'}, L('Units')), unitsChooser(settingsChanged)),
+        el('label', null, L('Language'), languageSelect),
+        el('details', {class: 'small'}, el('summary', null, L('About and licences')),
            el('ul', null, licences.map(([what, licence, holder, url]) =>
                el('li', null, el('a', {href: url, target: '_blank', rel: 'noopener'}, what), ` · ${licence}, ${holder}`))),
-           el('p', {class: 'muted'}, 'The colours of the production products come from the configuration of this server.')));
+           el('p', {class: 'muted'}, L('The colours of the production products come from the configuration of this server.'))));
   };
   button.addEventListener('click', () => {
     if (!panel.hidden)
@@ -11384,6 +11474,7 @@ async function main()
   if (!element)
     return;
   const title = element.dataset.title || 'SmartMet Server';
+  document.documentElement.lang = LANGUAGE;
   try
   {
     DEFAULTS = JSON.parse(element.dataset.defaults || '{}') || {};
@@ -11399,16 +11490,16 @@ async function main()
   const app = {element: element, base: new URL('./', base).href};
 
   const header =
-      el('header', null, el('h1', null, 'Data explorer'), el('span', {class: 'muted'}, title));
-  const apiSelect = el('select', {'aria-label': 'API'});
+      el('header', null, el('h1', null, L('Data explorer')), el('span', {class: 'muted'}, title));
+  const apiSelect = el('select', {'aria-label': L('API')});
   const content = el('main');
   element.replaceChildren(
       header,
       el('nav',
          null,
-         el('label', null, 'API ', apiSelect),
-         el('a', {href: new URL('api/docs', app.base).href}, 'API documentation'),
-         el('a', {href: base.href + '?f=html'}, 'API catalog'),
+         el('label', null, L('API '), apiSelect),
+         el('a', {href: new URL('api/docs', app.base).href}, L('API documentation')),
+         el('a', {href: base.href + '?f=html'}, L('API catalog')),
          apiKeyField(() => open(current, true)),
          settingsMenu()),
       content);
@@ -11422,7 +11513,7 @@ async function main()
   catch (e)
   {
     content.replaceChildren(
-        el('p', {class: 'error'}, `The API catalog could not be loaded: ${e.message}`));
+        el('p', {class: 'error'}, L`The API catalog could not be loaded: ${e.message}`));
     return;
   }
 
@@ -11435,7 +11526,7 @@ async function main()
   if (apis.length === 0)
   {
     content.replaceChildren(
-        el('p', {class: 'muted'}, 'None of the APIs of this server can be explored yet.'));
+        el('p', {class: 'muted'}, L('None of the APIs of this server can be explored yet.')));
     return;
   }
 
@@ -11513,6 +11604,8 @@ root.SmartMetExplorer = {
   locationModes,
   timeText,
   parseTimeText,
+  missingTexts: () => Array.from(MISSING_TEXTS),
+  language: () => LANGUAGE,
   readGeoTiff
 };
 

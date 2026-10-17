@@ -173,6 +173,8 @@ make %{_smp_mflags}
 
 %changelog
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
+- Data explorer: Finnish and Swedish besides English (explorer-fi.js, explorer-sv.js, the
+  language chosen in the settings menu or by explorer_defaults.language or the browser)
 - Data explorer: regional defaults of the server (api_catalog.explorer_defaults: first map
   view, location examples, Coverages projections, clock, units) with neutral built-in defaults;
   a settings menu with the 12/24-hour clock, the units, the language and the licences; times

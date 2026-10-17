@@ -436,6 +436,15 @@ Most plugins produce tables of values:
   in the clock chosen (`2026-10-17 13:00` or `2026-10-17 1:00 PM`, UTC) with a button for the
   date picker of the browser, since `datetime-local` inputs always follow the language of the
   browser.
+- The texts of the page are in English in `explorer.js`, wrapped in `L('...')` or, with values,
+  tagged as ``L`${n} rows` `` (translation key `{0} rows`). The translations are
+  `explorer/explorer-<code>.js` (Finnish `fi` and Swedish `sv`), one object of English text to
+  translation each; every such file in `explorer_dir` is loaded before `explorer.js`. The
+  language is the choice of the settings menu (a new language reloads the page), else
+  `explorer_defaults.language`, else the first language of the browser with a translation, else
+  English. Keys, tab names and the state in the address stay English. The browser test checks
+  that every `L('...')` text is in both translations and that the views shown in Finnish and
+  Swedish ask for no text without one; a new text needs its translations in both files.
 * **OpenTelemetry** (`OTelOptions`, `OTelLogger`, `OTelMetricsExporter`) is optional.
   Tracing is compiled in with `SMARTMET_SPINE_OPENTELEMETRY`
   (see [build-opentelemetry.md](build-opentelemetry.md)), and cache statistics are
