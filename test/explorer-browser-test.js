@@ -429,8 +429,12 @@ function coverages(p, query)
 }
 
 const requested = [];
+// The API keys of the requests
+const apikeys = [];
 const server = http.createServer((req, res) => {
   requested.push(req.url);
+  if (req.headers['fmi-apikey'])
+    apikeys.push([req.url, req.headers['fmi-apikey']]);
   const send = (status, type, body) => {
     res.writeHead(status, {'Content-Type': type, 'Cache-Control': 'no-store'});
     res.end(body);
@@ -1743,6 +1747,39 @@ async function main()
             compared.stats[0] === `temperature: pal − ${compared.other} on average +0.00, mean absolute difference 0.00 at 6 times` &&
             compared.after === 'temperature',
         compared);
+
+    // An API key: sent as a header with the requests, a placeholder in the code
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {
+      url: `${base}/api/explorer#api=/timeseries&producer=pal&source=querydata&params=temperature&locmode=place&location=Helsinki`
+    });
+    await waitFor(b, `!!document.querySelector('[aria-label="API key"]')`, 'the API key field');
+    apikeys.length = 0;
+    await b.evaluate(`(() => {
+      const input = document.querySelector('[aria-label="API key"]');
+      input.value = 'secret-key-1';
+      input.dispatchEvent(new Event('change'));
+    })()`);
+    await waitFor(b, `!!document.querySelector('button.primary') && !document.querySelector('button.primary').disabled`, 'the form with a key');
+    await b.evaluate(`document.querySelector('button.primary').click()`);
+    await waitFor(b, `!!document.querySelector('.chart')`, 'the results with a key');
+    const keyed = await b.evaluate(`(() => {
+      document.querySelector('.code-details').open = true;
+      const code = document.querySelector('pre.code').textContent;
+      const url = document.querySelector('code.url').textContent;
+      const input = document.querySelector('[aria-label="API key"]');
+      input.value = '';
+      input.dispatchEvent(new Event('change'));
+      return { code, url };
+    })()`);
+    check(
+        'an API key in the headers of the requests',
+        apikeys.some(([u, k]) => u.startsWith('/timeseries/api/producers') && k === 'secret-key-1') &&
+            apikeys.some(([u, k]) => u.startsWith('/timeseries?') && k === 'secret-key-1') &&
+            keyed.code.includes("fmi-apikey: <your API key>") && !keyed.code.includes('secret-key-1') &&
+            !keyed.url.includes('secret-key-1'),
+        {apikeys: apikeys.slice(0, 4), code: keyed.code.slice(0, 200)});
 
     // A path clicked on the map, vertex by vertex
     await b.send('Page.navigate', {url: `${base}/api`});

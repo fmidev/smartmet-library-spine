@@ -337,3 +337,6 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* Units */
 .units-chooser { display: inline-flex; gap: 4px; }
 .units-chooser select { width: auto; }
+
+/* The API key */
+.apikey input { width: 14em; }

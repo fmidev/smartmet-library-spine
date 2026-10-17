@@ -173,6 +173,7 @@ make %{_smp_mflags}
 
 %changelog
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
+- Data explorer: an optional API key, sent as the fmi-apikey header of the requests
 - Data explorer: units of temperatures (C, K, F), wind speeds (m/s, kt, km/h) and heights (m, ft)
 - Data explorer: the visible view saved as a PNG image (diagrams, charts, legends and the
   analysis of soundings) and the rows as CSV

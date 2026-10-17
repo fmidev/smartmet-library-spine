@@ -71,10 +71,59 @@ function debounce(fn, ms)
   };
 }
 
+// The API key of the user, sent as the fmi-apikey header of the requests of the explorer (never
+// in their URLs) and remembered by the browser
+const APIKEY_KEY = 'smartmet-explorer-apikey';
+let apiKey = (() => {
+  try
+  {
+    return localStorage.getItem(APIKEY_KEY) || '';
+  }
+  catch (e)
+  {
+    return '';
+  }
+})();
+
+// The field of the API key; the module is opened again when it changes
+function apiKeyField(onChange)
+{
+  const input = el('input', {
+    type: 'password',
+    'aria-label': 'API key',
+    placeholder: 'API key (optional)',
+    autocomplete: 'off',
+    spellcheck: 'false',
+    value: apiKey
+  });
+  input.addEventListener('change', () => {
+    apiKey = input.value.trim();
+    try
+    {
+      if (apiKey)
+        localStorage.setItem(APIKEY_KEY, apiKey);
+      else
+        localStorage.removeItem(APIKEY_KEY);
+    }
+    catch (e)
+    {
+      // Not remembered
+    }
+    onChange();
+  });
+  return el('label', {class: 'apikey'}, input);
+}
+
+// The headers of a request of the explorer: the given ones and the API key
+function apiHeaders(headers = {})
+{
+  return apiKey ? Object.assign({}, headers, {'fmi-apikey': apiKey}) : headers;
+}
+
 // GET a JSON document; a failed request throws with the status and the start of the response
 async function fetchJson(url)
 {
-  const response = await fetch(url, {headers: {accept: 'application/json'}});
+  const response = await fetch(url, {headers: apiHeaders({accept: 'application/json'})});
   if (!response.ok)
   {
     const text = await response.text();
@@ -5817,10 +5866,12 @@ function shellQuote(s)
 // the generators of the SmartMet Swagger UI plugin when it is loaded
 function snippets(url)
 {
-  const request = {url: url, method: 'GET', headers: {}};
+  // The API key is shown as a placeholder, never as such
+  const request = {url: url, method: 'GET', headers: apiKey ? {'fmi-apikey': '<your API key>'} : {}};
   // The file name extension of the response, as in the snippets of the Swagger plugin
   const ext = S && S.extension ? S.extension(new URL(url)) : 'json';
-  const ret = [['bash', `curl --fail --output result.${ext} ${shellQuote(url)}\n`]];
+  const ret = [['bash', `curl --fail ${apiKey ? `--header 'fmi-apikey: <your API key>' ` : ''}--output result.${ext} ${
+                             shellQuote(url)}\n`]];
   if (S && S.generators)
   {
     const g = S.generators;
@@ -7517,7 +7568,7 @@ function timeSeriesModule(app, api, state, save)
       let text;
       try
       {
-        const response = await fetch(url, {headers: {accept: 'application/json'}});
+        const response = await fetch(url, {headers: apiHeaders({accept: 'application/json'})});
         text = await response.text();
         if (!response.ok)
           throw new Error(`${response.status} ${response.statusText}: ${text.slice(0, 500)}`);
@@ -7744,7 +7795,8 @@ function timeSeriesModule(app, api, state, save)
             ['tz', 'UTC'],
             ['timeformat', 'xml']
           ];
-          const response = await fetch(`${app.base}${rootPath.replace(/^\//, '')}?${queryString(query)}`);
+          const response = await fetch(`${app.base}${rootPath.replace(/^\//, '')}?${queryString(query)}`,
+                                       {headers: apiHeaders()});
           return flattenRows(response.ok ? await response.json() : []);
         }
       });
@@ -7816,7 +7868,8 @@ function timeSeriesModule(app, api, state, save)
               ['tz', 'UTC']
             ];
             const response =
-                await fetch(`${app.base}${rootPath.replace(/^\//, '')}?${queryString(query)}`);
+                await fetch(`${app.base}${rootPath.replace(/^\//, '')}?${queryString(query)}`,
+                            {headers: apiHeaders()});
             compare.rows = flattenRows(response.ok ? await response.json() : []);
             compare.kind = (p.levels && p.levels[0] && p.levels[0].type) || '';
             compare.name = p.name;
@@ -8790,7 +8843,7 @@ function edrModule(app, api, state, save)
       let text;
       try
       {
-        const response = await fetch(currentUrl());
+        const response = await fetch(currentUrl(), {headers: apiHeaders()});
         text = await response.text();
         if (!response.ok)
           throw new Error(`${response.status} ${response.statusText}: ${text.slice(0, 500)}`);
@@ -8985,7 +9038,7 @@ function edrModule(app, api, state, save)
           const url = new URL(currentUrl().replace(`/collections/${encodeURIComponent(s.collection)}/`,
                                                    `/collections/${encodeURIComponent(other.key)}/`));
           url.searchParams.delete('z');
-          const response = await fetch(url.href, {headers: {accept: 'application/json'}});
+          const response = await fetch(url.href, {headers: apiHeaders({accept: 'application/json'})});
           return response.ok ? coverageRows(await response.json()) : [];
         }
       });
@@ -9605,6 +9658,18 @@ function coveragesModule(app, api, state, save)
     const missing = el('p', {class: 'missing'});
     const download =
         el('a', {class: 'download', download: '', 'aria-disabled': 'true'}, 'Download');
+    // A link cannot send the API key: with a key the file is fetched with it and saved
+    download.addEventListener('click', async (e) => {
+      if (!apiKey || download.getAttribute('aria-disabled') === 'true')
+        return;
+      e.preventDefault();
+      const response = await fetch(download.href, {headers: apiHeaders()});
+      if (!response.ok)
+        return;
+      const name = (/filename="?([^";]+)/.exec(response.headers.get('content-disposition') || '') || [])[1] ||
+          new URL(download.href).pathname.split('/').pop() || 'download';
+      saveFile(await response.blob(), name);
+    });
     const copyUrl = el('button', {type: 'button', class: 'small'}, 'Copy URL');
     const code = el('div', {class: 'code-box'});
     const codeDetails =
@@ -9894,7 +9959,8 @@ async function main()
          null,
          el('label', null, 'API ', apiSelect),
          el('a', {href: new URL('api/docs', app.base).href}, 'API documentation'),
-         el('a', {href: base.href + '?f=html'}, 'API catalog')),
+         el('a', {href: base.href + '?f=html'}, 'API catalog'),
+         apiKeyField(() => open(current, true))),
       content);
 
   let catalog;
