@@ -771,6 +771,7 @@ function createMap(settings, onSelect)
     regions: svg('g'),
     selection: svg('g'),
     points: svg('g'),
+    cursor: svg('g'),
     draft: svg('g')
   };
   for (const layer of Object.values(layers))
@@ -1021,6 +1022,7 @@ function createMap(settings, onSelect)
       }
     }
 
+    drawCursor();
     layers.points.replaceChildren();
     // Many points are drawn smaller
     const radius = state.points.length > 500 ? 2 : state.points.length > 100 ? 3 : 4.5;
@@ -1050,6 +1052,16 @@ function createMap(settings, onSelect)
       });
       layers.points.append(c);
     }
+  }
+
+  // A position being shown elsewhere, e.g. the point of an animation along a path
+  function drawCursor()
+  {
+    layers.cursor.replaceChildren();
+    if (!state.cursor)
+      return;
+    const [sx, sy] = screenOf(state.cursor.lon, state.cursor.lat);
+    layers.cursor.append(svg('circle', {class: 'xmap-cursor', cx: sx, cy: sy, r: 7}));
   }
 
   function showTooltip(point, sx, sy)
@@ -1293,6 +1305,11 @@ function createMap(settings, onSelect)
       state.points = points;
       drawOverlays();
     },
+    // The cursor position {lon, lat}, or null
+    setCursor(position) {
+      state.cursor = position;
+      drawCursor();
+    },
     // Coloured values: {items: [{lon, lat, color, label, info}], dx, dy}, the cell size in
     // degrees, or dx = 0 for dots
     setCells(cells) {
@@ -1380,7 +1397,7 @@ const SOUNDING_PARAMS = {
 
 // The tabs of results that open first with later results once chosen: the views of what the
 // data has. Charts, tables and trees are the defaults.
-const REMEMBERED_TABS = ['Profile', 'Section', 'Sounding', 'Cross section', 'Map'];
+const REMEMBERED_TABS = ['Profile', 'Section', 'Sounding', 'Cross section', 'Along the path', 'Map'];
 
 // The kind of the levels of an EDR collection from its vertical reference system
 function edrLevelKind(collection)
@@ -1767,7 +1784,8 @@ function replayPointer()
 // tick at each available time. The slider is positioned by time, so that the ticks show the
 // steps and gaps of the data, and it always snaps to an available time. times are in ms; when
 // some are unknown the times are spaced evenly. Options: label (of the slider), format (of a
-// time and its index), all (offer 'All times'), onChange(). Returns {element, index(), all()}.
+// time and its index), all (offer 'All times'), positions (of the steps on the slider instead of
+// their times, e.g. distances), onChange(). Returns {element, index(), all()}.
 function timeSlider(times, options = {})
 {
   const format = options.format || ((tm) => formatTime(new Date(tm)));
@@ -1778,9 +1796,11 @@ function timeSlider(times, options = {})
     box.append(el('span', {class: 'muted small'}, times.length ? formatAt(0) : ''));
     return {element: box, index: () => 0, all: () => false};
   }
-  const known = times.every((tm) => typeof tm === 'number' && isFinite(tm));
+  const known = !options.positions && times.every((tm) => typeof tm === 'number' && isFinite(tm));
   // The position of each time on the slider, 0 ... span
-  const positions = known ? times.map((tm) => (tm - times[0]) / 60000) : times.map((_, i) => i);
+  const positions = options.positions ? options.positions.map((p) => p - options.positions[0]) :
+      known                           ? times.map((tm) => (tm - times[0]) / 60000) :
+                                        times.map((_, i) => i);
   const span = positions[positions.length - 1] || 1;
   let index = 0;
   let all = false;
@@ -2463,6 +2483,161 @@ function pathPoints(rows)
     p.km = km;
   });
   return points;
+}
+
+// The labels of a time axis of a chart: UTC times in 24 hour format, with the date where the
+// day changes
+function utcTimeLabels(u, splits)
+{
+  let previous = '';
+  return splits.map((x) => {
+    const d = new Date(x * 1000);
+    const day = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+    const time = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+    const label = day !== previous ? `${time}\n${day}` : time;
+    previous = day;
+    return label;
+  });
+}
+
+// The time series along a path: a slider (and an animation) over the points of the path by
+// their distance from the start, and a chart of each parameter at the chosen point against the
+// median and the 10-90 % range of the whole path. The vertical scales are those of the whole
+// path, so that the steps can be compared. options: onPosition({lat, lon} or null) to show the
+// point elsewhere, e.g. on a map.
+function drawAlongPath(container, rows, parameters, levelKind, options = {})
+{
+  container.replaceChildren();
+  const root = typeof window !== 'undefined' ? window : globalThis;
+  const {levels, fallback} = chartLevels(rows, levelKind);
+  let level = levels.length > 0 ? fallback || String(levels[0]) : '';
+  const levelSelect = el('select', {'aria-label': 'Level along the path'},
+                         levels.map((v) => el('option', {value: String(v)}, String(v))));
+  levelSelect.value = level;
+  const levelLabel = el('label', null, 'Level', levelSelect);
+  levelLabel.hidden = levels.length === 0;
+  const charts = el('div', {class: 'along-path'});
+  const head = el('div', {class: 'row'}, levelLabel);
+  container.append(head, charts);
+  levelSelect.addEventListener('change', () => {
+    level = levelSelect.value;
+    build();
+  });
+
+  let slider = null;
+  function build()
+  {
+    charts.replaceChildren();
+    if (slider)
+      slider.element.remove();
+    const chosen = level === '' ? rows : rows.filter((r) => r.level === Number(level));
+    const points = pathPoints(chosen);
+    if (points.length < 2)
+    {
+      charts.append(el('p', {class: 'muted'}, 'The path has fewer than two points with values.'));
+      return;
+    }
+    const index = new Map(points.map((p, i) => [p.key, i]));
+    const times = Array.from(new Set(chosen.map((r) => {
+                    const d = parseTime(r.time);
+                    return d ? Math.round(d.getTime() / 1000) : null;
+                  }).filter((x) => x !== null)))
+                      .sort((a, b) => a - b);
+    const timeIndex = new Map(times.map((x, i) => [x, i]));
+    const numeric = parameters.filter((p) => chosen.some((r) => typeof r[p] === 'number'));
+    // values[parameter][point][time]
+    const values = {};
+    for (const p of numeric)
+      values[p] = points.map(() => times.map(() => null));
+    for (const r of chosen)
+    {
+      const i = typeof r.lat === 'number' ? index.get(`${r.lat.toFixed(5)},${r.lon.toFixed(5)}`) : undefined;
+      const d = parseTime(r.time);
+      const k = d ? timeIndex.get(Math.round(d.getTime() / 1000)) : undefined;
+      if (i === undefined || k === undefined)
+        continue;
+      for (const p of numeric)
+        if (typeof r[p] === 'number' && isFinite(r[p]))
+          values[p][i][k] = r[p];
+    }
+    const css = getComputedStyle(document.documentElement);
+    const fg = css.getPropertyValue('--fg').trim() || '#000';
+    const accent = css.getPropertyValue('--accent').trim() || '#0969da';
+    const axisColor = css.getPropertyValue('--muted').trim() || '#666';
+    const gridColor = css.getPropertyValue('--line').trim() || '#ddd';
+    const width = Math.max(320, Math.min(900, container.clientWidth - 8 || 640));
+    const plots = numeric.map((p) => {
+      // The median and the 10-90 % range of the whole path at each time
+      const stats = times.map((x, k) => {
+        const column = values[p].map((series) => series[k]).filter((v) => v !== null).sort((a, b) => a - b);
+        return column.length ? [quantile(column, 0.1), quantile(column, 0.5), quantile(column, 0.9)] : [null, null, null];
+      });
+      const all = values[p].flat().filter((v) => v !== null);
+      const lo = Math.min(...all);
+      const hi = Math.max(...all);
+      const pad = (hi - lo || Math.abs(hi) || 1) * 0.05;
+      const panel = el('div', {class: 'chart', 'data-param': p});
+      const title = el('div', {class: 'chart-title'});
+      const plot = el('div', {class: 'chart-plot'});
+      panel.append(title, plot);
+      charts.append(panel);
+      const band = 'rgba(128, 128, 128, 0.18)';
+      const u = new root.uPlot(
+          {
+            width,
+            height: 220,
+            series: [
+              {value: (u, x) => (x === null ? '--' : formatTime(new Date(x * 1000)))},
+              {label: '10 % of the path', stroke: 'transparent', points: {show: false}},
+              {label: '90 % of the path', stroke: 'transparent', points: {show: false}},
+              {label: 'median of the path', stroke: axisColor, width: 1, dash: [4, 3], points: {show: false}},
+              {label: p, stroke: accent, width: 2.5}
+            ],
+            bands: [{series: [2, 1], fill: band}],
+            axes: [
+              {
+                stroke: axisColor,
+                grid: {stroke: gridColor, width: 1},
+                ticks: {stroke: gridColor},
+                values: utcTimeLabels,
+                size: 50
+              },
+              {stroke: axisColor, grid: {stroke: gridColor, width: 1}, ticks: {stroke: gridColor}, size: 60}
+            ],
+            scales: {x: {time: true}, y: {range: () => [lo - pad, hi + pad]}},
+            legend: {live: true},
+            tzDate: (ts) => root.uPlot.tzDate(new Date(ts * 1000), 'Etc/UTC')
+          },
+          [times, stats.map((s) => s[0]), stats.map((s) => s[2]), stats.map((s) => s[1]), values[p][0]],
+          plot);
+      return {p, u, title, stats};
+    });
+    if (plots.length === 0)
+    {
+      charts.append(el('p', {class: 'muted'}, 'No values to draw.'));
+      return;
+    }
+    const show = (i) => {
+      const point = points[i];
+      for (const {p, u, title, stats} of plots)
+      {
+        u.setData([times, stats.map((s) => s[0]), stats.map((s) => s[2]), stats.map((s) => s[1]), values[p][i]], false);
+        title.textContent = `${p} at ${Math.round(point.km)} km of ${Math.round(points[points.length - 1].km)} km (${
+            point.lat.toFixed(3)}, ${point.lon.toFixed(3)}), against the median and 10-90 % of the path`;
+      }
+      if (options.onPosition)
+        options.onPosition({lat: point.lat, lon: point.lon});
+    };
+    slider = timeSlider(points.map((pt) => pt.km), {
+      label: 'Position along the path',
+      positions: points.map((pt) => pt.km),
+      format: (km, i) => `${Math.round(km)} km (${points[i].lat.toFixed(3)}, ${points[i].lon.toFixed(3)})`,
+      onChange: () => show(slider.index())
+    });
+    head.append(slider.element);
+    show(0);
+  }
+  build();
 }
 
 // Whether the rows are a vertical cross section: several levels at several points of a path
@@ -3651,18 +3826,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
   const css = getComputedStyle(document.documentElement);
   const axisColor = css.getPropertyValue('--muted').trim() || '#666';
   const gridColor = css.getPropertyValue('--line').trim() || '#ddd';
-  // UTC times in 24 hour format, with the date where the day changes
-  const timeLabels = (u, splits) => {
-    let previous = '';
-    return splits.map((x) => {
-      const d = new Date(x * 1000);
-      const day = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
-      const time = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
-      const label = day !== previous ? `${time}\n${day}` : time;
-      previous = day;
-      return label;
-    });
-  };
+  const timeLabels = utcTimeLabels;
   const axes = [
     {
       stroke: axisColor,
@@ -4253,6 +4417,75 @@ const LOCATION_MODES = [
   ['wmo', 'WMO id', '2963,2974', null],
   ['area', 'Area', 'Uusimaa', null]
 ];
+
+// The points along a path a request asks for: the marked points (the vertices), or points
+// every N km along the whole path. The state keeps pathpoints ('marked' or '') and pathstep
+// (km, '' for about 40 points). Returns {element, update(sel)}.
+function pathPointsChooser(s, onChange)
+{
+  const marked = el('button', {type: 'button', role: 'radio', 'data-pathpoints': 'marked'}, 'The marked points');
+  const every = el('button', {type: 'button', role: 'radio', 'data-pathpoints': 'every'}, 'Every');
+  const stepInput = el('input', {
+    type: 'number',
+    min: '0.1',
+    step: 'any',
+    'aria-label': 'Distance between the points (km)',
+    style: 'width: 6em'
+  });
+  const note = el('span', {class: 'muted small'});
+  const element = el('div',
+                     null,
+                     el('label', null, 'Points along the path'),
+                     el('div',
+                        {class: 'row'},
+                        el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': 'Points along the path'},
+                           marked, every),
+                        stepInput,
+                        el('span', {class: 'small'}, 'km'),
+                        note));
+  marked.addEventListener('click', () => {
+    s.pathpoints = 'marked';
+    onChange();
+  });
+  every.addEventListener('click', () => {
+    delete s.pathpoints;
+    onChange();
+  });
+  stepInput.addEventListener('input', () => {
+    const v = Number(stepInput.value);
+    if (stepInput.value === '')
+      delete s.pathstep;
+    else if (v > 0)
+      s.pathstep = String(v);
+    delete s.pathpoints;
+    onChange(false);
+  });
+  const update = (sel, rerender = true) => {
+    const isMarked = s.pathpoints === 'marked';
+    marked.setAttribute('aria-checked', isMarked ? 'true' : 'false');
+    every.setAttribute('aria-checked', isMarked ? 'false' : 'true');
+    const length = sel && sel.points.length >= 2 ? pathLength(sel.points) : 0;
+    const step = pathStepOf(s, sel);
+    if (rerender)
+      stepInput.value = s.pathstep || '';
+    stepInput.placeholder = step ? `${step} (auto)` : 'auto';
+    note.textContent = !length ? '' : isMarked ?
+        `${sel.points.length} points, ${Math.round(length)} km` :
+        `about ${Math.floor(length / Number(step)) + 1} points, ${Math.round(length)} km`;
+  };
+  return {element, update};
+}
+
+// The spacing of the points along a path (km): the chosen one, or about 40 points at least
+// 1 km apart. '' for the marked points or no path.
+function pathStepOf(s, sel)
+{
+  if (s.pathpoints === 'marked' || !sel || sel.type !== 'path' || sel.points.length < 2)
+    return '';
+  if (Number(s.pathstep) > 0)
+    return String(s.pathstep);
+  return String(Math.max(1, Math.round(pathLength(sel.points) / 40)));
+}
 
 // The TimeSeries option of a location type
 const locationOption = (mode) => (mode === 'radius' ? 'lonlat' : mode);
@@ -5447,6 +5680,7 @@ function timeSeriesModule(app, api, state, save)
              },
              label));
     const areaValuesRow = el('div', null, el('label', null, 'Values of an area'), areaValues);
+    const pathChooser = pathPointsChooser(s, (rerender) => refresh(rerender));
 
     // An area, radius or box, or several locations, whose values the server can aggregate
     const isArea = () => ['bbox', 'radius', 'area', 'path'].includes(s.locmode) ||
@@ -5591,7 +5825,9 @@ function timeSeriesModule(app, api, state, save)
         ['starttime', fromInput(s.start)],
         ['endtime', fromInput(s.end)],
         ['timestep', s.timestep],
-        [locationOption(s.locmode), s.location],
+        // The marked points of a path are asked as points of their own
+        [s.locmode === 'path' && s.pathpoints === 'marked' ? 'lonlats' : locationOption(s.locmode),
+         s.location],
         ['step', pathStep()],
         ['grouplocations', groupLocations() ? '1' : ''],
         ['lang', s.lang],
@@ -5601,13 +5837,10 @@ function timeSeriesModule(app, api, state, save)
       ];
     }
 
-    // The spacing of the points of a path: about 40 points, at least 1 km apart
+    // The spacing of the points of a path, '' for the marked points
     function pathStep()
     {
-      const sel = s.locmode === 'path' ? selection() : null;
-      if (!sel || sel.points.length < 2)
-        return '';
-      return String(Math.max(1, Math.round(pathLength(sel.points) / 40)));
+      return s.locmode === 'path' ? pathStepOf(s, selection()) : '';
     }
 
     // The server reads querydata unless told otherwise, or unless it is configured to prefer grid
@@ -5640,6 +5873,7 @@ function timeSeriesModule(app, api, state, save)
     async function run()
     {
       results.replaceChildren(el('p', {class: 'muted'}, 'Running…'));
+      map.setCursor(null);
       const url = currentUrl();
       let text;
       try
@@ -5681,6 +5915,9 @@ function timeSeriesModule(app, api, state, save)
       const crossSection = s.locmode === 'path' && hasCrossSection(rows);
       if (crossSection)
         panes['Cross section'] = el('div', {class: 'pane'});
+      const alongPath = s.locmode === 'path' && pathPoints(rows).length >= 2;
+      if (alongPath)
+        panes['Along the path'] = el('div', {class: 'pane'});
       if (vertical)
       {
         panes.Profile = el('div', {class: 'pane'});
@@ -5713,6 +5950,9 @@ function timeSeriesModule(app, api, state, save)
           drawSection(panes.Section, rows, dataParams(), kind, mapSettings(app.element));
         else if (name === 'Cross section')
           drawCrossSection(panes['Cross section'], rows, dataParams(), kind, mapSettings(app.element));
+        else if (name === 'Along the path')
+          drawAlongPath(panes['Along the path'], rows, dataParams(), kind,
+                        {onPosition: (p) => map.setCursor(p)});
         else if (name === 'Sounding')
           drawSounding(panes.Sounding, rows, kind);
         else if (name === 'Map')
@@ -5754,6 +5994,7 @@ function timeSeriesModule(app, api, state, save)
           ...Object.values(panes));
       show(s.tab && panes[s.tab] ? s.tab :
                crossSection        ? 'Cross section' :
+               alongPath           ? 'Along the path' :
                vertical                     ? 'Profile' :
                                               'Chart');
     }
@@ -6150,6 +6391,9 @@ function timeSeriesModule(app, api, state, save)
       if (rerender !== false)
         langInput.value = s.lang || '';
       areaValuesRow.hidden = !isArea();
+      pathChooser.element.hidden = s.locmode !== 'path';
+      if (s.locmode === 'path')
+        pathChooser.update(selection(), rerender !== false);
       Array.from(areaValues.children)
           .forEach(
               (b) => b.setAttribute(
@@ -6192,6 +6436,7 @@ function timeSeriesModule(app, api, state, save)
                'Where',
                locModes,
                el('div', {class: 'row'}, locInput, showButton),
+               pathChooser.element,
                stationSearch.element,
                stationNote,
                areaNote,
@@ -6307,6 +6552,43 @@ function coverageRows(doc)
   const coverages = doc.type === 'CoverageCollection' ? doc.coverages || [] : [doc];
   coverages.forEach((cov, index) => {
     const axes = (cov.domain && cov.domain.axes) || {};
+    // A trajectory: the points of a composite axis, each a tuple of its coordinates
+    if (axes.composite && Array.isArray(axes.composite.values))
+    {
+      const coordinates = axes.composite.coordinates || ['t', 'x', 'y', 'z'];
+      const at = (tuple, c) => {
+        const i = coordinates.indexOf(c);
+        return i >= 0 ? tuple[i] : undefined;
+      };
+      const zs = (axes.z && axes.z.values) || [undefined];
+      const ranges = cov.ranges || {};
+      axes.composite.values.forEach((tuple, ci) => {
+        for (let zi = 0; zi < zs.length; zi++)
+        {
+          const lat = at(tuple, 'y');
+          const lon = at(tuple, 'x');
+          const row = {name: `${lat},${lon}`, time: at(tuple, 't'), lat, lon};
+          const z = zs[zi] !== undefined ? zs[zi] : at(tuple, 'z');
+          if (z !== undefined)
+            row.level = z;
+          for (const [p, r] of Object.entries(ranges))
+          {
+            const names = r.axisNames || [];
+            const shape = r.shape || [];
+            const position = {composite: ci, z: zi};
+            let offset = 0;
+            names.forEach((n, i) => {
+              offset = offset * (shape[i] || 1) + (position[n] || 0);
+            });
+            const v = (r.values || [])[offset];
+            row[p] = v === undefined ? null : v;
+          }
+          row._coverage = index;
+          rows.push(row);
+        }
+      });
+      return;
+    }
     const values = (name) => (axes[name] && axes[name].values) || [undefined];
     const ts = values('t');
     const xs = values('x');
@@ -6349,6 +6631,7 @@ const EDR_QUERIES = [
   ['radius', 'Radius', 'circle'],
   ['area', 'Area', 'box'],
   ['cube', 'Cube', 'box'],
+  ['trajectory', 'Trajectory', 'line'],
   ['locations', 'Locations', null]
 ];
 
@@ -6390,6 +6673,8 @@ function edrModule(app, api, state, save)
         return parseSelection('radius', s.location);
       if (q === 'area' || q === 'cube')
         return parseSelection('bbox', s.location);
+      if (q === 'trajectory')
+        return parseSelection('path', s.location);
       return null;
     };
     const candidates = () => {
@@ -6519,6 +6804,7 @@ function edrModule(app, api, state, save)
     // --- Where -------------------------------------------------------------
     const locInput = el('input', {type: 'text', 'aria-label': 'Location', spellcheck: 'false'});
     const areaNote = el('p', {class: 'warn small'});
+    const pathChooser = pathPointsChooser(s, (rerender) => refresh(rerender));
     const map = createMap(mapSettings(app.element), (shape) => {
       s.location = formatSelection(shape);
       refresh();
@@ -6636,6 +6922,12 @@ function edrModule(app, api, state, save)
           ['within', String(sel.km)],
           ['within-units', 'km']
         ];
+      // A trajectory at its marked points, or at points every N km along it
+      if (sel.type === 'path')
+        return [
+          ['coords', `LINESTRING(${sel.points.map(([lon, lat]) => `${lon} ${lat}`).join(',')})`],
+          ['step', pathStepOf(s, sel)]
+        ];
       const [a, b, c, d] = sel.bbox;
       if (query()[0] === 'cube')
         return [['bbox', `${a},${b},${c},${d}`]];
@@ -6729,19 +7021,24 @@ function edrModule(app, api, state, save)
       if (s.params.length === 0)
         out.push('a parameter');
       const [q] = query();
-      if (q === 'locations' ? !s.location : !selection())
+      const sel = selection();
+      if (q === 'locations' ? !s.location : !sel)
         out.push(
             q === 'locations' ? 'a location' :
                                 `a ${
-                                    q === 'position'   ? 'point' :
-                                        q === 'radius' ? 'radius' :
-                                                         'box'} on the map`);
+                                    q === 'position'       ? 'point' :
+                                        q === 'radius'     ? 'radius' :
+                                        q === 'trajectory' ? 'path' :
+                                                             'box'} on the map`);
+      else if (q === 'trajectory' && sel.points.length < 2)
+        out.push('a second point of the path');
       return out;
     }
 
     async function run()
     {
       results.replaceChildren(el('p', {class: 'muted'}, 'Running…'));
+      map.setCursor(null);
       let text;
       try
       {
@@ -6781,6 +7078,13 @@ function edrModule(app, api, state, save)
       const kind = edrLevelKind(c);
       const vertical = hasProfiles(rows, kind);
       const panes = {};
+      const trajectory = query()[0] === 'trajectory';
+      const crossSection = trajectory && hasCrossSection(rows);
+      if (crossSection)
+        panes['Cross section'] = el('div', {class: 'pane'});
+      const alongPath = trajectory && pathPoints(rows).length >= 2;
+      if (alongPath)
+        panes['Along the path'] = el('div', {class: 'pane'});
       if (vertical)
       {
         panes.Profile = el('div', {class: 'pane'});
@@ -6819,6 +7123,11 @@ function edrModule(app, api, state, save)
           drawProfiles(panes.Profile, rows, params, kind);
         else if (name === 'Section')
           drawSection(panes.Section, rows, params, kind, mapSettings(app.element));
+        else if (name === 'Cross section')
+          drawCrossSection(panes['Cross section'], rows, params, kind, mapSettings(app.element));
+        else if (name === 'Along the path')
+          drawAlongPath(panes['Along the path'], rows, params, kind,
+                        {onPosition: (p) => map.setCursor(p)});
         else if (name === 'Sounding')
           drawSkewT(panes.Sounding, rows, kind, {
             type: s.diagram || 'skewt',
@@ -6864,7 +7173,11 @@ function edrModule(app, api, state, save)
                 `${rows.length} rows${count > 1 ? `, ${count} locations` : ''}${
                     vertical ? `, ${levelCount} levels` : ''}`)),
           ...Object.values(panes));
-      show(s.tab && panes[s.tab] ? s.tab : vertical ? 'Profile' : 'Chart');
+      show(s.tab && panes[s.tab] ? s.tab :
+               crossSection        ? 'Cross section' :
+               alongPath           ? 'Along the path' :
+               vertical            ? 'Profile' :
+                                     'Chart');
     }
 
     function refresh(rerender = true)
@@ -6995,7 +7308,11 @@ function edrModule(app, api, state, save)
       locationSearch.element.hidden = !isLocations;
       locInput.placeholder = q === 'position' ? '24.94,60.17, or click the map' :
           q === 'radius'                      ? '24.94,60.17:25 (km), or drag on the map' :
+          q === 'trajectory'                  ? '24.3,60.0,25.0,60.2,25.8,60.3 (lon,lat,...), or click the map' :
                                                 '21,60,26,62, or drag on the map';
+      pathChooser.element.hidden = q !== 'trajectory';
+      if (q === 'trajectory')
+        pathChooser.update(selection(), rerender !== false);
       if (rerender !== false && !isLocations)
         locInput.value = s.location || '';
       map.setTools(tool ? ['move', tool] : ['move'], tool || 'move');
@@ -7054,6 +7371,7 @@ function edrModule(app, api, state, save)
                'Where',
                queryButtons,
                el('div', {class: 'row'}, locInput),
+               pathChooser.element,
                locationSearch.element,
                areaNote,
                map.element),
@@ -7803,6 +8121,7 @@ root.SmartMetExplorer = {
   pathPoints,
   hasProfiles,
   hasSounding,
+  drawAlongPath,
   flightLevelPressure,
   flightLevelsBetween,
   verticalAxes,

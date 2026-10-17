@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.17
-Release: 14%{?dist}.fmi
+Release: 15%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-15.fmi
+- Data explorer: EDR trajectory queries drawn on the map; paths at their marked points or every
+  N km; an animated view of the time series along a path; trajectory CoverageJSON read
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-14.fmi
 - Data explorer: charts of areas with several levels show one level at a time (the lowest by
   default); swarms of thousands of locations are drawn on the canvas and hover in milliseconds;

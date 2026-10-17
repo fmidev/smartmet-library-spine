@@ -258,7 +258,7 @@ const edrCollections = {
     {
       id: 'pal',
       title: 'Pal Skandinavia',
-      data_queries: {position: {}, radius: {}, area: {}, cube: {}, locations: {}},
+      data_queries: {position: {}, radius: {}, area: {}, cube: {}, trajectory: {}, locations: {}},
       output_formats: ['CoverageJSON', 'GeoJSON'],
       extent: {
         spatial: {bbox: [[5, 51, 49, 72]], crs: 'OGC:CRS84'},
@@ -311,7 +311,7 @@ function edr(p, query)
   if (p === '/edr/collections')
     return edrCollections;
   const m =
-      /^\/edr\/collections\/([^/]+)\/(position|radius|area|cube|locations)(?:\/([^/]+))?$/.exec(p);
+      /^\/edr\/collections\/([^/]+)\/(position|radius|area|cube|trajectory|locations)(?:\/([^/]+))?$/.exec(p);
   if (!m)
     return null;
   const params = (query.get('parameter-name') || '').split(',').filter(Boolean);
@@ -333,6 +333,30 @@ function edr(p, query)
         }
       ]
     };
+  // A trajectory: its points (the vertices of the LINESTRING) at each time on a composite axis
+  if (m[2] === 'trajectory')
+  {
+    const points = (/LINESTRING\((.*)\)/.exec(query.get('coords') || '') || ['', ''])[1]
+                       .split(',')
+                       .map((xy) => xy.trim().split(/\s+/).map(Number));
+    const ts = Array.from({length: 3}, (_, i) => iso(now.getTime() + i * hour));
+    const tuples = points.flatMap(([x, y]) => ts.map((tm) => [tm, x, y]));
+    const ranges = {};
+    for (const p of params)
+      ranges[p] = {
+        type: 'NdArray',
+        dataType: 'float',
+        axisNames: ['composite'],
+        shape: [tuples.length],
+        values: tuples.map((tu, i) => 10 + i)
+      };
+    return {
+      type: 'Coverage',
+      domain: {type: 'Domain', domainType: 'Trajectory',
+               axes: {composite: {dataType: 'tuple', coordinates: ['t', 'x', 'y'], values: tuples}}},
+      ranges
+    };
+  }
   if (m[2] === 'area' || m[2] === 'cube' || m[2] === 'radius')
     return {
       type: 'CoverageCollection',
@@ -1500,6 +1524,23 @@ async function main()
         (pq.get('path') || '').split(',').length === 6 && Number(pq.get('step')) >= 1 &&
             vertices === 3,
         {path: pq.get('path'), step: pq.get('step'), vertices});
+    // The marked points of the path as points of their own, or points every 5 km
+    await b.evaluate(`document.querySelector('[data-pathpoints="marked"]').click()`);
+    await sleep(200);
+    const markedQuery = await currentQuery(b);
+    await b.evaluate(`(() => {
+      const input = document.querySelector('[aria-label="Distance between the points (km)"]');
+      input.value = '5';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await sleep(200);
+    const everyQuery = await currentQuery(b);
+    check(
+        'the points along a path',
+        markedQuery.get('lonlats') === pq.get('path') && !markedQuery.has('path') &&
+            !markedQuery.has('step') && everyQuery.get('path') === pq.get('path') &&
+            everyQuery.get('step') === '5',
+        {marked: markedQuery.toString(), every: everyQuery.toString()});
     await b.evaluate(`[...document.querySelectorAll('.xmap-tools button')].find((x) => x.textContent === 'Undo').click()`);
     await sleep(250);
     pq = await currentQuery(b);
@@ -1677,7 +1718,8 @@ async function main()
         'query types of the collection',
         JSON.stringify(queriesOf) ===
             JSON.stringify(
-                ['Position:true', 'Radius:false', 'Area:false', 'Cube:false', 'Locations:false']),
+                ['Position:true', 'Radius:false', 'Area:false', 'Cube:false', 'Trajectory:false',
+                 'Locations:false']),
         queriesOf);
 
     // A position clicked on the map
@@ -1723,6 +1765,48 @@ async function main()
         'the EDR area results');
     const earea = await b.evaluate(`document.querySelectorAll('.xmap-point').length`);
     check('the points of the area on the map', earea === 4, earea);
+
+    // A trajectory clicked on the map, at its marked points, animated along the path
+    await b.evaluate(`document.querySelector('[data-query="trajectory"]').click()`);
+    await sleep(200);
+    m = await mapRect(b);
+    for (const [fx, fy] of [[0.4, 0.5], [0.5, 0.45], [0.6, 0.5]])
+    {
+      await mouse(b, 'mouseMoved', m.x + m.w * fx, m.y + m.h * fy, 0);
+      await mouse(b, 'mousePressed', m.x + m.w * fx, m.y + m.h * fy, 1);
+      await mouse(b, 'mouseReleased', m.x + m.w * fx, m.y + m.h * fy, 0);
+      await sleep(250);
+    }
+    eurl = new URL(await b.evaluate(`document.querySelector('code.url').textContent`));
+    const everyStep = eurl.searchParams.get('step');
+    await b.evaluate(`document.querySelector('[data-pathpoints="marked"]').click()`);
+    await sleep(200);
+    eurl = new URL(await b.evaluate(`document.querySelector('code.url').textContent`));
+    check(
+        'EDR trajectory request',
+        eurl.pathname === '/edr/collections/pal/trajectory' &&
+            /^LINESTRING\((-?[\d.]+ -?[\d.]+,){2}-?[\d.]+ -?[\d.]+\)$/.test(eurl.searchParams.get('coords')) &&
+            Number(everyStep) >= 1 && !eurl.searchParams.has('step'),
+        {url: eurl.href, everyStep});
+    await b.evaluate(`document.querySelector('button.primary').click()`);
+    await waitFor(b, `!!document.querySelector('.along-path .chart')`, 'the trajectory results');
+    const along = await b.evaluate(`(() => {
+      const pane = [...document.querySelectorAll('.results .pane')].find((p) => !p.hidden);
+      const slider = pane.querySelector('input[type="range"]');
+      const first = { label: pane.querySelector('.time-label').textContent, title: pane.querySelector('.chart-title').textContent,
+                      cursor: document.querySelector('.xmap-cursor')?.getAttribute('cx') };
+      slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+      return { tab: [...document.querySelectorAll('.results-head [role=tab]')].find((x) => x.getAttribute('aria-selected') === 'true').textContent,
+               ticks: pane.querySelectorAll('.time-tick').length, first,
+               last: pane.querySelector('.time-label').textContent,
+               moved: document.querySelector('.xmap-cursor')?.getAttribute('cx') !== first.cursor };
+    })()`);
+    check(
+        'animation along the trajectory',
+        along.tab === 'Along the path' && along.ticks === 3 && /^0 km \(/.test(along.first.label) &&
+            /^temperature at 0 km of \d+ km/.test(along.first.title) && /^\d+ km \(/.test(along.last) &&
+            along.last !== along.first.label && along.moved,
+        along);
 
     // A location of the collection
     await b.evaluate(`document.querySelector('[data-query="locations"]').click()`);

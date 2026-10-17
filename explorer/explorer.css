@@ -298,3 +298,5 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .time-tick { position: absolute; top: 0; width: 1px; height: 5px; background: var(--muted); transform: translateX(-0.5px); }
 .time-tick.day { height: 8px; width: 2px; background: var(--fg); }
 .time-label { min-width: 11em; }
+
+.xmap-cursor { fill: none; stroke: #d9480f; stroke-width: 3; pointer-events: none; }
