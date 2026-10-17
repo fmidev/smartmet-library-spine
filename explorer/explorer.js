@@ -170,7 +170,198 @@ function fromInput(value)
 // A time for display: 2026-10-16 12:00 UTC
 function formatTime(date)
 {
+  if (clock === '12')
+  {
+    const h = date.getUTCHours();
+    return `${toInput(date).slice(0, 10)} ${(h + 11) % 12 + 1}:${pad(date.getUTCMinutes())} ${h < 12 ? 'AM' : 'PM'} UTC`;
+  }
   return `${toInput(date).replace('T', ' ')} UTC`;
+}
+
+// The clock of the times shown, '24' or '12' hours: the choice of the user, else the default of
+// the server, else that of the language of the browser
+const CLOCK_KEY = 'smartmet-explorer-clock';
+let clock = '24';
+function initialClock(serverClock)
+{
+  try
+  {
+    const stored = localStorage.getItem(CLOCK_KEY);
+    if (stored === '12' || stored === '24')
+      return stored;
+  }
+  catch (e)
+  {
+    // Not remembered
+  }
+  if (serverClock === '12' || serverClock === '24')
+    return serverClock;
+  try
+  {
+    const language = typeof navigator !== 'undefined' ? navigator.language : undefined;
+    // en-US outside the Americas is taken for English of no region
+    const effective = /^en[-_]US$/i.test(language || '') && !browserRegion(language, browserTimeZone()) ? 'en-GB' : language;
+    const cycle = new Intl.DateTimeFormat(effective, {hour: 'numeric'}).resolvedOptions().hourCycle;
+    return cycle === 'h11' || cycle === 'h12' ? '12' : '24';
+  }
+  catch (e)
+  {
+    return '24';
+  }
+}
+
+// A date template of the charts (uPlot) for the clock: 24 hours with ISO dates, or as uPlot has
+// it, 12 hours with month/day
+function clockTemplate(template)
+{
+  if (clock === '12')
+    return template;
+  let t = template.replace('{M}/{D}/{YY}', '{YYYY}-{MM}-{DD}').replace('{M}/{D}', '{MM}-{DD}');
+  if (t.includes('{h}'))
+    t = t.replace('{h}', t.includes('{mm}') ? '{HH}' : '{HH}:00');
+  return t.replace(/\{(aa|AA|a|A)\}/g, '').trim();
+}
+
+// A chart: uPlot with the times of the clock chosen
+function makePlot(root, opts, data, target)
+{
+  const timed = !(opts.scales && opts.scales.x && opts.scales.x.time === false);
+  const options = timed ? Object.assign({fmtDate: (t) => root.uPlot.fmtDate(clockTemplate(t))}, opts) : opts;
+  return new root.uPlot(options, data, target);
+}
+
+// A time 'YYYY-MM-DDTHH:MM' (UTC, as datetime-local inputs have it) for a text field in the
+// clock chosen: 2026-10-16 13:00 or 2026-10-16 1:00 PM
+function timeText(value)
+{
+  const m = /^(\d{4}-\d\d-\d\d)T(\d\d):(\d\d)/.exec(value || '');
+  if (!m)
+    return '';
+  if (clock !== '12')
+    return `${m[1]} ${m[2]}:${m[3]}`;
+  const h = Number(m[2]);
+  return `${m[1]} ${(h + 11) % 12 + 1}:${m[3]} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+// The text of a time field as 'YYYY-MM-DDTHH:MM', '' when it is not a time: a date with an
+// optional time of the 24 or the 12 hour clock
+function parseTimeText(text)
+{
+  const m = /^\s*(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T]+(\d{1,2})(?::(\d\d))?\s*(am|pm|a\.m\.|p\.m\.)?)?\s*(?:utc|z)?\s*$/i
+                .exec(text || '');
+  if (!m)
+    return '';
+  let h = m[4] === undefined ? 0 : Number(m[4]);
+  const minutes = m[5] === undefined ? 0 : Number(m[5]);
+  const half = (m[6] || '').toLowerCase()[0];
+  if (half && (h < 1 || h > 12))
+    return '';
+  if (half === 'p' && h < 12)
+    h += 12;
+  else if (half === 'a' && h === 12)
+    h = 0;
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  const date = new Date(Date.UTC(Number(m[1]), month - 1, day, h, minutes));
+  if (h > 23 || minutes > 59 || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day)
+    return '';
+  return toInput(date);
+}
+
+// A small calendar drawn with SVG: emoji are missing from many fonts
+function calendarIcon()
+{
+  const icon = svg('svg', {width: 14, height: 14, viewBox: '0 0 14 14', 'aria-hidden': 'true', class: 'icon'});
+  icon.append(svg('rect', {x: 1.5, y: 2.5, width: 11, height: 10, rx: 1.5, fill: 'none', stroke: 'currentColor'}),
+              svg('line', {x1: 1.5, y1: 5.5, x2: 12.5, y2: 5.5, stroke: 'currentColor'}),
+              svg('line', {x1: 4.5, y1: 1, x2: 4.5, y2: 4, stroke: 'currentColor'}),
+              svg('line', {x1: 9.5, y1: 1, x2: 9.5, y2: 4, stroke: 'currentColor'}));
+  return icon;
+}
+
+// The time fields shown, written again in a new clock
+const timeFields = new Set();
+
+// A time field in UTC in the clock chosen, with a button for the date picker of the browser:
+// an element whose value is 'YYYY-MM-DDTHH:MM' like that of a datetime-local input, and which
+// passes on the input and change events of its text
+function timeInput(attrs)
+{
+  const label = attrs['aria-label'] || 'Time (UTC)';
+  const text = el('input', {type: 'text', class: 'time-text', size: 18, 'aria-label': `${label} text`,
+                            spellcheck: 'false', autocomplete: 'off'});
+  const picker = el('input', {type: 'datetime-local', class: 'time-picker', tabindex: '-1', 'aria-hidden': 'true'});
+  const button = el('button', {type: 'button', class: 'small time-pick', 'aria-label': `Choose the ${label.toLowerCase()}`,
+                               title: 'Choose from a calendar'}, calendarIcon());
+  const box = el('span', {class: 'time-input', 'aria-label': label}, text, button, picker);
+  let current = '';
+  const placeholder = () => {
+    text.placeholder = clock === '12' ? 'YYYY-MM-DD h:mm AM' : 'YYYY-MM-DD HH:MM';
+  };
+  Object.defineProperty(box, 'value', {
+    get: () => current,
+    set: (v) => {
+      current = /^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(v || '') ? v.slice(0, 16) : '';
+      text.value = timeText(current);
+      text.removeAttribute('aria-invalid');
+    }
+  });
+  text.addEventListener('input', () => {
+    current = parseTimeText(text.value);
+    if (current || text.value.trim() === '')
+      text.removeAttribute('aria-invalid');
+    else
+      text.setAttribute('aria-invalid', 'true');
+  });
+  // The value written in the clock when the field is left
+  text.addEventListener('change', () => {
+    if (current)
+      text.value = timeText(current);
+  });
+  button.addEventListener('click', () => {
+    picker.value = current;
+    try
+    {
+      picker.showPicker();
+    }
+    catch (e)
+    {
+      picker.focus();
+    }
+  });
+  picker.addEventListener('change', () => {
+    current = picker.value;
+    text.value = timeText(current);
+    text.removeAttribute('aria-invalid');
+    text.dispatchEvent(new Event('input', {bubbles: true}));
+    text.dispatchEvent(new Event('change', {bubbles: true}));
+  });
+  // The events of the picker are its own
+  picker.addEventListener('input', (e) => e.stopPropagation());
+  placeholder();
+  box.refresh = () => {
+    placeholder();
+    text.value = timeText(current);
+  };
+  timeFields.add(box);
+  return box;
+}
+
+// The views drawn again when a setting (the clock, the units) changes, one per name
+const settingsListeners = new Map();
+function onSettingsChange(name, fn)
+{
+  settingsListeners.set(name, fn);
+}
+function settingsChanged()
+{
+  for (const field of timeFields)
+    if (field.isConnected)
+      field.refresh();
+    else
+      timeFields.delete(field);
+  for (const fn of settingsListeners.values())
+    fn();
 }
 
 // Times of the TimeSeries output: 20261016T120000, 2026-10-16T12:00:00, with or without a
@@ -690,6 +881,12 @@ function mapSettings(app)
   return settings;
 }
 
+// The defaults of the server for its region and users (api_catalog.explorer_defaults): the
+// first view of the maps, the examples of the locations, the output projections and units
+let DEFAULTS = {};
+// The first view of the maps without defaults: the world
+const WORLD_VIEW = {center: [0, 20], zoom: 1};
+
 // The isoband colours of the production products (palettes.json): loaded once
 let palettesPromise = null;
 
@@ -889,8 +1086,16 @@ function createMap(settings, onSelect)
             () => {
                 // The grid alone is drawn
             });
-  const state =
-      {zoom: 3, center: project(25, 62), tool: 'move', regions: [], selection: null, points: []};
+  const first = DEFAULTS.center ? {center: DEFAULTS.center, zoom: DEFAULTS.zoom !== undefined ? DEFAULTS.zoom : 4} :
+                                  WORLD_VIEW;
+  const state = {
+    zoom: first.zoom,
+    center: project(first.center[0], first.center[1]),
+    tool: 'move',
+    regions: [],
+    selection: null,
+    points: []
+  };
   // Listeners of the view (a map following another) and of clicks in the move tool
   const hooks = {view: null, click: null, shown: ''};
 
@@ -1590,36 +1795,81 @@ function createMap(settings, onSelect)
 // Vertical profiles and soundings
 // ----------------------------------------------------------------------
 
-// The units of the values shown: temperatures, wind speeds and heights. The server gives them
-// in C (grid temperatures in K are converted by the server, or recognised by their values), m/s
-// and m. The choice is shared by the page and remembered by the browser.
+// The units of the values shown: temperatures, wind speeds, pressures and heights. The values
+// are converted from C, m/s, hPa and m; temperatures in K (raw GRIB data) and pressures in Pa
+// are recognised by their values. The first unit of each quantity is the base unit.
 const UNIT_CHOICES = {
-  temperature: [['C', 'C', (v) => v], ['K', 'K', (v) => v + 273.15], ['F', 'F', (v) => v * 1.8 + 32]],
-  speed: [['ms', 'm/s', (v) => v], ['kt', 'kt', (v) => v * 1.943844], ['kmh', 'km/h', (v) => v * 3.6]],
+  temperature: [['C', 'C', (v) => v], ['F', 'F', (v) => v * 1.8 + 32], ['K', 'K', (v) => v + 273.15]],
+  speed: [['ms', 'm/s', (v) => v], ['kt', 'kt', (v) => v * 1.943844], ['kmh', 'km/h', (v) => v * 3.6],
+          ['mph', 'mph', (v) => v * 2.236936]],
+  pressure: [['hPa', 'hPa', (v) => v], ['Pa', 'Pa', (v) => v * 100], ['inHg', 'inHg', (v) => v * 0.02953]],
   height: [['m', 'm', (v) => v], ['ft', 'ft', (v) => v * 3.28084]]
 };
 const UNITS_KEY = 'smartmet-explorer-units';
-let displayUnits = (() => {
-  const fallback = {temperature: 'C', speed: 'ms', height: 'm'};
+// The regions using Fahrenheit, miles per hour and feet
+const IMPERIAL_REGIONS = ['US', 'LR', 'MM', 'BS', 'BZ', 'KY', 'PW', 'FM', 'MH'];
+
+// The region of a browser language such as en-US, when the time zone of the browser agrees:
+// en-US is the language of many browsers outside the United States
+function browserRegion(language, timeZone)
+{
+  const region = ((/[-_]([A-Za-z]{2})\b/.exec(language || '') || [])[1] || '').toUpperCase();
+  if (region === 'US' && timeZone && !/^(America|Pacific|US)\//.test(timeZone))
+    return '';
+  return region;
+}
+
+// The time zone of the browser, '' when unknown
+function browserTimeZone()
+{
   try
   {
-    return Object.assign(fallback, JSON.parse(localStorage.getItem(UNITS_KEY) || '{}'));
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
   }
   catch (e)
   {
-    return fallback;
+    return '';
   }
-})();
+}
+
+// The units of a browser language such as en-US: F, mph and ft in the regions using them, else
+// C, m/s and m; hPa everywhere
+function localeUnits(language, timeZone)
+{
+  const region = browserRegion(language, timeZone);
+  return region && IMPERIAL_REGIONS.includes(region) ?
+      {temperature: 'F', speed: 'mph', pressure: 'hPa', height: 'ft'} :
+      {temperature: 'C', speed: 'ms', pressure: 'hPa', height: 'm'};
+}
+
+// The units shown: the choice of the user, else the defaults of the server, else those of the
+// language of the browser
+function initialUnits(serverUnits)
+{
+  const language = typeof navigator !== 'undefined' ? (navigator.languages || [])[0] || navigator.language : '';
+  const units = Object.assign(localeUnits(language, browserTimeZone()), serverUnits || {});
+  try
+  {
+    return Object.assign(units, JSON.parse(localStorage.getItem(UNITS_KEY) || '{}'));
+  }
+  catch (e)
+  {
+    return units;
+  }
+}
+let displayUnits = initialUnits();
 
 // The chosen unit of a quantity: [id, label, convert(value in the default unit)]
 const unitOf = (quantity) =>
     UNIT_CHOICES[quantity].find(([id]) => id === displayUnits[quantity]) || UNIT_CHOICES[quantity][0];
 
 // The quantity of a parameter by its name (also inside a function, e.g. nanmedian_a(t2m)):
-// 'temperature', 'speed', 'height' or null
+// 'temperature', 'speed', 'pressure', 'height' or null
 function quantityOf(name)
 {
   const n = String(name).toLowerCase().replace(/^.*\(([^()]+)\)$/, '$1');
+  if (/pressure|^p-(pa|hpa)$|^pmsl$|^msl$|^pa_|^p_sea/.test(n))
+    return 'pressure';
   if (/temperature|dewpoint|^t2m$|^t-[kc]$|^td-[kc]$|^td$|^ta_|^td_|^tamax|^tamin|^tmax|^tmin/.test(n))
     return 'temperature';
   if (/windspeed|^ws_|^ws$|^ff-ms$|^ffg-ms$|gust|^wg_|windums|windvms|^[uv]-ms$/.test(n))
@@ -1633,8 +1883,7 @@ function quantityOf(name)
 // the units are the defaults
 function displayRows(rows)
 {
-  const defaults = Object.keys(UNIT_CHOICES).every((q) => unitOf(q) === UNIT_CHOICES[q][0]);
-  if (defaults || rows.length === 0)
+  if (rows.length === 0)
     return {rows, labels: {}};
   const converters = {};
   const labels = {};
@@ -1646,16 +1895,12 @@ function displayRows(rows)
     const quantity = quantityOf(key);
     if (!quantity || key === 'lat' || key === 'lon')
       continue;
-    const [, label, convert] = unitOf(quantity);
-    let from = (v) => v;
-    if (quantity === 'temperature')
-    {
-      // Kelvins recognised by their values
-      const values = rows.map((r) => r[key]).filter((v) => typeof v === 'number').sort((a, b) => a - b);
-      if (values.length && quantile(values, 0.5) > 100)
-        from = (v) => v - 273.15;
-    }
-    converters[key] = (v) => convert(from(v));
+    const [id, label, convert] = unitOf(quantity);
+    const from = baseUnit(quantity, rows.map((r) => r[key]));
+    // Values in the base unit shown in it are left as they are
+    if (!from && id === UNIT_CHOICES[quantity][0][0])
+      continue;
+    converters[key] = from ? (v) => convert(from(v)) : convert;
     labels[key] = label;
   }
   if (Object.keys(converters).length === 0)
@@ -1672,12 +1917,45 @@ function displayRows(rows)
   };
 }
 
+// The conversion of the values of a quantity to its base unit when they are not in it:
+// temperatures in K and pressures in Pa are recognised by their values. Null when the values
+// are in the base unit.
+function baseUnit(quantity, values)
+{
+  const numbers = [];
+  for (const v of values)
+    if (typeof v === 'number' && isFinite(v))
+      numbers.push(v);
+  if (numbers.length === 0)
+    return null;
+  numbers.sort((a, b) => a - b);
+  // Above 150 C does not occur, below 150 K neither
+  if (quantity === 'temperature' && quantile(numbers, 0.5) > 150)
+    return (v) => v - 273.15;
+  // Pressures in hPa stay below 1100, in Pa near the ground above 50000
+  if (quantity === 'pressure' && quantile(numbers, 0.9) > 2000)
+    return (v) => v / 100;
+  return null;
+}
+
+// The values of a parameter in the units shown: {convert(value), label}, label '' when the
+// values are shown as they are
+function displayUnit(param, values)
+{
+  const quantity = quantityOf(param);
+  if (!quantity)
+    return {convert: (v) => v, label: ''};
+  const [, label, convert] = unitOf(quantity);
+  const from = baseUnit(quantity, values);
+  return {convert: from ? (v) => convert(from(v)) : convert, label};
+}
+
 // The choices of the units: the results are drawn again when they change
 function unitsChooser(onChange)
 {
   const box = el('span', {class: 'units-chooser'});
   for (const [quantity, label] of [['temperature', 'Temperature unit'], ['speed', 'Wind speed unit'],
-                                   ['height', 'Height unit']])
+                                   ['pressure', 'Pressure unit'], ['height', 'Height unit']])
   {
     const select = el('select', {'aria-label': label, title: label},
                       UNIT_CHOICES[quantity].map(([id, text]) => el('option', {value: id}, text)));
@@ -3213,7 +3491,7 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
       panel.append(title, plot);
       charts.append(panel);
       const band = 'rgba(128, 128, 128, 0.18)';
-      const u = new root.uPlot(
+      const u = makePlot(root,
           {
             width,
             height: 220,
@@ -3296,7 +3574,7 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
           }
           ctx.restore();
         };
-        const u = new root.uPlot(
+        const u = makePlot(root,
             {
               width,
               height: 200,
@@ -4443,7 +4721,7 @@ function skewTPanel(container, profiles, keys, times, columns, axis, options)
           level.push(`Td ${near.td.toFixed(1)} C`);
         }
         if (near.speed !== null && near.direction !== null)
-          level.push(`wind ${Math.round(near.direction)}° ${near.speed.toFixed(1)} m/s`);
+          level.push(`wind ${Math.round(near.direction)}° ${unitOf('speed')[2](near.speed).toFixed(1)} ${unitOf('speed')[1]}`);
         parts.push(level.join(', '));
         setVisible(true);
         dMark.setAttribute('visibility', near.td !== null ? 'visible' : 'hidden');
@@ -4490,6 +4768,7 @@ function skewTPanel(container, profiles, keys, times, columns, axis, options)
 
     // The values of the levels of the latest sounding; a row pointed marks its level
     const [, heightUnit, heightOf] = unitOf('height');
+    const [, speedUnit, speedOf] = unitOf('speed');
     const cell = (v, digits) => el('td', null, v === null || v === undefined || !isFinite(v) ? '' : v.toFixed(digits));
     const tableRows = new Map();
     const body = el('tbody');
@@ -4503,7 +4782,7 @@ function skewTPanel(container, profiles, keys, times, columns, axis, options)
                     cell(l.td, 1),
                     cell(rh, 0),
                     cell(l.direction, 0),
-                    cell(l.speed, 1),
+                    cell(l.speed === null ? null : speedOf(l.speed), 1),
                     cell(theta, 1));
       tr.addEventListener('mouseenter', () => {
         tMark.setAttribute('cx', x(l.t, l.p));
@@ -4521,7 +4800,7 @@ function skewTPanel(container, profiles, keys, times, columns, axis, options)
       tableRows.set(latest[i], tr);
       body.append(tr);
     });
-    const head = el('tr', null, ['hPa', `Height (${heightUnit})`, 'T (C)', 'Td (C)', 'RH (%)', 'Wind (°)', 'Wind (m/s)', 'θ (K)']
+    const head = el('tr', null, ['hPa', `Height (${heightUnit})`, 'T (C)', 'Td (C)', 'RH (%)', 'Wind (°)', `Wind (${speedUnit})`, 'θ (K)']
                                     .map((t) => el('th', null, t)));
     const table = el('details', {class: 'sk-values', open: tableOpen},
                      el('summary', null, `Values of the ${levelsWithHeights.length} levels`),
@@ -4717,7 +4996,7 @@ function drawMeteogram(container, rows, levelKind)
       const plot = el('div', {class: 'chart-plot'});
       box.append(plot);
       panels.append(box);
-      return new root.uPlot(Object.assign({
+      return makePlot(root, Object.assign({
         width,
         height: 170,
         series: [timeSeries, ...series],
@@ -5004,7 +5283,7 @@ function drawServerStatisticsGroup(container, series, parameters, label)
     const plot = el('div', {class: 'chart-plot'});
     panel.append(plot);
     // eslint-disable-next-line no-new
-    new root.uPlot(
+    makePlot(root,
         {
           width: width,
           height: 260,
@@ -5601,7 +5880,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
       hooks: swarm ? swarm.hooks : {},
       tzDate: (ts) => root.uPlot.tzDate(new Date(ts * 1000), 'Etc/UTC')
     };
-    whenVisible(plot, () => new root.uPlot(opts, data, plot));
+    whenVisible(plot, () => makePlot(root, opts, data, plot));
   }
   if (empty.length > 0)
     container.append(
@@ -5753,8 +6032,9 @@ function valueProbe(box, rows, state, times, options)
     if (!plot || !title)
       return;
     const v = series[state.time];
-    title.textContent = `${state.param} at ${place()}, ${formatTime(new Date(epochs[state.time] * 1000))}: ${
-        v === null || v === undefined ? 'missing' : round(v, 2)}`;
+    const unit = options.unit ? options.unit(state.param) : '';
+    title.textContent = `${state.param}${unit ? ` (${unit})` : ''} at ${place()}, ${formatTime(new Date(epochs[state.time] * 1000))}: ${
+        v === null || v === undefined ? 'missing' : `${round(v, 2)}${unit ? ` ${unit}` : ''}`}`;
     plot.redraw(false);
   };
   // Draws the series of the point clicked
@@ -5814,13 +6094,14 @@ function valueProbe(box, rows, state, times, options)
       ctx.restore();
     };
     const axis = {stroke: axisColor, grid: {stroke: gridColor, width: 1}, ticks: {stroke: gridColor}};
-    plot = new root.uPlot(
+    plot = makePlot(root,
         {
           width: Math.max(320, Math.min(900, box.clientWidth - 8 || 640)),
           height: 200,
           series: [{}, {label: state.param, stroke: accent, width: 2, spanGaps: true}],
           axes: [Object.assign({}, axis, {size: 50}), Object.assign({}, axis, {size: 60})],
           legend: {live: true},
+          tzDate: (ts) => root.uPlot.tzDate(new Date(ts * 1000), 'Etc/UTC'),
           hooks: {draw: [markTime]}
         },
         [epochs, series], target);
@@ -5954,7 +6235,7 @@ function drawValueMap(container, rows, parameters, settings, options = {})
         lon: r.lon,
         lat: r.lat,
         color: color,
-        label: `${state.param}: ${ok ? v : 'missing'}`,
+        label: `${state.param}: ${ok ? `${round(v, 2)}${(options.labels || {})[state.param] ? ` ${options.labels[state.param]}` : ''}` : 'missing'}`,
         info: {name: r.name, lat: r.lat, lon: r.lon},
         hint: times.length === 1 && levels.length > 1 ? 'Click for the profile' : 'Click for the time series',
         onclick: () => probe.show({lat: r.lat, lon: r.lon, name: r.name})
@@ -6040,6 +6321,7 @@ function drawValueMap(container, rows, parameters, settings, options = {})
     });
   const probe = valueProbe(probeBox, located, state, times, {
     levelKind: options.levelKind,
+    unit: (p) => (options.labels || {})[p] || '',
     atLevel,
     onClose: () => map.setCursor(null),
     onShow: (p) => map.setCursor(p)
@@ -6371,18 +6653,26 @@ function codeTabs(container, url)
 // The TimeSeries module
 // ------------------------------------------------------------------
 
-// The location types: name, label, example, and the map tool choosing the location
-const LOCATION_MODES = [
-  ['place', 'Place', 'Helsinki or Helsinki:20 for a 20 km radius', null],
-  ['lonlat', 'Point', '24.94,60.17, or click the map', 'point'],
-  ['radius', 'Radius', '24.94,60.17:25 (km), or drag on the map', 'circle'],
-  ['bbox', 'Box', '21,60,26,62, or drag on the map', 'box'],
-  ['path', 'Path', '24.3,60.0,25.0,60.2,25.8,60.3 (lon,lat,...), or click the map', 'line'],
-  ['keyword', 'Keyword', 'synop_fi', null],
-  ['fmisid', 'Station id', '100971,101004', null],
-  ['wmo', 'WMO id', '2963,2974', null],
-  ['area', 'Area', 'Uusimaa', null]
-];
+// The location types: name, label, example, and the map tool choosing the location. The
+// examples come from the defaults of the server, the coordinates from its first map view.
+function locationModes()
+{
+  const ex = DEFAULTS.examples || {};
+  const [lon, lat] = DEFAULTS.center || [10.75, 59.91];
+  const c = (x, y) => `${round(x, 2)},${round(y, 2)}`;
+  return [
+    ['place', 'Place', ex.place ? `${ex.place} or ${ex.place}:20 for a 20 km radius` :
+                                  'A place name, or name:20 for a 20 km radius', null],
+    ['lonlat', 'Point', `${c(lon, lat)}, or click the map`, 'point'],
+    ['radius', 'Radius', `${c(lon, lat)}:25 (km), or drag on the map`, 'circle'],
+    ['bbox', 'Box', `${[lon - 2, lat - 1, lon + 2, lat + 1].map((v) => round(v, 1)).join(',')}, or drag on the map`, 'box'],
+    ['path', 'Path', `${c(lon - 0.5, lat - 0.2)},${c(lon, lat)},${c(lon + 0.5, lat + 0.1)} (lon,lat,...), or click the map`, 'line'],
+    ['keyword', 'Keyword', ex.keyword || 'A location keyword of the server', null],
+    ['fmisid', 'Station id', ex.fmisid || 'Station ids, e.g. 1234,5678', null],
+    ['wmo', 'WMO id', ex.wmo || 'WMO station ids, e.g. 1234,5678', null],
+    ['area', 'Area', ex.area || 'An area name of the server', null]
+  ];
+}
 
 // The points along a path a request asks for: the marked points (the vertices), or points
 // every N km along the whole path. The state keeps pathpoints ('marked' or '') and pathstep
@@ -6450,8 +6740,8 @@ function pathPointsChooser(s, onChange)
 // and arrival as the values of the time fields. Returns {element, update(sel), flight()}.
 function flightChooser(s, onChange, margin)
 {
-  const departure = el('input', {type: 'datetime-local', 'aria-label': 'Departure (UTC)'});
-  const arrival = el('input', {type: 'datetime-local', 'aria-label': 'Arrival (UTC)'});
+  const departure = timeInput({'aria-label': 'Departure (UTC)'});
+  const arrival = timeInput({'aria-label': 'Arrival (UTC)'});
   const note = el('p', {class: 'muted small'});
   const element = el('div',
                      null,
@@ -7523,8 +7813,8 @@ function timeSeriesModule(app, api, state, save)
     }
 
     // --- When ------------------------------------------------------
-    const startInput = el('input', {type: 'datetime-local', 'aria-label': 'Start time (UTC)'});
-    const endInput = el('input', {type: 'datetime-local', 'aria-label': 'End time (UTC)'});
+    const startInput = timeInput({'aria-label': 'Start time (UTC)'});
+    const endInput = timeInput({'aria-label': 'End time (UTC)'});
     const stepSelect = el('select', {'aria-label': 'Time step'}, [
       ['data', 'Times of the data'],
       ['10', '10 minutes'],
@@ -7781,7 +8071,7 @@ function timeSeriesModule(app, api, state, save)
       s.location = formatSelection(shape);
       refresh();
     });
-    for (const [mode, label] of LOCATION_MODES)
+    for (const [mode, label] of locationModes())
     {
       locModes.append(
           el('button',
@@ -8138,6 +8428,8 @@ function timeSeriesModule(app, api, state, save)
     // then charts, maps, tables and the response itself
     function showResults(rows, text)
     {
+      // Drawn again in the units and the clock chosen
+      onSettingsChange('timeseries', () => results.isConnected && showResults(rows, text));
       // The rows in the chosen units for the views of values; the vertical views convert their
       // heights themselves and draw temperatures in C
       const shown = displayRows(rows);
@@ -8205,7 +8497,7 @@ function timeSeriesModule(app, api, state, save)
         else if (name === 'Sounding')
           drawSounding(panes.Sounding, rows, kind);
         else if (name === 'Map')
-          drawValueMap(panes.Map, shown.rows, dataParams(), mapSettings(app.element), {levelKind: kind});
+          drawValueMap(panes.Map, shown.rows, dataParams(), mapSettings(app.element), {levelKind: kind, labels: shown.labels});
         else if (name === 'Table')
           drawTable(panes.Table, shown.rows, shown.labels);
         else if (!S.renderTree(panes.Tree, text, 'json'))
@@ -8241,7 +8533,7 @@ function timeSeriesModule(app, api, state, save)
                 {class: 'muted small'},
                 `${rows.length} rows${locationsCount > 1 ? `, ${locationsCount} locations` : ''}${
                     byLevel ? `, ${levelCount} ${kind === 'member' ? 'members' : 'levels'}` : ''}`),
-             unitsChooser(() => showResults(rows, text)),
+             unitsChooser(settingsChanged),
              exportButtons(() => Object.values(panes).find((p) => !p.hidden), shown.rows,
                            `${s.producer || 'timeseries'}`, shown.labels)),
           ...Object.values(panes));
@@ -8649,7 +8941,8 @@ function timeSeriesModule(app, api, state, save)
           .forEach(
               (b) =>
                   b.setAttribute('aria-checked', b.dataset.mode === s.locmode ? 'true' : 'false'));
-      const mode = LOCATION_MODES.find((m) => m[0] === s.locmode) || LOCATION_MODES[0];
+      const modes = locationModes();
+      const mode = modes.find((m) => m[0] === s.locmode) || modes[0];
       locInput.placeholder = mode[2];
       if (rerender !== false)
         locInput.value = s.location || '';
@@ -9088,8 +9381,8 @@ function edrModule(app, api, state, save)
     const queryButtons = el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': 'Query'});
 
     // --- When and the levels -------------------------------------------------
-    const startInput = el('input', {type: 'datetime-local', 'aria-label': 'Start time (UTC)'});
-    const endInput = el('input', {type: 'datetime-local', 'aria-label': 'End time (UTC)'});
+    const startInput = timeInput({'aria-label': 'Start time (UTC)'});
+    const endInput = timeInput({'aria-label': 'End time (UTC)'});
     const dataPeriod = el('span', {class: 'muted small'});
     const levels = el('div', {class: 'chips'});
     const levelRow = el('div', null, el('label', null, 'Levels'), levels);
@@ -9420,6 +9713,8 @@ function edrModule(app, api, state, save)
     // them, then charts, maps, tables and the response itself
     function showResults(rows, text)
     {
+      // Drawn again in the units and the clock chosen
+      onSettingsChange('edr', () => results.isConnected && showResults(rows, text));
       // The rows in the chosen units for the views of values; the vertical views convert their
       // heights themselves and draw temperatures in C
       const shown = displayRows(rows);
@@ -9501,7 +9796,7 @@ function edrModule(app, api, state, save)
             }
           });
         else if (name === 'Map')
-          drawValueMap(panes.Map, shown.rows, params, mapSettings(app.element), {levelKind: kind});
+          drawValueMap(panes.Map, shown.rows, params, mapSettings(app.element), {levelKind: kind, labels: shown.labels});
         else if (name === 'Table')
           drawTable(panes.Table, shown.rows, shown.labels);
         else if (!S.renderTree(panes.Tree, text, 'json'))
@@ -9537,7 +9832,7 @@ function edrModule(app, api, state, save)
                 {class: 'muted small'},
                 `${rows.length} rows${count > 1 ? `, ${count} locations` : ''}${
                     byLevel ? `, ${levelCount} ${kind === 'member' ? 'members' : 'levels'}` : ''}`),
-             unitsChooser(() => showResults(rows, text)),
+             unitsChooser(settingsChanged),
              exportButtons(() => Object.values(panes).find((p) => !p.hidden), shown.rows,
                            `${s.collection || 'edr'}`, shown.labels)),
           ...Object.values(panes));
@@ -9961,13 +10256,19 @@ const COVERAGE_FORMATS = {
 };
 
 // The output projections offered, besides the native grid and any other EPSG code
-const COVERAGE_CRS = [
-  ['', 'Native grid of the model'],
-  ['EPSG:4326', 'Longitude and latitude (EPSG:4326)'],
-  ['EPSG:3067', 'ETRS-TM35FIN (EPSG:3067)'],
-  ['EPSG:3035', 'ETRS89 LAEA Europe (EPSG:3035)'],
-  ['EPSG:3857', 'Web Mercator (EPSG:3857)']
-];
+function coverageCrs()
+{
+  const out = [
+    ['', 'Native grid of the model'],
+    ['EPSG:4326', 'Longitude and latitude (EPSG:4326)'],
+    ['EPSG:3857', 'Web Mercator (EPSG:3857)']
+  ];
+  // The projections of the region of the server
+  for (const [code, label] of DEFAULTS.projections || [])
+    if (!out.some(([c]) => c === code))
+      out.push([code, label === code ? code : `${label} (${code})`]);
+  return out;
+}
 
 // The name of the projection of a WKT
 function projectionName(wkt)
@@ -10054,8 +10355,22 @@ function bandTime(t)
 function drawCoverageMaps(container, tiff, settings, options = {})
 {
   container.replaceChildren();
-  const bands = tiff.bands.map((b) => Object.assign({}, b, {time: bandTime(b.time)}));
+  // The values in the units shown: K and Pa of the files are recognised by their values
+  const units = {};
+  for (const p of new Set(tiff.bands.map((b) => b.parameter)))
+  {
+    const sample = [];
+    for (const b of tiff.bands.filter((x) => x.parameter === p))
+      for (let k = 0; k < b.values.length; k += 13)
+        sample.push(b.values[k]);
+    units[p] = displayUnit(p, sample);
+  }
+  const bands = tiff.bands.map((b) => Object.assign({}, b, {
+    time: bandTime(b.time),
+    values: Float32Array.from(b.values, units[b.parameter].convert)
+  }));
   const params = Array.from(new Set(bands.map((b) => b.parameter)));
+  const unitText = (p) => (units[p].label ? ` ${units[p].label}` : '');
   const times = Array.from(new Set(bands.map((b) => b.time))).sort();
   const byKey = new Map(bands.map((b) => [`${b.parameter}|${b.level}|${b.time}`, b]));
   const levelsOf = (p) => Array.from(new Set(bands.filter((b) => b.parameter === p).map((b) => b.level)))
@@ -10171,6 +10486,7 @@ function drawCoverageMaps(container, tiff, settings, options = {})
       state.time = shared.time;
       probe = valueProbe(probeBox, rows, state, times, {
         levelKind: options.levelKind,
+        unit: (p) => units[p].label,
         atLevel: (r) => state.level === '' || r.level === Number(state.level),
         onClose: () => {
           shared.point = null;
@@ -10209,7 +10525,7 @@ function drawCoverageMaps(container, tiff, settings, options = {})
           if (!cell || !b)
             return null;
           const v = b.values[cell.row * tiff.width + cell.col];
-          return {label: `${state.param}: ${isFinite(v) ? round(v, 2) : 'missing'}`,
+          return {label: `${state.param}: ${isFinite(v) ? `${round(v, 2)}${unitText(state.param)}` : 'missing'}`,
                   info: {lon: round(lon, 3), lat: round(lat, 3)}, hint: 'Click for the time series'};
         }
       });
@@ -10221,7 +10537,7 @@ function drawCoverageMaps(container, tiff, settings, options = {})
                class: 'legend-step',
                style: `background:${paletteColour(state.palette, (i + 0.5) / n, 0)}`
              }))),
-          el('span', {class: 'small'}, hi === null ? '' : round(hi, 2)),
+          el('span', {class: 'small'}, hi === null ? '' : `${round(hi, 2)}${unitText(state.param)}`),
           b ? '' : el('span', {class: 'muted small'}, ' no values at this time'));
       if (probe)
       {
@@ -10468,8 +10784,8 @@ function coveragesModule(app, api, state, save)
     }
 
     // --- When and the levels -------------------------------------------------
-    const startInput = el('input', {type: 'datetime-local', 'aria-label': 'Start time (UTC)'});
-    const endInput = el('input', {type: 'datetime-local', 'aria-label': 'End time (UTC)'});
+    const startInput = timeInput({'aria-label': 'Start time (UTC)'});
+    const endInput = timeInput({'aria-label': 'End time (UTC)'});
     const dataPeriod = el('span', {class: 'muted small'});
     const levels = el('div', {class: 'chips'});
     const levelRow = el('div', null, el('label', null, 'Levels (all if none is chosen)'), levels);
@@ -10505,7 +10821,7 @@ function coveragesModule(app, api, state, save)
     const crsSelect =
         el('select',
            {'aria-label': 'Output projection'},
-           COVERAGE_CRS.map(([v, label]) => el('option', {value: v}, label)),
+           coverageCrs().map(([v, label]) => el('option', {value: v}, label)),
            el('option', {value: 'other'}, 'Other EPSG code…'));
     const crsInput =
         el('input', {type: 'text', 'aria-label': 'EPSG code', placeholder: 'EPSG:3006', size: 12});
@@ -10684,8 +11000,11 @@ function coveragesModule(app, api, state, save)
         shownMaps = url;
         showMaps.textContent = 'Update the maps';
         const c = collection();
-        drawCoverageMaps(maps, tiff, mapSettings(app.element),
-                         {levelKind: c && c.levels.length ? c.levels[0].type : ''});
+        const draw = () => drawCoverageMaps(maps, tiff, mapSettings(app.element),
+                                            {levelKind: c && c.levels.length ? c.levels[0].type : ''});
+        draw();
+        // Drawn again in the units and the clock chosen
+        onSettingsChange('coverages', () => maps.isConnected && draw());
       }
       catch (e)
       {
@@ -10821,7 +11140,7 @@ function coveragesModule(app, api, state, save)
         widthInput.value = s.width || '';
         heightInput.value = s.height || '';
       }
-      const known = COVERAGE_CRS.some(([v]) => v === (s.crs || ''));
+      const known = coverageCrs().some(([v]) => v === (s.crs || ''));
       crsSelect.value = known ? (s.crs || '') : 'other';
       crsInput.hidden = known;
       if (!known && rerender !== false)
@@ -10968,12 +11287,86 @@ function writeState(s)
 
 // Starts the explorer: reads the API catalog, offers its APIs, and shows the module of the
 // chosen one, keeping the choices in the address of the page
+// The settings of the page: the clock, the units, the language and the licences of the parts
+function settingsMenu()
+{
+  const panel = el('div', {class: 'settings-panel', role: 'dialog', 'aria-label': 'Settings', hidden: true});
+  const button = el('button', {type: 'button', class: 'small', 'aria-expanded': 'false',
+                               'aria-label': 'Settings'}, '⚙ Settings');
+  const close = () => {
+    panel.hidden = true;
+    button.setAttribute('aria-expanded', 'false');
+  };
+  // The panel is built when opened, so that it shows the current choices
+  const build = () => {
+    const clockSelect = el('select', {'aria-label': 'Clock'},
+                           [['24', '24-hour (13:00)'], ['12', '12-hour (1:00 PM)']].map(
+                               ([v, l]) => el('option', {value: v}, l)));
+    clockSelect.value = clock;
+    clockSelect.addEventListener('change', () => {
+      clock = clockSelect.value;
+      try
+      {
+        localStorage.setItem(CLOCK_KEY, clock);
+      }
+      catch (e)
+      {
+        // Not remembered
+      }
+      settingsChanged();
+    });
+    const licences = [
+      ['SmartMet Server and its data explorer', 'MIT', 'Finnish Meteorological Institute',
+       'https://github.com/fmidev/smartmet-library-spine'],
+      ['uPlot charts', 'MIT', 'Leon Sorokin', 'https://github.com/leeoniya/uPlot'],
+      ['Swagger UI API documentation', 'Apache 2.0', 'SmartBear Software', 'https://github.com/swagger-api/swagger-ui'],
+      ['Natural Earth background map', 'Public domain', 'Natural Earth', 'https://www.naturalearthdata.com/']
+    ];
+    panel.replaceChildren(
+        el('div', {class: 'row settings-head'}, el('strong', null, 'Settings'),
+           el('button', {type: 'button', class: 'small', 'aria-label': 'Close the settings', onclick: close}, '×')),
+        el('label', null, 'Time', clockSelect),
+        el('div', null, el('div', {class: 'small muted'}, 'Units'), unitsChooser(settingsChanged)),
+        el('label', null, 'Language', el('select', {'aria-label': 'Language', disabled: true},
+                                          el('option', null, 'English'))),
+        el('details', {class: 'small'}, el('summary', null, 'About and licences'),
+           el('ul', null, licences.map(([what, licence, holder, url]) =>
+               el('li', null, el('a', {href: url, target: '_blank', rel: 'noopener'}, what), ` · ${licence}, ${holder}`))),
+           el('p', {class: 'muted'}, 'The colours of the production products come from the configuration of this server.')));
+  };
+  button.addEventListener('click', () => {
+    if (!panel.hidden)
+    {
+      close();
+      return;
+    }
+    build();
+    panel.hidden = false;
+    button.setAttribute('aria-expanded', 'true');
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !panel.hidden)
+      close();
+  });
+  return el('span', {class: 'settings'}, button, panel);
+}
+
 async function main()
 {
   const element = document.getElementById('explorer');
   if (!element)
     return;
   const title = element.dataset.title || 'SmartMet Server';
+  try
+  {
+    DEFAULTS = JSON.parse(element.dataset.defaults || '{}') || {};
+  }
+  catch (e)
+  {
+    DEFAULTS = {};
+  }
+  displayUnits = initialUnits(DEFAULTS.units);
+  clock = initialClock(DEFAULTS.clock);
   const base = new URL(element.dataset.catalog || '../api', location.href);
   // The base URL of the server: the catalog is at <base>api
   const app = {element: element, base: new URL('./', base).href};
@@ -10989,7 +11382,8 @@ async function main()
          el('label', null, 'API ', apiSelect),
          el('a', {href: new URL('api/docs', app.base).href}, 'API documentation'),
          el('a', {href: base.href + '?f=html'}, 'API catalog'),
-         apiKeyField(() => open(current, true))),
+         apiKeyField(() => open(current, true)),
+         settingsMenu()),
       content);
 
   let catalog;
@@ -11084,6 +11478,14 @@ root.SmartMetExplorer = {
   projectionName,
   formatBytes,
   queryString,
+  localeUnits,
+  clockTemplate,
+  displayUnit,
+  formatTime,
+  coverageCrs,
+  locationModes,
+  timeText,
+  parseTimeText,
   readGeoTiff
 };
 

@@ -8,6 +8,7 @@
 #include "HTTP.h"
 #include "OpenApi.h"
 #include <boost/test/included/unit_test.hpp>
+#include <macgyver/Exception.h>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -476,7 +477,12 @@ BOOST_AUTO_TEST_CASE(explorer_tests)
   config.readString("api_catalog: { swagger_ui_dir = \"" + assets.path.string() +
                     "\"; explorer_dir = \"../explorer\"; uplot_dir = \"" + uplot +
                     "\"; palette_dir = \"" + (assets.path / "palettes").string() +
-                    "\"; palette_config = \"" + (assets.path / "qdless.conf").string() + "\"; };");
+                    "\"; palette_config = \"" + (assets.path / "qdless.conf").string() +
+                    "\"; explorer_defaults: { center = [25.0, 62.0]; zoom = 4; clock = \"24\";"
+                    " examples: { place = \"Helsinki\"; fmisid = \"100971,101004\"; wmo = \"2963,2974\";"
+                    " keyword = \"synop_fi\"; area = \"Uusimaa\"; };"
+                    " projections = [\"EPSG:3067 ETRS-TM35FIN\", \"EPSG:3035 ETRS89 LAEA Europe\"];"
+                    " units: { temperature = \"C\"; speed = \"ms\"; pressure = \"hPa\"; height = \"m\"; }; }; };");
   OpenAPI::Catalog catalog(OpenAPI::CatalogSettings::parse(config));
   const std::vector<OpenAPI::CatalogEntry> entries{
       {"/timeseries", "TimeSeries", "", "timeseries", true}};
@@ -510,6 +516,37 @@ BOOST_AUTO_TEST_CASE(explorer_tests)
   const auto command =
       "node explorer-browser-test.js " + assets.path.string() + " ../explorer " + uplot;
   BOOST_TEST(std::system(command.c_str()) == 0);
+}
+
+BOOST_AUTO_TEST_CASE(explorer_defaults)
+{
+  // The defaults are validated, and passed to the page as JSON
+  const auto parsed = [](const std::string& defaults)
+  {
+    libconfig::Config config;
+    config.readString("api_catalog: { explorer_defaults: { " + defaults + " }; };");
+    return OpenAPI::CatalogSettings::parse(config).explorer_defaults;
+  };
+  const auto d = parsed(
+      R"(center = [25.0, 62.0]; zoom = 4; clock = "12"; examples: { place = "Helsinki"; };)"
+      R"( projections = ["EPSG:3067 ETRS-TM35FIN", "EPSG:2393"]; units: { speed = "kt"; };)");
+  BOOST_TEST(d["center"][1].asDouble() == 62.0);
+  BOOST_TEST(d["zoom"].asInt() == 4);
+  BOOST_TEST(d["clock"].asString() == "12");
+  BOOST_TEST(d["examples"]["place"].asString() == "Helsinki");
+  BOOST_TEST(d["projections"][0][1].asString() == "ETRS-TM35FIN");
+  BOOST_TEST(d["projections"][1][1].asString() == "EPSG:2393");
+  BOOST_TEST(d["units"]["speed"].asString() == "kt");
+
+  for (const auto* bad : {R"(center = [25.0];)", R"(center = [200.0, 0.0];)", R"(zoom = 30;)",
+                          R"(clock = "13";)", R"(units: { speed = "furlongs"; };)",
+                          R"(units: { colour = "C"; };)", R"(examples: { city = "x"; };)",
+                          R"(projections = ["EPSG:3067\" onload=x"];)", R"(language = "fi";)"})
+    BOOST_CHECK_THROW(parsed(bad), Fmi::Exception);
+
+  libconfig::Config none;
+  none.readString("api_catalog: { title = \"x\"; };");
+  BOOST_TEST(OpenAPI::CatalogSettings::parse(none).explorer_defaults.isNull());
 }
 
 BOOST_AUTO_TEST_CASE(missing_swagger_ui)

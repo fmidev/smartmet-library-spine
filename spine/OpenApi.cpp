@@ -1275,6 +1275,107 @@ bool prefersHtml(const HTTP::Request& request)
 // The API catalog
 // ----------------------------------------------------------------------
 
+namespace
+{
+// The units the explorer can show by quantity
+const std::map<std::string, std::set<std::string>> explorerUnits = {
+    {"temperature", {"C", "F", "K"}},
+    {"speed", {"ms", "kt", "kmh", "mph"}},
+    {"pressure", {"hPa", "Pa", "inHg"}},
+    {"height", {"m", "ft"}}};
+
+// The explorer_defaults group as JSON, validated so that the page can trust it
+Json::Value parseExplorerDefaults(const libconfig::Setting& group)
+{
+  const auto where = [&group](const std::string& name)
+  { return std::string(group.getPath()) + "." + name; };
+  if (!group.isGroup())
+    throw Fmi::Exception(BCP, "explorer_defaults must be a group").addParameter("path", group.getPath());
+  Json::Value out(Json::objectValue);
+  for (const auto& item : group)
+  {
+    const std::string name = item.getName();
+    if (name == "center")
+    {
+      if (!item.isArray() || item.getLength() != 2)
+        throw Fmi::Exception(BCP, "center must be [longitude, latitude]").addParameter("path", where(name));
+      const double lon = item[0];
+      const double lat = item[1];
+      if (lon < -180 || lon > 180 || lat < -85 || lat > 85)
+        throw Fmi::Exception(BCP, "center is out of range").addParameter("path", where(name));
+      out["center"].append(lon);
+      out["center"].append(lat);
+    }
+    else if (name == "zoom")
+    {
+      const int zoom = item;
+      if (zoom < 0 || zoom > 18)
+        throw Fmi::Exception(BCP, "zoom must be 0-18").addParameter("path", where(name));
+      out["zoom"] = zoom;
+    }
+    else if (name == "clock")
+    {
+      const std::string value = static_cast<const char*>(item);
+      if (value != "24" && value != "12")
+        throw Fmi::Exception(BCP, "clock must be \"24\" or \"12\"").addParameter("path", where(name));
+      out["clock"] = value;
+    }
+    else if (name == "examples")
+    {
+      if (!item.isGroup())
+        throw Fmi::Exception(BCP, "examples must be a group").addParameter("path", where(name));
+      for (const auto& example : item)
+      {
+        const std::string mode = example.getName();
+        if (mode != "place" && mode != "fmisid" && mode != "wmo" && mode != "keyword" &&
+            mode != "area")
+          throw Fmi::Exception(BCP, "Unknown example of explorer_defaults")
+              .addParameter("path", where(name + "." + mode));
+        out["examples"][mode] = static_cast<const char*>(example);
+      }
+    }
+    else if (name == "projections")
+    {
+      if (!item.isArray() && !item.isList())
+        throw Fmi::Exception(BCP, "projections must be a list of \"code label\" strings")
+            .addParameter("path", where(name));
+      out["projections"] = Json::Value(Json::arrayValue);
+      for (const auto& p : item)
+      {
+        const std::string text = static_cast<const char*>(p);
+        const auto space = text.find(' ');
+        const auto code = text.substr(0, space);
+        if (code.empty() || code.find_first_of("\"'<>&") != std::string::npos)
+          throw Fmi::Exception(BCP, "Invalid projection").addParameter("projection", text);
+        Json::Value entry(Json::arrayValue);
+        entry.append(code);
+        entry.append(space == std::string::npos ? code : boost::algorithm::trim_copy(text.substr(space)));
+        out["projections"].append(entry);
+      }
+    }
+    else if (name == "units")
+    {
+      if (!item.isGroup())
+        throw Fmi::Exception(BCP, "units must be a group").addParameter("path", where(name));
+      for (const auto& unit : item)
+      {
+        const std::string quantity = unit.getName();
+        const std::string value = static_cast<const char*>(unit);
+        const auto known = explorerUnits.find(quantity);
+        if (known == explorerUnits.end() || known->second.count(value) == 0)
+          throw Fmi::Exception(BCP, "Unknown unit of the explorer")
+              .addParameter("quantity", quantity)
+              .addParameter("unit", value);
+        out["units"][quantity] = value;
+      }
+    }
+    else
+      throw Fmi::Exception(BCP, "Unknown setting of explorer_defaults").addParameter("path", where(name));
+  }
+  return out;
+}
+}  // namespace
+
 CatalogSettings CatalogSettings::parse(const libconfig::Config& config, const std::string& path)
 {
   try
@@ -1291,6 +1392,8 @@ CatalogSettings CatalogSettings::parse(const libconfig::Config& config, const st
       group.lookupValue("uplot_dir", settings.uplot_dir);
       group.lookupValue("palette_dir", settings.palette_dir);
       group.lookupValue("palette_config", settings.palette_config);
+      if (group.exists("explorer_defaults"))
+        settings.explorer_defaults = parseExplorerDefaults(group["explorer_defaults"]);
     }
     return settings;
   }
@@ -1874,6 +1977,14 @@ void Catalog::handleExplorer(const HTTP::Request& request, HTTP::Response& respo
     map += fmt::format(R"( data-basemap="{}basemap.json?v={}")", a, v("basemap.json"));
   if (itsExplorerFiles.count("palettes.json") > 0)
     map += fmt::format(R"( data-palettes="{}palettes.json?v={}")", a, v("palettes.json"));
+  // The defaults of the region and the users of the server
+  if (!itsSettings.explorer_defaults.isNull())
+  {
+    Json::StreamWriterBuilder builder;
+    builder["indentation"] = "";
+    map += fmt::format(R"( data-defaults="{}")",
+                       htmlEscape(Json::writeString(builder, itsSettings.explorer_defaults)));
+  }
   const auto& o = itsSettings.openapi;
   if (!o.map_tiles.empty())
     map += fmt::format(R"( data-map-tiles="{}" data-map-tile-size="{}" data-map-attribution="{}")",

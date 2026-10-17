@@ -418,6 +418,24 @@ Most plugins produce tables of values:
   snippets, the tree and the map are those of `OpenApiPlugin.cpp`. The page loads no inline
   scripts. `test/explorer-browser-test.js` checks it in a headless browser
   (`UPLOT_DIR` overrides the uPlot location).
+- The explorer has no regional defaults of its own: without configuration the maps open on
+  the whole world and the location fields show neutral examples. `api_catalog.explorer_defaults`
+  sets them for the region and the users of a server: `center` (longitude, latitude) and `zoom`
+  of the first map view (point, box and path examples are made from the center), `examples`
+  of the `place`, `fmisid`, `wmo`, `keyword` and `area` fields, extra Coverages output
+  `projections` (`"EPSG:3067 ETRS-TM35FIN"`; the native grid, EPSG:4326 and EPSG:3857 are
+  always offered), the `clock` (`"24"` or `"12"`) and `units` (`temperature` C|F|K, `speed`
+  ms|kt|kmh|mph, `pressure` hPa|Pa|inHg, `height` m|ft). The settings are validated when the
+  configuration is read and passed to the page as the JSON attribute `data-defaults`.
+- The settings menu of the page (clock, units, language, licences) overrides the defaults per
+  browser. Without a choice or a server default the units and the clock follow the language
+  of the browser, except that en-US is only taken as the United States when the time zone of
+  the browser is in the Americas or the Pacific (it is the language of many browsers
+  elsewhere). Temperatures in K (raw GRIB data) and pressures in Pa are recognised by their
+  values and shown in the units chosen, also on the Coverages maps. Times are entered as text
+  in the clock chosen (`2026-10-17 13:00` or `2026-10-17 1:00 PM`, UTC) with a button for the
+  date picker of the browser, since `datetime-local` inputs always follow the language of the
+  browser.
 * **OpenTelemetry** (`OTelOptions`, `OTelLogger`, `OTelMetricsExporter`) is optional.
   Tracing is compiled in with `SMARTMET_SPINE_OPENTELEMETRY`
   (see [build-opentelemetry.md](build-opentelemetry.md)), and cache statistics are

@@ -173,6 +173,11 @@ make %{_smp_mflags}
 
 %changelog
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
+- Data explorer: regional defaults of the server (api_catalog.explorer_defaults: first map
+  view, location examples, Coverages projections, clock, units) with neutral built-in defaults;
+  a settings menu with the 12/24-hour clock, the units, the language and the licences; times
+  entered as text in the chosen clock; temperatures in K and pressures in Pa shown in the
+  chosen units (C/F/K, m/s/kt/km/h/mph, hPa/Pa/inHg, m/ft), also on the Coverages maps
 - Data explorer: maps of a Coverages request in up to four linked panels (shared view, time and
   point, a parameter, level and colours each), read by the browser from a small GeoTIFF in
   longitude and latitude, with the time series of the point clicked

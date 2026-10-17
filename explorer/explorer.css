@@ -360,3 +360,14 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .xmap-clickable .xmap-svg { cursor: crosshair; }
 .xmap-hint { margin-top: 4px; font-style: italic; color: var(--muted); }
 .map-hint { margin: 4px 0; }
+.settings { position: relative; margin-left: auto; }
+.settings-panel { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; width: min(360px, calc(100vw - 32px));
+  background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15); display: flex; flex-direction: column; gap: 8px; }
+.settings-panel[hidden] { display: none; }
+.settings-head { justify-content: space-between; }
+.settings-panel ul { padding-left: 1.2em; margin: 6px 0; }
+.time-input { display: inline-flex; align-items: center; gap: 4px; position: relative; }
+.time-input .time-text { font-variant-numeric: tabular-nums; }
+.time-input .time-text[aria-invalid="true"] { border-color: #d1242f; outline-color: #d1242f; }
+.time-input .time-picker { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }

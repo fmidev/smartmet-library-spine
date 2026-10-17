@@ -1716,6 +1716,72 @@ async function main()
             JSON.stringify(units.q) === '["temperature","speed","height",null]' && units.back === 10,
         units);
 
+    // Kelvins and pascals shown in C and hPa, the units of the browser language, the defaults of
+    // the server, and the clock of the settings menu
+    const regional = await b.evaluate(`(async () => {
+      const E = SmartMetExplorer;
+      const kelvin = E.displayUnit('T-K', [263.15, 273.15, 283.15]);
+      const pascal = E.displayUnit('P-PA', [100000, 85000, 50000]);
+      const hpa = E.displayUnit('pressure', [1000, 850, 500]);
+      const shown = E.displayRows([{ 'T-K': 283.15, pressure: 85000 }, { 'T-K': 273.15, pressure: 90000 }]);
+      const out = { k: Math.round(kelvin.convert(283.15) * 100) / 100, kLabel: kelvin.label,
+                    pa: pascal.convert(85000), paLabel: pascal.label, hpa: hpa.convert(850),
+                    rows: [Math.round(shown.rows[0]['T-K'] * 100) / 100, shown.rows[0].pressure],
+                    labels: shown.labels,
+                    us: E.localeUnits('en-US', 'America/Chicago'), usHere: E.localeUnits('en-US', 'Europe/Helsinki'), fi: E.localeUnits('fi-FI'), none: E.localeUnits(''),
+                    crs: E.coverageCrs().map((c) => c[0]),
+                    place: E.locationModes()[0][2], point: E.locationModes()[1][2],
+                    t24: E.formatTime(new Date(Date.UTC(2026, 0, 2, 13, 5))),
+                    tpl24: [E.clockTemplate('{h}{aa}'), E.clockTemplate('{M}/{D}/{YY} {h}:{mm}{aa}')] };
+      // Time fields in the clock: written and read in both
+      out.parsed = ['2026-10-17 13:05', '2026-10-17T13:05', '2026-10-17 1:05 PM', '2026-10-17 12:00 am',
+                    '2026-10-17', '2026-10-17 1:05 pm UTC', '2026-02-30 10:00', '2026-10-17 13:05 PM', 'x']
+                       .map((t) => E.parseTimeText(t));
+      out.text24 = E.timeText('2026-10-17T13:05');
+      // The clock chosen in the settings menu
+      const button = document.querySelector('[aria-label="Settings"]');
+      button.click();
+      const panel = document.querySelector('.settings-panel');
+      out.open = !panel.hidden;
+      out.sections = [...panel.querySelectorAll('select')].map((x) => x.getAttribute('aria-label'));
+      out.licences = panel.querySelectorAll('li').length;
+      const clockSelect = panel.querySelector('[aria-label="Clock"]');
+      clockSelect.value = '12';
+      clockSelect.dispatchEvent(new Event('change'));
+      out.t12 = E.formatTime(new Date(Date.UTC(2026, 0, 2, 13, 5)));
+      out.tpl12 = E.clockTemplate('{h}{aa}');
+      out.text12 = E.timeText('2026-10-17T13:05');
+      out.fields12 = [...document.querySelectorAll('.time-text')].map((x) => x.value).filter(Boolean).slice(0, 1);
+      out.stored = localStorage.getItem('smartmet-explorer-clock');
+      clockSelect.value = '24';
+      clockSelect.dispatchEvent(new Event('change'));
+      localStorage.removeItem('smartmet-explorer-clock');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      out.closed = panel.hidden;
+      return out;
+    })()`);
+    check(
+        'kelvins and pascals in C and hPa, regional defaults, the clock',
+        regional.k === 10 && regional.kLabel === 'C' && regional.pa === 850 && regional.paLabel === 'hPa' &&
+            regional.hpa === 850 && JSON.stringify(regional.rows) === '[10,850]' &&
+            regional.labels['T-K'] === 'C' && regional.labels.pressure === 'hPa' &&
+            regional.us.temperature === 'F' && regional.us.speed === 'mph' && regional.usHere.temperature === 'C' && regional.fi.temperature === 'C' &&
+            regional.none.temperature === 'C' &&
+            JSON.stringify(regional.crs) === '["","EPSG:4326","EPSG:3857","EPSG:3067","EPSG:3035"]' &&
+            regional.place === 'Helsinki or Helsinki:20 for a 20 km radius' &&
+            regional.point === '25,62, or click the map' &&
+            regional.t24 === '2026-01-02 13:05 UTC' && regional.t12 === '2026-01-02 1:05 PM UTC' &&
+            JSON.stringify(regional.tpl24) === '["{HH}:00","{YYYY}-{MM}-{DD} {HH}:{mm}"]' &&
+            regional.tpl12 === '{h}{aa}' && regional.stored === '12' && regional.open && regional.closed &&
+            JSON.stringify(regional.sections) ===
+                '["Clock","Temperature unit","Wind speed unit","Pressure unit","Height unit","Language"]' &&
+            regional.licences === 4 &&
+            JSON.stringify(regional.parsed) ===
+                '["2026-10-17T13:05","2026-10-17T13:05","2026-10-17T13:05","2026-10-17T00:00",' +
+                    '"2026-10-17T00:00","2026-10-17T13:05","","",""]' &&
+            regional.text24 === '2026-10-17 13:05' && regional.text12 === '2026-10-17 1:05 PM',
+        regional);
+
     // The values met on a flight: a chart against the distance, the value met in the titles
     const flightView = await b.evaluate(`(async () => {
       const E = SmartMetExplorer;
@@ -2384,7 +2450,8 @@ async function main()
             coverageMaps.note.startsWith('12 × 10 cells, 2 parameters, 3 times') &&
             coverageMaps.zoomed[0] === coverageMaps.zoomed[1] &&
             coverageMaps.zoomed[0] !== coverageMaps.before[0] &&
-            coverageMaps.first[0].startsWith('Temperature at') && coverageMaps.first[1].startsWith('Pressure at') &&
+            coverageMaps.first[0].startsWith('Temperature (C) at') && coverageMaps.first[0].endsWith(' C') &&
+            coverageMaps.first[1].startsWith('Pressure (hPa) at') && coverageMaps.first[1].endsWith(' hPa') &&
             coverageMaps.first[0].includes('03:00') && coverageMaps.next[0].includes('04:00') &&
             JSON.stringify(coverageMaps.cursors) === '[1,1]' && coverageMaps.panels === 2 &&
             coverageMaps.rasters === 2 && JSON.stringify(coverageMaps.choices) === '["1","2"]' &&

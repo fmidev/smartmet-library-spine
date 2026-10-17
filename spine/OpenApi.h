@@ -343,6 +343,34 @@ class Publisher
  *     uplot_dir      = "/usr/share/smartmet/uplot";
  *     palette_dir    = "/usr/share/smartmet/qdless/palettes";
  *     palette_config = "/usr/share/smartmet/qdless/qdless.conf";
+ *
+ *     // The defaults of the explorer for the region and the users of the server, all optional
+ *     explorer_defaults:
+ *     {
+ *       center      = [25.0, 62.0];      // the first view of the maps: longitude, latitude
+ *       zoom        = 4;                 // and zoom level (0-18)
+ *       // The examples of the location fields; points, boxes and paths are made from the center
+ *       examples:
+ *       {
+ *         place   = "Helsinki";
+ *         fmisid  = "100971,101004";
+ *         wmo     = "2963,2974";
+ *         keyword = "synop_fi";
+ *         area    = "Uusimaa";
+ *       };
+ *       // Output projections offered by the Coverages module besides the native grid,
+ *       // EPSG:4326 and EPSG:3857: "code label"
+ *       projections = ["EPSG:3067 ETRS-TM35FIN", "EPSG:3035 ETRS89 LAEA Europe"];
+ *       clock       = "24";              // "24" or "12" hours, by default that of the browser
+ *       // The units shown until the user chooses: temperature C|F|K, speed ms|kt|kmh|mph,
+ *       // pressure hPa|Pa|inHg, height m|ft. By default C, m/s, hPa and m, or F, mph and ft
+ *       // for browsers whose language region uses them (e.g. en-US).
+ *       units:
+ *       {
+ *         temperature = "C";
+ *         speed       = "kt";
+ *       };
+ *     };
  *   };
  */
 // ----------------------------------------------------------------------
@@ -377,6 +405,8 @@ struct CatalogSettings
   // and the parameter to palette map, used for the values on the maps of the explorer
   std::string palette_dir = "/usr/share/smartmet/qdless/palettes";
   std::string palette_config = "/usr/share/smartmet/qdless/qdless.conf";
+  // The validated explorer_defaults group as JSON for the explorer page, null when not set
+  Json::Value explorer_defaults;
 
   // Read the group at 'path'. A missing group yields the defaults.
   static CatalogSettings parse(const libconfig::Config& config,
