@@ -176,8 +176,8 @@ make %{_smp_mflags}
 - Data explorer: units of temperatures (C, K, F), wind speeds (m/s, kt, km/h) and heights (m, ft)
 - Data explorer: the visible view saved as a PNG image (diagrams, charts, legends and the
   analysis of soundings) and the rows as CSV
-- Data explorer: the charts of a place compared with another producer or observations, with the
-  mean and the mean absolute difference
+- Data explorer: the charts of a place compared with another producer, observations or EDR
+  collection, with the mean and the mean absolute difference
 - Data explorer: meteograms (temperature, precipitation, cloud cover, wind and gusts with
   barbs), of ensembles as the median and the spread of the members
 - Data explorer: the analysis of soundings (CAPE, CIN, LFC, EL, lifted index, freezing level,

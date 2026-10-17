@@ -2046,6 +2046,35 @@ async function main()
     })()`);
     check('rows named by the location', named.includes('Helsinki Kaisaniemi'), named);
 
+    // An EDR position compared with another collection
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {
+      url: `${base}/api/explorer#api=/edr&collection=pal&params=temperature&query=position&location=24.94,60.17`
+    });
+    await waitFor(b, `!!document.querySelector('button.primary') && !document.querySelector('button.primary').disabled`, 'the EDR form');
+    await b.evaluate(`document.querySelector('button.primary').click()`);
+    await waitFor(b, `!!document.querySelector('[aria-label="Compare with"]')`, 'the EDR comparison');
+    const edrCompared = await b.evaluate(`(async () => {
+      const select = document.querySelector('[aria-label="Compare with"]');
+      const options = [...select.options].map((o) => o.textContent);
+      select.value = 'ecmwf_pressure';
+      select.dispatchEvent(new Event('change'));
+      for (let i = 0; i < 50 && !document.querySelector('.compare-stats div'); i++)
+        await new Promise((r) => setTimeout(r, 100));
+      const out = { options, title: document.querySelector('.chart-title').textContent,
+                    stats: [...document.querySelectorAll('.compare-stats div')].map((d) => d.textContent) };
+      select.value = '';
+      select.dispatchEvent(new Event('change'));
+      return out;
+    })()`);
+    check(
+        'an EDR position compared with another collection',
+        JSON.stringify(edrCompared.options) === '["No comparison","ecmwf_pressure"]' &&
+            edrCompared.title === 'temperature, 2 producers' &&
+            edrCompared.stats[0] === 'temperature: pal − ecmwf_pressure on average +0.00, mean absolute difference 0.00 at 6 times',
+        edrCompared);
+
     // The levels of a collection
     await b.evaluate(
         `[...document.querySelectorAll('.model-card button')].find((x) => x.textContent === "Change").click()`);

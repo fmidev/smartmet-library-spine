@@ -4399,6 +4399,87 @@ function drawMeteogram(container, rows, levelKind)
 }
 
 // ------------------------------------------------------------------
+// Comparison with another producer or collection
+// ------------------------------------------------------------------
+
+// The charts of one place compared with another producer or collection when one is chosen: its
+// series are drawn with those of the request, and the mean and the mean absolute difference at
+// the times both have are listed. options: params, kind (of the levels), ownName, others
+// ([{key, name, label, stations}], stations when the rows of the other are named by stations),
+// chosen (the key chosen before), onChoose(key), fetchRows(other) resolving to its rows.
+function drawComparison(pane, rows, options)
+{
+  const {params, kind, ownName, others} = options;
+  const select = el('select', {'aria-label': 'Compare with'}, [
+    el('option', {value: ''}, 'No comparison'),
+    ...others.map((o) => el('option', {value: o.key}, o.label))
+  ]);
+  select.value = options.chosen && others.some((o) => o.key === options.chosen) ? options.chosen : '';
+  const status = el('span', {class: 'muted small'});
+  const stats = el('div', {class: 'compare-stats small'});
+  const charts = el('div');
+  pane.replaceChildren(
+      others.length ? el('div', {class: 'row'}, el('label', null, 'Compare with', select), status) : '',
+      stats, charts);
+  const draw = (other, otherRows) => {
+    // The series are named by their producers, observations also by their stations
+    const mine = rows.map((r) => Object.assign({}, r, {name: ownName}));
+    const theirs = (otherRows || []).map((r) => Object.assign({}, r, {
+                                           name: `${other.name}${other.stations && r.name ? ` (${r.name})` : ''}`,
+                                           level: undefined
+                                         }));
+    const both = displayRows([...mine, ...theirs]);
+    drawCharts(charts, both.rows, params, 'lines',
+               {levelKind: kind, labels: both.labels, seriesWord: theirs.length ? 'producers' : undefined});
+    stats.replaceChildren();
+    if (!other || theirs.length === 0)
+      return;
+    // The differences at the times both have, in the chosen units
+    const at = (list, p) => new Map(displayRows(list).rows.filter((r) => typeof r[p] === 'number')
+                                        .map((r) => [parseTime(r.time).getTime(), r[p]]));
+    const lines = params.map((p) => {
+      const a = at(mine, p);
+      const b = at(theirs, p);
+      const diffs = Array.from(a.keys()).filter((x) => b.has(x)).map((x) => a.get(x) - b.get(x));
+      if (diffs.length === 0)
+        return `${p}: no common times`;
+      const mean = diffs.reduce((s, d) => s + d, 0) / diffs.length;
+      const mae = diffs.reduce((s, d) => s + Math.abs(d), 0) / diffs.length;
+      return `${p}: ${ownName} − ${other.name} on average ${mean >= 0 ? '+' : ''}${mean.toFixed(2)}, ` +
+          `mean absolute difference ${mae.toFixed(2)} at ${diffs.length} times`;
+    });
+    stats.replaceChildren(...lines.map((l) => el('div', null, l)));
+  };
+  const load = async () => {
+    const other = others.find((o) => o.key === select.value);
+    options.onChoose(select.value);
+    if (!other)
+    {
+      status.textContent = '';
+      draw(null, null);
+      return;
+    }
+    status.textContent = 'Loading…';
+    try
+    {
+      const otherRows = await options.fetchRows(other);
+      status.textContent = otherRows.length ? '' : `No values of ${other.name} here`;
+      draw(other, otherRows);
+    }
+    catch (e)
+    {
+      status.textContent = e.message;
+      draw(null, null);
+    }
+  };
+  select.addEventListener('change', load);
+  if (select.value)
+    load();
+  else
+    draw(null, null);
+}
+
+// ------------------------------------------------------------------
 // Charts of time series
 // ------------------------------------------------------------------
 
@@ -7501,9 +7582,8 @@ function timeSeriesModule(app, api, state, save)
 
     // The options of the sounding diagram: its type, and the soundings of another producer to
     // compare with, fetched for the same location and times
-    // The charts of one place, compared with another producer when one is chosen: its series
-    // are drawn with those of the request, and the mean and the mean absolute difference at the
-    // times both have are listed. Observations are matched to the nearest station.
+    // The charts of one place, compared with another producer when one is chosen. Observations
+    // are matched to the nearest station.
     function drawComparableCharts(pane, rows, kind)
     {
       const own = producer();
@@ -7519,61 +7599,19 @@ function timeSeriesModule(app, api, state, save)
                          .filter((p) => p !== own && p.source !== 'grid' &&
                                      params.every((n) => p.parameterSet.has(n)) && covers(p, sel) &&
                                      inPeriod(p));
-      const select = el('select', {'aria-label': 'Compare with'}, [
-        el('option', {value: ''}, 'No comparison'),
-        ...others.map((p) => el('option', {value: p.key}, `${p.name} (${p.source})`))
-      ]);
-      select.value = s.compare && others.some((p) => p.key === s.compare) ? s.compare : '';
-      const status = el('span', {class: 'muted small'});
-      const stats = el('div', {class: 'compare-stats small'});
-      const charts = el('div');
-      pane.replaceChildren(others.length ? el('div', {class: 'row'}, el('label', null, 'Compare with', select), status) : '',
-                           stats, charts);
-      const ownName = own ? own.name : 'request';
-      const draw = (other, otherRows) => {
-        // The series are named by their producers
-        const mine = rows.map((r) => Object.assign({}, r, {name: ownName}));
-        const theirs = (otherRows || []).map((r) => Object.assign({}, r, {
-                                               name: `${other.name}${r.name && r.name !== s.location ? ` (${r.name})` : ''}`,
-                                               level: undefined
-                                             }));
-        const both = displayRows([...mine, ...theirs]);
-        drawCharts(charts, both.rows, params, 'lines',
-                   {levelKind: kind, labels: both.labels, seriesWord: theirs.length ? 'producers' : undefined});
-        stats.replaceChildren();
-        if (!other || theirs.length === 0)
-          return;
-        // The differences at the times both have, in the chosen units
-        mine.splice(0, mine.length, ...displayRows(mine).rows);
-        theirs.splice(0, theirs.length, ...displayRows(theirs).rows);
-        const at = (list, p) => new Map(list.filter((r) => typeof r[p] === 'number')
-                                            .map((r) => [parseTime(r.time).getTime(), r[p]]));
-        const lines = params.map((p) => {
-          const a = at(mine, p);
-          const b = at(theirs, p);
-          const diffs = Array.from(a.keys()).filter((x) => b.has(x)).map((x) => a.get(x) - b.get(x));
-          if (diffs.length === 0)
-            return `${p}: no common times`;
-          const mean = diffs.reduce((s, d) => s + d, 0) / diffs.length;
-          const mae = diffs.reduce((s, d) => s + Math.abs(d), 0) / diffs.length;
-          return `${p}: ${ownName} − ${other.name} on average ${mean >= 0 ? '+' : ''}${mean.toFixed(2)}, ` +
-              `mean absolute difference ${mae.toFixed(2)} at ${diffs.length} times`;
-        });
-        stats.replaceChildren(...lines.map((l) => el('div', null, l)));
-      };
-      const load = async () => {
-        const p = index.producers.get(select.value);
-        s.compare = select.value || undefined;
-        save();
-        if (!p)
-        {
-          status.textContent = '';
-          draw(null, null);
-          return;
-        }
-        status.textContent = 'Loading…';
-        try
-        {
+      drawComparison(pane, rows, {
+        params,
+        kind,
+        ownName: own ? own.name : 'request',
+        others: others.map((p) => ({key: p.key, name: p.name, label: `${p.name} (${p.source})`,
+                                    stations: p.source === 'observation'})),
+        chosen: s.compare,
+        onChoose: (key) => {
+          s.compare = key || undefined;
+          save();
+        },
+        fetchRows: async (other) => {
+          const p = index.producers.get(other.key);
           const query = [
             ['producer', p.name],
             ['source', p.ambiguous && p.source === 'querydata' ? 'querydata' : ''],
@@ -7588,21 +7626,9 @@ function timeSeriesModule(app, api, state, save)
             ['timeformat', 'xml']
           ];
           const response = await fetch(`${app.base}${rootPath.replace(/^\//, '')}?${queryString(query)}`);
-          const otherRows = flattenRows(response.ok ? await response.json() : []);
-          status.textContent = otherRows.length ? '' : `No values of ${p.name} here`;
-          draw(p, otherRows);
+          return flattenRows(response.ok ? await response.json() : []);
         }
-        catch (e)
-        {
-          status.textContent = e.message;
-          draw(null, null);
-        }
-      };
-      select.addEventListener('change', load);
-      if (select.value)
-        load();
-      else
-        draw(null, null);
+      });
     }
 
     function soundingOptions()
@@ -8734,7 +8760,15 @@ function edrModule(app, api, state, save)
           return;
         drawn.add(name);
         if (name === 'Chart')
-          drawCharts(panes.Chart, shown.rows, params, undefined, {levelKind: kind, labels: shown.labels});
+        {
+          // One place can be compared with another collection
+          const places = new Set(rows.map((r) => locationOf(Object.assign({}, r, {level: null})))).size;
+          const levels = new Set(rows.map((r) => r.level).filter((v) => v !== undefined && v !== null)).size;
+          if (places === 1 && levels <= 1)
+            drawComparableCharts(panes.Chart, rows, kind, params);
+          else
+            drawCharts(panes.Chart, shown.rows, params, undefined, {levelKind: kind, labels: shown.labels});
+        }
         else if (name === 'Meteogram')
           drawMeteogram(panes.Meteogram, rows, kind);
         else if (name === 'Profile')
@@ -8801,6 +8835,41 @@ function edrModule(app, api, state, save)
                alongPath           ? 'Along the path' :
                vertical            ? 'Profile' :
                                      'Chart');
+    }
+
+    // The charts of one place, compared with another collection when one is chosen: the same
+    // query of the other collection, without the levels of this one
+    function drawComparableCharts(pane, rows, kind, params)
+    {
+      const own = collection();
+      const sel = selection();
+      const [q] = query();
+      const start = s.start ? new Date(fromInput(s.start)).getTime() : -Infinity;
+      const end = s.end ? new Date(fromInput(s.end)).getTime() : Infinity;
+      const inPeriod = (c) => !c.time || !c.time.start ||
+          (new Date(c.time.start).getTime() <= end && new Date(c.time.end).getTime() >= start);
+      const others = Array.from(index.producers.values())
+                         .filter((c) => c !== own && c.queries.includes(q) &&
+                                     s.params.every((p) => c.parameterSet.has(p)) && covers(c, sel) &&
+                                     inPeriod(c));
+      drawComparison(pane, rows, {
+        params,
+        kind,
+        ownName: own ? own.name : 'request',
+        others: others.map((c) => ({key: c.name, name: c.name, label: c.name})),
+        chosen: s.compare,
+        onChoose: (key) => {
+          s.compare = key || undefined;
+          save();
+        },
+        fetchRows: async (other) => {
+          const url = new URL(currentUrl().replace(`/collections/${encodeURIComponent(s.collection)}/`,
+                                                   `/collections/${encodeURIComponent(other.key)}/`));
+          url.searchParams.delete('z');
+          const response = await fetch(url.href, {headers: {accept: 'application/json'}});
+          return response.ok ? coverageRows(await response.json()) : [];
+        }
+      });
     }
 
     // Redraws the form and the request after a change; rerender = false keeps the text being typed
