@@ -1714,45 +1714,168 @@ function drawVerticalDiagram(panel, title, axis, valueLabel, series)
   panel.append(root);
 }
 
-// The time chooser of profile and sounding diagrams: a slider over the times, or all of them
-function timeChooser(times, onChange)
+// The speeds of animations: the time each frame is shown (ms), shared by the page and
+// remembered by the browser
+const ANIMATION_SPEEDS = [['2800', '0.25×'], ['1400', '0.5×'], ['700', '1×'], ['350', '2×'], ['175', '4×']];
+const ANIMATION_SPEED_KEY = 'smartmet-explorer-animation-speed';
+let animationDelay = (() => {
+  try
+  {
+    const v = localStorage.getItem(ANIMATION_SPEED_KEY);
+    return ANIMATION_SPEEDS.some(([d]) => d === v) ? Number(v) : 700;
+  }
+  catch (e)
+  {
+    return 700;
+  }
+})();
+
+// A time slider with animation: a play button, the speed, and a slider over the times with a
+// tick at each available time. The slider is positioned by time, so that the ticks show the
+// steps and gaps of the data, and it always snaps to an available time. times are in ms; when
+// some are unknown the times are spaced evenly. Options: label (of the slider), format (of a
+// time and its index), all (offer 'All times'), onChange(). Returns {element, index(), all()}.
+function timeSlider(times, options = {})
 {
-  const box = el('div', {class: 'row profile-times'});
+  const format = options.format || ((tm) => formatTime(new Date(tm)));
+  const formatAt = (i) => format(times[i], i);
+  const box = el('div', {class: 'row time-slider'});
   if (times.length <= 1)
   {
-    box.append(
-        el('span', {class: 'muted small'}, times.length ? formatTime(new Date(times[0])) : ''));
-    return {element: box, value: () => (times.length ? [times[0]] : [])};
+    box.append(el('span', {class: 'muted small'}, times.length ? formatAt(0) : ''));
+    return {element: box, index: () => 0, all: () => false};
   }
-  let all = false;
+  const known = times.every((tm) => typeof tm === 'number' && isFinite(tm));
+  // The position of each time on the slider, 0 ... span
+  const positions = known ? times.map((tm) => (tm - times[0]) / 60000) : times.map((_, i) => i);
+  const span = positions[positions.length - 1] || 1;
   let index = 0;
+  let all = false;
+  let timer = null;
+
   const slider = el('input', {
     type: 'range',
     min: 0,
-    max: times.length - 1,
-    step: 1,
+    max: span,
+    step: 'any',
     value: 0,
-    'aria-label': 'Time of the profile'
+    'aria-label': options.label || 'Time',
+    'aria-valuetext': formatAt(0)
   });
-  const label = el('span', {class: 'small'});
+  const ticks = el('div', {class: 'time-ticks', 'aria-hidden': 'true'});
+  positions.forEach((p, i) => {
+    const d = known ? new Date(times[i]) : null;
+    const day = d && d.getUTCHours() === 0 && d.getUTCMinutes() === 0;
+    ticks.append(el('span', {
+      class: `time-tick${day ? ' day' : ''}`,
+      style: `left: ${(p / span) * 100}%`,
+      title: formatAt(i)
+    }));
+  });
+  const track = el('div', {class: 'time-track'}, slider, ticks);
+  const label = el('span', {class: 'small time-label'});
+  const play = el('button', {type: 'button', class: 'small time-play', 'aria-label': 'Play'}, '▶');
+  const speed = el('select', {'aria-label': 'Animation speed'},
+                   ANIMATION_SPEEDS.map(([v, l]) => el('option', {value: v}, l)));
+  speed.value = String(animationDelay);
   const allBox = el('input', {type: 'checkbox', 'aria-label': 'All times'});
+
   const update = () => {
-    label.textContent = all ? `${times.length} times` : formatTime(new Date(times[index]));
+    slider.value = String(positions[index]);
+    slider.setAttribute('aria-valuetext', formatAt(index));
+    label.textContent = all ? `${times.length} times` : formatAt(index);
     slider.disabled = all;
+    play.disabled = all;
   };
-  slider.addEventListener('input', () => {
-    index = Number(slider.value);
+  const choose = (i) => {
+    const next = Math.max(0, Math.min(times.length - 1, i));
+    const changed = next !== index;
+    index = next;
     update();
-    onChange();
+    if (changed && options.onChange)
+      options.onChange();
+  };
+  const stop = () => {
+    if (timer)
+      clearTimeout(timer);
+    timer = null;
+    play.textContent = '▶';
+    play.setAttribute('aria-label', 'Play');
+  };
+  const tick = () => {
+    if (!box.isConnected)
+    {
+      stop();
+      return;
+    }
+    choose((index + 1) % times.length);
+    timer = setTimeout(tick, animationDelay);
+  };
+
+  // The nearest available time to the slider
+  slider.addEventListener('input', () => {
+    stop();
+    const v = Number(slider.value);
+    let best = 0;
+    positions.forEach((p, i) => {
+      if (Math.abs(p - v) < Math.abs(positions[best] - v))
+        best = i;
+    });
+    choose(best);
+  });
+  // The arrow keys step from one available time to the next
+  slider.addEventListener('keydown', (e) => {
+    const step = {ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1}[e.key];
+    const jump = {Home: -times.length, End: times.length}[e.key];
+    if (step === undefined && jump === undefined)
+      return;
+    e.preventDefault();
+    stop();
+    choose(index + (step !== undefined ? step : jump));
+  });
+  play.addEventListener('click', () => {
+    if (timer)
+    {
+      stop();
+      return;
+    }
+    play.textContent = '❚❚';
+    play.setAttribute('aria-label', 'Pause');
+    timer = setTimeout(tick, animationDelay);
+  });
+  speed.addEventListener('change', () => {
+    animationDelay = Number(speed.value);
+    try
+    {
+      localStorage.setItem(ANIMATION_SPEED_KEY, speed.value);
+    }
+    catch (e)
+    {
+      // Not remembered
+    }
   });
   allBox.addEventListener('change', () => {
+    stop();
     all = allBox.checked;
     update();
-    onChange();
+    if (options.onChange)
+      options.onChange();
   });
   update();
-  box.append(slider, label, el('label', {class: 'check'}, allBox, 'All times'));
-  return {element: box, value: () => (all ? times : [times[index]])};
+  box.append(play, speed, track, label);
+  if (options.all)
+    box.append(el('label', {class: 'check'}, allBox, 'All times'));
+  return {element: box, index: () => index, all: () => all};
+}
+
+// The time chooser of profile and sounding diagrams: a slider over the times, or all of them
+function timeChooser(times, onChange)
+{
+  const slider = timeSlider(times, {label: 'Time of the profile', all: true, onChange});
+  return {
+    element: slider.element,
+    value: () => (times.length === 0 ? [] : slider.all() ? times : [times[slider.index()]])
+  };
 }
 
 // Profiles of the parameters: a diagram per parameter, the value against the vertical axis
@@ -2337,15 +2460,13 @@ function drawCrossSection(container, rows, parameters, levelKind, settings)
   };
   setTops();
   axisSelect.hidden = axes.length < 2;
-  const slider = el('input', {
-    type: 'range',
-    min: 0,
-    max: Math.max(0, times.length - 1),
-    value: 0,
-    'aria-label': 'Time of the cross section'
+  const slider = timeSlider(times, {
+    label: 'Time of the cross section',
+    onChange: () => {
+      state.time = slider.index();
+      draw();
+    }
   });
-  const timeLabel = el('span', {class: 'small'});
-  slider.hidden = times.length < 2;
   const readout = el('div', {class: 'sk-readout small'});
   const legend = el('div', {class: 'legend'});
   const plot = el('div', {class: 'section'});
@@ -2356,7 +2477,7 @@ function drawCrossSection(container, rows, parameters, levelKind, settings)
                       el('label', null, 'Top', topSelect),
                       el('label', null, 'Colours', paletteSelect),
                       flightLevels),
-                   el('div', {class: 'row profile-times'}, slider, timeLabel),
+                   slider.element,
                    legend,
                    readout,
                    plot);
@@ -2371,16 +2492,10 @@ function drawCrossSection(container, rows, parameters, levelKind, settings)
       apply();
       draw();
     });
-  slider.addEventListener('input', () => {
-    state.time = Number(slider.value);
-    draw();
-  });
-
   function draw()
   {
     plot.replaceChildren();
     const time = times[state.time];
-    timeLabel.textContent = time === undefined ? '' : formatTime(new Date(time));
     // The levels of each point of the path at the chosen time
     const columns = points.map(() => []);
     // The colours are kept for all times, so that they keep their meaning
@@ -3606,11 +3721,17 @@ function drawValueMap(container, rows, parameters, settings)
              ([v, t]) => el('option', {value: v}, t)));
   const minInput = el('input', {type: 'number', step: 'any', 'aria-label': 'Minimum', size: 6});
   const maxInput = el('input', {type: 'number', step: 'any', 'aria-label': 'Maximum', size: 6});
-  const slider = el(
-      'input',
-      {type: 'range', min: 0, max: Math.max(0, times.length - 1), value: 0, 'aria-label': 'Time'});
-  const timeLabel = el('span', {class: 'muted small'});
-  const play = el('button', {type: 'button', class: 'small'}, 'Play');
+  const slider = timeSlider(times.map((tm) => {
+    const d = parseTime(tm);
+    return d ? d.getTime() : null;
+  }), {
+    label: 'Time of the map',
+    format: (tm, i) => (typeof tm === 'number' ? formatTime(new Date(tm)) : times[i]),
+    onChange: () => {
+      state.time = slider.index();
+      draw();
+    }
+  });
   const legend = el('div', {class: 'legend'});
   container.append(
       el('div',
@@ -3620,7 +3741,7 @@ function drawValueMap(container, rows, parameters, settings)
          el('label', null, 'Scale', stepsSelect),
          el('label', null, 'Min', minInput),
          el('label', null, 'Max', maxInput)),
-      el('div', {class: 'row value-time'}, play, slider, timeLabel),
+      slider.element,
       legend,
       map.element);
 
@@ -3660,8 +3781,6 @@ function drawValueMap(container, rows, parameters, settings)
     if (size === null)
       size = cellSize(items) || {dx: 0, dy: 0};
     map.setCells({items, dx: size.dx, dy: size.dy});
-    const d = parseTime(t);
-    timeLabel.textContent = d ? formatTime(d) : t;
     // The legend: the colours and the range, or the bands of a production palette
     minInput.disabled = maxInput.disabled = stepsSelect.disabled = isProduction();
     if (isProduction())
@@ -3729,31 +3848,6 @@ function drawValueMap(container, rows, parameters, settings)
         draw();
       }
     });
-  slider.addEventListener('input', () => {
-    state.time = Number(slider.value);
-    draw();
-  });
-  let timer = null;
-  play.addEventListener('click', () => {
-    if (timer)
-    {
-      clearInterval(timer);
-      timer = null;
-      play.textContent = 'Play';
-      return;
-    }
-    play.textContent = 'Stop';
-    timer = setInterval(() => {
-      if (!container.isConnected)
-      {
-        clearInterval(timer);
-        return;
-      }
-      state.time = (state.time + 1) % times.length;
-      slider.value = String(state.time);
-      draw();
-    }, 700);
-  });
   paletteSelect.value = state.palette;
   setRange();
   draw();

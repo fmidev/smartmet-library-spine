@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.17
-Release: 8%{?dist}.fmi
+Release: 9%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-9.fmi
+- Data explorer: time sliders of profiles, soundings, cross sections and maps animate with a
+  play button and a speed choice, and show the available times as ticks
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-8.fmi
 - Data explorer: optional flight levels (ICAO standard atmosphere) on cross sections and
   time-height sections

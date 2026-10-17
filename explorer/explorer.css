@@ -219,8 +219,6 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .download[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
 .xmap-cell { stroke: none; }
 .xmap-dot { stroke: #fff; stroke-width: 1; }
-.value-time { align-items: center; margin: 6px 0; }
-.value-time input[type="range"] { flex: 1; min-width: 160px; }
 .legend { display: flex; align-items: center; gap: 6px; margin: 4px 0 8px; }
 .legend-bar { display: flex; flex: 1; max-width: 360px; height: 12px; border: 1px solid var(--line); }
 .legend-step { flex: 1; }
@@ -241,7 +239,6 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .vline { fill: none; stroke-width: 1.6; }
 .vlegend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
 .vlegend i { display: inline-block; width: 12px; height: 3px; margin-right: 4px; vertical-align: middle; }
-.profile-times input[type="range"] { width: 220px; }
 .sk-isobar { fill: none; stroke: var(--line); stroke-width: 1; }
 .sk-isotherm { fill: none; stroke: #b0b8c8; stroke-width: 0.8; }
 .sk-isotherm.zero { stroke: #5a7ab8; stroke-width: 1.2; }
@@ -285,3 +282,14 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
   stroke-width: 3;
   pointer-events: none;
 }
+
+/* Time sliders with animation: the ticks are the available times */
+.time-slider { align-items: center; gap: 8px; margin: 6px 0; }
+.time-slider select { width: auto; }
+.time-play { min-width: 2.4em; }
+.time-track { position: relative; flex: 1 1 220px; min-width: 160px; max-width: 640px; padding-bottom: 8px; }
+.time-track input[type="range"] { display: block; width: 100%; margin: 0; }
+.time-ticks { position: absolute; left: 8px; right: 8px; bottom: 0; height: 8px; pointer-events: none; }
+.time-tick { position: absolute; top: 0; width: 1px; height: 5px; background: var(--muted); transform: translateX(-0.5px); }
+.time-tick.day { height: 8px; width: 2px; background: var(--fg); }
+.time-label { min-width: 11em; }

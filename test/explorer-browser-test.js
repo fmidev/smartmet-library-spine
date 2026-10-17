@@ -843,8 +843,7 @@ async function main()
       const colours = () => [...pane.querySelectorAll('.xmap-dot')].map((c) => c.getAttribute('fill')).join(' ');
       const first = colours();
       const slider = pane.querySelector('input[type="range"]');
-      slider.value = "5";
-      slider.dispatchEvent(new Event("input", { bubbles: true }));
+      slider.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true }));
       await new Promise((r) => setTimeout(r, 200));
       const last = colours();
       const legendBefore = pane.querySelector('.legend-step').style.background;
@@ -852,14 +851,38 @@ async function main()
       palette.value = "temperature";
       palette.dispatchEvent(new Event("change", { bubbles: true }));
       const legendAfter = pane.querySelector('.legend-step').style.background;
-      return { dots: pane.querySelectorAll('.xmap-dot').length, max: slider.max, changed: first !== last,
-               legend: legendBefore !== legendAfter, min: pane.querySelector('[aria-label="Minimum"]').value,
-               time: pane.querySelector('.value-time .muted').textContent };
+      // The animation at the highest speed, from the last time round to the first ones
+      const label = () => pane.querySelector('.time-label').textContent;
+      const atEnd = label();
+      const speed = pane.querySelector('[aria-label="Animation speed"]');
+      speed.value = "175";
+      speed.dispatchEvent(new Event("change", { bubbles: true }));
+      pane.querySelector('.time-play').click();
+      const playing = pane.querySelector('.time-play').getAttribute('aria-label');
+      await new Promise((r) => setTimeout(r, 450));
+      pane.querySelector('.time-play').click();
+      const animated = label();
+      const paused = pane.querySelector('.time-play').getAttribute('aria-label');
+      await new Promise((r) => setTimeout(r, 400));
+      const still = label() === animated;
+      // A step back with the arrow key, to the previous available time
+      slider.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
+      const back = label();
+      return { dots: pane.querySelectorAll('.xmap-dot').length, ticks: pane.querySelectorAll('.time-tick').length,
+               changed: first !== last, legend: legendBefore !== legendAfter,
+               min: pane.querySelector('[aria-label="Minimum"]').value, time: atEnd,
+               animated: animated !== atEnd, playing, paused, still, back: back !== animated,
+               remembered: localStorage.getItem('smartmet-explorer-animation-speed') };
     })()`);
     check(
         'values on a map',
-        valueMap.dots === 4 && valueMap.max === '5' && valueMap.changed && valueMap.legend &&
+        valueMap.dots === 4 && valueMap.ticks === 6 && valueMap.changed && valueMap.legend &&
             valueMap.min !== '' && valueMap.time.endsWith('UTC'),
+        valueMap);
+    check(
+        'animation of the map times',
+        valueMap.playing === 'Pause' && valueMap.paused === 'Play' && valueMap.animated &&
+            valueMap.still && valueMap.back && valueMap.remembered === '175',
         valueMap);
 
     // The production palette of the parameter, drawn band by band
