@@ -1276,6 +1276,769 @@ function createMap(settings, onSelect)
 // Charts
 // ------------------------------------------------------------------
 
+// ----------------------------------------------------------------------
+// Vertical profiles and soundings
+// ----------------------------------------------------------------------
+
+// The value of a column, or of the median of an area computed by the server
+function columnValue(row, name)
+{
+  let v = row[name];
+  if (v === undefined)
+    v = row[statisticParameter('nanmedian_a', name)];
+  return typeof v === 'number' && isFinite(v) ? v : null;
+}
+
+// The first of the candidate columns the rows have
+function findColumn(rows, candidates)
+{
+  for (const name of candidates)
+    if (rows.some((r) => columnValue(r, name) !== null))
+      return name;
+  return null;
+}
+
+// The parameters that place a level vertically, and those of a sounding, by their names in
+// querydata and grid data
+const PRESSURE_PARAMS = ['pressure', 'p-hpa', 'pres-hpa'];
+const PRESSURE_PA_PARAMS = ['p-pa', 'pres-pa'];
+const HEIGHT_PARAMS = ['geomheight', 'geopheight', 'hl-m', 'z-m', 'height'];
+const SOUNDING_PARAMS = {
+  temperature: [['temperature', 0], ['t', 0], ['t-c', 0], ['t-k', -273.15]],
+  dewpoint: [['dewpoint', 0], ['td', 0], ['td-c', 0], ['td-k', -273.15]],
+  humidity: [['humidity', 0], ['rh-prcnt', 0], ['rh', 0]],
+  speed: [['windspeedms', 0], ['ff-ms', 0], ['ws', 0]],
+  direction: [['winddirection', 0], ['dd-d', 0], ['wd', 0]],
+  u: [['windums', 0], ['u-ms', 0]],
+  v: [['windvms', 0], ['v-ms', 0]]
+};
+
+// The kind of the levels of an EDR collection from its vertical reference system
+function edrLevelKind(collection)
+{
+  const type = collection && collection.levels && collection.levels[0] ?
+      String(collection.levels[0].type).toLowerCase() :
+      '';
+  if (type.includes('pressure'))
+    return /pascal",1|\(pa\)/.test(type) && !/hectopascal/.test(type) ? 'pressure-pa' : 'pressure';
+  if (type.includes('depth'))
+    return 'depth';
+  if (type.includes('hybrid') || type.includes('model'))
+    return 'hybrid';
+  if (type.includes('height') || type.includes('altitude'))
+    return 'height';
+  return type ? 'level' : '';
+}
+
+// The vertical axes the rows allow: [{id, label, unit, value(row), log, down}], where down
+// means that the values grow downwards (pressure, depth, model level)
+function verticalAxes(rows, levelKind)
+{
+  const axes = [];
+  const level = (r) => (typeof r.level === 'number' ? r.level : null);
+  const pressure = findColumn(rows, PRESSURE_PARAMS);
+  const pressurePa = findColumn(rows, PRESSURE_PA_PARAMS);
+  const height = findColumn(rows, HEIGHT_PARAMS);
+  if (levelKind === 'pressure')
+    axes.push(
+        {id: 'pressure', label: 'Pressure', unit: 'hPa', value: level, log: true, down: true});
+  else if (levelKind === 'pressure-pa')
+    axes.push({
+      id: 'pressure',
+      label: 'Pressure',
+      unit: 'hPa',
+      value: (r) => (typeof r.level === 'number' ? r.level / 100 : null),
+      log: true,
+      down: true
+    });
+  else if (pressure)
+    axes.push({
+      id: 'pressure',
+      label: 'Pressure',
+      unit: 'hPa',
+      value: (r) => columnValue(r, pressure),
+      log: true,
+      down: true
+    });
+  else if (pressurePa)
+    axes.push({
+      id: 'pressure',
+      label: 'Pressure',
+      unit: 'hPa',
+      value: (r) => {
+        const v = columnValue(r, pressurePa);
+        return v === null ? null : v / 100;
+      },
+      log: true,
+      down: true
+    });
+  if (levelKind === 'height' || levelKind === 'altitude')
+    axes.push({id: 'height', label: 'Height', unit: 'm', value: level, log: false, down: false});
+  else if (height)
+    axes.push({
+      id: 'height',
+      label: 'Height',
+      unit: 'm',
+      value: (r) => columnValue(r, height),
+      log: false,
+      down: false
+    });
+  if (levelKind === 'depth' || levelKind === 'ground depth')
+    axes.push({
+      id: 'depth',
+      label: 'Depth',
+      unit: levelKind === 'depth' ? 'm' : 'cm',
+      value: level,
+      log: false,
+      down: true
+    });
+  if (levelKind === 'hybrid' || axes.length === 0)
+    axes.push({id: 'level', label: 'Model level', unit: '', value: level, log: false, down: true});
+  return axes;
+}
+
+// The profiles of the rows: one per location (and variant) and time, with at least 3 levels
+function collectProfiles(rows, axis)
+{
+  const profiles = new Map();
+  for (const row of rows)
+  {
+    const t = parseTime(row.time);
+    const z = axis.value(row);
+    if (!t || z === null)
+      continue;
+    const key = `${locationOf({name: row.name, lat: row.lat, lon: row.lon, _point: row._point})}${
+        row._variant ? ` · ${row._variant}` : ''}`;
+    const id = `${key}|${t.getTime()}`;
+    if (!profiles.has(id))
+      profiles.set(id, {key, time: t.getTime(), rows: []});
+    profiles.get(id).rows.push({z, row});
+  }
+  return Array.from(profiles.values())
+      .filter((p) => p.rows.length >= 3)
+      .map((p) => Object.assign(p, {rows: p.rows.sort((a, b) => a.z - b.z)}));
+}
+
+// Whether the rows have profiles worth drawing
+function hasProfiles(rows, levelKind)
+{
+  if (!rows.some((r) => typeof r.level === 'number'))
+    return false;
+  const axes = verticalAxes(rows, levelKind);
+  return collectProfiles(rows, axes[0]).length > 0;
+}
+
+// Round numbers for an axis
+function niceTicks(min, max, count)
+{
+  if (!(max > min))
+    return [min];
+  const raw = (max - min) / Math.max(1, count);
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw) || raw;
+  const out = [];
+  for (let v = Math.ceil(min / step) * step; v <= max + step * 1e-9; v += step)
+    out.push(Math.round(v / step) * step);
+  return out;
+}
+
+const PRESSURE_TICKS =
+    [1000, 925, 850, 700, 500, 400, 300, 250, 200, 150, 100, 70, 50, 30, 20, 10, 5];
+
+// The scale of a vertical axis to pixels 0 (top) ... h (bottom)
+function verticalScale(axis, zmin, zmax, h)
+{
+  const f = axis.log ? (v) => Math.log(v) : (v) => v;
+  const a = f(zmin);
+  const b = f(zmax);
+  const span = b - a || 1;
+  // Growing upwards: the largest value at the top
+  return axis.down ? (v) => ((f(v) - a) / span) * h : (v) => h - ((f(v) - a) / span) * h;
+}
+
+function verticalTicks(axis, zmin, zmax)
+{
+  if (axis.log)
+  {
+    const ticks = PRESSURE_TICKS.filter((p) => p >= zmin && p <= zmax);
+    return ticks.length >= 2 ? ticks : niceTicks(zmin, zmax, 6);
+  }
+  return niceTicks(zmin, zmax, 6);
+}
+
+// The opacity of a profile: earlier times fainter when times are overlaid
+const profileOpacity = (timeIndex, times) =>
+    (times <= 1 ? 1 : 0.3 + (0.7 * timeIndex) / (times - 1));
+
+// A vertical diagram: values horizontally, the vertical coordinate vertically.
+// series: [{label, colour, points: [[value, z]]}]
+function drawVerticalDiagram(panel, title, axis, valueLabel, series)
+{
+  const width = Math.max(320, Math.min(560, panel.clientWidth || 480));
+  const height = 420;
+  const m = {left: 56, right: 12, top: 10, bottom: 40};
+  const w = width - m.left - m.right;
+  const h = height - m.top - m.bottom;
+  // The extent of the levels that have values: below the sea floor there are none
+  const valued = series.flatMap((s) => s.points.filter((p) => p[0] !== null));
+  const zs = valued.map((p) => p[1]);
+  const xs = valued.map((p) => p[0]);
+  if (zs.length === 0 || xs.length === 0)
+    return;
+  let zmin = Math.min(...zs);
+  let zmax = Math.max(...zs);
+  if (axis.id === 'depth')
+    zmin = Math.min(0, zmin);
+  if (axis.id === 'height')
+    zmin = Math.min(0, zmin);
+  let xmin = Math.min(...xs);
+  let xmax = Math.max(...xs);
+  if (xmax - xmin < 1e-9)
+  {
+    xmin -= 1;
+    xmax += 1;
+  }
+  const pad = (xmax - xmin) * 0.05;
+  xmin -= pad;
+  xmax += pad;
+  const sy = verticalScale(axis, zmin, zmax, h);
+  const sx = (v) => ((v - xmin) / (xmax - xmin)) * w;
+
+  const root = svg('svg', {
+    class: 'vdiagram',
+    width,
+    height,
+    viewBox: `0 0 ${width} ${height}`,
+    role: 'img',
+    'aria-label': title
+  });
+  const g = svg('g', {transform: `translate(${m.left},${m.top})`});
+  root.append(g);
+  // Grid and axes
+  for (const z of verticalTicks(axis, zmin, zmax))
+  {
+    const y = sy(z);
+    g.append(svg('line', {class: 'vgrid', x1: 0, x2: w, y1: y, y2: y}));
+    const t = svg('text', {class: 'vtick', x: -6, y: y + 4, 'text-anchor': 'end'});
+    t.textContent = String(z);
+    g.append(t);
+  }
+  for (const v of niceTicks(xmin, xmax, 6))
+  {
+    const x = sx(v);
+    g.append(svg('line', {class: 'vgrid', x1: x, x2: x, y1: 0, y2: h}));
+    const t = svg('text', {class: 'vtick', x, y: h + 16, 'text-anchor': 'middle'});
+    t.textContent = String(v);
+    g.append(t);
+  }
+  g.append(svg('rect', {class: 'vframe', x: 0, y: 0, width: w, height: h}));
+  const ylabel = svg('text', {
+    class: 'vlabel',
+    transform: `translate(${- 44},${h / 2}) rotate(-90)`,
+    'text-anchor': 'middle'
+  });
+  ylabel.textContent = `${axis.label}${axis.unit ? ` (${axis.unit})` : ''}`;
+  g.append(ylabel);
+  const xlabel = svg('text', {class: 'vlabel', x: w / 2, y: h + 34, 'text-anchor': 'middle'});
+  xlabel.textContent = valueLabel;
+  g.append(xlabel);
+  // The profiles: a missing value breaks the line
+  for (const s of series)
+  {
+    let d = '';
+    let pen = false;
+    for (const [v, z] of s.points)
+    {
+      if (v === null)
+      {
+        pen = false;
+        continue;
+      }
+      d += `${pen ? 'L' : 'M'}${sx(v).toFixed(1)},${sy(z).toFixed(1)}`;
+      pen = true;
+    }
+    const path =
+        svg('path', {class: 'vline', d, stroke: s.colour, 'stroke-opacity': s.opacity ?? 1});
+    const tip = svg('title');
+    tip.textContent = s.label;
+    path.append(tip);
+    g.append(path);
+  }
+  panel.append(root);
+}
+
+// The time chooser of profile and sounding diagrams: a slider over the times, or all of them
+function timeChooser(times, onChange)
+{
+  const box = el('div', {class: 'row profile-times'});
+  if (times.length <= 1)
+  {
+    box.append(
+        el('span', {class: 'muted small'}, times.length ? formatTime(new Date(times[0])) : ''));
+    return {element: box, value: () => (times.length ? [times[0]] : [])};
+  }
+  let all = false;
+  let index = 0;
+  const slider = el('input', {
+    type: 'range',
+    min: 0,
+    max: times.length - 1,
+    step: 1,
+    value: 0,
+    'aria-label': 'Time of the profile'
+  });
+  const label = el('span', {class: 'small'});
+  const allBox = el('input', {type: 'checkbox', 'aria-label': 'All times'});
+  const update = () => {
+    label.textContent = all ? `${times.length} times` : formatTime(new Date(times[index]));
+    slider.disabled = all;
+  };
+  slider.addEventListener('input', () => {
+    index = Number(slider.value);
+    update();
+    onChange();
+  });
+  allBox.addEventListener('change', () => {
+    all = allBox.checked;
+    update();
+    onChange();
+  });
+  update();
+  box.append(slider, label, el('label', {class: 'check'}, allBox, 'All times'));
+  return {element: box, value: () => (all ? times : [times[index]])};
+}
+
+// Profiles of the parameters: a diagram per parameter, the value against the vertical axis
+function drawProfiles(container, rows, parameters, levelKind)
+{
+  container.replaceChildren();
+  const axes = verticalAxes(rows, levelKind);
+  let axis = axes[0];
+  const axisSelect =
+      el('select',
+         {'aria-label': 'Vertical axis'},
+         axes.map((a) => el('option', {value: a.id}, a.label)));
+  const diagrams = el('div', {class: 'vdiagrams'});
+  const times =
+      Array.from(new Set(collectProfiles(rows, axis).map((p) => p.time))).sort((a, b) => a - b);
+  const chooser = timeChooser(times, () => draw());
+  const tools =
+      el('div', {class: 'row'}, el('label', null, 'Vertical axis', axisSelect), chooser.element);
+  axisSelect.hidden = axes.length < 2;
+  axisSelect.addEventListener('change', () => {
+    axis = axes.find((a) => a.id === axisSelect.value) || axes[0];
+    draw();
+  });
+  container.append(tools, diagrams);
+
+  function draw()
+  {
+    diagrams.replaceChildren();
+    const chosen = new Set(chooser.value());
+    const profiles = collectProfiles(rows, axis).filter((p) => chosen.has(p.time));
+    const keys = Array.from(new Set(profiles.map((p) => p.key)));
+    const chosenTimes = Array.from(chosen).sort((a, b) => a - b);
+    for (const param of parameters)
+    {
+      const series =
+          profiles
+              .map((p) => ({
+                     label: `${p.key}, ${formatTime(new Date(p.time))}`,
+                     colour: palette[keys.indexOf(p.key) % palette.length],
+                     opacity: profileOpacity(chosenTimes.indexOf(p.time), chosenTimes.length),
+                     points: p.rows.map(({z, row}) => [columnValue(row, param), z])
+                   }))
+              .filter((s) => s.points.some(([v]) => v !== null));
+      if (series.length === 0)
+        continue;
+      const panel = el('div', {class: 'chart vchart', 'data-param': param});
+      panel.append(el('div', {class: 'chart-title'}, `${param}: vertical profile`));
+      diagrams.append(panel);
+      drawVerticalDiagram(panel, param, axis, param, series);
+      if (keys.length > 1)
+        panel.append(
+            el('div',
+               {class: 'vlegend small'},
+               keys.map(
+                   (k, i) =>
+                       el('span',
+                          null,
+                          el('i', {style: `background:${palette[i % palette.length]}`}),
+                          k))));
+    }
+    if (diagrams.children.length === 0)
+      diagrams.append(el('p', {class: 'muted'}, 'No values to draw.'));
+  }
+  draw();
+}
+
+// ----------------------------------------------------------------------
+// Thermodynamics of soundings
+// ----------------------------------------------------------------------
+
+const KELVIN = 273.15;
+const RD = 287.04;
+const CP = 1005.7;
+const LV = 2.501e6;
+const EPSILON = 0.622;
+const KAPPA = RD / CP;
+
+// Saturation vapour pressure (hPa) over water at T (C)
+const saturationPressure = (t) => 6.112 * Math.exp((17.67 * t) / (t + 243.5));
+
+// Dewpoint (C) of a vapour pressure (hPa)
+function dewpointOf(e)
+{
+  const l = Math.log(Math.max(e, 1e-9) / 6.112);
+  return (243.5 * l) / (17.67 - l);
+}
+
+// Dewpoint (C) from the temperature (C) and relative humidity (%)
+const dewpointFromHumidity = (t, rh) =>
+    dewpointOf((Math.max(rh, 0.1) / 100) * saturationPressure(t));
+
+// Saturation mixing ratio (kg/kg) at T (C) and p (hPa)
+function saturationMixingRatio(t, p)
+{
+  const e = saturationPressure(t);
+  return (EPSILON * e) / Math.max(p - e, 1e-6);
+}
+
+// The temperature (C) at which air of mixing ratio w (g/kg) is saturated at p (hPa)
+const mixingRatioTemperature = (w, p) => dewpointOf(((w / 1000) * p) / (EPSILON + w / 1000));
+
+// The temperature (C) of a dry adiabat of potential temperature theta (K) at p (hPa)
+const dryAdiabat = (theta, p) => theta * Math.pow(p / 1000, KAPPA) - KELVIN;
+
+// The pseudoadiabatic lapse rate dT/dp (K/hPa) of saturated air at T (C) and p (hPa)
+function moistLapse(t, p)
+{
+  const tk = t + KELVIN;
+  const rs = saturationMixingRatio(t, p);
+  return ((RD * tk + LV * rs) / (CP + (LV * LV * rs * EPSILON) / (RD * tk * tk))) / p;
+}
+
+// A moist adiabat from (t0, p0) to p1: [[p, t]] in steps of at most 5 hPa
+function moistAdiabat(t0, p0, p1)
+{
+  const out = [[p0, t0]];
+  const n = Math.max(1, Math.ceil(Math.abs(p1 - p0) / 5));
+  const dp = (p1 - p0) / n;
+  let t = t0;
+  let p = p0;
+  for (let i = 0; i < n; i++)
+  {
+    // Second order Runge-Kutta
+    const k1 = moistLapse(t, p);
+    const k2 = moistLapse(t + k1 * dp, p + dp);
+    t += ((k1 + k2) / 2) * dp;
+    p += dp;
+    out.push([p, t]);
+  }
+  return out;
+}
+
+// The lifting condensation level of air at (t, td, p): {p, t} (Bolton 1980)
+function liftingCondensationLevel(t, td, p)
+{
+  const tk = t + KELVIN;
+  const tdk = td + KELVIN;
+  const tl = 1 / (1 / (tdk - 56) + Math.log(tk / tdk) / 800) + 56;
+  return {p: p * Math.pow(tl / tk, 1 / KAPPA), t: tl - KELVIN};
+}
+
+// The path of a parcel lifted from (t, td, p) to ptop: dry to the LCL, then moist
+function parcelPath(t, td, p, ptop)
+{
+  const lcl = liftingCondensationLevel(t, td, p);
+  const theta = (t + KELVIN) * Math.pow(1000 / p, KAPPA);
+  const dry = [];
+  for (let q = p; q > lcl.p; q -= 10)
+    dry.push([q, dryAdiabat(theta, q)]);
+  dry.push([lcl.p, lcl.t]);
+  return {lcl, path: [...dry, ...moistAdiabat(lcl.t, lcl.p, ptop).slice(1)]};
+}
+
+// ----------------------------------------------------------------------
+// The skew-T log-p diagram
+// ----------------------------------------------------------------------
+
+// Wind barb of speed s (m/s) from direction d (deg) at (x, y): a staff towards the direction
+// the wind comes from, pennants of 50 kt, barbs of 10 kt and half barbs of 5 kt
+function windBarb(x, y, speed, direction)
+{
+  const g = svg('g', {class: 'barb', transform: `translate(${x},${y}) rotate(${direction})`});
+  const kt = Math.round((speed * 1.943844) / 5) * 5;
+  if (kt < 5)
+  {
+    g.append(svg('circle', {cx: 0, cy: 0, r: 3}));
+    return g;
+  }
+  const len = 26;
+  g.append(svg('line', {x1: 0, y1: 0, x2: 0, y2: -len}));
+  let rest = kt;
+  let pos = -len;
+  while (rest >= 50)
+  {
+    g.append(svg('path', {d: `M0,${pos} L10,${pos + 3} L0,${pos + 6} Z`, class: 'pennant'}));
+    pos += 8;
+    rest -= 50;
+  }
+  while (rest >= 10)
+  {
+    g.append(svg('line', {x1: 0, y1: pos, x2: 11, y2: pos - 4}));
+    pos += 4;
+    rest -= 10;
+  }
+  if (rest >= 5)
+  {
+    if (pos === -len)
+      pos += 4;
+    g.append(svg('line', {x1: 0, y1: pos, x2: 6, y2: pos - 2}));
+  }
+  return g;
+}
+
+// The sounding of a profile: [{p, t, td, speed, direction}] from the bottom up
+function soundingOf(profile, columns, axis)
+{
+  const out = [];
+  for (const {z, row} of profile.rows)
+  {
+    const p = axis.value(row);
+    const t = columns.temperature ? columnValue(row, columns.temperature[0]) : null;
+    if (p === null || t === null)
+      continue;
+    const tc = t + columns.temperature[1];
+    let td = columns.dewpoint ? columnValue(row, columns.dewpoint[0]) : null;
+    if (td !== null)
+      td += columns.dewpoint[1];
+    else if (columns.humidity)
+    {
+      const rh = columnValue(row, columns.humidity[0]);
+      td = rh === null ? null : dewpointFromHumidity(tc, rh);
+    }
+    let speed = columns.speed ? columnValue(row, columns.speed[0]) : null;
+    let direction = columns.direction ? columnValue(row, columns.direction[0]) : null;
+    if ((speed === null || direction === null) && columns.u && columns.v)
+    {
+      const u = columnValue(row, columns.u[0]);
+      const v = columnValue(row, columns.v[0]);
+      if (u !== null && v !== null)
+      {
+        speed = Math.hypot(u, v);
+        direction = ((Math.atan2(-u, -v) * 180) / Math.PI + 360) % 360;
+      }
+    }
+    out.push({p, t: tc, td, speed, direction, z});
+  }
+  return out.sort((a, b) => b.p - a.p);
+}
+
+// The columns of a sounding the rows have: {temperature: [name, offset], ...}
+function soundingColumns(rows)
+{
+  const out = {};
+  for (const [what, candidates] of Object.entries(SOUNDING_PARAMS))
+    for (const [name, offset] of candidates)
+      if (rows.some((r) => columnValue(r, name) !== null))
+      {
+        out[what] = [name, offset];
+        break;
+      }
+  return out;
+}
+
+// Whether the rows make a skew-T: temperature on pressures
+function hasSounding(rows, levelKind)
+{
+  const columns = soundingColumns(rows);
+  return !!columns.temperature && verticalAxes(rows, levelKind).some((a) => a.id === 'pressure');
+}
+
+// The skew-T log-p diagram of the soundings: temperature (red), dewpoint (green), the path
+// of a parcel lifted from the lowest level (dashed) and wind barbs
+function drawSkewT(container, rows, levelKind)
+{
+  container.replaceChildren();
+  const axis = verticalAxes(rows, levelKind).find((a) => a.id === 'pressure');
+  const columns = soundingColumns(rows);
+  if (!axis || !columns.temperature)
+  {
+    container.append(el('p', {class: 'muted'}, 'A sounding needs temperatures on pressures.'));
+    return;
+  }
+  const profiles = collectProfiles(rows, axis);
+  const keys = Array.from(new Set(profiles.map((p) => p.key)));
+  const times = Array.from(new Set(profiles.map((p) => p.time))).sort((a, b) => a - b);
+  const keySelect =
+      el('select',
+         {'aria-label': 'Location of the sounding'},
+         keys.map((k) => el('option', {value: k}, k)));
+  const chooser = timeChooser(times, () => draw());
+  const parcelBox = el('input', {type: 'checkbox', checked: true, 'aria-label': 'Lifted parcel'});
+  const info = el('p', {class: 'muted small skewt-info'});
+  const diagram = el('div', {class: 'skewt'});
+  keySelect.hidden = keys.length < 2;
+  keySelect.addEventListener('change', () => draw());
+  parcelBox.addEventListener('change', () => draw());
+  container.append(
+      el('div',
+         {class: 'row'},
+         keySelect,
+         chooser.element,
+         el('label', {class: 'check'}, parcelBox, 'Lifted parcel')),
+      diagram,
+      info);
+
+  function draw()
+  {
+    diagram.replaceChildren();
+    const chosen = new Set(chooser.value());
+    const key = keySelect.value || keys[0];
+    const soundings = profiles.filter((p) => p.key === key && chosen.has(p.time))
+                          .sort((a, b) => a.time - b.time)
+                          .map((p) => ({time: p.time, levels: soundingOf(p, columns, axis)}))
+                          .filter((s) => s.levels.length >= 2);
+    if (soundings.length === 0)
+    {
+      diagram.append(el('p', {class: 'muted'}, 'No sounding at the chosen time.'));
+      return;
+    }
+    const width = Math.max(360, Math.min(640, container.clientWidth || 560));
+    const height = 560;
+    const m = {left: 48, right: 56, top: 10, bottom: 36};
+    const w = width - m.left - m.right;
+    const h = height - m.top - m.bottom;
+    const pBottom = Math.max(1050, ...soundings.map((s) => s.levels[0].p));
+    const pTop = Math.max(100, Math.min(...soundings.flatMap((s) => s.levels.map((l) => l.p))));
+    const tLeft = -40;
+    const tRight = 40;
+    // Pixels grow downwards: the highest pressure at the bottom
+    const y = (p) =>
+        h - (h * (Math.log(pBottom) - Math.log(p))) / (Math.log(pBottom) - Math.log(pTop));
+    // The isotherms lean 45 degrees to the right
+    const x = (t, p) => ((t - tLeft) / (tRight - tLeft)) * w + (h - y(p));
+    const line = (points, cls, extra) => {
+      let d = '';
+      points.forEach(([p, t], i) => {
+        d += `${i ? 'L' : 'M'}${x(t, p).toFixed(1)},${y(p).toFixed(1)}`;
+      });
+      return svg('path', Object.assign({class: cls, d}, extra || {}));
+    };
+    const root = svg('svg', {
+      class: 'skewt-diagram',
+      width,
+      height,
+      viewBox: `0 0 ${width} ${height}`,
+      role: 'img',
+      'aria-label': 'Skew-T log-p diagram'
+    });
+    const clipId = `skewt-clip-${Math.random().toString(36).slice(2)}`;
+    const defs = svg('defs');
+    const clip = svg('clipPath', {id: clipId});
+    clip.append(svg('rect', {x: 0, y: 0, width: w, height: h}));
+    defs.append(clip);
+    root.append(defs);
+    const g = svg('g', {transform: `translate(${m.left},${m.top})`});
+    root.append(g);
+    const plot = svg('g', {'clip-path': `url(#${clipId})`});
+    g.append(plot);
+    const pressures = [];
+    for (let p = pBottom; p >= pTop - 1e-9; p -= 10)
+      pressures.push(p);
+    // Background: isobars, isotherms, dry adiabats, moist adiabats and mixing ratios
+    for (const p of PRESSURE_TICKS.filter((q) => q <= pBottom && q >= pTop))
+    {
+      plot.append(svg('line', {class: 'sk-isobar', x1: 0, x2: w, y1: y(p), y2: y(p)}));
+      const t = svg('text', {class: 'vtick', x: -6, y: y(p) + 4, 'text-anchor': 'end'});
+      t.textContent = String(p);
+      g.append(t);
+    }
+    for (let t = -120; t <= 50; t += 10)
+    {
+      plot.append(line([[pBottom, t], [pTop, t]], t === 0 ? 'sk-isotherm zero' : 'sk-isotherm'));
+      const bx = x(t, pBottom);
+      if (bx >= 0 && bx <= w)
+      {
+        const label = svg('text', {class: 'vtick', x: bx, y: h + 16, 'text-anchor': 'middle'});
+        label.textContent = String(t);
+        g.append(label);
+      }
+    }
+    for (let theta = 250; theta <= 470; theta += 10)
+      plot.append(line(pressures.map((p) => [p, dryAdiabat(theta, p)]), 'sk-dry'));
+    for (let t0 = -20; t0 <= 36; t0 += 4)
+      plot.append(line(moistAdiabat(t0, 1000, pTop).filter(([p]) => p <= pBottom), 'sk-moist'));
+    for (const wgk of [0.4, 1, 2, 4, 7, 10, 16, 24, 32])
+    {
+      const ps = pressures.filter((p) => p >= 600);
+      plot.append(line(ps.map((p) => [p, mixingRatioTemperature(wgk, p)]), 'sk-mixing'));
+      const lp = ps[ps.length - 1];
+      const label = svg('text', {
+        class: 'sk-mixing-label',
+        x: x(mixingRatioTemperature(wgk, lp), lp),
+        y: y(lp) - 3,
+        'text-anchor': 'middle'
+      });
+      label.textContent = String(wgk);
+      plot.append(label);
+    }
+    g.append(svg('rect', {class: 'vframe', x: 0, y: 0, width: w, height: h}));
+    const ylabel = svg('text', {
+      class: 'vlabel',
+      transform: `translate(${- 38},${h / 2}) rotate(-90)`,
+      'text-anchor': 'middle'
+    });
+    ylabel.textContent = 'Pressure (hPa)';
+    g.append(ylabel);
+    const xlabel = svg('text', {class: 'vlabel', x: w / 2, y: h + 32, 'text-anchor': 'middle'});
+    xlabel.textContent = 'Temperature (C)';
+    g.append(xlabel);
+
+    // The soundings, earlier times fainter
+    const infos = [];
+    soundings.forEach((s, i) => {
+      const alpha = soundings.length > 1 ? 0.3 + (0.7 * i) / (soundings.length - 1) : 1;
+      const levels = s.levels.filter((l) => l.p >= pTop && l.p <= pBottom);
+      plot.append(line(levels.map((l) => [l.p, l.t]), 'sk-temperature', {opacity: alpha}));
+      const dew = levels.filter((l) => l.td !== null);
+      if (dew.length > 1)
+        plot.append(line(dew.map((l) => [l.p, l.td]), 'sk-dewpoint', {opacity: alpha}));
+      // A parcel lifted from the lowest level of the latest sounding
+      if (parcelBox.checked && i === soundings.length - 1 && levels[0].td !== null)
+      {
+        const base = levels[0];
+        const parcel = parcelPath(base.t, base.td, base.p, pTop);
+        plot.append(line(parcel.path, 'sk-parcel'));
+        plot.append(svg('line', {
+          class: 'sk-lcl',
+          x1: x(parcel.lcl.t, parcel.lcl.p) - 8,
+          x2: x(parcel.lcl.t, parcel.lcl.p) + 8,
+          y1: y(parcel.lcl.p),
+          y2: y(parcel.lcl.p)
+        }));
+        infos.push(`Lifting condensation level ${Math.round(parcel.lcl.p)} hPa, ${
+            parcel.lcl.t.toFixed(1)} C, of a parcel lifted from ${Math.round(base.p)} hPa`);
+      }
+    });
+    // Wind barbs of the latest sounding at the right edge, at least 16 pixels apart
+    const latest = soundings[soundings.length - 1].levels;
+    let previous = Infinity;
+    for (const l of latest)
+    {
+      if (l.speed === null || l.direction === null || l.p < pTop || previous - y(l.p) < 16)
+        continue;
+      g.append(windBarb(w + 28, y(l.p), l.speed, l.direction));
+      previous = y(l.p);
+    }
+    infos.push(`${key}, ${soundings.map((s) => formatTime(new Date(s.time))).join(', ')}`);
+    info.textContent = infos.join(' · ');
+    diagram.append(root);
+  }
+  draw();
+}
+
 // More locations than this are drawn as percentiles by default, and as a swarm of thin lines
 // without a legend when lines are chosen
 const MAX_LINES = 20;
@@ -3369,6 +4132,17 @@ function timeSeriesModule(app, api, state, save)
             ...level,
             ...s.params.flatMap((p) => (META.has(p) ? [p] : columnsOf(p)))
           ]));
+      // Model levels are placed vertically by the pressure and height of each level
+      const p = producer();
+      if (p && levelKind() === 'hybrid')
+      {
+        const extras = [
+          PRESSURE_PARAMS.find((n) => p.parameterSet.has(n)),
+          HEIGHT_PARAMS.find((n) => p.parameterSet.has(n))
+        ].filter((n) => n && !params.includes(n));
+        for (const n of extras)
+          params.push(serverStatistics() ? statisticParameter('nanmedian_a', n) : n);
+      }
       const details = gridDetailColumns(params, columns);
       return [
         ['producer', s.producer],
@@ -3451,7 +4225,16 @@ function timeSeriesModule(app, api, state, save)
     function showResults(rows, text)
     {
       const statistics = serverStatistics();
-      const panes = {Chart: el('div', {class: 'pane'})};
+      // Several levels at each location and time are drawn as profiles first
+      const kind = levelKind();
+      const vertical = hasProfiles(rows, kind);
+      const panes = {};
+      if (vertical)
+      {
+        panes.Profile = el('div', {class: 'pane'});
+        panes['Skew-T'] = el('div', {class: 'pane'});
+      }
+      panes.Chart = el('div', {class: 'pane'});
       // The values on a map when there are several located points
       if (hasMapValues(rows))
         panes.Map = el('div', {class: 'pane'});
@@ -3470,6 +4253,10 @@ function timeSeriesModule(app, api, state, save)
         drawn.add(name);
         if (name === 'Chart')
           drawCharts(panes.Chart, rows, dataParams(), statistics ? 'server' : undefined);
+        else if (name === 'Profile')
+          drawProfiles(panes.Profile, rows, dataParams(), kind);
+        else if (name === 'Skew-T')
+          drawSounding(panes['Skew-T'], rows, kind);
         else if (name === 'Map')
           drawValueMap(panes.Map, rows, dataParams(), mapSettings(app.element));
         else if (name === 'Table')
@@ -3479,16 +4266,76 @@ function timeSeriesModule(app, api, state, save)
       };
       for (const name of Object.keys(panes))
         tabs.append(el('button', {type: 'button', role: 'tab', onclick: () => show(name)}, name));
-      const locationsCount = new Set(rows.map(locationOf)).size;
+      // Profiles are counted by their levels, not as locations
+      const levelCount = new Set(rows.map((r) => r.level)).size;
+      const locationsCount = vertical ?
+          new Set(rows.map((r) => locationOf({name: r.name, lat: r.lat, lon: r.lon}))).size :
+          new Set(rows.map(locationOf)).size;
       results.replaceChildren(
           el('div',
              {class: 'results-head'},
              tabs,
              el('span',
                 {class: 'muted small'},
-                `${rows.length} rows${locationsCount > 1 ? `, ${locationsCount} locations` : ''}`)),
+                `${rows.length} rows${locationsCount > 1 ? `, ${locationsCount} locations` : ''}${
+                    vertical ? `, ${levelCount} levels` : ''}`)),
           ...Object.values(panes));
-      show('Chart');
+      show(vertical ? 'Profile' : 'Chart');
+    }
+
+    // The kind of the levels of the request: pressure, hybrid, height, depth, ...
+    function levelKind()
+    {
+      const type = chosenLevelType();
+      return type ? type.type : '';
+    }
+
+    // A skew-T, or what to add for one
+    function drawSounding(pane, rows, kind)
+    {
+      if (hasSounding(rows, kind))
+      {
+        drawSkewT(pane, rows, kind);
+        return;
+      }
+      const wanted = soundingParameters(producer());
+      pane.replaceChildren(
+          el('p',
+             {class: 'muted'},
+             'A sounding needs temperatures on pressure levels, or a pressure ' +
+                 'on each level.'));
+      if (wanted.length > 0)
+        pane.append(
+            el('button',
+               {
+                 type: 'button',
+                 class: 'small',
+                 onclick: () => {
+                   s.params = Array.from(new Set([...s.params, ...wanted]));
+                   refresh();
+                   run();
+                 }
+               },
+               `Add ${wanted.join(', ')} and run`));
+    }
+
+    // The parameters of a sounding the producer has and the request lacks
+    function soundingParameters(p)
+    {
+      if (!p)
+        return [];
+      const out = [];
+      for (const what of ['temperature', 'dewpoint', 'humidity', 'speed', 'direction'])
+      {
+        const names = SOUNDING_PARAMS[what].map(([n]) => n);
+        // A dewpoint makes the humidity unnecessary
+        if (what === 'humidity' && SOUNDING_PARAMS.dewpoint.some(([n]) => p.parameterSet.has(n)))
+          continue;
+        const found = names.find((n) => p.parameterSet.has(n));
+        if (found && !s.params.includes(found))
+          out.push(found);
+      }
+      return out;
     }
 
     function refresh(rerender = true)
@@ -4155,9 +5002,18 @@ function edrModule(app, api, state, save)
           `${rootPath}/collections/${encodeURIComponent(s.collection || '{collectionId}')}/${q}`;
       if (q === 'locations' && s.location)
         path += `/${encodeURIComponent(s.location)}`;
+      // Model levels are placed vertically by the pressure and height of each level
+      const names = s.params.slice();
+      if (c && edrLevelKind(c) === 'hybrid')
+        for (const candidates of [PRESSURE_PARAMS, HEIGHT_PARAMS])
+        {
+          const n = candidates.find((x) => c.parameterSet.has(x));
+          if (n && !names.includes(n))
+            names.push(n);
+        }
       const params = [
         ...coords(),
-        ['parameter-name', s.params.join(',')],
+        ['parameter-name', names.join(',')],
         ['datetime', s.start && s.end ? `${fromInput(s.start)}/${fromInput(s.end)}` : ''],
         ['z', (s.levels || []).join(',')],
         ['f', s.format || (c && c.formats[0]) || 'CoverageJSON']
@@ -4220,7 +5076,18 @@ function edrModule(app, api, state, save)
                      label: String(r.name || ''),
                      info: {lat: r.lat, lon: r.lon}
                    })));
-      const panes = {Chart: el('div', {class: 'pane'})};
+      // Several levels at each location and time are drawn as profiles first
+      const c = collection();
+      const kind = edrLevelKind(c);
+      const vertical = hasProfiles(rows, kind);
+      const panes = {};
+      if (vertical)
+      {
+        panes.Profile = el('div', {class: 'pane'});
+        if (hasSounding(rows, kind))
+          panes['Skew-T'] = el('div', {class: 'pane'});
+      }
+      panes.Chart = el('div', {class: 'pane'});
       // The values on a map when there are several located points
       if (hasMapValues(rows))
         panes.Map = el('div', {class: 'pane'});
@@ -4243,6 +5110,10 @@ function edrModule(app, api, state, save)
         drawn.add(name);
         if (name === 'Chart')
           drawCharts(panes.Chart, rows, params);
+        else if (name === 'Profile')
+          drawProfiles(panes.Profile, rows, params, kind);
+        else if (name === 'Skew-T')
+          drawSkewT(panes['Skew-T'], rows, kind);
         else if (name === 'Map')
           drawValueMap(panes.Map, rows, params, mapSettings(app.element));
         else if (name === 'Table')
@@ -4252,16 +5123,21 @@ function edrModule(app, api, state, save)
       };
       for (const name of Object.keys(panes))
         tabs.append(el('button', {type: 'button', role: 'tab', onclick: () => show(name)}, name));
-      const count = new Set(rows.map(locationOf)).size;
+      // Profiles are counted by their levels, not as locations
+      const count = vertical ?
+          new Set(rows.map((r) => locationOf({name: r.name, lat: r.lat, lon: r.lon}))).size :
+          new Set(rows.map(locationOf)).size;
+      const levelCount = new Set(rows.map((r) => r.level)).size;
       results.replaceChildren(
           el('div',
              {class: 'results-head'},
              tabs,
              el('span',
                 {class: 'muted small'},
-                `${rows.length} rows${count > 1 ? `, ${count} locations` : ''}`)),
+                `${rows.length} rows${count > 1 ? `, ${count} locations` : ''}${
+                    vertical ? `, ${levelCount} levels` : ''}`)),
           ...Object.values(panes));
-      show('Chart');
+      show(vertical ? 'Profile' : 'Chart');
     }
 
     function refresh(rerender = true)
@@ -5172,6 +6048,14 @@ root.SmartMetExplorer = {
   splitVariants,
   parseNumberList,
   drawCharts,
+  drawProfiles,
+  drawSkewT,
+  hasProfiles,
+  hasSounding,
+  verticalAxes,
+  liftingCondensationLevel,
+  moistAdiabat,
+  dewpointFromHumidity,
   parameterKind,
   coverageRows,
   paletteColour,

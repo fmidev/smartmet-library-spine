@@ -227,3 +227,29 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .legend-label { position: absolute; left: 0; top: 15px; font-size: 9px; color: var(--muted); transform: translateX(-50%); white-space: nowrap; }
 .legend:has(.legend-bands) { margin-bottom: 20px; }
 .pane .row select { max-width: 14em; }
+
+/* Vertical profiles and soundings */
+.vdiagrams { display: flex; flex-wrap: wrap; gap: 12px; }
+.vchart { flex: 1 1 320px; max-width: 580px; }
+.vdiagram, .skewt-diagram { display: block; max-width: 100%; height: auto; font-size: 11px; }
+.vgrid { stroke: var(--line); stroke-width: 1; }
+.vframe { fill: none; stroke: var(--muted); stroke-width: 1; }
+.vtick { fill: var(--muted); }
+.vlabel { fill: var(--fg); }
+.vline { fill: none; stroke-width: 1.6; }
+.vlegend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
+.vlegend i { display: inline-block; width: 12px; height: 3px; margin-right: 4px; vertical-align: middle; }
+.profile-times input[type="range"] { width: 220px; }
+.sk-isobar { stroke: var(--line); stroke-width: 1; }
+.sk-isotherm { stroke: #b0b8c8; stroke-width: 0.8; }
+.sk-isotherm.zero { stroke: #5a7ab8; stroke-width: 1.2; }
+.sk-dry { fill: none; stroke: #d9a35c; stroke-width: 0.7; opacity: 0.7; }
+.sk-moist { fill: none; stroke: #6aa86a; stroke-width: 0.7; stroke-dasharray: 4 3; opacity: 0.7; }
+.sk-mixing { fill: none; stroke: #9a7ab8; stroke-width: 0.6; stroke-dasharray: 2 3; }
+.sk-mixing-label { fill: #9a7ab8; font-size: 9px; }
+.sk-temperature { fill: none; stroke: #d62728; stroke-width: 2.2; }
+.sk-dewpoint { fill: none; stroke: #2ca02c; stroke-width: 2.2; }
+.sk-parcel { fill: none; stroke: var(--fg); stroke-width: 1.2; stroke-dasharray: 6 4; }
+.sk-lcl { stroke: var(--fg); stroke-width: 2; }
+.barb line, .barb circle { stroke: var(--fg); stroke-width: 1.2; fill: none; }
+.barb .pennant { fill: var(--fg); stroke: none; }

@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.17
-Release: 2%{?dist}.fmi
+Release: 3%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-3.fmi
+- Data explorer: vertical profiles of pressure, model, height and depth levels (value against
+  pressure, height, depth or model level, a time slider or all times) and a skew-T log-p
+  diagram of soundings with wind barbs and a lifted parcel, in the TimeSeries and EDR modules
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-2.fmi
 - Data explorer charts: locations reporting at different intervals are drawn as lines and their
   percentiles no longer make a comb; parameters without values are named instead of left out

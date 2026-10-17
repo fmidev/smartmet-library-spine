@@ -72,6 +72,13 @@ const producers = {
       time: {start: iso(now - 12 * hour), end: iso(now.getTime() + 144 * hour), step: 60}
     },
     {
+      name: 'hybrid',
+      source: 'querydata',
+      parameters: ['geomheight', 'pressure', 'temperature'],
+      levels: [{type: 'hybrid', values: Array.from({length: 65}, (_, i) => String(i + 1))}],
+      time: {start: iso(now - 6 * hour), end: iso(now.getTime() + 48 * hour), step: 60}
+    },
+    {
       // An ensemble with levels of two types
       name: 'ens',
       source: 'grid',
@@ -570,7 +577,7 @@ async function main()
     // A parameter narrows the producers
     let r = await choose(b, PARAM, 'temp', 'Temperature');
     check(
-        'parameter search by name', r.found && r.labels.some((l) => l.includes('4 producers')), r);
+        'parameter search by name', r.found && r.labels.some((l) => l.includes('5 producers')), r);
     r = await choose(b, PARAM, 'relative', 'Humidity');
     check('parameter search by description', r.found, r);
     const chips = await b.evaluate(
@@ -582,7 +589,7 @@ async function main()
     const note = await b.evaluate(`document.querySelector('.form .step .muted.small').textContent`);
     check(
         'producers with all the parameters',
-        note === '1 of 5 producers have all these parameters',
+        note === '1 of 6 producers have all these parameters',
         note);
     r = await choose(b, PRODUCER, '', 'pal');
     check(
@@ -901,7 +908,7 @@ async function main()
         await b.evaluate(`document.querySelector('.form .step .muted.small').textContent`);
     check(
         'producers covering the selection',
-        covering === '0 of 5 producers have all these parameters in the selected area',
+        covering === '0 of 6 producers have all these parameters in the selected area',
         covering);
     await setLocation(b, 'not a box');
     const invalid = await b.evaluate(`document.querySelector('.warn').textContent`);
@@ -1105,6 +1112,64 @@ async function main()
         new Date(week.get('endtime')) - new Date(week.get('starttime')) === 7 * 24 * hour,
         week.toString());
 
+    // Vertical profiles and the skew-T of model levels: a standard atmosphere on 20 levels
+    const vertical = await b.evaluate(`(() => {
+      const E = SmartMetExplorer;
+      const rows = [];
+      for (const hour of [0, 6])
+        for (let k = 1; k <= 20; k++) {
+          const p = 1000 - (k - 1) * 45;
+          const z = 44330 * (1 - Math.pow(p / 1013.25, 0.1903));
+          const t = 15 - 0.0065 * z + hour * 0.2;
+          rows.push({ name: 'Helsinki', time: new Date(Date.UTC(2026, 9, 15, hour)).toISOString(),
+                      level: 21 - k, pressure: p, geomheight: z, temperature: t,
+                      humidity: 80 - k * 3, windspeedms: 2 + k, winddirection: 200 + k * 5 });
+        }
+      const axes = E.verticalAxes(rows, 'hybrid').map((a) => a.id);
+      const box = document.createElement('div');
+      box.style.width = '600px';
+      document.body.append(box);
+      E.drawProfiles(box, rows, ['temperature', 'humidity'], 'hybrid');
+      const profiles = { charts: box.querySelectorAll('.vchart').length,
+        lines: box.querySelectorAll('.vline').length,
+        axis: [...box.querySelectorAll('[aria-label="Vertical axis"] option')].map((o) => o.value) };
+      box.querySelector('[aria-label="All times"]').click();
+      profiles.overlaid = box.querySelectorAll('.vline').length;
+      E.drawSkewT(box, rows, 'hybrid');
+      const skewt = { temperature: box.querySelectorAll('.sk-temperature').length,
+        dewpoint: box.querySelectorAll('.sk-dewpoint').length,
+        parcel: box.querySelectorAll('.sk-parcel').length,
+        barbs: box.querySelectorAll('.barb').length,
+        info: box.querySelector('.skewt-info').textContent,
+        has: E.hasSounding(rows, 'hybrid'), noPressure: E.hasSounding(rows.map(({pressure, ...r}) => r), 'depth') };
+      box.remove();
+      const lcl = E.liftingCondensationLevel(20, 10, 1000);
+      return { axes, profiles, skewt, lcl: [Math.round(lcl.p), Math.round(lcl.t * 10) / 10],
+               moist: Math.round(E.moistAdiabat(20, 1000, 500).pop()[1] * 10) / 10 };
+    })()`);
+    check(
+        'vertical axes of model levels',
+        JSON.stringify(vertical.axes) === '["pressure","height","level"]',
+        vertical.axes);
+    check(
+        'profiles per parameter, one time or all',
+        vertical.profiles.charts === 2 && vertical.profiles.lines === 2 &&
+            vertical.profiles.overlaid === 4 &&
+            JSON.stringify(vertical.profiles.axis) === '["pressure","height","level"]',
+        vertical.profiles);
+    check(
+        'skew-T of a sounding',
+        vertical.skewt.temperature === 1 && vertical.skewt.dewpoint === 1 &&
+            vertical.skewt.parcel === 1 && vertical.skewt.barbs > 5 && vertical.skewt.has &&
+            !vertical.skewt.noPressure &&
+            vertical.skewt.info.startsWith('Lifting condensation level'),
+        vertical.skewt);
+    check(
+        'condensation level and moist adiabat',
+        JSON.stringify(vertical.lcl) === '[861,7.8]' && vertical.moist > -9.5 &&
+            vertical.moist < -7.5,
+        vertical);
+
     // Locations reporting at different intervals, and a parameter without values
     const mixed = await b.evaluate(`(() => {
       const rows = [];
@@ -1126,6 +1191,20 @@ async function main()
         'mixed intervals and a parameter without values',
         mixed.charts === 1 && mixed.note === 'No values in the result: b',
         mixed);
+
+    // The pressure and height of model levels are requested with the parameters
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {
+      url: `${
+          base}/api/explorer#api=/timeseries&producer=hybrid&source=querydata&params=temperature&locmode=place&location=Helsinki`
+    });
+    await waitFor(b, `!!document.querySelector('[data-level="65"]')`, 'the model levels');
+    const hq = await currentQuery(b);
+    check(
+        'pressure and height of model levels',
+        hq.get('param') === 'name,time,lat,lon,level,temperature,pressure,geomheight',
+        hq.get('param'));
 
     // The levels of a querydata producer are requested with the levels option
     await b.send('Page.navigate', {url: `${base}/api`});
