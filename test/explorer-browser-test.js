@@ -1211,6 +1211,31 @@ async function main()
         'vertical axes of model levels',
         JSON.stringify(vertical.axes) === '["pressure","height","level"]',
         vertical.axes);
+
+    // The level kinds of EDR collections from their vertical reference systems: hybrid
+    // sigma-pressure model levels are model levels, not pressures
+    const kinds = await b.evaluate(`(() => {
+      const E = SmartMetExplorer;
+      const kind = (vrs) => E.edrLevelKind({ levels: [{ type: vrs }] });
+      const box = document.createElement('div');
+      document.body.append(box);
+      // A sounding whose pressures are all above the top of the diagram
+      const rows = [1, 2, 3, 4].map((k) => ({ name: 'x', time: '2026-10-15T00:00:00Z', lat: 60, lon: 25,
+                                              level: k, pressure: k * 10, temperature: -50 }));
+      E.drawSkewT(box, rows, 'hybrid');
+      const message = box.textContent.includes('no pressures below 100 hPa');
+      box.remove();
+      return [
+        kind('PARAMETRICCRS["Model level",PDATUM["Hybrid sigma-pressure model levels"],CS[parametric,1],AXIS["model level number (n)",down],PARAMETRICUNIT["unity",1.0]]'),
+        kind('VERTCRS["Pressure",VDATUM["Pressure"],CS[vertical,1],AXIS["pressure (p)",down],UNIT["hectopascal",100]]'),
+        kind('VERTCRS["Pressure",VDATUM["Pressure"],CS[vertical,1],AXIS["pressure (p)",down],UNIT["pascal",1]]'),
+        kind('VERTCRS["Depth",VDATUM["Sea level"],CS[vertical,1],AXIS["depth (D)",down],UNIT["metre",1]]'),
+        message
+      ];
+    })()`);
+    check(
+        'level kinds of EDR collections, and a sounding above the diagram',
+        JSON.stringify(kinds) === '["hybrid","pressure","pressure-pa","depth",true]', kinds);
     check(
         'profiles per parameter, one time or all',
         vertical.profiles.charts === 2 && vertical.profiles.lines === 2 &&

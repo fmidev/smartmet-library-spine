@@ -1388,12 +1388,13 @@ function edrLevelKind(collection)
   const type = collection && collection.levels && collection.levels[0] ?
       String(collection.levels[0].type).toLowerCase() :
       '';
+  // Model levels first: hybrid sigma-pressure levels are named after the pressure too
+  if (type.includes('hybrid') || type.includes('model'))
+    return 'hybrid';
   if (type.includes('pressure'))
     return /pascal",1|\(pa\)/.test(type) && !/hectopascal/.test(type) ? 'pressure-pa' : 'pressure';
   if (type.includes('depth'))
     return 'depth';
-  if (type.includes('hybrid') || type.includes('model'))
-    return 'hybrid';
   if (type.includes('height') || type.includes('altitude'))
     return 'height';
   return type ? 'level' : '';
@@ -2963,6 +2964,13 @@ function drawSkewT(container, rows, levelKind, options)
       diagram.append(el('p', {class: 'muted'}, 'No sounding at the chosen time.'));
       return;
     }
+    // The diagrams reach up to 100 hPa
+    if (!soundings.some((s) => s.levels.filter((l) => l.p >= 100).length >= 2))
+    {
+      diagram.append(
+          el('p', {class: 'muted'}, 'The sounding has no pressures below 100 hPa to draw.'));
+      return;
+    }
     // Soundings to compare with: the nearest time of the other data
     const others = (opts.compare && opts.compare.soundings) ?
         opts.compare.soundings(soundings.map((s) => s.time)) :
@@ -3094,6 +3102,8 @@ function drawSkewT(container, rows, levelKind, options)
     soundings.forEach((s, i) => {
       const alpha = soundings.length > 1 ? 0.3 + (0.7 * i) / (soundings.length - 1) : 1;
       const levels = s.levels.filter((l) => l.p >= pTop && l.p <= pBottom);
+      if (levels.length === 0)
+        return;
       plot.append(line(levels.map((l) => [l.p, l.t]), 'sk-temperature', {opacity: alpha}));
       const dew = levels.filter((l) => l.td !== null);
       if (dew.length > 1)
@@ -7562,6 +7572,7 @@ root.SmartMetExplorer = {
   flightLevelPressure,
   flightLevelsBetween,
   verticalAxes,
+  edrLevelKind,
   liftingCondensationLevel,
   moistAdiabat,
   dewpointFromHumidity,

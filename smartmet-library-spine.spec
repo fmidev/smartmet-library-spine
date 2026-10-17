@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.17
-Release: 11%{?dist}.fmi
+Release: 12%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-12.fmi
+- Data explorer: EDR collections on hybrid sigma-pressure model levels were taken for pressure
+  levels, so their soundings were not drawn
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-11.fmi
 - Data explorer: the results open on the chosen view (profile, section, sounding, cross
   section, map) also when the request is run again; the sounding diagram buttons choose it
