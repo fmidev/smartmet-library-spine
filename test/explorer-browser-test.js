@@ -380,7 +380,7 @@ const coverageCollections = {
   collections: [{
     id: 'pal',
     title: 'pal',
-    outputFormats: ['application/x-grib2', 'application/netcdf'],
+    outputFormats: ['application/x-grib2', 'application/netcdf', 'image/tiff'],
     extent: {
       spatial: {bbox: [[-9, 51, 49, 72]]},
       temporal: {
@@ -517,6 +517,9 @@ const server = http.createServer((req, res) => {
     return send(200, 'application/json', JSON.stringify(ensDetails(url.searchParams)));
   if (p === '/timeseries')
     return send(200, 'application/json', JSON.stringify(timeseries(url.searchParams)));
+  // The maps of a coverage: a 12 x 10 GeoTIFF of three times of Temperature and Pressure
+  if (p === '/coverages/collections/pal/coverage' && url.searchParams.get('f') === 'geotiff')
+    return send(200, 'image/tiff', fs.readFileSync(path.join(__dirname, 'explorer-coverage.tif')));
   const coverageDoc = coverages(p, url.searchParams);
   if (coverageDoc)
     return send(200, 'application/json', JSON.stringify(coverageDoc));
@@ -2326,6 +2329,60 @@ async function main()
         'outline asked with the options',
         outlineRequests.length >= 1,
         requested.filter((u) => u.includes('outline')));
+
+    // The maps of the coverage in linked panels
+    await b.evaluate(`[...document.querySelectorAll('button')].find((x) => x.textContent === 'Show maps').click()`);
+    await waitFor(b, `document.querySelectorAll('.coverage-panel .xmap-raster').length === 2`, 'the coverage maps');
+    const mapsRequest = new URL(requested.filter((u) => u.includes('f=geotiff')).pop(), 'http://x');
+    const coverageMaps = await b.evaluate(`(async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const panels = [...document.querySelectorAll('.coverage-panel')];
+      const params = panels.map((p) => p.querySelector('[aria-label="Parameter of the map"]').value);
+      const sizes = () => panels.map((p) => p.querySelector('.xmap-raster').getAttribute('width'));
+      const before = sizes();
+      panels[0].querySelector('[aria-label="Zoom in"]').click();
+      await wait(200);
+      const zoomed = sizes();
+      // A click on the middle of the raster of the second map
+      const image = panels[1].querySelector('.xmap-raster').getBoundingClientRect();
+      const surface = panels[1].querySelector('.xmap-svg');
+      const at = { bubbles: true, button: 0, pointerId: 1,
+                   clientX: image.left + image.width / 2, clientY: image.top + image.height / 2 };
+      surface.dispatchEvent(new PointerEvent('pointerdown', at));
+      surface.dispatchEvent(new PointerEvent('pointerup', at));
+      await wait(300);
+      const titles = () => panels.map((p) => (p.querySelector('.map-probe .chart-title') || {}).textContent || '');
+      const first = titles();
+      document.querySelector('.coverage-maps [aria-label="Next time"]').click();
+      await wait(200);
+      const next = titles();
+      const count = document.querySelector('.coverage-maps [aria-label="Panels"]');
+      count.value = '4';
+      count.dispatchEvent(new Event('change', { bubbles: true }));
+      await wait(300);
+      return { params, before, zoomed, first, next,
+               cursors: panels.map((p) => p.querySelectorAll('.xmap-cursor').length),
+               panels: document.querySelectorAll('.coverage-panel').length,
+               rasters: document.querySelectorAll('.coverage-panel .xmap-raster').length,
+               note: document.querySelector('.coverage-maps p.muted.small').textContent };
+    })()`);
+    check(
+        'the maps of a coverage asked in longitude and latitude',
+        mapsRequest.searchParams.get('crs') === 'EPSG:4326' &&
+            /^Lon\(\d+\),Lat\(\d+\)$/.test(mapsRequest.searchParams.get('scale-size')) &&
+            mapsRequest.searchParams.get('bbox') === curl.searchParams.get('bbox'),
+        mapsRequest.href);
+    check(
+        'linked maps of a coverage',
+        JSON.stringify(coverageMaps.params) === '["Temperature","Pressure"]' &&
+            coverageMaps.note.startsWith('12 × 10 cells, 2 parameters, 3 times') &&
+            coverageMaps.zoomed[0] === coverageMaps.zoomed[1] &&
+            coverageMaps.zoomed[0] !== coverageMaps.before[0] &&
+            coverageMaps.first[0].startsWith('Temperature at') && coverageMaps.first[1].startsWith('Pressure at') &&
+            coverageMaps.first[0].includes('03:00') && coverageMaps.next[0].includes('04:00') &&
+            JSON.stringify(coverageMaps.cursors) === '[1,1]' && coverageMaps.panels === 4 &&
+            coverageMaps.rasters === 4,
+        coverageMaps);
 
     // Narrow screens
     await b.send(

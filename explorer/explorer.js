@@ -857,6 +857,7 @@ function createMap(settings, onSelect)
   const surface = svg('svg', {class: 'xmap-svg', role: 'img', 'aria-label': 'Map'});
   const layers = {
     background: svg('g'),
+    raster: svg('g'),
     cells: svg('g'),
     regions: svg('g'),
     selection: svg('g'),
@@ -890,6 +891,8 @@ function createMap(settings, onSelect)
             });
   const state =
       {zoom: 3, center: project(25, 62), tool: 'move', regions: [], selection: null, points: []};
+  // Listeners of the view (a map following another) and of clicks in the move tool
+  const hooks = {view: null, click: null, shown: ''};
 
   const width = () => box.clientWidth || 400;
   const scale = () => 2 ** state.zoom;
@@ -1203,7 +1206,77 @@ function createMap(settings, onSelect)
   {
     surface.setAttribute('viewBox', `0 0 ${width()} ${MAP_HEIGHT}`);
     drawBackground();
+    drawRaster();
     drawOverlays();
+    // A changed view is told to the maps following this one
+    const view = `${state.zoom},${state.center[0]},${state.center[1]}`;
+    if (view !== hooks.shown)
+    {
+      hooks.shown = view;
+      if (hooks.view)
+        hooks.view({zoom: state.zoom, center: state.center.slice()});
+    }
+  }
+
+  // A raster of values in longitude and latitude, resampled to the pixels of the view: each
+  // pixel takes the colour of the cell under it. The colours of the cells are computed once.
+  function drawRaster()
+  {
+    layers.raster.replaceChildren();
+    const r = state.raster;
+    if (!r)
+      return;
+    const [west, south, east, north] = r.bbox;
+    const [ax, ay] = screenOf(west, north);
+    const [bx, by] = screenOf(east, south);
+    const x0 = Math.max(0, Math.floor(ax));
+    const y0 = Math.max(0, Math.floor(ay));
+    const x1 = Math.min(width(), Math.ceil(bx));
+    const y1 = Math.min(MAP_HEIGHT, Math.ceil(by));
+    if (x1 <= x0 || y1 <= y0 || typeof document === 'undefined')
+      return;
+    const canvas = document.createElement('canvas');
+    canvas.width = x1 - x0;
+    canvas.height = y1 - y0;
+    const ctx = canvas.getContext('2d');
+    if (!ctx)
+      return;
+    const image = ctx.createImageData(canvas.width, canvas.height);
+    // Longitude depends on the column only, latitude on the row only
+    const columns = new Int32Array(canvas.width);
+    for (let i = 0; i < canvas.width; i++)
+    {
+      const lon = lonLatOf(x0 + i + 0.5, 0)[0];
+      columns[i] = Math.floor(((lon - west) / (east - west)) * r.width);
+    }
+    for (let j = 0; j < canvas.height; j++)
+    {
+      const lat = lonLatOf(0, y0 + j + 0.5)[1];
+      const row = Math.floor(((north - lat) / (north - south)) * r.height);
+      if (row < 0 || row >= r.height)
+        continue;
+      for (let i = 0; i < canvas.width; i++)
+      {
+        const col = columns[i];
+        if (col < 0 || col >= r.width)
+          continue;
+        const k = 4 * (row * r.width + col);
+        const p = 4 * (j * canvas.width + i);
+        image.data[p] = r.rgba[k];
+        image.data[p + 1] = r.rgba[k + 1];
+        image.data[p + 2] = r.rgba[k + 2];
+        image.data[p + 3] = r.rgba[k + 3];
+      }
+    }
+    ctx.putImageData(image, 0, 0);
+    layers.raster.append(svg('image', {
+      class: 'xmap-raster',
+      x: x0,
+      y: y0,
+      width: canvas.width,
+      height: canvas.height,
+      href: canvas.toDataURL()
+    }));
   }
 
   // Zooms to level z keeping the place under (sx, sy) of the view where it is
@@ -1260,6 +1333,17 @@ function createMap(settings, onSelect)
   });
 
   surface.addEventListener('pointermove', (e) => {
+    // The value of the raster under the pointer
+    if (!drag && state.raster && state.raster.label)
+    {
+      const [sx, sy] = local(e);
+      const [lon, lat] = lonLatOf(sx, sy);
+      const label = state.raster.label(lon, lat);
+      if (label)
+        showTooltip(label, sx, sy);
+      else
+        tooltip.hidden = true;
+    }
     if (!drag)
       return;
     const [sx, sy] = local(e);
@@ -1303,6 +1387,8 @@ function createMap(settings, onSelect)
       points.push([round(lon, 3), round(lat, 3)]);
       shape = {type: 'path', points};
     }
+    else if (t === 'move' && !drag.moved && hooks.click)
+      hooks.click(...lonLatOf(sx, sy));
     drag = null;
     if (shape && onSelect)
       onSelect(shape);
@@ -1328,6 +1414,11 @@ function createMap(settings, onSelect)
       return null;
     return {type: 'circle', lon: round(lon0, 4), lat: round(lat0, 4), km: Math.round(km)};
   }
+
+  surface.addEventListener('pointerleave', () => {
+    if (state.raster)
+      tooltip.hidden = true;
+  });
 
   surface.addEventListener('wheel', (e) => {
     e.preventDefault();
@@ -1445,6 +1536,32 @@ function createMap(settings, onSelect)
         Math.max(...boxes.map((b) => b[2])),
         Math.max(...boxes.map((b) => b[3]))
       ];
+    },
+    // A raster {bbox: [west, south, east, north], width, height, rgba (4 bytes per cell,
+    // rows from the north), label(lon, lat) giving the {label, info} of the tooltip or null},
+    // or null
+    setRaster(raster) {
+      state.raster = raster;
+      drawRaster();
+    },
+    // The view {zoom, center} of another map, without telling it back
+    setView(view) {
+      state.zoom = view.zoom;
+      state.center = view.center.slice();
+      hooks.shown = `${state.zoom},${state.center[0]},${state.center[1]}`;
+      redraw();
+    },
+    // The view {zoom, center}
+    view() {
+      return {zoom: state.zoom, center: state.center.slice()};
+    },
+    // Calls fn({zoom, center}) when the view changes
+    onView(fn) {
+      hooks.view = fn;
+    },
+    // Calls fn(lon, lat) on a click that does not drag the map with the move tool
+    onClick(fn) {
+      hooks.click = fn;
     },
     fit,
     redraw,
@@ -5530,8 +5647,8 @@ function hexColour(hex)
   return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 }
 
-// The colour of f = 0...1 on a palette; 'steps' > 0 quantizes the scale
-function paletteColour(name, f, steps)
+// The colour of f = 0...1 on a palette as [r, g, b]; 'steps' > 0 quantizes the scale
+function paletteRgb(name, f, steps)
 {
   const colours = PALETTES[name] || PALETTES.viridis;
   let t = Math.max(0, Math.min(1, f));
@@ -5542,7 +5659,13 @@ function paletteColour(name, f, steps)
   const a = hexColour(colours[i]);
   const b = hexColour(colours[i + 1]);
   const u = pos - i;
-  return `rgb(${a.map((v, k) => Math.round(v + (b[k] - v) * u)).join(',')})`;
+  return a.map((v, k) => Math.round(v + (b[k] - v) * u));
+}
+
+// The colour of f = 0...1 on a palette; 'steps' > 0 quantizes the scale
+function paletteColour(name, f, steps)
+{
+  return `rgb(${paletteRgb(name, f, steps).join(',')})`;
 }
 
 // The size of the cells of points on a grid in degrees, or null when the points are not a
@@ -9680,6 +9803,151 @@ function edrModule(app, api, state, save)
 // The Coverages module
 // ------------------------------------------------------------------
 
+// Inflates zlib (TIFF deflate) data
+async function inflate(bytes)
+{
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+// Undoes the floating point predictor (TIFF predictor 3) of one row of 'count' samples with
+// 'stride' samples per pixel: the bytes of the row are differences, ordered by byte plane
+// with the most significant bytes first. Returns the row as little endian floats.
+function undoFloatPredictor(row, count, stride)
+{
+  for (let i = stride; i < row.length; i++)
+    row[i] = (row[i] + row[i - stride]) & 0xff;
+  const out = new Uint8Array(row.length);
+  for (let k = 0; k < count; k++)
+    for (let b = 0; b < 4; b++)
+      out[4 * k + b] = row[(3 - b) * count + k];
+  return out;
+}
+
+// The bands of a float GeoTIFF in longitude and latitude, as the Coverages API writes them:
+// {width, height, bbox: [west, south, east, north], bands: [{parameter, time, level,
+// description, values}]}, missing values as NaN. Strips or tiles, chunky or planar, no
+// compression or deflate, no predictor or the floating point one.
+async function readGeoTiff(buffer)
+{
+  const view = new DataView(buffer);
+  const little = view.getUint16(0) === 0x4949;
+  if (!little && view.getUint16(0) !== 0x4d4d)
+    throw new Error('Not a TIFF file');
+  if (view.getUint16(2, little) !== 42)
+    throw new Error('BigTIFF files are not supported');
+  const u16 = (o) => view.getUint16(o, little);
+  const u32 = (o) => view.getUint32(o, little);
+  const SIZES = {1: 1, 2: 1, 3: 2, 4: 4, 11: 4, 12: 8, 16: 8};
+  const tags = {};
+  const ifd = u32(4);
+  const n = u16(ifd);
+  for (let i = 0; i < n; i++)
+  {
+    const e = ifd + 2 + 12 * i;
+    const tag = u16(e);
+    const type = u16(e + 2);
+    const count = u32(e + 4);
+    const size = (SIZES[type] || 1) * count;
+    const at = size <= 4 ? e + 8 : u32(e + 8);
+    const read = (k) => (type === 3   ? u16(at + 2 * k) :
+                         type === 4   ? u32(at + 4 * k) :
+                         type === 11  ? view.getFloat32(at + 4 * k, little) :
+                         type === 12  ? view.getFloat64(at + 8 * k, little) :
+                                        view.getUint8(at + k));
+    tags[tag] = type === 2 ?
+        new TextDecoder().decode(new Uint8Array(buffer, at, Math.max(0, count - 1))) :
+        Array.from({length: count}, (_, k) => read(k));
+  }
+  const one = (tag, fallback) => (tags[tag] ? tags[tag][0] : fallback);
+  const width = one(256);
+  const height = one(257);
+  const spp = one(277, 1);
+  const planar = one(284, 1) === 2;
+  const compression = one(259, 1);
+  const predictor = one(317, 1);
+  if (one(258, 32) !== 32 || one(339, 1) !== 3)
+    throw new Error('Only 32 bit floating point GeoTIFF files are supported');
+  if (![1, 8, 32946].includes(compression))
+    throw new Error(`TIFF compression ${compression} is not supported`);
+  if (![1, 3].includes(predictor))
+    throw new Error(`TIFF predictor ${predictor} is not supported`);
+  const tiled = !!tags[322];
+  const blockWidth = tiled ? one(322) : width;
+  const blockHeight = tiled ? one(323) : Math.min(height, one(278, height));
+  const offsets = tiled ? tags[324] : tags[273];
+  const counts = tiled ? tags[325] : tags[279];
+  const across = Math.ceil(width / blockWidth);
+  const down = Math.ceil(height / blockHeight);
+  const values = Array.from({length: spp}, () => new Float32Array(width * height).fill(NaN));
+  for (let b = 0; b < offsets.length; b++)
+  {
+    // The block: its band when planar, its place in the image
+    const plane = planar ? Math.floor(b / (across * down)) : 0;
+    const index = b % (across * down);
+    const bx = (index % across) * blockWidth;
+    const by = Math.floor(index / across) * blockHeight;
+    let bytes = new Uint8Array(buffer, offsets[b], counts[b]);
+    if (compression !== 1)
+      bytes = await inflate(bytes);
+    const samples = planar ? 1 : spp;
+    const rowBytes = blockWidth * samples * 4;
+    const rows = Math.min(blockHeight, Math.floor(bytes.length / rowBytes));
+    for (let j = 0; j < rows; j++)
+    {
+      let row = bytes.slice(j * rowBytes, (j + 1) * rowBytes);
+      if (predictor === 3)
+        row = undoFloatPredictor(row, blockWidth * samples, samples);
+      else if (!little)
+        for (let k = 0; k < row.length; k += 4)
+          row.subarray(k, k + 4).reverse();
+      const floats = new Float32Array(row.buffer, row.byteOffset, blockWidth * samples);
+      const y = by + j;
+      if (y >= height)
+        break;
+      for (let i = 0; i < blockWidth && bx + i < width; i++)
+        for (let s = 0; s < samples; s++)
+          values[planar ? plane : s][y * width + bx + i] = floats[i * samples + s];
+    }
+  }
+  // The missing value
+  const nodata = tags[42113] ? Number(tags[42113]) : NaN;
+  if (isFinite(nodata))
+    for (const band of values)
+      for (let k = 0; k < band.length; k++)
+        if (Math.abs(band[k] - nodata) <= Math.abs(nodata) * 1e-6)
+          band[k] = NaN;
+  // The area from the tie point and the pixel size
+  const scale = tags[33550];
+  const tie = tags[33922];
+  if (!scale || !tie)
+    throw new Error('The GeoTIFF file has no georeferencing');
+  const west = tie[3] - tie[0] * scale[0];
+  const north = tie[4] + tie[1] * scale[1];
+  const bbox = [west, north - height * scale[1], west + width * scale[0], north];
+  // The parameters, times and levels of the bands from the GDAL metadata
+  const meta = Array.from({length: spp}, () => ({}));
+  const xml = tags[42112] || '';
+  for (const m of xml.matchAll(/<Item\b([^>]*)>([^<]*)<\/Item>/g))
+  {
+    const attrs = {};
+    for (const a of m[1].matchAll(/(\w+)="([^"]*)"/g))
+      attrs[a[1]] = a[2];
+    const k = Number(attrs.sample);
+    if (attrs.sample === undefined || !meta[k])
+      continue;
+    meta[k][attrs.role === 'description' ? 'DESCRIPTION' : attrs.name] = m[2];
+  }
+  const bands = values.map((v, k) => ({
+    parameter: meta[k].PARAMETER || `band ${k + 1}`,
+    time: meta[k].TIME || '',
+    level: meta[k].LEVEL !== undefined ? Number(meta[k].LEVEL) : null,
+    description: meta[k].DESCRIPTION || '',
+    values: v
+  }));
+  return {width, height, bbox, bands};
+}
+
 // The f values of the output media types of the Coverages API
 const COVERAGE_FORMATS = {
   'application/x-grib2': ['grib2', 'GRIB 2'],
@@ -9752,6 +10020,272 @@ function buildCoverageIndex(doc)
     });
   }
   return {producers, parameters: new Map()};
+}
+
+// The largest side of the grid of the maps of a coverage
+const COVERAGE_MAP_SIZE = 200;
+// The panels of the maps of a coverage: one, side by side, three or four in a 2 x 2 grid
+const COVERAGE_PANELS = [1, 2, 3, 4];
+
+// The grid of the maps of a coverage over a box: cells about square on the ground, at most
+// COVERAGE_MAP_SIZE on a side
+function coverageMapSize(bbox)
+{
+  const [west, south, east, north] = bbox;
+  const ratio = ((east - west) * Math.cos(rad((south + north) / 2))) / Math.max(1e-9, north - south);
+  return ratio >= 1 ?
+      [COVERAGE_MAP_SIZE, Math.max(2, Math.round(COVERAGE_MAP_SIZE / ratio))] :
+      [Math.max(2, Math.round(COVERAGE_MAP_SIZE * ratio)), COVERAGE_MAP_SIZE];
+}
+
+// A time of GeoTIFF band metadata, 20080805T030000, in ISO 8601
+function bandTime(t)
+{
+  const m = /^(\d{4})(\d\d)(\d\d)T(\d\d)(\d\d)(\d\d)$/.exec(t || '');
+  return m ? `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z` : t || '';
+}
+
+// Maps of a coverage read from a GeoTIFF, in linked panels: each panel has a parameter, a
+// level and colours of its own, and all of them share the view, the time and the point
+// clicked, which also shows the time series of each panel at the point. options: levelKind.
+function drawCoverageMaps(container, tiff, settings, options = {})
+{
+  container.replaceChildren();
+  const bands = tiff.bands.map((b) => Object.assign({}, b, {time: bandTime(b.time)}));
+  const params = Array.from(new Set(bands.map((b) => b.parameter)));
+  const times = Array.from(new Set(bands.map((b) => b.time))).sort();
+  const byKey = new Map(bands.map((b) => [`${b.parameter}|${b.level}|${b.time}`, b]));
+  const levelsOf = (p) => Array.from(new Set(bands.filter((b) => b.parameter === p).map((b) => b.level)))
+                              .filter((v) => v !== null)
+                              .sort((a, b) => a - b);
+  const [west, south, east, north] = tiff.bbox;
+  const cellOf = (lon, lat) => {
+    const col = Math.floor(((lon - west) / (east - west)) * tiff.width);
+    const row = Math.floor(((north - lat) / (north - south)) * tiff.height);
+    return col < 0 || row < 0 || col >= tiff.width || row >= tiff.height ? null : {col, row};
+  };
+  // The centre of a cell, the point of the series
+  const centreOf = ({col, row}) => ({
+    lon: west + ((col + 0.5) / tiff.width) * (east - west),
+    lat: north - ((row + 0.5) / tiff.height) * (north - south)
+  });
+  const shared = {time: 0, point: null};
+  const count = el('select', {'aria-label': 'Panels'},
+                   COVERAGE_PANELS.map((n) => el('option', {value: String(n)}, n === 1 ? '1 map' : `${n} maps`)));
+  count.value = String(Math.min(2, params.length));
+  const slider = timeSlider(times.map((t) => new Date(t).getTime()), {
+    label: 'Time of the maps',
+    onChange: () => {
+      shared.time = slider.index();
+      panels.forEach((p) => p.draw());
+    }
+  });
+  const grid = el('div', {class: 'coverage-panels'});
+  container.append(
+      el('div', {class: 'row'}, el('label', null, 'Panels', count), slider.element),
+      el('p', {class: 'muted small'},
+         `${tiff.width} × ${tiff.height} cells, ${params.length} parameters, ${times.length} times. ` +
+             'The maps move together; click a value for the time series of the point'),
+      grid);
+
+  let panels = [];
+  // A panel: its map, choices, legend and series of the point clicked
+  const makePanel = (i) => {
+    const param = params[i % params.length];
+    const levels = levelsOf(param);
+    const state = {
+      param,
+      level: levels.length ? String(levels[0]) : '',
+      palette: PALETTES[quantityOf(param)] ? quantityOf(param) : 'viridis',
+      min: null,
+      max: null,
+      time: 0,
+      probe: null
+    };
+    const box = el('div', {class: 'coverage-panel'});
+    const map = createMap(settings, null);
+    map.setTools(['move'], 'move');
+    const paramSelect = el('select', {'aria-label': 'Parameter of the map'},
+                           params.map((p) => el('option', {value: p}, p)));
+    paramSelect.value = state.param;
+    const levelSelect = el('select', {'aria-label': 'Level of the map'});
+    const paletteSelect = el('select', {'aria-label': 'Colours of the map'},
+                             Object.keys(PALETTES).map((p) => el('option', {value: p}, p)));
+    paletteSelect.value = state.palette;
+    const legend = el('div', {class: 'legend'});
+    const probeBox = el('div', {class: 'map-probe', hidden: true});
+    box.append(el('div', {class: 'row'}, paramSelect, levelSelect, paletteSelect), legend, map.element, probeBox);
+    grid.append(box);
+
+    const band = () => byKey.get(`${state.param}|${state.level === '' ? null : Number(state.level)}|${times[shared.time]}`);
+    // The colour range: the 2nd and 98th percentiles of all times of the parameter and level
+    const setRange = () => {
+      const values = [];
+      for (const b of bands)
+        if (b.parameter === state.param && (state.level === '' || b.level === Number(state.level)))
+          for (let k = 0; k < b.values.length; k += 7)
+            if (isFinite(b.values[k]))
+              values.push(b.values[k]);
+      values.sort((a, b) => a - b);
+      [state.min, state.max] = values.length ? [quantile(values, 0.02), quantile(values, 0.98)] : [null, null];
+    };
+    const setLevels = () => {
+      const ls = levelsOf(state.param);
+      levelSelect.replaceChildren(...ls.map((v) => el('option', {value: String(v)}, `${v}`)));
+      levelSelect.hidden = ls.length === 0;
+      if (!ls.map(String).includes(state.level))
+        state.level = ls.length ? String(ls[0]) : '';
+      levelSelect.value = state.level;
+    };
+    // The series of the point clicked: the rows of the point for the chart of valueProbe
+    let probe = null;
+    const showProbe = () => {
+      if (!shared.point)
+        return;
+      const cell = cellOf(shared.point.lon, shared.point.lat);
+      if (!cell)
+        return;
+      const k = cell.row * tiff.width + cell.col;
+      const at = centreOf(cell);
+      const rows = bands.filter((b) => b.parameter === state.param).map((b) => ({
+        lat: at.lat,
+        lon: at.lon,
+        time: b.time,
+        level: b.level === null ? undefined : b.level,
+        [state.param]: isFinite(b.values[k]) ? b.values[k] : null
+      }));
+      state.time = shared.time;
+      probe = valueProbe(probeBox, rows, state, times, {
+        levelKind: options.levelKind,
+        atLevel: (r) => state.level === '' || r.level === Number(state.level),
+        onClose: () => {
+          shared.point = null;
+          panels.forEach((p) => p.closeProbe());
+        }
+      });
+      probe.show(at);
+    };
+    const draw = () => {
+      const b = band();
+      const lo = state.min;
+      const hi = state.max;
+      const rgba = new Uint8ClampedArray(tiff.width * tiff.height * 4);
+      // The colours of 256 steps of the range
+      const lut = Array.from({length: 256}, (_, i) => paletteRgb(state.palette, i / 255, 0));
+      if (b && lo !== null)
+        for (let k = 0; k < b.values.length; k++)
+        {
+          const v = b.values[k];
+          if (!isFinite(v))
+            continue;
+          const f = hi > lo ? (v - lo) / (hi - lo) : 0.5;
+          const [r, g, bl] = lut[Math.max(0, Math.min(255, Math.round(f * 255)))];
+          rgba[4 * k] = r;
+          rgba[4 * k + 1] = g;
+          rgba[4 * k + 2] = bl;
+          rgba[4 * k + 3] = 210;
+        }
+      map.setRaster({
+        bbox: tiff.bbox,
+        width: tiff.width,
+        height: tiff.height,
+        rgba,
+        label: (lon, lat) => {
+          const cell = cellOf(lon, lat);
+          if (!cell || !b)
+            return null;
+          const v = b.values[cell.row * tiff.width + cell.col];
+          return {label: `${state.param}: ${isFinite(v) ? round(v, 2) : 'missing'}`,
+                  info: {lon: round(lon, 3), lat: round(lat, 3)}};
+        }
+      });
+      const n = 24;
+      legend.replaceChildren(
+          el('span', {class: 'small'}, lo === null ? '' : round(lo, 2)),
+          el('span', {class: 'legend-bar'},
+             Array.from({length: n}, (_, i) => el('span', {
+               class: 'legend-step',
+               style: `background:${paletteColour(state.palette, (i + 0.5) / n, 0)}`
+             }))),
+          el('span', {class: 'small'}, hi === null ? '' : round(hi, 2)),
+          b ? '' : el('span', {class: 'muted small'}, ' no values at this time'));
+      if (probe)
+      {
+        state.time = shared.time;
+        probe.update();
+      }
+    };
+    paramSelect.addEventListener('change', () => {
+      state.param = paramSelect.value;
+      setLevels();
+      if (PALETTES[quantityOf(state.param)])
+        paletteSelect.value = state.palette = quantityOf(state.param);
+      setRange();
+      draw();
+      showProbe();
+    });
+    levelSelect.addEventListener('change', () => {
+      state.level = levelSelect.value;
+      setRange();
+      draw();
+      showProbe();
+    });
+    paletteSelect.addEventListener('change', () => {
+      state.palette = paletteSelect.value;
+      draw();
+    });
+    // The view and the point are shared by the panels
+    map.onView((view) => panels.forEach((p) => p.map !== map && p.map.setView(view)));
+    map.onClick((lon, lat) => {
+      const cell = cellOf(lon, lat);
+      if (!cell)
+        return;
+      shared.point = centreOf(cell);
+      panels.forEach((p) => {
+        p.map.setCursor(shared.point);
+        p.showProbe();
+      });
+    });
+    setLevels();
+    setRange();
+    return {
+      map,
+      box,
+      draw,
+      showProbe,
+      closeProbe: () => {
+        probe = null;
+        state.probe = null;
+        probeBox.hidden = true;
+        probeBox.replaceChildren();
+        map.setCursor(null);
+      }
+    };
+  };
+  // (Re)builds the panels; the view of the first one is kept
+  const build = () => {
+    const view = panels.length ? panels[0].map : null;
+    const n = Number(count.value);
+    grid.className = `coverage-panels panels-${n}`;
+    for (const p of panels.slice(n))
+      p.box.remove();
+    panels = panels.slice(0, n);
+    while (panels.length < n)
+      panels.push(makePanel(panels.length));
+    panels.forEach((p) => p.draw());
+    if (!view)
+      panels[0].map.fit(tiff.bbox);
+    // The new panels take the view of the first
+    const v = panels[0].map.view();
+    panels.slice(1).forEach((p) => p.map.setView(v));
+    if (shared.point)
+      panels.forEach((p) => {
+        p.map.setCursor(shared.point);
+        p.showProbe();
+      });
+  };
+  count.addEventListener('change', build);
+  build();
 }
 
 // The Coverages module: a collection, its parameters, a bounding box in a chosen CRS with the
@@ -10093,6 +10627,54 @@ function coveragesModule(app, api, state, save)
     copyUrl.addEventListener(
         'click', () => navigator.clipboard.writeText(currentUrl()).catch(() => {}));
 
+    // The maps of the coverage: a small GeoTIFF in longitude and latitude read by the browser
+    const showMaps = el('button', {type: 'button', class: 'small'}, 'Show maps');
+    const mapsNote = el('p', {class: 'muted small'});
+    const maps = el('div', {class: 'coverage-maps'});
+    // The URL of the maps: the request in EPSG:4326 on a grid of at most COVERAGE_MAP_SIZE cells a side
+    function mapsUrl()
+    {
+      const c = collection();
+      const box = selection() ? selection().bbox : c && c.bbox;
+      if (!c || !box)
+        return null;
+      const [w, h] = coverageMapSize(box);
+      const query = options(false)
+                        .filter(([k]) => !['crs', 'scale-size', 'f'].includes(k))
+                        .concat([['crs', 'EPSG:4326'], ['scale-size', `Lon(${w}),Lat(${h})`], ['f', 'geotiff']]);
+      return new URL(`${rootPath}/collections/${encodeURIComponent(c.name)}/coverage?${queryString(query)}`,
+                     app.base).href;
+    }
+    // Whether the maps can be drawn: a collection with GeoTIFF output and parameters
+    function mapsPossible()
+    {
+      const c = collection();
+      return !!(c && c.formats.includes('image/tiff') && s.params.length && mapsUrl());
+    }
+    showMaps.addEventListener('click', async () => {
+      const url = mapsUrl();
+      if (!url)
+        return;
+      showMaps.disabled = true;
+      mapsNote.textContent = 'Loading the maps…';
+      try
+      {
+        const response = await fetch(url, {headers: apiHeaders()});
+        if (!response.ok)
+          throw new Error(`${response.status} ${(await response.text()).slice(0, 200)}`);
+        const tiff = await readGeoTiff(await response.arrayBuffer());
+        mapsNote.textContent = '';
+        const c = collection();
+        drawCoverageMaps(maps, tiff, mapSettings(app.element),
+                         {levelKind: c && c.levels.length ? c.levels[0].type : ''});
+      }
+      catch (e)
+      {
+        mapsNote.textContent = `The maps could not be drawn: ${e.message}`;
+      }
+      showMaps.disabled = !mapsPossible();
+    });
+
     // The options of the coverage and the outline requests; 'withFormat' adds f
     function options(withFormat)
     {
@@ -10260,6 +10842,9 @@ function coveragesModule(app, api, state, save)
         download.setAttribute('aria-disabled', 'true');
       }
       codeTabs(code, url);
+      showMaps.disabled = !mapsPossible();
+      showMaps.title = mapsPossible() ? mapsUrl() :
+          'The maps need a collection with GeoTIFF output and a parameter';
       if (c)
         updateOutline();
       else
@@ -10307,7 +10892,15 @@ function coveragesModule(app, api, state, save)
            missing,
            estimate,
            el('div', {class: 'row'}, download),
-           codeDetails));
+           codeDetails,
+           el('section', {class: 'coverage-maps-step'},
+           el('h2', null, 'Maps'),
+           el('p', {class: 'muted small'},
+              `The request in longitude and latitude on a grid of at most ${COVERAGE_MAP_SIZE} cells a side, ` +
+                  'in up to four linked maps'),
+           el('div', {class: 'row'}, showMaps),
+           mapsNote,
+           maps)));
     defaultTimes(false);
     refresh();
     loadNative();
@@ -10467,7 +11060,8 @@ root.SmartMetExplorer = {
   cellSize,
   projectionName,
   formatBytes,
-  queryString
+  queryString,
+  readGeoTiff
 };
 
 if (typeof document !== 'undefined')

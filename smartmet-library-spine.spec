@@ -173,6 +173,9 @@ make %{_smp_mflags}
 
 %changelog
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
+- Data explorer: maps of a Coverages request in up to four linked panels (shared view, time and
+  point, a parameter, level and colours each), read by the browser from a small GeoTIFF in
+  longitude and latitude, with the time series of the point clicked
 - Data explorer: one time back or forward on every time slider; a value clicked on the map shows
   the time series of the point (the profile when there is one time), and maps of several levels
   show the level chosen
