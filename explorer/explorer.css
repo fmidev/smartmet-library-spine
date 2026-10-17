@@ -387,3 +387,7 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .xmap-region.faint { fill: rgba(9, 105, 218, 0.02); stroke-opacity: 0.35; }
 .xmap-region.highlight { fill: rgba(9, 105, 218, 0.18); stroke-width: 2.5; stroke-dasharray: none; }
 .module.browse { display: block; }
+.request-note { margin: 6px 0; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); }
+.request-note.error { border-color: #d1242f; background: color-mix(in srgb, #d1242f 10%, transparent); }
+.request-note.warn { border-color: #bf8700; background: color-mix(in srgb, #bf8700 10%, transparent); }
+.request-note[hidden] { display: none; }

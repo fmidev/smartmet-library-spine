@@ -173,6 +173,8 @@ make %{_smp_mflags}
 
 %changelog
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
+- Data explorer: the error message of the server (problem detail, plugin error header or
+  text) and empty results are shown below the request
 - Data explorer: a Browse page of the data of all the APIs: one card per dataset with its kind,
   period, themes and parameters, narrowed by a search, kinds, themes and a point on the map, and
   opened in each API offering it with the parameters searched for

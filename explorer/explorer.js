@@ -188,16 +188,64 @@ function apiHeaders(headers = {})
   return apiKey ? Object.assign({}, headers, {'fmi-apikey': apiKey}) : headers;
 }
 
-// GET a JSON document; a failed request throws with the status and the start of the response
+// The message of a failed request: the detail of a problem document, the error header of the
+// plugin (X-TimeSeriesPlugin-Error, X-EDRPlugin-Error, ...), or the start of the response
+function serverError(response, text)
+{
+  let detail = '';
+  try
+  {
+    const doc = JSON.parse(text);
+    detail = (doc && (doc.detail || doc.title || doc.description)) || '';
+  }
+  catch (e)
+  {
+    // Not JSON
+  }
+  if (!detail)
+    for (const [name, value] of response.headers)
+      if (/^x-.*-error$/i.test(name) && value)
+      {
+        detail = value;
+        break;
+      }
+  if (!detail)
+    detail = String(text || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 500);
+  return L`The server answered ${response.status} ${response.statusText}: ${detail}`;
+}
+
+// GET a JSON document; a failed request throws with the message of the server
 async function fetchJson(url)
 {
   const response = await fetch(url, {headers: apiHeaders({accept: 'application/json'})});
   if (!response.ok)
-  {
-    const text = await response.text();
-    throw new Error(`${response.status} ${response.statusText}: ${text.slice(0, 300)}`);
-  }
+    throw new Error(serverError(response, await response.text()));
   return response.json();
+}
+
+// A note below a request: an error of the server, or why the result is empty
+function requestNote()
+{
+  const note = el('p', {class: 'request-note', role: 'status', hidden: true});
+  return {
+    element: note,
+    clear() {
+      note.hidden = true;
+      note.replaceChildren();
+    },
+    show(cls, ...text) {
+      note.className = `request-note ${cls}`;
+      note.replaceChildren(...text);
+      note.hidden = false;
+    }
+  };
+}
+
+// Whether rows have no value of any of the parameters
+function rowsWithoutValues(rows, parameters)
+{
+  return rows.length > 0 && parameters.length > 0 &&
+      !rows.some((r) => parameters.some((p) => r[p] !== null && r[p] !== undefined && r[p] !== ''));
 }
 
 // Query strings keep commas, colons, slashes and parentheses readable, everything else is percent
@@ -8350,6 +8398,8 @@ function timeSeriesModule(app, api, state, save)
     const urlBox = el('code', {class: 'url'});
     const missing = el('p', {class: 'missing'});
     const runButton = el('button', {type: 'button', class: 'primary'}, L('Run'));
+    // Errors of the server and empty results, below the request
+    const requestStatus = requestNote();
     const copyUrl = el('button', {type: 'button', class: 'small'}, L('Copy URL'));
     const code = el('div', {class: 'code-box'});
     const codeDetails =
@@ -8464,6 +8514,7 @@ function timeSeriesModule(app, api, state, save)
     async function run()
     {
       results.replaceChildren(el('p', {class: 'muted'}, L('Running…')));
+      requestStatus.clear();
       map.setCursor(null);
       const url = currentUrl();
       let text;
@@ -8472,11 +8523,12 @@ function timeSeriesModule(app, api, state, save)
         const response = await fetch(url, {headers: apiHeaders({accept: 'application/json'})});
         text = await response.text();
         if (!response.ok)
-          throw new Error(`${response.status} ${response.statusText}: ${text.slice(0, 500)}`);
+          throw new Error(serverError(response, text));
       }
       catch (e)
       {
-        results.replaceChildren(el('p', {class: 'error'}, e.message));
+        requestStatus.show('error', e.message);
+        results.replaceChildren();
         return;
       }
       let data;
@@ -8490,6 +8542,14 @@ function timeSeriesModule(app, api, state, save)
         return;
       }
       const rows = splitVariants(flattenRows(data), variantColumns());
+      // An empty result is explained below the request
+      const observed = isObservation();
+      if (rows.length === 0 || rowsWithoutValues(rows, dataParams()))
+        requestStatus.show('warn', rows.length === 0 ? L('The server returned no data for this request.') :
+                                             L('The server returned rows without values of the parameters.'),
+                  ' ', observed ?
+                      L('Observations are returned only for the times and the stations that reported the parameters: try another period or other stations.') :
+                      L('Check the period, the locations and the parameters.'));
       // The stations being chosen stay on the map
       if (!serverStatistics() && !(stations().length > 0 && s.locmode === stationMode()))
         map.setPoints(mapPoints(rows));
@@ -9127,6 +9187,7 @@ function timeSeriesModule(app, api, state, save)
         el('div',
            {class: 'request'},
            el('div', {class: 'url-row'}, urlBox, copyUrl),
+           requestStatus.element,
            missing,
            el('div', {class: 'row'}, runButton),
            codeDetails,
@@ -9601,6 +9662,8 @@ function edrModule(app, api, state, save)
     const urlBox = el('code', {class: 'url'});
     const missing = el('p', {class: 'missing'});
     const runButton = el('button', {type: 'button', class: 'primary'}, L('Run'));
+    // Errors of the server and empty results, below the request
+    const requestStatus = requestNote();
     const copyUrl = el('button', {type: 'button', class: 'small'}, L('Copy URL'));
     const code = el('div', {class: 'code-box'});
     const codeDetails =
@@ -9743,18 +9806,22 @@ function edrModule(app, api, state, save)
     async function run()
     {
       results.replaceChildren(el('p', {class: 'muted'}, L('Running…')));
+      requestStatus.clear();
       map.setCursor(null);
       let text;
       try
       {
         const response = await fetch(currentUrl(), {headers: apiHeaders()});
         text = await response.text();
-        if (!response.ok)
-          throw new Error(`${response.status} ${response.statusText}: ${text.slice(0, 500)}`);
+        if (response.status === 204)
+          text = '{}';
+        else if (!response.ok)
+          throw new Error(serverError(response, text));
       }
       catch (e)
       {
-        results.replaceChildren(el('p', {class: 'error'}, e.message));
+        requestStatus.show('error', e.message);
+        results.replaceChildren();
         return;
       }
       let doc;
@@ -9768,6 +9835,10 @@ function edrModule(app, api, state, save)
         return;
       }
       const rows = nameRows(coverageRows(doc));
+      if (rows.length === 0 || rowsWithoutValues(rows, s.params || []))
+        requestStatus.show('warn', rows.length === 0 ? L('The server returned no data for this request.') :
+                                             L('The server returned rows without values of the parameters.'),
+                  ' ', L('Check the period, the locations and the parameters.'));
       map.setPoints(
           rows.filter((r) => typeof r.lat === 'number' && typeof r.lon === 'number')
               .filter((r, i, all) => all.findIndex((o) => o.lat === r.lat && o.lon === r.lon) === i)
@@ -10161,6 +10232,7 @@ function edrModule(app, api, state, save)
         el('div',
            {class: 'request'},
            el('div', {class: 'url-row'}, urlBox, copyUrl),
+           requestStatus.element,
            missing,
            el('div', {class: 'row'}, runButton),
            codeDetails,
@@ -11012,14 +11084,20 @@ function coveragesModule(app, api, state, save)
     const missing = el('p', {class: 'missing'});
     const download =
         el('a', {class: 'download', download: '', 'aria-disabled': 'true'}, L('Download'));
+    // Errors of the server, below the request
+    const requestStatus = requestNote();
     // A link cannot send the API key: with a key the file is fetched with it and saved
     download.addEventListener('click', async (e) => {
       if (!apiKey || download.getAttribute('aria-disabled') === 'true')
         return;
       e.preventDefault();
+      requestStatus.clear();
       const response = await fetch(download.href, {headers: apiHeaders()});
       if (!response.ok)
+      {
+        requestStatus.show('error', serverError(response, await response.text()));
         return;
+      }
       const name = (/filename="?([^";]+)/.exec(response.headers.get('content-disposition') || '') || [])[1] ||
           new URL(download.href).pathname.split('/').pop() || 'download';
       saveFile(await response.blob(), name);
@@ -11070,7 +11148,7 @@ function coveragesModule(app, api, state, save)
       {
         const response = await fetch(url, {headers: apiHeaders()});
         if (!response.ok)
-          throw new Error(`${response.status} ${(await response.text()).slice(0, 200)}`);
+          throw new Error(serverError(response, await response.text()));
         const tiff = await readGeoTiff(await response.arrayBuffer());
         mapsNote.textContent = '';
         shownMaps = url;
@@ -11307,6 +11385,7 @@ function coveragesModule(app, api, state, save)
         el('div',
            {class: 'request'},
            el('div', {class: 'url-row'}, urlBox, copyUrl),
+           requestStatus.element,
            missing,
            estimate,
            el('div', {class: 'row'}, download),

@@ -517,6 +517,15 @@ const server = http.createServer((req, res) => {
     }));
   if (p === '/timeseries/api/producers/ens')
     return send(200, 'application/json', JSON.stringify(ensDetails(url.searchParams)));
+  // A place the server does not know, and one without data
+  if (p === '/timeseries' && url.searchParams.get('place') === 'Nowhere')
+  {
+    res.writeHead(400, {'Content-Type': 'text/plain; charset=UTF-8',
+                        'X-TimeSeriesPlugin-Error': "Unknown location 'Nowhere'"});
+    return res.end("Unknown location 'Nowhere'");
+  }
+  if (p === '/timeseries' && url.searchParams.get('place') === 'Empty')
+    return send(200, 'application/json', '[]');
   if (p === '/timeseries')
     return send(200, 'application/json', JSON.stringify(timeseries(url.searchParams)));
   // The maps of a coverage: a 12 x 10 GeoTIFF of three times of Temperature and Pressure
@@ -2473,6 +2482,34 @@ async function main()
         reopened.hash === lastView && lastView.includes('api=%2Fcoverages') && reopened.cookies === '' &&
             `#${reopened.stored}` === lastView,
         {lastView, reopened});
+
+    // An error of the server and an empty result are told below the request
+    const requestNotes = {};
+    for (const place of ['Nowhere', 'Empty', 'Helsinki'])
+    {
+      await b.send('Page.navigate', {url: `${base}/api`});
+      await sleep(200);
+      await b.send('Page.navigate', {
+        url: `${base}/api/explorer#api=/timeseries&producer=pal&source=querydata&params=temperature&locmode=place&location=${place}`
+      });
+      await waitFor(b, `!!document.querySelector('button.primary')`, `the request of ${place}`);
+      await b.evaluate(`document.querySelector('button.primary').click()`);
+      await sleep(700);
+      requestNotes[place] = await b.evaluate(`(() => {
+        const note = document.querySelector('.request-note');
+        // The note is right below the address of the request
+        return { hidden: note.hidden, cls: note.className, text: note.textContent,
+                 afterUrl: note.previousElementSibling.classList.contains('url-row') };
+      })()`);
+    }
+    check(
+        'errors and empty results below the request',
+        requestNotes.Nowhere.cls.includes('error') && requestNotes.Nowhere.afterUrl &&
+            requestNotes.Nowhere.text === "The server answered 400 Bad Request: Unknown location 'Nowhere'" &&
+            requestNotes.Empty.cls.includes('warn') &&
+            requestNotes.Empty.text.startsWith('The server returned no data for this request.') &&
+            requestNotes.Helsinki.hidden,
+        requestNotes);
 
     // Browsing the data of all the APIs: one card per dataset, the APIs offering it, kinds,
     // themes, a search of the parameters and opening a dataset in an API
