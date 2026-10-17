@@ -372,79 +372,107 @@ Most plugins produce tables of values:
   and `parseCatalog()`. URLs are absolute when the request has a valid `Host`, relative
   otherwise (the frontend asks the backends without one). Settings are read from the
   `api_catalog` group of the server configuration (`enabled`, `ui`, `swagger_ui_dir`,
-  `title`, `description`, `explorer`, `explorer_dir`, `uplot_dir`). An API added with a
+  `title`, `description`, `explorer`, `explorer_dir`, `uplot_dir`, `palette_dir`,
+  `palette_config` and `explorer_defaults`, see `OpenApi.h`). An API added with a
   `kind` (`edr`, `timeseries`, `coverages`, `tiles`, `wmts`) carries it as
   `x-smartmet-kind` in the catalog.
 * **Data explorer** (`explorer/`, served by `OpenAPI::Catalog` at `/api/explorer`): a page
   that builds queries from the metadata of the APIs in the catalog instead of from their
-  OpenAPI definitions. For TimeSeries (kind `timeseries`) it loads
-  `<root>/api/producers` and lets the parameters and the producers narrow each other with
-  autocomplete, sets the times from the producer's data, and draws the results with uPlot:
-  a chart per parameter with a line per location, or for more than 20 locations the
-  median and the 10/25/75/90 % percentiles or a swarm of thin lines coloured from south to
-  north with the median, and a table and the JSON tree. The map shows the area of the
-  producer, the locations of a place, keyword, station or area name and of the results,
-  and lets the user click a point, drag a radius or drag a box; a selected area narrows the
-  producers to those covering it. Area and radius results, whose values TimeSeries returns
-  as lists, are split into a row per point.
-  For areas, radii, boxes and (grouped with `grouplocations=1`) keywords and station lists,
-  the server can compute the median and the percentiles instead (`nanpercentile_a[p]`,
-  `nanmedian_a`), which scales to large areas; "Every point" fetches all the values for the
-  swarm. For EDR (kind `edr`) the explorer reads `<root>/collections`: the parameters and
-  the collections narrow each other, the query types are those of the collection
-  (position, radius, area, cube and locations, with the location list of the collection on
-  the map), the times and the levels come from the extents, and CoverageJSON and GeoJSON
-  responses are turned into rows for the same charts and tables, with a series per
-  location and level. For Coverages (kind `coverages`) the parameters come from the schemas
-  of the collections, the card shows the native projection, grid and resolution, the map
-  shows the native grid, and as the box, the output projection, the grid size, the times,
-  the parameters or the levels change, `<root>/collections/{id}/outline` gives the area the
-  download would cover (drawn on the map) and its size; the result is a download link and
-  the code of the request. Results with values at several locations also get a Map tab:
-  the values of a parameter at a time as coloured cells (grids, sized by the median
-  distance to the nearest point) or dots (stations), with a time slider, a play button and
-  an editable colour scale (palette, minimum and maximum, continuous or in classes). The
-  isoband colours of the production products, as converted by qdless from `wms-conf`
-  (`palette_dir`, by default `/usr/share/smartmet/qdless/palettes`, and the parameter map of
-  `palette_config`, `/usr/share/smartmet/qdless/qdless.conf`), are served as
-  `palettes.json` and used by default for the parameters they are mapped to: the values
-  are coloured band by band and values outside the bands are left out, as in qdless. The state is kept in the URL fragment, so a query can be shared as a
-  link. Without a tile layer (`map_tiles`) the map draws the land, the lakes and
-  the country borders of `basemap.json`, generated from the public domain Natural Earth 1:50m
-  data by `explorer/make-basemap.py` (see the script for the source), so that areas can be
-  chosen without any online map service. `explorer.js`, `explorer.css` and `basemap.json`
-  are installed to `/usr/share/smartmet/explorer`,
-  uPlot comes from the `smartmet-uplot` package (`/usr/share/smartmet/uplot`), and the
-  snippets, the tree and the map are those of `OpenApiPlugin.cpp`. The page loads no inline
-  scripts. `test/explorer-browser-test.js` checks it in a headless browser
+  OpenAPI definitions. `explorer.js`, `explorer.css`, `basemap.json` and the translations
+  `explorer-<code>.js` are installed to `/usr/share/smartmet/explorer`, uPlot comes from the
+  `smartmet-uplot` package (`/usr/share/smartmet/uplot`), and the snippets, the tree and the
+  map are those of `OpenApiPlugin.cpp`. The page loads no inline scripts and uses no cookies.
+  `test/explorer-browser-test.js` checks it in a headless browser against a mock server
   (`UPLOT_DIR` overrides the uPlot location).
-- The explorer has no regional defaults of its own: without configuration the maps open on
-  the whole world and the location fields show neutral examples. `api_catalog.explorer_defaults`
-  sets them for the region and the users of a server: `center` (longitude, latitude) and `zoom`
-  of the first map view (point, box and path examples are made from the center), `examples`
-  of the `place`, `fmisid`, `wmo`, `keyword` and `area` fields, extra Coverages output
-  `projections` (`"EPSG:3067 ETRS-TM35FIN"`; the native grid, EPSG:4326 and EPSG:3857 are
-  always offered), the `clock` (`"24"` or `"12"`) and `units` (`temperature` C|F|K, `speed`
-  ms|kt|kmh|mph, `pressure` hPa|Pa|inHg, `height` m|ft). The settings are validated when the
-  configuration is read and passed to the page as the JSON attribute `data-defaults`.
-- The settings menu of the page (clock, units, language, licences) overrides the defaults per
-  browser. Without a choice or a server default the units and the clock follow the language
-  of the browser, except that en-US is only taken as the United States when the time zone of
-  the browser is in the Americas or the Pacific (it is the language of many browsers
-  elsewhere). Temperatures in K (raw GRIB data) and pressures in Pa are recognised by their
-  values and shown in the units chosen, also on the Coverages maps. Times are entered as text
-  in the clock chosen (`2026-10-17 13:00` or `2026-10-17 1:00 PM`, UTC) with a button for the
-  date picker of the browser, since `datetime-local` inputs always follow the language of the
-  browser.
-- The texts of the page are in English in `explorer.js`, wrapped in `L('...')` or, with values,
-  tagged as ``L`${n} rows` `` (translation key `{0} rows`). The translations are
-  `explorer/explorer-<code>.js` (Finnish `fi` and Swedish `sv`), one object of English text to
-  translation each; every such file in `explorer_dir` is loaded before `explorer.js`. The
-  language is the choice of the settings menu (a new language reloads the page), else
-  `explorer_defaults.language`, else the first language of the browser with a translation, else
-  English. Keys, tab names and the state in the address stay English. The browser test checks
-  that every `L('...')` text is in both translations and that the views shown in Finnish and
-  Swedish ask for no text without one; a new text needs its translations in both files.
+  * **Browse** (the first choice of the API selector) lists the datasets of all the APIs as
+    one card per name: the TimeSeries producers, the EDR collections and the Coverages
+    collections. A card shows the kind of data (forecast, ensemble, observations, soundings,
+    radar, satellite, marine, air quality, climate, guessed from the names, sources and
+    levels), the period and how current it is, the themes of the parameters and the
+    parameters. A search of the names, descriptions and parameters, the kinds and themes
+    with their counts, and a point clicked on the map narrow the cards, and "Open in <API>"
+    opens the dataset in that API with the parameters searched for.
+  * **TimeSeries** (kind `timeseries`) loads `<root>/api/producers`: the parameters and the
+    producers narrow each other with autocomplete, and a producer's details
+    (`<root>/api/producers/{name}`) give its stations, the model runs, geometries, levels,
+    forecast types and ensemble members of grid data, and for observations with `fmisid` the
+    sensors of the stations (buttons that toggle the sensor numbers), quality filters and
+    codes. The locations are a place, a point, a radius, a box, a path, a keyword, stations
+    (picked on the map or by name), WMO ids or an area; areas, radii, boxes and grouped
+    station lists give either every point or the median and percentiles computed by the
+    server (`nanpercentile_a[p]`, `nanmedian_a`). Values over a period use the TimeSeries
+    `_t` functions recommended for each kind of parameter.
+  * **EDR** (kind `edr`) reads `<root>/collections`: the query types of a collection
+    (position, radius, area, cube, trajectory and locations), the times and levels of its
+    extents, and CoverageJSON and GeoJSON responses turned into rows for the same views.
+  * **Coverages** (kind `coverages`) takes the parameters from the schemas of the collections,
+    shows the native grid, and as the box, the projection, the grid size, the times or the
+    levels change, `<root>/collections/{id}/outline` gives the area and the size of the
+    download. "Show maps" fetches the request as a GeoTIFF in EPSG:4326 of at most 200 cells
+    a side, decoded in the browser (`readGeoTiff`: strips or tiles, deflate, the floating
+    point predictor, the PARAMETER/TIME/LEVEL band metadata of GDAL), in up to four linked
+    panels that share the view, the time and the point clicked, each with its own
+    parameter, level and colours.
+  * **Results** are shown as tabs: charts (a line per location, or for more than 20 the
+    median and percentiles or a swarm coloured from south to north; ensembles as members,
+    percentiles or the probability of a threshold), a meteogram, profiles, time-height
+    sections, thermodynamic diagrams (skew-T, tephigram, Stüve, with the lifted parcel, an
+    analysis of CAPE, CIN, LCL and the indices, a hodograph, the values of the levels as a
+    table, and soundings side by side in panels sharing their scales), cross sections and
+    the values along a path (optionally the times of a flight between its departure and
+    arrival, and flight levels), a Map tab, a table and the JSON tree; a sounding or a series
+    can be compared with another producer. The Map tab colours the values of a parameter at
+    a time as cells (grids) or dots (stations), with a level choice and an editable colour
+    scale, and a value clicked gives the time series of the point (its profile when there
+    is one time of several levels). Every time slider has play, speed and one-step buttons.
+    The views can be saved as PNG and the rows as CSV.
+  * **Colours**: the isoband colours of the production products, as converted by qdless from
+    `wms-conf` (`palette_dir`, by default `/usr/share/smartmet/qdless/palettes`, and the
+    parameter map of `palette_config`, `/usr/share/smartmet/qdless/qdless.conf`), are served
+    as `palettes.json` and used by default for the parameters they are mapped to, band by
+    band, with values outside the bands left out as in qdless; otherwise a continuous scale
+    fitted to the data.
+  * **Maps**: without a tile layer (`map_tiles`) the map draws the land, the lakes and the
+    country borders of `basemap.json`, generated from the public domain Natural Earth 1:50m
+    data by `explorer/make-basemap.py`, so that no online map service is needed.
+  * **Requests**: the request is shown as a URL and as bash, Python, R and JavaScript code. An
+    optional API key is sent as the `fmi-apikey` header and kept in the browser. An error of
+    the server (the `detail` of a problem document, the `X-...-Error` header of the plugin,
+    or the start of the response) and an empty result are told right below the request.
+  * **State**: the choices are kept in the URL fragment, so a view can be shared as a link,
+    and in the local storage of the browser, which opens the last view again when the page
+    is opened without one. The preferences (units, clock, language, animation speed, the
+    remembered result tab) are in the local storage too.
+  * **Regional defaults**: the explorer has none of its own; without configuration the maps
+    open on the whole world and the location fields show neutral examples.
+    `api_catalog.explorer_defaults` sets them for the region and the users of a server:
+    `center` (longitude, latitude) and `zoom` of the first map view (point, box and path
+    examples are made from the center), `examples` of the `place`, `fmisid`, `wmo`,
+    `keyword` and `area` fields, extra Coverages output `projections`
+    (`"EPSG:3067 ETRS-TM35FIN"`; the native grid, EPSG:4326 and EPSG:3857 are always
+    offered), the `language`, the `clock` (`"24"` or `"12"`) and `units` (`temperature`
+    C|F|K, `speed` ms|kt|kmh|mph, `pressure` hPa|Pa|inHg, `height` m|ft). The settings are
+    validated when the configuration is read and passed to the page as the JSON attribute
+    `data-defaults`.
+  * **Settings menu** (clock, units, language, licences): the choices override the defaults
+    per browser. Without a choice or a server default the units and the clock follow the
+    language of the browser, except that en-US is only taken as the United States when the
+    time zone of the browser is in the Americas or the Pacific (it is the language of many
+    browsers elsewhere). Temperatures in K (raw GRIB data) and pressures in Pa are recognised
+    by their values and shown in the units chosen, also on the Coverages maps. Times are
+    entered as text in the clock chosen (`2026-10-17 13:00` or `2026-10-17 1:00 PM`, UTC)
+    with a button for the date picker of the browser, since `datetime-local` inputs always
+    follow the language of the browser.
+  * **Languages**: the texts of the page are in English in `explorer.js`, wrapped in
+    `L('...')` or, with values, tagged as ``L`${n} rows` `` (translation key `{0} rows`).
+    The translations are `explorer/explorer-<code>.js` (Finnish `fi` and Swedish `sv`), one
+    object of English text to translation each; every such file in `explorer_dir` is loaded
+    before `explorer.js`. The language is the choice of the settings menu (a new language
+    reloads the page), else `explorer_defaults.language`, else the first language of the
+    browser with a translation, else English. Keys, tab names and the state in the address
+    stay English. The browser test checks that every `L('...')` text is in both
+    translations and that the views shown in Finnish and Swedish ask for no text without
+    one; a new text needs its translations in both files.
 * **OpenTelemetry** (`OTelOptions`, `OTelLogger`, `OTelMetricsExporter`) is optional.
   Tracing is compiled in with `SMARTMET_SPINE_OPENTELEMETRY`
   (see [build-opentelemetry.md](build-opentelemetry.md)), and cache statistics are

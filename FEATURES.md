@@ -177,7 +177,26 @@ Enabled by defining `SMARTMET_SPINE_OPENTELEMETRY` at compile time:
   metrics.
 - **Documentation**: `docs/build-opentelemetry.md`.
 
-## 13. Convenience & misc
+## 13. OpenAPI documentation, API catalog & data explorer
+
+- **`OpenAPI::Publisher`** — publishes the OpenAPI 3.1 definition of a
+  plugin at `<root>/api` and Swagger UI at `<root>/api/docs`, with the
+  SmartMet Swagger UI plugin (code snippets, response tree, maps).
+- **`OpenAPI::Catalog`** (RFC 9727) — `/.well-known/api-catalog`,
+  `/api` (linkset or HTML) and `/api/docs` with every API of the
+  server, or of the cluster on a frontend (`parseCatalog()`), APIs
+  carrying their kind as `x-smartmet-kind`.
+- **Data explorer** at `/api/explorer` — queries built from the
+  metadata of the TimeSeries, EDR and Coverages APIs, with a Browse
+  page of all their datasets, maps, charts, soundings, sections,
+  meteograms, ensembles, linked Coverages maps, units, a 12/24-hour
+  clock and English, Finnish and Swedish texts.
+- **`api_catalog.explorer_defaults`** — the first map view, the
+  location examples, extra output projections, the language, the
+  clock and the units for the region of a server.
+- **Documentation**: `docs/developer-guide.md` §11.
+
+## 14. Convenience & misc
 
 - **`Convenience`** — shared helpers used across plugins (string
   trims, time conversions, …).
@@ -185,7 +204,7 @@ Enabled by defining `SMARTMET_SPINE_OPENTELEMETRY` at compile time:
 - **`Thread`** — thread-related helpers.
 - **`SmartMet`** — top-level umbrella header.
 
-## 14. `app/` — auxiliary binaries
+## 15. `app/` — auxiliary binaries
 
 Two helper programs are built alongside the library:
 
@@ -196,7 +215,7 @@ Two helper programs are built alongside the library:
 - **`cfgvalidate`** — libconfig validation tool used by every
   plugin's `make configtest` target.
 
-## 15. Testing
+## 16. Testing
 
 - **~60+ standalone test executables** under `test/`, one per
   `*Test.cpp`.
@@ -209,7 +228,7 @@ Two helper programs are built alongside the library:
   - `make -C test ASAN=yes test` — address + UB sanitiser.
   - `make -C test TSAN=yes test` — thread sanitiser.
 
-## 16. Build & integration
+## 17. Build & integration
 
 - **Library output**: `libsmartmet-spine.so` (also installs headers).
 - **Build**: `make` (release) — also builds `app/` binaries.
@@ -231,4 +250,4 @@ Two helper programs are built alongside the library:
 
 ---
 
-*Last updated: 2026-06-30.*
+*Last updated: 2026-10-17.*

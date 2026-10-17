@@ -83,6 +83,7 @@ make -C test ASAN=yes test        # Address + UB sanitizer
 - **`Parameter` / `Parameters`** — meteorological parameter definitions and translations.
 - **`TcpMultiQuery`** — parallel TCP queries to multiple backends.
 - **`OTel*`** — optional OpenTelemetry integration (tracing, metrics); enabled by defining `SMARTMET_SPINE_OPENTELEMETRY` at compile time.
+- **`OpenAPI::Publisher` / `OpenAPI::Catalog`** (`OpenApi.h`) — OpenAPI definitions and Swagger UI of the plugins, the RFC 9727 API catalog (`/api`, `/.well-known/api-catalog`, `/api/docs`) and the data explorer (`/api/explorer`, files in `explorer/`: `explorer.js`, `explorer.css`, `basemap.json`, translations `explorer-fi.js` and `explorer-sv.js`; tested by `test/explorer-browser-test.js` through `test/OpenApiTest`). Explorer texts are wrapped in `L('...')` and must be added to both translation files.
 
 ## Key dependencies
 

@@ -15,12 +15,13 @@ The spine library is the **core framework** of SmartMet Server. It provides the 
 - **Request/response abstractions** — HTTP request parsing and response building
 - **Logging** — structured logging with configurable levels
 - **LRU cache** — configurable in-memory response caching
+- **OpenAPI and API catalog** — the OpenAPI definitions and Swagger UI of the APIs, the RFC 9727 catalog of the server at `/api`, and the data explorer at `/api/explorer`
 
 Plugins and engines are built against the spine library API. The spine library itself depends on [smartmet-library-macgyver](https://github.com/fmidev/smartmet-library-macgyver).
 
 ## Documentation
 
-- [Developer guide](docs/developer-guide.md) — Reactor, engine and plugin lifecycle, routing, admin requests, building blocks, binary compatibility
+- [Developer guide](docs/developer-guide.md) — Reactor, engine and plugin lifecycle, routing, admin requests, building blocks, binary compatibility, OpenAPI, the API catalog and the data explorer
 - [OpenTelemetry support](docs/build-opentelemetry.md) — distributed traces and cache-statistics metrics
 
 ## License
