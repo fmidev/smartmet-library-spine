@@ -173,6 +173,8 @@ make %{_smp_mflags}
 
 %changelog
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
+- Data explorer: meteograms (temperature, precipitation, cloud cover, wind and gusts with
+  barbs), of ensembles as the median and the spread of the members
 - Data explorer: the analysis of soundings (CAPE, CIN, LFC, EL, lifted index, freezing level,
   K-index, Total totals, precipitable water, 0-6 km shear) and a hodograph
 - Data explorer: isotherms, wind barbs and the edge of humid air on cross sections and

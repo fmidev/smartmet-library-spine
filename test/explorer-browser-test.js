@@ -1529,6 +1529,33 @@ async function main()
             near(analysis.freezing.p, 601, 5),
         analysis);
 
+    // A meteogram of an ensemble: the panels of the groups the rows have, with wind barbs
+    const meteogram = await b.evaluate(`(async () => {
+      const E = SmartMetExplorer;
+      const rows = [];
+      for (let m = 1; m <= 5; m++)
+        for (let h = 0; h < 8; h++)
+          rows.push({ name: 'Helsinki', time: new Date(Date.UTC(2014, 1, 20, 6 * h)).toISOString(), lat: 60.17, lon: 24.94,
+                      level: m, temperature: h - m, precipitationamount: m === 1 ? 2 : 0, totalcloudcover: 50 + m,
+                      windums: 3 + m, windvms: -2 });
+      const box = document.createElement('div');
+      box.style.width = '800px';
+      document.body.append(box);
+      E.drawMeteogram(box, rows, 'member');
+      await new Promise((r) => setTimeout(r, 300));
+      const out = { titles: [...box.querySelectorAll('.chart-title')].map((x) => x.textContent.split(' (')[0]),
+                    barbs: box.querySelectorAll('.meteogram-barbs .barb').length, has: E.hasMeteogram(rows),
+                    adds: E.meteogramParameters(new Set(['temperature', 'precipitationamount', 'windums', 'windvms']), ['temperature']) };
+      box.remove();
+      return out;
+    })()`);
+    check(
+        'a meteogram of an ensemble',
+        JSON.stringify(meteogram.titles) === '["Temperature","Precipitation","Cloud cover","Wind"]' &&
+            meteogram.barbs > 0 && meteogram.has &&
+            JSON.stringify(meteogram.adds) === '["precipitationamount","windums","windvms"]',
+        meteogram);
+
     // Locations reporting at different intervals, and a parameter without values
     const mixed = await b.evaluate(`(() => {
       const rows = [];

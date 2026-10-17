@@ -1451,7 +1451,7 @@ const SOUNDING_PARAMS = {
 
 // The tabs of results that open first with later results once chosen: the views of what the
 // data has. Charts, tables and trees are the defaults.
-const REMEMBERED_TABS = ['Profile', 'Section', 'Sounding', 'Cross section', 'Along the path', 'Map'];
+const REMEMBERED_TABS = ['Meteogram', 'Profile', 'Section', 'Sounding', 'Cross section', 'Along the path', 'Map'];
 
 // The kind of the levels of an EDR collection from its vertical reference system
 function edrLevelKind(collection)
@@ -3996,6 +3996,288 @@ function drawSkewT(container, rows, levelKind, options)
 }
 
 // ------------------------------------------------------------------
+// Meteograms
+// ------------------------------------------------------------------
+
+// The parameters of a meteogram by their names in querydata, grid data and observations
+const METEOGRAM_PARAMS = {
+  temperature: ['temperature', 't2m', 'ta_pt1h_avg', 't-k', 't-c'],
+  dewpoint: ['dewpoint', 'dewpoint2m', 'td', 'td-k', 'td-c'],
+  precipitation: ['precipitation1h', 'precipitationamount', 'r_1h', 'pr_pt1h_acc', 'rr-1-mm', 'rr-kgm2'],
+  cloud: ['totalcloudcover', 'n_man', 'cloudiness', 'n-0to1', 'n-pct'],
+  speed: ['windspeedms', 'ws_10min', 'ff-ms'],
+  direction: ['winddirection', 'wd_10min', 'dd-d'],
+  gust: ['windgust', 'hourlymaximumgust', 'wg_10min', 'ffg-ms'],
+  u: ['windums', 'u-ms'],
+  v: ['windvms', 'v-ms']
+};
+
+// The columns of a meteogram the rows have: {group: name}
+function meteogramColumns(rows)
+{
+  const out = {};
+  for (const [group, names] of Object.entries(METEOGRAM_PARAMS))
+  {
+    const name = names.find((n) => rows.some((r) => columnValue(r, n) !== null));
+    if (name)
+      out[group] = name;
+  }
+  return out;
+}
+
+// Whether the rows make a meteogram: a temperature and precipitation, cloud cover or wind at
+// no more than a few places
+function hasMeteogram(rows)
+{
+  const c = meteogramColumns(rows);
+  const places = new Set(rows.map((r) => locationOf(Object.assign({}, r, {level: null})))).size;
+  return !!c.temperature && !!(c.precipitation || c.cloud || c.speed || (c.u && c.v)) && places <= 20;
+}
+
+// The parameters of a meteogram a producer or collection has and the request lacks
+function meteogramParameters(parameterSet, chosen)
+{
+  const out = [];
+  const find = (group) => METEOGRAM_PARAMS[group].find((n) => parameterSet.has(n));
+  // The wind by its speed and direction, or by its components
+  const wind = find('speed') && find('direction') ? ['speed', 'direction'] : ['u', 'v'];
+  for (const group of ['temperature', 'dewpoint', 'precipitation', 'cloud', ...wind, 'gust'])
+  {
+    const name = find(group);
+    if (name && !chosen.includes(name))
+      out.push(name);
+  }
+  return out;
+}
+
+// A button for a meteogram: shown for a producer or collection that has one, it adds the
+// parameters of a meteogram to the chosen ones and calls start(). Returns {element,
+// update(parameterSet, chosen)}.
+function meteogramButton(start)
+{
+  const button = el('button', {type: 'button', class: 'small', 'data-meteogram': '1'}, 'Meteogram');
+  const note = el('span', {class: 'small meteogram-note'});
+  const element = el('div', {class: 'row meteogram-button'}, button, note);
+  let missing = [];
+  button.addEventListener('click', () => start(missing));
+  const update = (parameterSet, chosen) => {
+    element.hidden = !parameterSet || !meteogramCapable(parameterSet);
+    if (element.hidden)
+      return;
+    missing = meteogramParameters(parameterSet, chosen);
+    note.textContent = missing.length ? `Adds ${missing.join(', ')} and runs the request` :
+                                        'Runs the request and draws a meteogram';
+  };
+  return {element, update};
+}
+
+// Whether a producer or collection has a meteogram: a temperature and something else of one
+function meteogramCapable(parameterSet)
+{
+  const has = (group) => METEOGRAM_PARAMS[group].some((n) => parameterSet.has(n));
+  return has('temperature') && (has('precipitation') || has('cloud') || has('speed') || (has('u') && has('v')));
+}
+
+// A meteogram of a place: temperature and dewpoint, precipitation, cloud cover, and wind with
+// gusts and barbs, panels on one time axis with one cursor. An ensemble (several members or
+// levels at a time) is drawn as the median and the 10-90 % range of the members; other levels
+// are drawn at the level nearest to the ground.
+function drawMeteogram(container, rows, levelKind)
+{
+  container.replaceChildren();
+  const root = typeof window !== 'undefined' ? window : globalThis;
+  const placeOf = (r) => locationOf(Object.assign({}, r, {level: null}));
+  const places = Array.from(new Set(rows.map(placeOf)));
+  const placeSelect = el('select', {'aria-label': 'Place of the meteogram'},
+                         places.map((p) => el('option', {value: p}, p)));
+  placeSelect.hidden = places.length < 2;
+  const panels = el('div', {class: 'meteogram'});
+  container.append(el('div', {class: 'row'}, placeSelect), panels);
+  placeSelect.addEventListener('change', draw);
+  draw();
+
+  function draw()
+  {
+    panels.replaceChildren();
+    let chosen = rows.filter((r) => placeOf(r) === (placeSelect.value || places[0]));
+    // Levels other than members: the one nearest to the ground
+    const levels = Array.from(new Set(chosen.map((r) => r.level).filter((v) => typeof v === 'number')));
+    if (levels.length > 1 && levelKind !== 'member')
+    {
+      const down = ['hybrid', 'pressure', 'pressure-pa', 'sounding'].includes(levelKind);
+      const lowest = down ? Math.max(...levels) : Math.min(...levels);
+      chosen = chosen.filter((r) => r.level === lowest);
+    }
+    const columns = meteogramColumns(chosen);
+    // The values of each group at each time, several for an ensemble
+    const times = new Map();
+    for (const r of chosen)
+    {
+      const d = parseTime(r.time);
+      if (!d)
+        continue;
+      const x = Math.round(d.getTime() / 1000);
+      if (!times.has(x))
+        times.set(x, []);
+      times.get(x).push(r);
+    }
+    const xs = Array.from(times.keys()).sort((a, b) => a - b);
+    const values = (group) => xs.map((x) => times.get(x)
+                                               .map((r) => (columns[group] ? columnValue(r, columns[group]) : null))
+                                               .filter((v) => v !== null)
+                                               .sort((a, b) => a - b));
+    // Kelvins (the name of a grid parameter may say so though the server converted them) and
+    // fractions of cloud cover
+    const scaled = (group, lists) => {
+      const all = lists.flat();
+      if (all.length === 0)
+        return lists;
+      const median = quantile(all.slice().sort((a, b) => a - b), 0.5);
+      if ((group === 'temperature' || group === 'dewpoint') && median > 100)
+        return lists.map((l) => l.map((v) => v - KELVIN));
+      if (group === 'cloud' && Math.max(...all) <= 1)
+        return lists.map((l) => l.map((v) => v * 100));
+      return lists;
+    };
+    const stat = (lists, q) => lists.map((l) => (l.length ? quantile(l, q) : null));
+    const ensemble = Array.from(times.values()).some((list) => list.length > 1);
+    const css = getComputedStyle(document.documentElement);
+    const axisColor = css.getPropertyValue('--muted').trim() || '#666';
+    const gridColor = css.getPropertyValue('--line').trim() || '#ddd';
+    const width = Math.max(320, Math.min(1000, container.clientWidth - 8 || 700));
+    const sync = root.uPlot.sync(`meteogram-${Math.random()}`);
+    const axes = (unit) => [
+      {stroke: axisColor, grid: {stroke: gridColor, width: 1}, ticks: {stroke: gridColor}, values: utcTimeLabels, size: 44},
+      {stroke: axisColor, grid: {stroke: gridColor, width: 1}, ticks: {stroke: gridColor}, size: 50, label: unit, labelSize: 14}
+    ];
+    const timeSeries = {value: (u, x) => (x === null ? '--' : formatTime(new Date(x * 1000)))};
+    const panel = (title, series, data, options = {}) => {
+      const box = el('div', {class: 'chart'}, el('div', {class: 'chart-title'}, title));
+      const plot = el('div', {class: 'chart-plot'});
+      box.append(plot);
+      panels.append(box);
+      return new root.uPlot(Object.assign({
+        width,
+        height: 170,
+        series: [timeSeries, ...series],
+        axes: axes(options.unit || ''),
+        scales: Object.assign({x: {time: true}}, options.scales || {}),
+        cursor: {sync: {key: sync.key}},
+        legend: {live: true},
+        tzDate: (ts) => root.uPlot.tzDate(new Date(ts * 1000), 'Etc/UTC')
+      }, options.extra || {}), data, plot);
+    };
+    const band = (lists, colour, label) => {
+      // The median, and for an ensemble the 10-90 % range as a band
+      if (!ensemble)
+        return {series: [{label, stroke: colour, width: 2}], data: [stat(lists, 0.5)], bands: []};
+      return {
+        series: [
+          {label: `${label} 10 %`, stroke: 'transparent', points: {show: false}},
+          {label: `${label} 90 %`, stroke: 'transparent', points: {show: false}},
+          {label: `${label} median`, stroke: colour, width: 2}
+        ],
+        data: [stat(lists, 0.1), stat(lists, 0.9), stat(lists, 0.5)],
+        bands: [{series: [2, 1], fill: `${colour}33`}]
+      };
+    };
+    const offset = (bands, n) => bands.map((b) => ({series: b.series.map((i) => i + n), fill: b.fill}));
+
+    // Temperature and dewpoint
+    if (columns.temperature)
+    {
+      const tb = band(scaled('temperature', values('temperature')), '#e03131', 'temperature');
+      const parts = [tb];
+      if (columns.dewpoint)
+        parts.push(band(scaled('dewpoint', values('dewpoint')), '#2f9e44', 'dewpoint'));
+      let n = 0;
+      const bands = [];
+      for (const part of parts)
+      {
+        bands.push(...offset(part.bands, n));
+        n += part.series.length;
+      }
+      panel(`Temperature${columns.dewpoint ? ' and dewpoint' : ''} (C)${ensemble ? ', median and 10-90 % of the members' : ''}`,
+            parts.flatMap((p) => p.series), [xs, ...parts.flatMap((p) => p.data)], {unit: 'C', extra: {bands}});
+    }
+    // Precipitation as bars, for an ensemble the median with the 90 % as a line
+    if (columns.precipitation)
+    {
+      const lists = values('precipitation');
+      const bars = root.uPlot.paths.bars({size: [0.6, 40]});
+      const series = [{label: ensemble ? 'median' : 'precipitation', stroke: '#1971c2', fill: '#1971c288', paths: bars, points: {show: false}}];
+      const data = [stat(lists, 0.5)];
+      if (ensemble)
+      {
+        series.push({label: '90 %', stroke: '#1971c2', width: 1, dash: [4, 3], points: {show: false}});
+        data.push(stat(lists, 0.9));
+      }
+      panel(`Precipitation (mm)${ensemble ? ', the median and 90 % of the members' : ''}`, series, [xs, ...data],
+            {unit: 'mm', scales: {y: {range: (u, lo, hi) => [0, Math.max(1, hi * 1.1)]}}});
+    }
+    // Cloud cover
+    if (columns.cloud)
+    {
+      const cb = band(scaled('cloud', values('cloud')), '#495057', 'cloud cover');
+      cb.series[cb.series.length - 1].fill = ensemble ? undefined : '#49505733';
+      panel(`Cloud cover (%)${ensemble ? ', median and 10-90 % of the members' : ''}`, cb.series, [xs, ...cb.data],
+            {unit: '%', scales: {y: {range: () => [0, 100]}}, extra: {bands: cb.bands}});
+    }
+    // Wind and gusts, with barbs of the median wind at the bottom
+    let speeds = columns.speed ? values('speed') : null;
+    let directions = columns.direction ? values('direction') : null;
+    if (!speeds && columns.u && columns.v)
+    {
+      const us = values('u');
+      const vs = values('v');
+      speeds = us.map((l, k) => l.map((u, i) => Math.hypot(u, vs[k][i] ?? 0)).sort((a, b) => a - b));
+      directions = us.map((l, k) => l.map((u, i) => ((Math.atan2(-u, -(vs[k][i] ?? 0)) * 180) / Math.PI + 360) % 360));
+    }
+    if (speeds)
+    {
+      const wb = band(speeds, '#7048e8', 'wind speed');
+      const series = [...wb.series];
+      const data = [...wb.data];
+      if (columns.gust)
+      {
+        series.push({label: ensemble ? 'gust median' : 'gust', stroke: '#f08c00', width: 1.5, dash: [5, 3]});
+        data.push(stat(values('gust'), 0.5));
+      }
+      // The mean direction of the members: the direction of the mean unit vector
+      const meanDirection = directions ? directions.map((l) => {
+        if (!l.length)
+          return null;
+        const x = l.reduce((s, d) => s + Math.sin((d * Math.PI) / 180), 0);
+        const y = l.reduce((s, d) => s + Math.cos((d * Math.PI) / 180), 0);
+        return ((Math.atan2(x, y) * 180) / Math.PI + 360) % 360;
+      }) : null;
+      const medianSpeed = stat(speeds, 0.5);
+      const barbs = (u) => {
+        const old = u.over.querySelector('.meteogram-barbs');
+        if (old)
+          old.remove();
+        if (!meanDirection)
+          return;
+        const layer = svg('svg', {class: 'meteogram-barbs', width: u.over.clientWidth, height: u.over.clientHeight});
+        let last = -Infinity;
+        xs.forEach((x, k) => {
+          const px = u.valToPos(x, 'x');
+          if (meanDirection[k] === null || medianSpeed[k] === null || px - last < 28)
+            return;
+          last = px;
+          layer.append(windBarb(px, u.over.clientHeight - 6, medianSpeed[k], meanDirection[k]));
+        });
+        u.over.append(layer);
+      };
+      panel(`Wind${columns.gust ? ' and gusts' : ''} (m/s)${ensemble ? ', median and 10-90 % of the members' : ''}`,
+            series, [xs, ...data],
+            {unit: 'm/s', scales: {y: {range: (u, lo, hi) => [0, Math.max(5, hi * 1.25)]}},
+             extra: {bands: wb.bands, hooks: {draw: [barbs]}}});
+    }
+  }
+}
+
+// ------------------------------------------------------------------
 // Charts of time series
 // ------------------------------------------------------------------
 
@@ -6516,6 +6798,14 @@ function timeSeriesModule(app, api, state, save)
     const areaValuesRow = el('div', null, el('label', null, 'Values of an area'), areaValues);
     const pathChooser = pathPointsChooser(s, (rerender) => refresh(rerender));
     const flightChoice = flightChooser(s, () => refresh(), () => dataStep());
+    // A meteogram of the chosen place with the parameters it needs
+    const meteogram = meteogramButton((missing) => {
+      s.params = Array.from(new Set([...s.params, ...missing]));
+      s.tab = 'Meteogram';
+      refresh();
+      if (missingParts().length === 0)
+        run();
+    });
 
     // An area, radius or box, or several locations, whose values the server can aggregate
     const isArea = () => ['bbox', 'radius', 'area', 'path'].includes(s.locmode) ||
@@ -6768,6 +7058,8 @@ function timeSeriesModule(app, api, state, save)
           panes.Section = el('div', {class: 'pane'});
         panes.Sounding = el('div', {class: 'pane'});
       }
+      if (hasMeteogram(rows))
+        panes.Meteogram = el('div', {class: 'pane'});
       panes.Chart = el('div', {class: 'pane'});
       // The values on a map when there are several located points
       if (hasMapValues(rows))
@@ -6788,6 +7080,8 @@ function timeSeriesModule(app, api, state, save)
         drawn.add(name);
         if (name === 'Chart')
           drawCharts(panes.Chart, rows, dataParams(), statistics ? 'server' : undefined, {levelKind: kind});
+        else if (name === 'Meteogram')
+          drawMeteogram(panes.Meteogram, rows, kind);
         else if (name === 'Profile')
           drawProfiles(panes.Profile, rows, dataParams(), kind);
         else if (name === 'Section')
@@ -7069,6 +7363,7 @@ function timeSeriesModule(app, api, state, save)
     function refresh(rerender = true)
     {
       const p = producer();
+      meteogram.update(p ? p.parameterSet : null, s.params);
       // Chips
       chips.replaceChildren(...s.params.map((key) => {
         const entry = index.parameters.get(key);
@@ -7270,6 +7565,7 @@ function timeSeriesModule(app, api, state, save)
                el('label', null, 'Parameters'),
                chips,
                paramSearch.element,
+               meteogram.element,
                el('label', null, 'Producer'),
                candidatesNote,
                modelSearch.element,
@@ -7670,6 +7966,14 @@ function edrModule(app, api, state, save)
     const areaNote = el('p', {class: 'warn small'});
     const pathChooser = pathPointsChooser(s, (rerender) => refresh(rerender));
     const flightChoice = flightChooser(s, () => refresh(), () => 180);
+    // A meteogram of the chosen place with the parameters it needs
+    const meteogram = meteogramButton((missing) => {
+      s.params = Array.from(new Set([...s.params, ...missing]));
+      s.tab = 'Meteogram';
+      refresh();
+      if (missingParts().length === 0)
+        run();
+    });
     const map = createMap(mapSettings(app.element), (shape) => {
       s.location = formatSelection(shape);
       refresh();
@@ -7965,6 +8269,8 @@ function edrModule(app, api, state, save)
         if (hasSounding(rows, kind))
           panes.Sounding = el('div', {class: 'pane'});
       }
+      if (hasMeteogram(rows))
+        panes.Meteogram = el('div', {class: 'pane'});
       panes.Chart = el('div', {class: 'pane'});
       // The values on a map when there are several located points
       if (hasMapValues(rows))
@@ -7992,6 +8298,8 @@ function edrModule(app, api, state, save)
         drawn.add(name);
         if (name === 'Chart')
           drawCharts(panes.Chart, rows, params, undefined, {levelKind: kind});
+        else if (name === 'Meteogram')
+          drawMeteogram(panes.Meteogram, rows, kind);
         else if (name === 'Profile')
           drawProfiles(panes.Profile, rows, params, kind);
         else if (name === 'Section')
@@ -8059,6 +8367,7 @@ function edrModule(app, api, state, save)
     function refresh(rerender = true)
     {
       const c = collection();
+      meteogram.update(c ? c.parameterSet : null, s.params);
       chips.replaceChildren(...s.params.map((key) => {
         const entry = index.parameters.get(key);
         const label = entry ? entry.name : key;
@@ -8235,6 +8544,7 @@ function edrModule(app, api, state, save)
                el('label', null, 'Parameters'),
                chips,
                paramSearch.element,
+               meteogram.element,
                el('label', null, 'Collection'),
                note,
                collectionSearch.element,
@@ -9024,6 +9334,9 @@ root.SmartMetExplorer = {
   pathPoints,
   hasProfiles,
   hasSounding,
+  hasMeteogram,
+  drawMeteogram,
+  meteogramParameters,
   drawAlongPath,
   soundingAnalysis,
   contourSegments,
