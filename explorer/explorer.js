@@ -3256,6 +3256,207 @@ function parcelPath(t, td, p, ptop)
   return {lcl, path: [...dry, ...moistAdiabat(lcl.t, lcl.p, ptop).slice(1)]};
 }
 
+// The analysis of a sounding: levels [{p, t, td, speed, direction, height}] from the bottom up
+// (hPa, C, m/s, deg, m). A parcel is lifted from the lowest level. Returns cape and cin (J/kg,
+// virtual temperatures), lfc and el (hPa), li (lifted index at 500 hPa, C), freezing (the
+// lowest 0 C level: {p, height}), k (K-index), tt (Total totals), pw (precipitable water, mm),
+// shear (0-6 km bulk shear, m/s) and heights (m above the lowest level unless the data has
+// heights); null when the sounding does not reach far enough.
+function soundingAnalysis(levels)
+{
+  const out = {cape: null, cin: null, lfc: null, el: null, li: null, freezing: null, k: null,
+               tt: null, pw: null, shear: null};
+  const valid = levels.filter((l) => l.p > 0 && l.t !== null);
+  if (valid.length < 3)
+    return out;
+  // The value of a field at a pressure, interpolated in the logarithm of the pressure
+  const at = (p, field) => {
+    for (let i = 0; i + 1 < valid.length; i++)
+    {
+      const a = valid[i];
+      const b = valid[i + 1];
+      if (p <= a.p && p >= b.p && a[field] !== null && b[field] !== null)
+      {
+        const f = Math.log(a.p / p) / Math.log(a.p / b.p || 1);
+        return a[field] + f * (b[field] - a[field]);
+      }
+    }
+    return null;
+  };
+  const mixing = (td, p) => (td === null ? 0 : saturationMixingRatio(td, p));
+  const virtual = (t, w) => (t + KELVIN) * (1 + 0.61 * w);
+
+  // Heights: those of the data, or by the hypsometric equation from the lowest level
+  const heights = [0];
+  for (let i = 1; i < valid.length; i++)
+  {
+    const a = valid[i - 1];
+    const b = valid[i];
+    const tv = (virtual(a.t, mixing(a.td, a.p)) + virtual(b.t, mixing(b.td, b.p))) / 2;
+    heights.push(heights[i - 1] + ((RD * tv) / 9.80665) * Math.log(a.p / b.p));
+  }
+  valid.forEach((l, i) => {
+    l.h = typeof l.height === 'number' ? l.height : heights[i];
+  });
+  out.dataHeights = valid.every((l) => typeof l.height === 'number');
+
+  // The lowest 0 C level
+  for (let i = 0; i + 1 < valid.length; i++)
+    if (valid[i].t > 0 && valid[i + 1].t <= 0)
+    {
+      const a = valid[i];
+      const b = valid[i + 1];
+      const f = a.t / (a.t - b.t);
+      out.freezing = {p: Math.exp(Math.log(a.p) + f * Math.log(b.p / a.p)), height: a.h + f * (b.h - a.h)};
+      break;
+    }
+  if (valid[0].t <= 0)
+    out.freezing = {p: valid[0].p, height: valid[0].h};
+
+  // Indices of the standard levels
+  const [t850, td850, t700, td700, t500] =
+      [[850, 't'], [850, 'td'], [700, 't'], [700, 'td'], [500, 't']].map(([p, f]) => at(p, f));
+  if ([t850, td850, t700, td700, t500].every((v) => v !== null))
+    out.k = t850 - t500 + td850 - (t700 - td700);
+  if ([t850, td850, t500].every((v) => v !== null))
+    out.tt = t850 + td850 - 2 * t500;
+
+  // Precipitable water: the specific humidity over the column, kg/m2 = mm
+  let pw = 0;
+  let humid = true;
+  for (let i = 0; i + 1 < valid.length; i++)
+  {
+    const a = valid[i];
+    const b = valid[i + 1];
+    if (a.td === null || b.td === null)
+    {
+      humid = false;
+      break;
+    }
+    const qa = mixing(a.td, a.p) / (1 + mixing(a.td, a.p));
+    const qb = mixing(b.td, b.p) / (1 + mixing(b.td, b.p));
+    pw += (((qa + qb) / 2) * (a.p - b.p) * 100) / 9.80665;
+  }
+  out.pw = humid ? pw : null;
+
+  // The bulk shear between the lowest level and 6 km
+  const wind = (l) => (l.speed === null || l.direction === null ? null : [
+    -l.speed * Math.sin((l.direction * Math.PI) / 180), -l.speed * Math.cos((l.direction * Math.PI) / 180)
+  ]);
+  const top6 = valid.find((l) => l.h >= 6000);
+  if (top6 && wind(valid[0]) && wind(top6))
+  {
+    const [u0, v0] = wind(valid[0]);
+    const [u6, v6] = wind(top6);
+    out.shear = Math.hypot(u6 - u0, v6 - v0);
+  }
+
+  // The parcel of the lowest level: CAPE above the level of free convection up to the
+  // equilibrium level, CIN below it
+  const base = valid[0];
+  if (base.td === null)
+    return out;
+  const pTop = Math.max(100, valid[valid.length - 1].p);
+  const parcel = parcelPath(base.t, base.td, base.p, pTop);
+  const w0 = mixing(base.td, base.p);
+  const buoyancy = parcel.path
+                       .map(([p, tp]) => {
+                         const te = at(p, 't');
+                         if (te === null)
+                           return null;
+                         const wp = p > parcel.lcl.p ? w0 : saturationMixingRatio(tp, p);
+                         return {p, tp, b: virtual(tp, wp) - virtual(te, mixing(at(p, 'td'), p))};
+                       })
+                       .filter(Boolean);
+  if (buoyancy.length < 2)
+    return out;
+  // The level of free convection: where the parcel becomes buoyant at or above the LCL;
+  // the equilibrium level: where it last stops being buoyant above that
+  let lfc = null;
+  let el = null;
+  for (let i = 0; i + 1 < buoyancy.length; i++)
+  {
+    const a = buoyancy[i];
+    const b = buoyancy[i + 1];
+    if (lfc === null && b.p <= parcel.lcl.p && a.b <= 0 && b.b > 0)
+      lfc = a.p + (a.b / (a.b - b.b)) * (b.p - a.p);
+    if (lfc === null && b.p <= parcel.lcl.p && a.b > 0 && i === 0)
+      lfc = a.p;
+    if (lfc !== null && a.b > 0 && b.b <= 0)
+      el = a.p + (a.b / (a.b - b.b)) * (b.p - a.p);
+  }
+  let cape = 0;
+  let cin = 0;
+  for (let i = 0; i + 1 < buoyancy.length; i++)
+  {
+    const a = buoyancy[i];
+    const b = buoyancy[i + 1];
+    const area = RD * ((a.b + b.b) / 2) * Math.log(a.p / b.p);
+    const mid = (a.p + b.p) / 2;
+    if (lfc !== null && mid <= lfc && (el === null || mid >= el))
+      cape += Math.max(0, area);
+    else if (lfc !== null && mid > lfc)
+      cin += Math.min(0, area);
+  }
+  out.cape = lfc !== null ? cape : 0;
+  out.cin = lfc !== null ? cin : null;
+  out.lfc = lfc;
+  out.el = el;
+  const t500p = buoyancy.find((x) => x.p <= 500);
+  if (t500 !== null && t500p)
+    out.li = t500 - t500p.tp;
+  return out;
+}
+
+// A hodograph: the wind vectors of the levels of a sounding from the bottom up to 10 km, the
+// line coloured by height, rings every 10 m/s
+function drawHodograph(levels)
+{
+  const size = 240;
+  const c = size / 2;
+  const winds = levels.filter((l) => l.speed !== null && l.direction !== null && (l.h ?? 0) <= 10000)
+                    .map((l) => ({
+                           u: -l.speed * Math.sin((l.direction * Math.PI) / 180),
+                           v: -l.speed * Math.cos((l.direction * Math.PI) / 180),
+                           h: l.h ?? 0
+                         }));
+  if (winds.length < 2)
+    return null;
+  const max = Math.max(10, Math.ceil(Math.max(...winds.map((w) => Math.hypot(w.u, w.v))) / 10) * 10);
+  const scale = (c - 14) / max;
+  const root = svg('svg', {class: 'hodograph', width: size, height: size, viewBox: `0 0 ${size} ${size}`,
+                           role: 'img', 'aria-label': 'Hodograph'});
+  for (let r = 10; r <= max; r += 10)
+  {
+    root.append(svg('circle', {class: 'hodo-ring', cx: c, cy: c, r: r * scale}));
+    const label = svg('text', {class: 'vtick', x: c + r * scale * 0.7071 + 2, y: c - r * scale * 0.7071 - 2});
+    label.textContent = `${r}`;
+    root.append(label);
+  }
+  root.append(svg('line', {class: 'hodo-axis', x1: 0, y1: c, x2: size, y2: c}),
+              svg('line', {class: 'hodo-axis', x1: c, y1: 0, x2: c, y2: size}));
+  // The height bands of the line, km
+  const bands = [[0, 1, '#c92a2a'], [1, 3, '#e67700'], [3, 6, '#2b8a3e'], [6, 10, '#1864ab']];
+  for (let i = 0; i + 1 < winds.length; i++)
+  {
+    const a = winds[i];
+    const b = winds[i + 1];
+    const band = bands.find(([lo, hi]) => a.h / 1000 >= lo && a.h / 1000 < hi) || bands[bands.length - 1];
+    root.append(svg('line', {
+      class: 'hodo-line',
+      x1: c + a.u * scale,
+      y1: c - a.v * scale,
+      x2: c + b.u * scale,
+      y2: c - b.v * scale,
+      stroke: band[2]
+    }));
+  }
+  const legend = el('div', {class: 'vlegend small'},
+                    bands.map(([lo, hi, colour]) => el('span', null, el('i', {style: `background:${colour}`}),
+                                                       `${lo}-${hi} km`)));
+  return el('div', {class: 'hodograph-box'}, el('div', {class: 'small muted'}, 'Hodograph (m/s)'), root, legend);
+}
+
 // ----------------------------------------------------------------------
 // The skew-T log-p diagram
 // ----------------------------------------------------------------------
@@ -3327,7 +3528,15 @@ function soundingOf(profile, columns, axis)
         direction = ((Math.atan2(-u, -v) * 180) / Math.PI + 360) % 360;
       }
     }
-    out.push({p, t: tc, td, speed, direction, z});
+    // The height of the level when the data has it
+    let height = null;
+    for (const name of HEIGHT_PARAMS)
+    {
+      height = columnValue(row, name);
+      if (height !== null)
+        break;
+    }
+    out.push({p, t: tc, td, speed, direction, z, height});
   }
   return out.sort((a, b) => b.p - a.p);
 }
@@ -3754,7 +3963,33 @@ function drawSkewT(container, rows, levelKind, options)
       setVisible(false);
       readout.textContent = '';
     });
-    diagram.append(readout, root);
+    // The analysis of the latest sounding, and its hodograph
+    // The copies of the levels get their heights from the analysis for the hodograph
+    const levelsWithHeights = latest.map((l) => Object.assign({}, l));
+    const analysis = soundingAnalysis(levelsWithHeights);
+    const fmt = (v, digits, unit) => (v === null || v === undefined ? '–' : `${v.toFixed(digits)}${unit}`);
+    const items = [
+      ['CAPE', fmt(analysis.cape, 0, ' J/kg')],
+      ['CIN', fmt(analysis.cin, 0, ' J/kg')],
+      ['LFC', fmt(analysis.lfc, 0, ' hPa')],
+      ['EL', fmt(analysis.el, 0, ' hPa')],
+      ['Lifted index', fmt(analysis.li, 1, '')],
+      ['Freezing level', analysis.freezing ?
+           `${Math.round(analysis.freezing.height)} m${analysis.dataHeights ? '' : '*'} (${
+               Math.round(analysis.freezing.p)} hPa)` :
+           '–'],
+      ['K-index', fmt(analysis.k, 0, '')],
+      ['Total totals', fmt(analysis.tt, 0, '')],
+      ['Precipitable water', fmt(analysis.pw, 1, ' mm')],
+      ['Shear 0-6 km', fmt(analysis.shear, 0, ' m/s')]
+    ];
+    const analysisBox = el('div', {class: 'sk-analysis small'},
+                           el('dl', null, items.map(([k, v]) => el('div', null, el('dt', null, k), el('dd', null, v)))),
+                           analysis.dataHeights ? '' :
+                                                  el('p', {class: 'muted'},
+                                                     '* Height above the lowest level, from the hypsometric equation'));
+    const hodograph = drawHodograph(levelsWithHeights.filter((l) => l.h !== undefined));
+    diagram.append(readout, el('div', {class: 'sk-row'}, root, hodograph || ''), analysisBox);
   }
   draw();
   return {redraw: draw};
@@ -8790,6 +9025,7 @@ root.SmartMetExplorer = {
   hasProfiles,
   hasSounding,
   drawAlongPath,
+  soundingAnalysis,
   contourSegments,
   flightRows,
   flightTimes,

@@ -173,6 +173,8 @@ make %{_smp_mflags}
 
 %changelog
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
+- Data explorer: the analysis of soundings (CAPE, CIN, LFC, EL, lifted index, freezing level,
+  K-index, Total totals, precipitable water, 0-6 km shear) and a hodograph
 - Data explorer: isotherms, wind barbs and the edge of humid air on cross sections and
   time-height sections
 - Data explorer: ensembles with their members stored as levels (leveltype ensemble): the
