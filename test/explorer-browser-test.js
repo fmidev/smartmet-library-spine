@@ -1790,22 +1790,28 @@ async function main()
         {url: eurl.href, everyStep});
     await b.evaluate(`document.querySelector('button.primary').click()`);
     await waitFor(b, `!!document.querySelector('.along-path .chart')`, 'the trajectory results');
-    const along = await b.evaluate(`(() => {
+    const along = await b.evaluate(`(async () => {
       const pane = [...document.querySelectorAll('.results .pane')].find((p) => !p.hidden);
       const slider = pane.querySelector('input[type="range"]');
+      const canvas = () => pane.querySelector('.along-path canvas').toDataURL();
       const first = { label: pane.querySelector('.time-label').textContent, title: pane.querySelector('.chart-title').textContent,
-                      cursor: document.querySelector('.xmap-cursor')?.getAttribute('cx') };
+                      cursor: document.querySelector('.xmap-cursor')?.getAttribute('cx'), canvas: canvas() };
       slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+      // The chart is drawn again with the values of the last point (uPlot draws in a microtask)
+      await new Promise((r) => requestAnimationFrame(r));
+      const redrawn = canvas() !== first.canvas;
+      delete first.canvas;
       return { tab: [...document.querySelectorAll('.results-head [role=tab]')].find((x) => x.getAttribute('aria-selected') === 'true').textContent,
                ticks: pane.querySelectorAll('.time-tick').length, first,
                last: pane.querySelector('.time-label').textContent,
-               moved: document.querySelector('.xmap-cursor')?.getAttribute('cx') !== first.cursor };
+               moved: document.querySelector('.xmap-cursor')?.getAttribute('cx') !== first.cursor, redrawn,
+               label: pane.querySelector('.along-path-distance').closest('label').firstChild.textContent };
     })()`);
     check(
         'animation along the trajectory',
         along.tab === 'Along the path' && along.ticks === 3 && /^0 km \(/.test(along.first.label) &&
             /^temperature at 0 km of \d+ km/.test(along.first.title) && /^\d+ km \(/.test(along.last) &&
-            along.last !== along.first.label && along.moved,
+            along.last !== along.first.label && along.moved && along.redrawn && along.label === 'Distance',
         along);
 
     // A location of the collection

@@ -2585,7 +2585,9 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
   const levelLabel = el('label', null, 'Level', levelSelect);
   levelLabel.hidden = levels.length === 0;
   const charts = el('div', {class: 'along-path'});
-  const head = el('div', {class: 'row'}, levelLabel);
+  // The distance along the path, and the level of the values
+  const distance = el('div', {class: 'along-path-distance'});
+  const head = el('div', {class: 'row'}, el('label', null, 'Distance', distance), levelLabel);
   container.append(head, charts);
   levelSelect.addEventListener('change', () => {
     level = levelSelect.value;
@@ -2597,8 +2599,7 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
   function build()
   {
     charts.replaceChildren();
-    if (slider)
-      slider.element.remove();
+    distance.replaceChildren();
     const chosen = level === '' ? rows : rows.filter((r) => r.level === Number(level));
     const points = pathPoints(chosen);
     if (points.length < 2)
@@ -2691,7 +2692,8 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
       const point = points[i];
       for (const {p, u, title, stats} of plots)
       {
-        u.setData([times, stats.map((s) => s[0]), stats.map((s) => s[2]), stats.map((s) => s[1]), values[p][i]], false);
+        // Redrawn on the same scales: the times do not change, the vertical range is fixed
+        u.setData([times, stats.map((s) => s[0]), stats.map((s) => s[2]), stats.map((s) => s[1]), values[p][i]]);
         title.textContent = `${p} at ${Math.round(point.km)} km of ${Math.round(points[points.length - 1].km)} km (${
             point.lat.toFixed(3)}, ${point.lon.toFixed(3)}), against the median and 10-90 % of the path`;
       }
@@ -2704,7 +2706,7 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
       format: (km, i) => `${Math.round(km)} km (${points[i].lat.toFixed(3)}, ${points[i].lon.toFixed(3)})`,
       onChange: () => show(slider.index())
     });
-    head.append(slider.element);
+    distance.append(slider.element);
     show(0);
   }
   build();
