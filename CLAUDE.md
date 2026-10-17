@@ -51,9 +51,9 @@ make -C test ASAN=yes test        # Address + UB sanitizer
 
 - **`Reactor`** (`Reactor.h`) — the central server object. Owns the plugin/engine lifecycle: loads `.so` files via `dlopen`, initializes them in async task groups, manages shutdown. Inherits from `ContentHandlerMap`. Singleton accessed via `Reactor::instance`. Plugins obtain engine references through `Reactor::getEngine<T>()`.
 
-- **`ContentHandlerMap`** (`ContentHandlerMap.h`) — URI-to-handler routing. Maps request paths to `HandlerView` entries associated with plugins. Also handles admin request registration (both bool and table-returning variants).
+- **`ContentHandlerMap`** (`ContentHandlerMap.h`) — URI-to-handler routing. Maps request paths to `HandlerView` entries associated with plugins. Also handles admin request registration (bool, table, string and custom variants).
 
-- **`SmartMetPlugin`** / **`SmartMetEngine`** — abstract base classes that all plugins/engines must inherit. Plugins implement `init()`, `shutdown()`, `requestHandler()`. Engines implement `init()`, `shutdown()`. Both use `dlopen`-based factory functions (`plugin_create_t`, `plugin_destroy_t`).
+- **`SmartMetPlugin`** / **`SmartMetEngine`** — abstract base classes that all plugins/engines must inherit. Plugins implement `init()`, `shutdown()`, `requestHandler()`. Engines implement `init()`, `shutdown()`. Plugins export `create` / `destroy` (`plugin_create_t`, `plugin_destroy_t`); engines export `engine_name` and `engine_class_creator`.
 
 - **`DynamicPlugin`** — wraps a loaded plugin `.so`: resolves `create`/`destroy` symbols, manages the plugin lifecycle.
 
@@ -71,7 +71,7 @@ make -C test ASAN=yes test        # Address + UB sanitizer
 
 ### Caching
 
-- **`SmartMetCache`** — two-tier cache (memory LRU + filesystem). Memory cache uses `Fmi::Cache::Cache` with `NumShards=1` (byte-based sizing requires deterministic LRU). Evicted entries are written to the file cache asynchronously via a background thread.
+- **`SmartMetCache`** — two-tier cache (memory + filesystem). The memory cache is `Fmi::Cache::Cache` (CLOCK eviction) with `NumShards=1`, so that byte-based sizing gives one value the whole capacity. Evicted entries are written to the file cache asynchronously via a background thread.
 - **`JsonCache`** — cache of parsed JSON files (`get(path)` → `Json::Value`, reloaded when the file changes).
 - **`FileCache`** — standalone filesystem cache.
 

@@ -22,8 +22,9 @@ binary used by every plugin's integration-test harness.
   engine lifecycle: loads `.so` files via `dlopen`, initialises them
   in async task groups, manages shutdown.
 - **Singleton access** — `Reactor::instance` is the canonical handle.
-- **Plugin / engine factory pattern** — every shared object exports
-  `create` / `destroy` C symbols, resolved by `DynamicPlugin`.
+- **Plugin / engine factory pattern** — plugins export `create` /
+  `destroy` C symbols, resolved by `DynamicPlugin`; engines export
+  `engine_name` / `engine_class_creator`, resolved by the `Reactor`.
 - **`SmartMetPlugin`** — abstract base for plugins; concrete plugins
   implement `init()`, `shutdown()`, `requestHandler()`.
 - **`SmartMetEngine`** — abstract base for engines; concrete engines
@@ -39,10 +40,13 @@ binary used by every plugin's integration-test harness.
   inherits from it.
 - **`HandlerView`** — per-handler view of routes registered by one
   plugin.
-- **Admin endpoint registration** — both `bool`- and `Table`-returning
-  variants are supported.
-- **Public vs admin routes** — admin routes are gated by IP filter
-  and request-source rules.
+- **Admin endpoint registration** — `bool`, `Table`, string and custom
+  handler variants, each with an access level (`Public`, `Private`,
+  `RequiresAuthentication`).
+- **Public vs private routes** — private handlers are not advertised
+  to the frontends and accept only local and private networks unless
+  the plugin has `ip_filters`; the admin URI is gated by
+  `admin.ip_filters`.
 
 ## 3. HTTP layer
 
@@ -51,24 +55,27 @@ binary used by every plugin's integration-test harness.
 - **`HTTPParsers`** — wire-protocol parsers.
 - **`HTTP::ContentStreamer`** — streaming response interface for
   large or chunked responses (used by the download and WMS plugins).
-- **`HTTPAuthentication`** — basic / digest auth helpers.
+- **`HTTPAuthentication`** — HTTP Basic authentication helpers.
 - **`FmiApiKey`** — FMI-style API-key extraction from headers / query
   string.
 - **`IPFilter`** — IP-based access control (range / mask matching),
-  primarily used for admin endpoints.
+  used for plugin `ip_filters` and the admin URI.
 
 ## 4. Configuration
 
 - **`ConfigBase`** — libconfig wrapper with typed accessors and
   consistent error handling.
 - **`ConfigTools`** — additional config helpers and validation.
-- **SmartMet libconfig extensions** — `@include`, `@ifdef`, `$(VAR)`,
-  `%(DIR)` (provided via libconfig + helpers).
+- **SmartMet libconfig extensions** — `@include` (libconfig) and
+  `$(VAR)` expansion from other settings or the environment, plus
+  host-specific settings (`lookupHostSetting`).
 - **`Options`** — server-startup configuration from command-line +
   config file:
   - Port, TLS settings.
-  - Thread pools: `adminpool`, `slowpool`, `fastpool`.
-  - Throttle configuration.
+  - Thread pools: `adminpool`, `slowpool`, `fastpool`
+    (`maxthreads`, `maxrequeuesize`).
+  - Throttle configuration (`activerequests.*`).
+  - Client host name resolution (`dns.*`).
   - Logging configuration.
   - Compression.
   - Cache-control headers (`staleWhileRevalidate`, `staleIfError`).
@@ -76,16 +83,18 @@ binary used by every plugin's integration-test harness.
 
 ## 5. Output formatters
 
-All `TableFormatter`-derived; created via `TableFormatterFactory`:
+All `TableFormatter`-derived; all but `ImageFormatter` are created
+via `TableFormatterFactory`:
 
 - **`AsciiFormatter`** — plain text tables.
 - **`CsvFormatter`** — comma-separated values.
 - **`DebugFormatter`** — diagnostic dump.
 - **`HtmlFormatter`** — HTML tables.
-- **`ImageFormatter`** — raw image passthrough.
+- **`ImageFormatter`** — HTML table like `DebugFormatter`, but the
+  cell values are not escaped (for example `<img>` tags).
 - **`JsonFormatter`** — JSON output.
-- **`PhpFormatter`** — PHP `serialize()` format.
-- **`SerialFormatter`** — Perl `Data::Dumper`-style.
+- **`PhpFormatter`** — PHP array literal syntax.
+- **`SerialFormatter`** — PHP `serialize()` format.
 - **`WxmlFormatter`** — FMI weather XML.
 - **`XmlFormatter`** — generic XML.
 - **`TableFormatterOptions`** — per-format options (precision,
@@ -95,11 +104,13 @@ All `TableFormatter`-derived; created via `TableFormatterFactory`:
 ## 6. Caching
 
 - **`SmartMetCache`** — two-tier cache:
-  - **Memory LRU** via `Fmi::Cache::Cache` with `NumShards=1`
-    (byte-based sizing requires deterministic LRU).
+  - **Memory cache** via `Fmi::Cache::Cache` (CLOCK eviction) with
+    `NumShards=1`, so that byte-based sizing gives one value the whole
+    capacity.
   - **Filesystem cache** for evicted entries; eviction → disk happens
     asynchronously on a background thread.
-- **`JsonCache`** — specialised cache for JSON responses.
+- **`JsonCache`** — cache of parsed JSON files, reloaded when a file
+  changes.
 - **`FileCache`** — standalone filesystem cache.
 - **`Table`** — in-memory tabular result type that formatters
   consume.
@@ -164,7 +175,9 @@ All `TableFormatter`-derived; created via `TableFormatterFactory`:
 
 - **`Json`** — high-level JSON helpers built on jsoncpp.
 - **`JsonCache`** — parsed-JSON cache.
-- **`Value`** — type-erased value used by formatters and tables.
+- **`Value`** — typed request-parameter value (bool, integers,
+  double, string, time, point, bounding box) with parsing and checked
+  conversions; used by the WFS stored queries.
 
 ## 12. OpenTelemetry (optional)
 
@@ -217,7 +230,7 @@ Two helper programs are built alongside the library:
 
 ## 16. Testing
 
-- **~60+ standalone test executables** under `test/`, one per
+- **~34 standalone test executables** under `test/`, one per
   `*Test.cpp`.
 - **Framework**: Boost.Test.
 - **Reactor integration tests** under `test/reactor_tests/` — boot

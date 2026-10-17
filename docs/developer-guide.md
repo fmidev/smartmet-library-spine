@@ -71,7 +71,9 @@ make format              # clang-format (unlike the grid repositories, spine is 
   [-e output] [-f failures]`. It starts a Reactor with the given configuration, waits
   until initialisation is done, runs every request file in the input directory, and
   compares the responses with the expected outputs. It writes mismatches to the failures
-  directory. A `.testignore` file lists tests to skip. Every plugin's `make test` uses it.
+  directory. A `.testignore` file lists tests to skip (`-I file` names other lists),
+  `--filter regex` selects tests by name, `-n` sets the number of threads (default 10) and
+  `--timeout` limits the whole run. Every plugin's `make test` uses it.
   Only the response body is compared, except for OPTIONS requests. To check the HTTP status
   and selected response headers too, add a request header such as
   `X-Test-Headers: Content-Type,Link`: the result then starts with `Status: <code>` and one
@@ -99,9 +101,11 @@ make format              # clang-format (unlike the grid repositories, spine is 
 
 `smartmetd` parses its command line and the main configuration file into `Options`: the
 port and TLS settings, the three **thread pools** (`adminpool`, `slowpool`, `fastpool`:
-`minsize`, `maxrequeuesize`), the **throttle** (`start_limit`, `restart_limit`, `limit`,
+`maxthreads`, a count or a percentage of the cores such as `"50%"`, and `maxrequeuesize`),
+the **throttle** (`activerequests.limit`, `start_limit`, `restart_limit` and
 `increase_rate`, the active-request limits behind `isLoadHigh()`), compression, logging,
-`lazylinking`, client host name resolution, `maxrequestsize`, the
+`lazylinking`, client host name resolution (`dns.*`), `maxrequestsize` (command line
+only), the
 `staleWhileRevalidate` / `staleIfError` cache headers, and OpenTelemetry. It then
 creates the `Reactor` and calls `init()`.
 
@@ -110,7 +114,7 @@ creates the `Reactor` and calls `init()`.
 1. **Engines.** For each group under `engines` (skipping those with `disabled = true`),
    `loadEngine()`:
    * checks that the engine's configuration file (`engines.<name>.configfile`) is readable;
-   * `dlopen`s `<moduledir>/engines/<name>.so` (or `libfile`) with
+   * `dlopen`s `<libdir>/engines/<name>.so` (or `engines.<name>.libfile`) with
      **`RTLD_NOW | RTLD_GLOBAL`**. Global, so that plugins loaded later can resolve the
      engine's symbols. A load failure reports the demangled missing symbol;
    * resolves `engine_name` and `engine_class_creator`, calls the creator (this runs the
@@ -304,7 +308,8 @@ Most plugins produce tables of values:
 * `Spine::Table` is a sparse two-dimensional table of strings, with optional column names
   and title (`set(column, row, value)`, `setNames()`, `setTitle()`).
 * `TableFormatterFactory::create(name)` returns a formatter for `ascii`, `csv`, `json`,
-  `xml`, `wxml`, `html`, `php`, `serial`, `debug` or `image`.
+  `xml`, `wxml`, `html`, `php`, `serial` or `debug`. `ImageFormatter` (a `DebugFormatter`
+  for image data) is constructed directly.
   `formatter->format(table, names, request, options)` returns the text, and
   `mimetype()` the content type. `TableFormatterOptions` holds the shared settings
   (missing-value text, …).
@@ -321,8 +326,9 @@ Most plugins produce tables of values:
   relative to the file). `ConfigTools` implements the `@include` / environment variable
   handling and host-specific settings used by the Reactor (`lookupHostSetting`,
   `lookupPathSetting`, …). `cfgvalidate` checks a file from the command line.
-* **Caches.** `SmartMetCache` is a two-level cache: a memory LRU sized in bytes
-  (`Fmi::Cache::Cache` with one shard, for exact byte accounting), plus an optional file
+* **Caches.** `SmartMetCache` is a two-level cache: a memory cache sized in bytes
+  (`Fmi::Cache::Cache`, CLOCK eviction, with one shard so that a value may use the whole
+  capacity), plus an optional file
   cache that entries evicted from memory are written to by a background thread.
   `FileCache` is the file level on its own, and `JsonCache` caches parsed JSON files.
   Report cache statistics through `getCacheStats()`.
@@ -330,7 +336,8 @@ Most plugins produce tables of values:
   per-CRS attributes (axis order, bbox), for the OGC plugins.
 * **`IPFilter`** is the IP allow-list used for plugin `ip_filters` and the admin URI.
 * **`HostInfo`** resolves client host names (cached, in background threads, controlled
-  by the `clientHostName*` options). **`TcpMultiQuery`** sends several TCP queries in
+  by the `dns.resolve`, `dns.cachesize`, `dns.positivettl`, `dns.negativettl`,
+  `dns.threads` and `dns.maxqueuesize` settings). **`TcpMultiQuery`** sends several TCP queries in
   parallel; the frontend uses it to query its backends' state.
 * **Active requests and access logs.** `ActiveRequests` tracks running requests
   (`what=activerequests`); a terminate handler prints them if the process dies.
@@ -344,7 +351,9 @@ Most plugins produce tables of values:
   local directory (package `smartmet-swagger-ui`), never from a CDN. The definition is
   serialized once per `publish()`; requests only insert the server URL from
   `OpenAPI::serverUrl()`. Settings are read from the plugin's `openapi` group with
-  `Settings::parse()`. The documentation page shows the URL of the request while the
+  `Settings::parse()`: `enabled`, `ui` (serve `/api/docs`), `expand_collections`,
+  `max_enum` (default 1000), `swagger_ui_dir`, `contact`, `license`, `map_tiles`,
+  `map_tile_size` (64...4096, default 256) and `map_attribution`. The documentation page shows the URL of the request while the
   parameters are entered, and the request as bash,
   Python, R and JavaScript snippets, and as scripts which repeat the request for
   consecutive days, weeks, months or years when it has a time window (`datetime=start/end`
@@ -371,9 +380,10 @@ Most plugins produce tables of values:
   catalog; the frontend serves the merged catalog of the cluster with `OpenAPI::Catalog`
   and `parseCatalog()`. URLs are absolute when the request has a valid `Host`, relative
   otherwise (the frontend asks the backends without one). Settings are read from the
-  `api_catalog` group of the server configuration (`enabled`, `ui`, `swagger_ui_dir`,
-  `title`, `description`, `explorer`, `explorer_dir`, `uplot_dir`, `palette_dir`,
-  `palette_config` and `explorer_defaults`, see `OpenApi.h`). An API added with a
+  `api_catalog` group of the server configuration (the `openapi` settings above, such as
+  `enabled`, `ui`, `swagger_ui_dir` and `map_tiles`, and `title`, `description`, `explorer`,
+  `explorer_dir`, `uplot_dir`, `palette_dir`, `palette_config` and `explorer_defaults`, see
+  `OpenApi.h`). An API added with a
   `kind` (`edr`, `timeseries`, `coverages`, `tiles`, `wmts`) carries it as
   `x-smartmet-kind` in the catalog.
 * **Data explorer** (`explorer/`, served by `OpenAPI::Catalog` at `/api/explorer`): a page
