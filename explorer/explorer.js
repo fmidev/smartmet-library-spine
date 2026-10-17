@@ -1116,6 +1116,16 @@ function createMap(settings, onSelect)
         shape.addEventListener('mouseout', () => {
           tooltip.hidden = true;
         });
+        // A cell that can be clicked does not start dragging the map
+        if (cell.onclick)
+        {
+          shape.classList.add('clickable');
+          shape.addEventListener('pointerdown', (e) => e.stopPropagation());
+          shape.addEventListener('click', (e) => {
+            e.stopPropagation();
+            cell.onclick();
+          });
+        }
         layers.cells.append(shape);
       }
     }
@@ -2029,7 +2039,7 @@ function timeSlider(times, options = {})
       known                           ? times.map((tm) => (tm - times[0]) / 60000) :
                                         times.map((_, i) => i);
   const span = positions[positions.length - 1] || 1;
-  let index = 0;
+  let index = Math.max(0, Math.min(times.length - 1, options.initial || 0));
   let all = false;
   let timer = null;
   let frame = null;
@@ -2056,6 +2066,11 @@ function timeSlider(times, options = {})
   const track = el('div', {class: 'time-track'}, slider, ticks);
   const label = el('span', {class: 'small time-label'});
   const play = el('button', {type: 'button', class: 'small time-play', 'aria-label': 'Play'}, '▶');
+  // One time back or forward, stopping at the ends
+  const back =
+      el('button', {type: 'button', class: 'small time-step', 'aria-label': 'Previous time'}, '‹');
+  const forward =
+      el('button', {type: 'button', class: 'small time-step', 'aria-label': 'Next time'}, '›');
   const speed = el('select', {'aria-label': 'Animation speed'},
                    ANIMATION_SPEEDS.map(([v, l]) => el('option', {value: v}, l)));
   speed.value = String(animationDelay);
@@ -2068,6 +2083,8 @@ function timeSlider(times, options = {})
     label.textContent = all ? `${times.length} times` : formatAt(index);
     slider.disabled = all;
     play.disabled = all;
+    back.disabled = all || index === 0;
+    forward.disabled = all || index === times.length - 1;
   };
   // Chooses step i; the views are redrawn by onChange
   const choose = (i) => {
@@ -2141,6 +2158,14 @@ function timeSlider(times, options = {})
     play.setAttribute('aria-label', 'Pause');
     timer = setTimeout(tick, animationDelay);
   });
+  back.addEventListener('click', () => {
+    stop();
+    choose(index - 1);
+  });
+  forward.addEventListener('click', () => {
+    stop();
+    choose(index + 1);
+  });
   speed.addEventListener('change', () => {
     animationDelay = Number(speed.value);
     try
@@ -2160,18 +2185,20 @@ function timeSlider(times, options = {})
       options.onChange();
   });
   update();
-  box.append(play, speed, track, label);
+  box.append(back, play, forward, speed, track, label);
   if (options.all)
     box.append(el('label', {class: 'check'}, allBox, 'All times'));
   return {element: box, index: () => index, all: () => all};
 }
 
-// The time chooser of profile and sounding diagrams: a slider over the times, or all of them
-function timeChooser(times, onChange)
+// The time chooser of profile and sounding diagrams: a slider over the times, or all of them,
+// starting from the time of index 'initial'
+function timeChooser(times, onChange, initial)
 {
-  const slider = timeSlider(times, {label: 'Time of the profile', all: true, onChange});
+  const slider = timeSlider(times, {label: 'Time of the profile', all: true, onChange, initial});
   return {
     element: slider.element,
+    index: () => slider.index(),
     value: () => (times.length === 0 ? [] : slider.all() ? times : [times[slider.index()]])
   };
 }
@@ -3942,25 +3969,93 @@ function drawSkewT(container, rows, levelKind, options)
   if (!axis || !columns.temperature)
   {
     container.append(el('p', {class: 'muted'}, 'A sounding needs temperatures on pressures.'));
-    return;
+    return {redraw: () => {}};
   }
   const profiles = collectProfiles(rows, axis);
   const keys = Array.from(new Set(profiles.map((p) => p.key)));
   const times = Array.from(new Set(profiles.map((p) => p.time))).sort((a, b) => a - b);
+  // Side by side the diagrams share the scales of all the soundings, so that they compare
+  const levels = profiles.flatMap((p) => soundingOf(p, columns, axis));
+  const temps = levels.flatMap((l) => [l.t, l.td]).filter((v) => v !== null);
+  const range = levels.length === 0 ? null : {
+    pBottom: Math.max(1050, ...levels.map((l) => l.p)),
+    pTop: Math.max(100, Math.min(...levels.map((l) => l.p))),
+    tmin: Math.min(-40, ...temps) - 5,
+    tmax: Math.max(30, ...temps) + 5
+  };
+  const panels = [];
+  const panelsBox = el('div', {class: 'sk-panels'});
+  const add = el('button', {type: 'button', class: 'small'}, 'Add a panel');
+  const head = el('div', {class: 'row'}, add);
+  if (opts.controls)
+    head.append(...opts.controls);
+  container.append(head, panelsBox);
+  // The width of each diagram: the panels side by side as far as they fit
+  const width = () => {
+    const total = container.clientWidth || 560;
+    const n = panels.length;
+    const fit = n > 1 ? Math.floor((total - 16 * (n - 1)) / n) : total;
+    return Math.max(340, Math.min(640, fit));
+  };
+  const redraw = () => panels.forEach((p) => p.redraw());
+  // A panel of its own location and time, by default the next location or else the next time
+  const addPanel = () => {
+    const last = panels[panels.length - 1];
+    let key = keys[0];
+    let time = 0;
+    if (last)
+    {
+      const used = new Set(panels.map((p) => p.key()));
+      const free = keys.find((k) => !used.has(k));
+      key = free !== undefined ? free : last.key();
+      time = free !== undefined ? last.timeIndex() : Math.min(times.length - 1, last.timeIndex() + 1);
+    }
+    const box = el('div', {class: 'sk-panel'});
+    panelsBox.append(box);
+    const panel = skewTPanel(box, profiles, keys, times, columns, axis, Object.assign({}, opts, {
+      key,
+      time,
+      width,
+      range: () => (panels.length > 1 ? range : null),
+      onRemove: panels.length === 0 ? null : () => {
+        panels.splice(panels.indexOf(panel), 1);
+        box.remove();
+        redraw();
+      }
+    }));
+    panels.push(panel);
+  };
+  add.addEventListener('click', () => {
+    addPanel();
+    redraw();
+  });
+  addPanel();
+  return {redraw};
+}
+
+// A thermodynamic diagram of the soundings of a location: the diagram, the location, the
+// times, the lifted parcel, the analysis, the hodograph and the values of the levels.
+// options: key and time (index) to start from, width() of the diagram, range() of shared
+// scales or null, onRemove of a panel that can be removed, type and onType of the diagram,
+// compare (soundings of other data).
+function skewTPanel(container, profiles, keys, times, columns, axis, options)
+{
+  const opts = options;
   const keySelect =
       el('select',
          {'aria-label': 'Location of the sounding'},
          keys.map((k) => el('option', {value: k}, k)));
+  keySelect.value = opts.key;
   const typeSelect =
       el('select',
          {'aria-label': 'Diagram'},
          THERMO_DIAGRAMS.map(([v, label]) => el('option', {value: v}, label)));
   typeSelect.value = opts.type || 'skewt';
-  const chooser = timeChooser(times, () => draw());
+  const chooser = timeChooser(times, () => draw(), opts.time);
   const parcelBox = el('input', {type: 'checkbox', checked: true, 'aria-label': 'Lifted parcel'});
   const info = el('p', {class: 'muted small skewt-info'});
   const diagram = el('div', {class: 'skewt'});
-  const extra = el('div', {class: 'row'});
+  let tableOpen = false;
   keySelect.hidden = keys.length < 2;
   keySelect.addEventListener('change', () => draw());
   parcelBox.addEventListener('change', () => draw());
@@ -3969,18 +4064,19 @@ function drawSkewT(container, rows, levelKind, options)
       opts.onType(typeSelect.value);
     draw();
   });
+  const remove = opts.onRemove ?
+      el('button', {type: 'button', class: 'small', 'aria-label': 'Remove the panel', onclick: opts.onRemove}, '×') :
+      '';
   container.append(
       el('div',
          {class: 'row'},
          typeSelect,
          keySelect,
          chooser.element,
-         el('label', {class: 'check'}, parcelBox, 'Lifted parcel')),
-      extra,
+         el('label', {class: 'check'}, parcelBox, 'Lifted parcel'),
+         remove),
       diagram,
       info);
-  if (opts.controls)
-    extra.append(...opts.controls);
 
   // Draws the chosen diagram of the soundings at the chosen times and location
   function draw()
@@ -4009,17 +4105,18 @@ function drawSkewT(container, rows, levelKind, options)
     const others = (opts.compare && opts.compare.soundings) ?
         opts.compare.soundings(soundings.map((s) => s.time)) :
         [];
-    const width = Math.max(360, Math.min(640, container.clientWidth || 560));
+    const width = opts.width();
     const height = 560;
     const m = {left: 48, right: 56, top: 10, bottom: 36};
     const w = width - m.left - m.right;
     const h = height - m.top - m.bottom;
     const all = [...soundings, ...others].flatMap((s) => s.levels);
-    const pBottom = Math.max(1050, ...all.map((l) => l.p));
-    const pTop = Math.max(100, Math.min(...all.map((l) => l.p)));
     const temps = all.flatMap((l) => [l.t, l.td]).filter((v) => v !== null);
-    const tmin = Math.min(-40, ...temps) - 5;
-    const tmax = Math.max(30, ...temps) + 5;
+    const shared = opts.range();
+    const pBottom = Math.max(1050, ...all.map((l) => l.p), shared ? shared.pBottom : 0);
+    const pTop = Math.max(100, Math.min(...all.map((l) => l.p), shared ? shared.pTop : Infinity));
+    const tmin = Math.min(-40, ...temps, shared ? shared.tmin + 5 : Infinity) - 5;
+    const tmax = Math.max(30, ...temps, shared ? shared.tmax - 5 : -Infinity) + 5;
     const near =
         all.filter((l) => l.p >= 850).flatMap((l) => [l.t, l.td]).filter((v) => v !== null);
     const tSurface = near.length ? Math.min(...near) : 0;
@@ -4214,6 +4311,7 @@ function drawSkewT(container, rows, levelKind, options)
       for (const l of latest)
         if (!near || Math.abs(Math.log(l.p / p)) < Math.abs(Math.log(near.p / p)))
           near = l;
+      highlight(near && Math.abs(Math.log(near.p / p)) < 0.05 ? near : null);
       if (near && Math.abs(Math.log(near.p / p)) < 0.05)
       {
         tMark.setAttribute('cx', x(near.t, near.p));
@@ -4241,6 +4339,7 @@ function drawSkewT(container, rows, levelKind, options)
     });
     hover.addEventListener('mouseleave', () => {
       setVisible(false);
+      highlight(null);
       readout.textContent = '';
     });
     // The analysis of the latest sounding, and its hodograph
@@ -4269,10 +4368,69 @@ function drawSkewT(container, rows, levelKind, options)
                                                   el('p', {class: 'muted'},
                                                      '* Height above the lowest level, from the hypsometric equation'));
     const hodograph = drawHodograph(levelsWithHeights.filter((l) => l.h !== undefined));
-    diagram.append(readout, el('div', {class: 'sk-row'}, root, hodograph || ''), analysisBox);
+
+    // The values of the levels of the latest sounding; a row pointed marks its level
+    const [, heightUnit, heightOf] = unitOf('height');
+    const cell = (v, digits) => el('td', null, v === null || v === undefined || !isFinite(v) ? '' : v.toFixed(digits));
+    const tableRows = new Map();
+    const body = el('tbody');
+    levelsWithHeights.forEach((l, i) => {
+      const rh = l.td === null ? null : (100 * saturationPressure(l.td)) / saturationPressure(l.t);
+      const theta = (l.t + KELVIN) * Math.pow(1000 / l.p, KAPPA);
+      const tr = el('tr', null,
+                    cell(l.p, 0),
+                    cell(l.h === undefined ? null : heightOf(l.h), 0),
+                    cell(l.t, 1),
+                    cell(l.td, 1),
+                    cell(rh, 0),
+                    cell(l.direction, 0),
+                    cell(l.speed, 1),
+                    cell(theta, 1));
+      tr.addEventListener('mouseenter', () => {
+        tMark.setAttribute('cx', x(l.t, l.p));
+        tMark.setAttribute('cy', y(l.t, l.p));
+        tMark.setAttribute('visibility', 'visible');
+        if (l.td !== null)
+        {
+          dMark.setAttribute('cx', x(l.td, l.p));
+          dMark.setAttribute('cy', y(l.td, l.p));
+          dMark.setAttribute('visibility', 'visible');
+        }
+      });
+      tr.addEventListener('mouseleave', () => setVisible(false));
+      // By the level of the sounding, as the pointer on the diagram finds them
+      tableRows.set(latest[i], tr);
+      body.append(tr);
+    });
+    const head = el('tr', null, ['hPa', `Height (${heightUnit})`, 'T (C)', 'Td (C)', 'RH (%)', 'Wind (°)', 'Wind (m/s)', 'θ (K)']
+                                    .map((t) => el('th', null, t)));
+    const table = el('details', {class: 'sk-values', open: tableOpen},
+                     el('summary', null, `Values of the ${levelsWithHeights.length} levels`),
+                     el('div', {class: 'table-wrap'}, el('table', {class: 'data'}, el('thead', null, head), body)));
+    table.addEventListener('toggle', () => {
+      tableOpen = table.open;
+    });
+    let active = null;
+    // Marks the row of a level pointed on the diagram
+    function highlight(level)
+    {
+      const tr = level ? tableRows.get(level) : null;
+      if (tr === active)
+        return;
+      if (active)
+        active.classList.remove('active');
+      active = tr;
+      if (active)
+        active.classList.add('active');
+    }
+    diagram.append(readout, el('div', {class: 'sk-row'}, root, hodograph || ''), analysisBox, table);
   }
   draw();
-  return {redraw: draw};
+  return {
+    redraw: draw,
+    key: () => keySelect.value || keys[0],
+    timeIndex: () => chooser.index()
+  };
 }
 
 // ------------------------------------------------------------------
@@ -5437,12 +5595,134 @@ function hasMapValues(rows)
   return false;
 }
 
-// The values of the rows on a map: a parameter, a time slider and a colour scale
-function drawValueMap(container, rows, parameters, settings)
+// The series of a point clicked on a value map: the values of the parameter of the map at the
+// level of the map against time with the time of the map marked, or the profile of the point
+// when there is one time of several levels. 'state' is that of the map (param, time, level,
+// probe), 'times' its times as in the rows. Returns show(point), draw() and update().
+function valueProbe(box, rows, state, times, options)
+{
+  const root = typeof window !== 'undefined' ? window : globalThis;
+  const profile = times.length === 1 &&
+      new Set(rows.map((r) => r.level).filter((v) => typeof v === 'number')).size > 1;
+  const epochs = times.map((tm) => {
+    const d = parseTime(tm);
+    return d ? Math.round(d.getTime() / 1000) : null;
+  });
+  let plot = null;
+  let series = [];
+  let title = null;
+  const close = el('button', {type: 'button', class: 'small', 'aria-label': 'Close the series'}, '×');
+  close.addEventListener('click', () => {
+    state.probe = null;
+    plot = null;
+    box.hidden = true;
+    box.replaceChildren();
+    if (options.onClose)
+      options.onClose();
+  });
+  const at = (r) => r.lat === state.probe.lat && r.lon === state.probe.lon;
+  const place = () => `${state.probe.name ? `${state.probe.name} ` : ''}(${state.probe.lat.toFixed(3)}, ${
+      state.probe.lon.toFixed(3)})`;
+  // The title with the value at the time of the map
+  const update = () => {
+    if (!plot || !title)
+      return;
+    const v = series[state.time];
+    title.textContent = `${state.param} at ${place()}, ${formatTime(new Date(epochs[state.time] * 1000))}: ${
+        v === null || v === undefined ? 'missing' : round(v, 2)}`;
+    plot.redraw(false);
+  };
+  // Draws the series of the point clicked
+  const draw = () => {
+    if (!state.probe)
+      return;
+    box.hidden = false;
+    plot = null;
+    const body = el('div');
+    box.replaceChildren(el('div', {class: 'row'}, close), body);
+    const mine = rows.filter(at);
+    if (profile)
+    {
+      drawProfiles(body, mine, [state.param], options.levelKind);
+      return;
+    }
+    // One value per time of the map at the level of the map
+    const byTime = new Map();
+    for (const r of mine)
+      if (options.atLevel(r) && typeof r[state.param] === 'number' && isFinite(r[state.param]))
+        byTime.set(String(r.time), r[state.param]);
+    series = times.map((tm) => (byTime.has(tm) ? byTime.get(tm) : null));
+    title = el('div', {class: 'chart-title'});
+    const target = el('div', {class: 'chart-plot'});
+    body.append(el('div', {class: 'chart', 'data-param': state.param}, title, target));
+    if (!root.uPlot || epochs.some((x) => x === null))
+    {
+      title.textContent = `${state.param} at ${place()}`;
+      return;
+    }
+    const css = getComputedStyle(document.documentElement);
+    const accent = css.getPropertyValue('--accent').trim() || '#0969da';
+    const axisColor = css.getPropertyValue('--muted').trim() || '#666';
+    const gridColor = css.getPropertyValue('--line').trim() || '#ddd';
+    // The time of the map as a dashed line and a dot on the value
+    const markTime = (u) => {
+      const x = u.valToPos(epochs[state.time], 'x', true);
+      const v = series[state.time];
+      const ctx = u.ctx;
+      const ratio = typeof devicePixelRatio === 'number' ? devicePixelRatio : 1;
+      ctx.save();
+      ctx.strokeStyle = '#d9480f';
+      ctx.lineWidth = 2 * ratio;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(x, u.bbox.top);
+      ctx.lineTo(x, u.bbox.top + u.bbox.height);
+      ctx.stroke();
+      if (v !== null)
+      {
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#d9480f';
+        ctx.beginPath();
+        ctx.arc(x, u.valToPos(v, 'y', true), 5 * ratio, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+      ctx.restore();
+    };
+    const axis = {stroke: axisColor, grid: {stroke: gridColor, width: 1}, ticks: {stroke: gridColor}};
+    plot = new root.uPlot(
+        {
+          width: Math.max(320, Math.min(900, box.clientWidth - 8 || 640)),
+          height: 200,
+          series: [{}, {label: state.param, stroke: accent, width: 2, spanGaps: true}],
+          axes: [Object.assign({}, axis, {size: 50}), Object.assign({}, axis, {size: 60})],
+          legend: {live: true},
+          hooks: {draw: [markTime]}
+        },
+        [epochs, series], target);
+    update();
+  };
+  return {
+    show(point) {
+      state.probe = point;
+      if (options.onShow)
+        options.onShow(point);
+      draw();
+    },
+    draw,
+    update
+  };
+}
+
+// The values of the rows on a map: a parameter, a level, a time slider and a colour scale.
+// Clicking a value shows the time series of the point, or its profile when there is one time
+// of several levels. options: levelKind (the kind of the levels of the rows).
+function drawValueMap(container, rows, parameters, settings, options = {})
 {
   container.replaceChildren();
   const numeric = parameters.filter((p) => rows.some((r) => typeof r[p] === 'number'));
   const located = rows.filter((r) => typeof r.lat === 'number' && typeof r.lon === 'number');
+  // Several levels: the map shows one of them, the lowest by default
+  const {levels, fallback} = chartLevels(located, options.levelKind);
   if (numeric.length === 0 || located.length === 0)
   {
     container.append(el('p', {class: 'muted'}, 'No located numeric values to show.'));
@@ -5451,7 +5731,17 @@ function drawValueMap(container, rows, parameters, settings)
 
   const times = Array.from(new Set(located.map((r) => String(r.time))))
                     .sort((a, b) => (parseTime(a) || 0) - (parseTime(b) || 0));
-  const state = {param: numeric[0], time: 0, palette: 'viridis', steps: 0, min: null, max: null};
+  const state = {
+    param: numeric[0],
+    time: 0,
+    level: levels.length ? (fallback !== '' ? fallback : String(levels[0])) : '',
+    palette: 'viridis',
+    steps: 0,
+    min: null,
+    max: null,
+    probe: null  // The point clicked: {lat, lon, name}
+  };
+  const atLevel = (r) => state.level === '' || r.level === Number(state.level);
   // The production palettes: bands of fixed values and colours
   let production = {palettes: {}, parameters: {}};
   const bandsOf = (name) => production.palettes[name.replace(/^production:/, '')];
@@ -5471,6 +5761,11 @@ function drawValueMap(container, rows, parameters, settings)
          {'aria-label': 'Classes'},
          [['0', 'Continuous'], ['5', '5 classes'], ['8', '8 classes'], ['12', '12 classes']].map(
              ([v, t]) => el('option', {value: v}, t)));
+  const unit = {pressure: ' hPa', 'pressure-pa': ' Pa', height: ' m', depth: ' m'}[options.levelKind] || '';
+  const member = options.levelKind === 'member';
+  const levelSelect = el('select', {'aria-label': member ? 'Member of the map' : 'Level of the map'},
+                         levels.map((v) => el('option', {value: String(v)}, member ? `Member ${v}` : `${v}${unit}`)));
+  levelSelect.value = state.level;
   const minInput = el('input', {type: 'number', step: 'any', 'aria-label': 'Minimum', size: 6});
   const maxInput = el('input', {type: 'number', step: 'any', 'aria-label': 'Maximum', size: 6});
   const slider = timeSlider(times.map((tm) => {
@@ -5482,25 +5777,32 @@ function drawValueMap(container, rows, parameters, settings)
     onChange: () => {
       state.time = slider.index();
       draw();
+      probe.update();
     }
   });
   const legend = el('div', {class: 'legend'});
+  const probeBox = el('div', {class: 'map-probe', hidden: true});
   container.append(
       el('div',
          {class: 'row'},
          el('label', null, 'Parameter', paramSelect),
+         levels.length ? el('label', null, member ? 'Member' : 'Level', levelSelect) : '',
          el('label', null, 'Colours', paletteSelect),
          el('label', null, 'Scale', stepsSelect),
          el('label', null, 'Min', minInput),
          el('label', null, 'Max', maxInput)),
       slider.element,
       legend,
-      map.element);
+      map.element,
+      el('p', {class: 'muted small'},
+         times.length === 1 && levels.length > 1 ? 'Click a value for the profile of the point' :
+                                                   'Click a value for the time series of the point'),
+      probeBox);
 
   // The default range: the 2nd and the 98th percentiles of all times, so that the colours
   // keep their meaning when the time changes
   const defaultRange = () => {
-    const values = located.map((r) => r[state.param])
+    const values = located.filter(atLevel).map((r) => r[state.param])
                        .filter((v) => typeof v === 'number' && isFinite(v))
                        .sort((a, b) => a - b);
     return [quantile(values, 0.02), quantile(values, 0.98)];
@@ -5511,7 +5813,7 @@ function drawValueMap(container, rows, parameters, settings)
   const draw = () => {
     const [lo, hi] = [state.min, state.max];
     const t = times[state.time];
-    const items = located.filter((r) => String(r.time) === t).map((r) => {
+    const items = located.filter((r) => String(r.time) === t && atLevel(r)).map((r) => {
       const v = r[state.param];
       const ok = typeof v === 'number' && isFinite(v);
       let color = null;
@@ -5528,7 +5830,8 @@ function drawValueMap(container, rows, parameters, settings)
         lat: r.lat,
         color: color,
         label: `${state.param}: ${ok ? v : 'missing'}`,
-        info: {name: r.name, lat: r.lat, lon: r.lon}
+        info: {name: r.name, lat: r.lat, lon: r.lon},
+        onclick: () => probe.show({lat: r.lat, lon: r.lon, name: r.name})
       };
     });
     if (size === null)
@@ -5574,8 +5877,15 @@ function drawValueMap(container, rows, parameters, settings)
     maxInput.value = state.max === null ? '' : round(state.max, 2);
   };
 
+  levelSelect.addEventListener('change', () => {
+    state.level = levelSelect.value;
+    setRange();
+    draw();
+    probe.draw();
+  });
   paramSelect.addEventListener('change', () => {
     state.param = paramSelect.value;
+    probe.draw();
     setRange();
     if (isProduction())
     {
@@ -5602,6 +5912,12 @@ function drawValueMap(container, rows, parameters, settings)
         draw();
       }
     });
+  const probe = valueProbe(probeBox, located, state, times, {
+    levelKind: options.levelKind,
+    atLevel,
+    onClose: () => map.setCursor(null),
+    onShow: (p) => map.setCursor(p)
+  });
   paletteSelect.value = state.palette;
   setRange();
   draw();
@@ -7763,7 +8079,7 @@ function timeSeriesModule(app, api, state, save)
         else if (name === 'Sounding')
           drawSounding(panes.Sounding, rows, kind);
         else if (name === 'Map')
-          drawValueMap(panes.Map, shown.rows, dataParams(), mapSettings(app.element));
+          drawValueMap(panes.Map, shown.rows, dataParams(), mapSettings(app.element), {levelKind: kind});
         else if (name === 'Table')
           drawTable(panes.Table, shown.rows, shown.labels);
         else if (!S.renderTree(panes.Tree, text, 'json'))
@@ -9059,7 +9375,7 @@ function edrModule(app, api, state, save)
             }
           });
         else if (name === 'Map')
-          drawValueMap(panes.Map, shown.rows, params, mapSettings(app.element));
+          drawValueMap(panes.Map, shown.rows, params, mapSettings(app.element), {levelKind: kind});
         else if (name === 'Table')
           drawTable(panes.Table, shown.rows, shown.labels);
         else if (!S.renderTree(panes.Tree, text, 'json'))

@@ -173,6 +173,11 @@ make %{_smp_mflags}
 
 %changelog
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
+- Data explorer: one time back or forward on every time slider; a value clicked on the map shows
+  the time series of the point (the profile when there is one time), and maps of several levels
+  show the level chosen
+- Data explorer: soundings side by side in panels sharing their scales, and the values of the
+  levels of a sounding as a table that marks the level pointed
 - Data explorer: the sensors of the chosen observation stations listed per parameter as buttons
   toggling the sensor numbers, marking the default sensor and sensors whose values ended
 - Data explorer: an optional API key, sent as the fmi-apikey header of the requests

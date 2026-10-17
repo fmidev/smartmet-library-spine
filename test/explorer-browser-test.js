@@ -948,6 +948,39 @@ async function main()
             valueMap.still && valueMap.back && valueMap.remembered === '175',
         valueMap);
 
+    // One time back or forward with the buttons, and the time series of a point clicked
+    const probe = await b.evaluate(`(async () => {
+      const pane = [...document.querySelectorAll('.results .pane')].find((p) => !p.hidden);
+      const label = () => pane.querySelector('.time-label').textContent;
+      const slider = pane.querySelector('input[type="range"]');
+      slider.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true }));
+      const first = label();
+      const back = pane.querySelector('[aria-label="Previous time"]');
+      const next = pane.querySelector('[aria-label="Next time"]');
+      const backAtStart = back.disabled;
+      next.click();
+      const second = label();
+      back.click();
+      const again = label();
+      pane.querySelector('.xmap-dot').dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 200));
+      const box = pane.querySelector('.map-probe');
+      const title1 = box.querySelector('.chart-title').textContent;
+      next.click();
+      const title2 = box.querySelector('.chart-title').textContent;
+      const canvas = box.querySelectorAll('canvas').length;
+      const cursor = pane.querySelectorAll('.xmap-cursor').length;
+      box.querySelector('[aria-label="Close the series"]').click();
+      return { backAtStart, stepped: second !== first, returned: again === first, title1, title2, canvas, cursor,
+               closed: box.hidden && pane.querySelectorAll('.xmap-cursor').length === 0 };
+    })()`);
+    check(
+        'a time back and forward, the series of a point clicked',
+        probe.backAtStart && probe.stepped && probe.returned && probe.canvas >= 1 &&
+            probe.cursor === 1 && probe.closed && /^\S+ at .*: /.test(probe.title1) &&
+            probe.title1 !== probe.title2,
+        probe);
+
     // The production palette of the parameter, drawn band by band
     const production = await b.evaluate(`(async () => {
       const pane = [...document.querySelectorAll('.results .pane')].find((p) => !p.hidden);
@@ -1246,6 +1279,18 @@ async function main()
         barbs: box.querySelectorAll('.barb').length,
         info: box.querySelector('.skewt-info').textContent,
         has: E.hasSounding(rows, 'hybrid'), noPressure: E.hasSounding(rows.map(({pressure, ...r}) => r), 'depth') };
+      // The values of the levels, and a second panel side by side with the next time
+      const valueRows = box.querySelectorAll('.sk-values tbody tr');
+      valueRows[3].dispatchEvent(new MouseEvent('mouseenter'));
+      skewt.values = valueRows.length;
+      skewt.marked = box.querySelector('.sk-mark.temperature').getAttribute('visibility');
+      skewt.head = [...box.querySelectorAll('.sk-values th')].map((th) => th.textContent).join('|');
+      [...box.querySelectorAll('button')].find((x) => x.textContent === 'Add a panel').click();
+      skewt.panels = box.querySelectorAll('.sk-panel').length;
+      skewt.diagrams = box.querySelectorAll('.skewt-diagram').length;
+      skewt.times = [...box.querySelectorAll('.sk-panel .time-label')].map((x) => x.textContent);
+      box.querySelectorAll('.sk-panel')[1].querySelector('[aria-label="Remove the panel"]').click();
+      skewt.removed = box.querySelectorAll('.sk-panel').length;
       // The other diagrams, the pointer and a sounding to compare with
       const diagrams = {};
       for (const type of ['skewt', 'tephigram', 'stuve']) {
@@ -1328,7 +1373,11 @@ async function main()
         vertical.skewt.temperature === 1 && vertical.skewt.dewpoint === 1 &&
             vertical.skewt.parcel === 1 && vertical.skewt.barbs > 5 && vertical.skewt.has &&
             !vertical.skewt.noPressure &&
-            vertical.skewt.info.startsWith('Lifting condensation level'),
+            vertical.skewt.info.startsWith('Lifting condensation level') &&
+            vertical.skewt.values >= 10 && vertical.skewt.marked === 'visible' &&
+            vertical.skewt.head.startsWith('hPa|Height') && vertical.skewt.panels === 2 &&
+            vertical.skewt.diagrams === 2 && vertical.skewt.times.length === 2 &&
+            vertical.skewt.times[0] !== vertical.skewt.times[1] && vertical.skewt.removed === 1,
         vertical.skewt);
     const kelvins = await b.evaluate(`(() => {
       const E = SmartMetExplorer;

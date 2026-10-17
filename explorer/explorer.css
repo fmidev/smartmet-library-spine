@@ -227,6 +227,8 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .download[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
 .xmap-cell { stroke: none; }
 .xmap-dot { stroke: #fff; stroke-width: 1; }
+.xmap-cell.clickable, .xmap-dot.clickable { cursor: pointer; }
+.map-probe { margin-top: 0.5rem; }
 .legend { display: flex; align-items: center; gap: 6px; margin: 4px 0 8px; }
 .legend-bar { display: flex; flex: 1; max-width: 360px; height: 12px; border: 1px solid var(--line); }
 .legend-step { flex: 1; }
@@ -295,6 +297,7 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .time-slider { align-items: center; gap: 8px; margin: 6px 0; }
 .time-slider select { width: auto; }
 .time-play { min-width: 2.4em; }
+.time-step { min-width: 1.8em; font-weight: bold; }
 .time-track { position: relative; flex: 1 1 220px; min-width: 160px; max-width: 640px; padding-bottom: 8px; }
 .time-track input[type="range"] { display: block; width: 100%; margin: 0; }
 .time-ticks { position: absolute; left: 8px; right: 8px; bottom: 0; height: 8px; pointer-events: none; }
@@ -320,6 +323,12 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .hodo-axis { stroke: var(--line); }
 .hodo-line { stroke-width: 2.5; stroke-linecap: round; }
 .sk-analysis dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px 12px; margin: 6px 0; }
+.sk-panels { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.sk-panel { min-width: 0; max-width: 100%; }
+.sk-panels > .sk-panel + .sk-panel { border-left: 1px solid var(--line); padding-left: 16px; }
+.sk-values { margin-top: 6px; }
+.sk-values table td, .sk-values table th { text-align: right; }
+.sk-values tr.active td { background: color-mix(in srgb, var(--accent) 18%, transparent); }
 .sk-analysis dt { color: var(--muted); }
 .sk-analysis dd { margin: 0 0 4px; font-variant-numeric: tabular-nums; }
 
