@@ -1416,6 +1416,23 @@ async function main()
         hover);
     await mouse(b, 'mouseMoved', 1, 1, 0);
 
+    // A flight: the values at the times the points are passed, interpolated in time
+    const flight = await b.evaluate(`(() => {
+      const E = SmartMetExplorer;
+      const rows = [];
+      for (const [lon, km] of [[25, 0], [26, 1]])
+        for (const [h, v, d] of [[0, 0, 350], [3, 30, 10]])
+          rows.push({ name: 'p', time: new Date(Date.UTC(2026, 9, 15, h)).toISOString(), lat: 60, lon, level: 1,
+                      temperature: v + lon, winddirection: d });
+      // Departure at 00:30 from the first point, arrival at 02:30 at the second
+      const f = { departure: Date.UTC(2026, 9, 15, 0, 30), arrival: Date.UTC(2026, 9, 15, 2, 30) };
+      const out = E.flightRows(rows, f).sort((a, b) => a.lon - b.lon);
+      return out.map((r) => [r.lon, r.time.slice(11, 16), Math.round(r.temperature * 10) / 10, Math.round(r.winddirection) % 360]);
+    })()`);
+    check(
+        'the values met on a flight',
+        JSON.stringify(flight) === JSON.stringify([[25, '00:30', 30, 353], [26, '02:30', 51, 7]]), flight);
+
     // Charts of several levels: the lowest level for an area, every level for one location
     const chartLevels = await b.evaluate(`(async () => {
       const E = SmartMetExplorer;

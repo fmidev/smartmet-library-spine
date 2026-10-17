@@ -173,6 +173,8 @@ make %{_smp_mflags}
 
 %changelog
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
+- Data explorer: flights along paths: departure and arrival times, the cross section and the
+  time series at the times the points are passed
 - Data explorer: EDR trajectory queries drawn on the map; paths at their marked points or every
   N km; an animated view of the time series along a path; trajectory CoverageJSON read
 - Data explorer: charts of areas with several levels show one level at a time (the lowest by

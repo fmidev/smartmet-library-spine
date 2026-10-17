@@ -2608,6 +2608,25 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
       return;
     }
     const index = new Map(points.map((p, i) => [p.key, i]));
+    // On a flight, the time each point is passed is marked on its charts
+    const passed = options.flight ? flightTimes(points, options.flight) : null;
+    let current = 0;
+    const markPassed = (u) => {
+      if (!passed)
+        return;
+      const x = u.valToPos(passed[current] / 1000, 'x', true);
+      const {top, height} = u.bbox;
+      const ctx = u.ctx;
+      ctx.save();
+      ctx.strokeStyle = '#d9480f';
+      ctx.lineWidth = 2 * (typeof devicePixelRatio === 'number' ? devicePixelRatio : 1);
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.moveTo(x, top);
+      ctx.lineTo(x, top + height);
+      ctx.stroke();
+      ctx.restore();
+    };
     const times = Array.from(new Set(chosen.map((r) => {
                     const d = parseTime(r.time);
                     return d ? Math.round(d.getTime() / 1000) : null;
@@ -2676,6 +2695,7 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
             ],
             scales: {x: {time: true}, y: {range: () => [lo - pad, hi + pad]}},
             legend: {live: true},
+            hooks: {draw: [markPassed]},
             tzDate: (ts) => root.uPlot.tzDate(new Date(ts * 1000), 'Etc/UTC')
           },
           [times, stats.map((s) => s[0]), stats.map((s) => s[2]), stats.map((s) => s[1]), values[p][0]],
@@ -2690,12 +2710,14 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
     // Shows point i: its series in each chart, and its place on the map
     const show = (i) => {
       const point = points[i];
+      current = i;
+      const when = passed ? `, passed ${formatTime(new Date(passed[i]))}` : '';
       for (const {p, u, title, stats} of plots)
       {
         // Redrawn on the same scales: the times do not change, the vertical range is fixed
         u.setData([times, stats.map((s) => s[0]), stats.map((s) => s[2]), stats.map((s) => s[1]), values[p][i]]);
         title.textContent = `${p} at ${Math.round(point.km)} km of ${Math.round(points[points.length - 1].km)} km (${
-            point.lat.toFixed(3)}, ${point.lon.toFixed(3)}), against the median and 10-90 % of the path`;
+            point.lat.toFixed(3)}, ${point.lon.toFixed(3)})${when}, against the median and 10-90 % of the path`;
       }
       if (options.onPosition)
         options.onPosition({lat: point.lat, lon: point.lon});
@@ -2703,7 +2725,8 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
     slider = timeSlider(points.map((pt) => pt.km), {
       label: 'Position along the path',
       positions: points.map((pt) => pt.km),
-      format: (km, i) => `${Math.round(km)} km (${points[i].lat.toFixed(3)}, ${points[i].lon.toFixed(3)})`,
+      format: (km, i) => `${Math.round(km)} km (${points[i].lat.toFixed(3)}, ${points[i].lon.toFixed(3)})${
+          passed ? `, ${formatTime(new Date(passed[i]))}` : ''}`,
       onChange: () => show(slider.index())
     });
     distance.append(slider.element);
@@ -2721,7 +2744,7 @@ function hasCrossSection(rows)
 
 // A cross section along a path: the distance along the path horizontally, the vertical
 // coordinate vertically, the values of a parameter at a time as coloured cells
-function drawCrossSection(container, rows, parameters, levelKind, settings)
+function drawCrossSection(container, rows, parameters, levelKind, settings, options = {})
 {
   container.replaceChildren();
   const axes = verticalAxes(rows, levelKind);
@@ -2763,6 +2786,23 @@ function drawCrossSection(container, rows, parameters, levelKind, settings)
       draw();
     }
   });
+  // A flight: the values at the times the points are passed, instead of at one time
+  const flight = options.flight || null;
+  const flown = flight ? flightRows(rows, flight) : [];
+  state.flight = flown.length > 0;
+  const flightBox = el('input', {type: 'checkbox', 'aria-label': 'At the times of the flight'});
+  flightBox.checked = state.flight;
+  const flightLabel = el('label', {class: 'check'}, flightBox, flight ?
+      `At the times of the flight, ${formatTime(new Date(flight.departure))} – ${
+          formatTime(new Date(flight.arrival))}` :
+      '');
+  flightLabel.hidden = flown.length === 0;
+  flightBox.addEventListener('change', () => {
+    state.flight = flightBox.checked;
+    slider.element.hidden = state.flight;
+    draw();
+  });
+  slider.element.hidden = state.flight;
   const readout = el('div', {class: 'sk-readout small'});
   const legend = el('div', {class: 'legend'});
   const plot = el('div', {class: 'section'});
@@ -2773,6 +2813,7 @@ function drawCrossSection(container, rows, parameters, levelKind, settings)
                       el('label', null, 'Top', topSelect),
                       el('label', null, 'Colours', paletteSelect),
                       flightLevels),
+                   flightLabel,
                    slider.element,
                    legend,
                    readout,
@@ -2793,21 +2834,29 @@ function drawCrossSection(container, rows, parameters, levelKind, settings)
   {
     plot.replaceChildren();
     const time = times[state.time];
-    // The levels of each point of the path at the chosen time
+    // The levels of each point of the path at the chosen time, or at the times of the flight
     const columns = points.map(() => []);
     // The colours are kept for all times, so that they keep their meaning
     const all = [];
+    const shown = state.flight ? flown : rows.filter((r) => {
+      const t = parseTime(r.time);
+      return t && t.getTime() === time;
+    });
     for (const r of rows)
+    {
+      const v = columnValue(r, state.param);
+      const z = state.axis.value(r);
+      if (v !== null && z !== null && withinTop(state.axis, state.top, z))
+        all.push(v);
+    }
+    for (const r of shown)
     {
       const i = typeof r.lat === 'number' ? index.get(`${r.lat.toFixed(5)},${r.lon.toFixed(5)}`) : undefined;
       const z = state.axis.value(r);
       const v = columnValue(r, state.param);
       if (i === undefined || z === null || v === null || !withinTop(state.axis, state.top, z))
         continue;
-      all.push(v);
-      const t = parseTime(r.time);
-      if (t && t.getTime() === time)
-        columns[i].push({z, v, p: pressureAxis ? pressureAxis.value(r) : null});
+      columns[i].push({z, v, p: pressureAxis ? pressureAxis.value(r) : null, row: r});
     }
     for (const c of columns)
       c.sort((a, b) => a.z - b.z);
@@ -2866,6 +2915,7 @@ function drawCrossSection(container, rows, parameters, levelKind, settings)
         });
         rect.addEventListener('mouseenter', () => {
           readout.textContent = `${Math.round(p.km)} km (${p.lat.toFixed(3)}, ${p.lon.toFixed(3)}) · ${
+              state.flight ? `passed ${formatTime(new Date(c.row.time))} · ` : ''}${
               state.axis.label} ${round(c.z, 1)}${state.axis.unit ? ` ${state.axis.unit}` : ''} · ${
               state.param} ${round(c.v, 2)}`;
         });
@@ -2899,7 +2949,9 @@ function drawCrossSection(container, rows, parameters, levelKind, settings)
     ylabel.textContent = `${state.axis.label}${state.axis.unit ? ` (${state.axis.unit})` : ''}`;
     g.append(ylabel);
     const xlabel = svg('text', {class: 'vlabel', x: w / 2, y: h + 34, 'text-anchor': 'middle'});
-    xlabel.textContent = 'Distance along the path (km)';
+    xlabel.textContent = state.flight ?
+        `Distance along the flight (km), the values at the times the points are passed` :
+        'Distance along the path (km)';
     g.append(xlabel);
     plot.append(root);
     legend.replaceChildren(...prepared.legend, prepared.note ? el('span', {class: 'small warn'}, prepared.note) : '');
@@ -4576,6 +4628,117 @@ function pathPointsChooser(s, onChange)
   return {element, update};
 }
 
+// A flight along a path: the departure and arrival times (UTC). The points of the path are
+// passed at a constant ground speed, and the period of the request is set to cover the flight
+// with a step of the data to spare at both ends, so that the values at the times the points are
+// passed can be interpolated. margin() gives that step in minutes. The state keeps departure
+// and arrival as the values of the time fields. Returns {element, update(sel), flight()}.
+function flightChooser(s, onChange, margin)
+{
+  const departure = el('input', {type: 'datetime-local', 'aria-label': 'Departure (UTC)'});
+  const arrival = el('input', {type: 'datetime-local', 'aria-label': 'Arrival (UTC)'});
+  const note = el('p', {class: 'muted small'});
+  const element = el('div',
+                     null,
+                     el('div',
+                        {class: 'row'},
+                        el('label', null, 'Departure (UTC)', departure),
+                        el('label', null, 'Arrival (UTC)', arrival)),
+                     note);
+  const flight = () => {
+    const a = s.departure ? new Date(fromInput(s.departure)) : null;
+    const b = s.arrival ? new Date(fromInput(s.arrival)) : null;
+    return a && b && !isNaN(a) && !isNaN(b) && b > a ? {departure: a.getTime(), arrival: b.getTime()} :
+                                                      null;
+  };
+  const changed = () => {
+    s.departure = departure.value;
+    s.arrival = arrival.value;
+    const f = flight();
+    if (f)
+    {
+      const m = (margin() || 180) * 60000;
+      s.start = toInput(new Date(f.departure - m));
+      s.end = toInput(new Date(f.arrival + m));
+    }
+    onChange();
+  };
+  departure.addEventListener('change', changed);
+  arrival.addEventListener('change', changed);
+  const update = (sel) => {
+    departure.value = s.departure || '';
+    arrival.value = s.arrival || '';
+    const f = flight();
+    const km = sel && sel.points.length >= 2 ? pathLength(sel.points) : 0;
+    note.textContent = f && km ?
+        `${Math.round(km)} km in ${Math.round((f.arrival - f.departure) / 60000)} min, ${
+            Math.round(km / ((f.arrival - f.departure) / 3600000))} km/h: the views show the values ` +
+            'at the times the points are passed' :
+        (s.departure || s.arrival) && !f ? 'The arrival must be after the departure' :
+                                         'Optional: the values met along a flight';
+  };
+  return {element, update, flight};
+}
+
+// The times the points of a path are passed on a flight (ms), by their distance from the start
+function flightTimes(points, flight)
+{
+  const total = points.length ? points[points.length - 1].km || 1 : 1;
+  return points.map((p) => flight.departure + ((flight.arrival - flight.departure) * p.km) / total);
+}
+
+// The rows of a flight: each point and level of the path at the time it is passed, its values
+// interpolated linearly between the times of the data before and after (directions along the
+// shorter way round). Points passed outside the times of the data are left out.
+function flightRows(rows, flight)
+{
+  const points = pathPoints(rows);
+  const passed = flightTimes(points, flight);
+  const directions = new Set(SOUNDING_PARAMS.direction.map(([n]) => n));
+  // The rows of each point and level by their time
+  const series = new Map();
+  for (const r of rows)
+  {
+    const d = parseTime(r.time);
+    if (!d || typeof r.lat !== 'number')
+      continue;
+    const key = `${r.lat.toFixed(5)},${r.lon.toFixed(5)}|${r.level}`;
+    if (!series.has(key))
+      series.set(key, []);
+    series.get(key).push({t: d.getTime(), r});
+  }
+  const index = new Map(points.map((p, i) => [p.key, i]));
+  const out = [];
+  for (const [key, list] of series)
+  {
+    const i = index.get(key.split('|')[0]);
+    const tp = passed[i];
+    list.sort((a, b) => a.t - b.t);
+    const k = list.findIndex((x) => x.t >= tp);
+    if (k < 0 || (k === 0 && list[0].t > tp))
+      continue;
+    const a = list[Math.max(0, k - 1)];
+    const b = list[k];
+    const f = b.t === a.t ? 0 : (tp - a.t) / (b.t - a.t);
+    const row = Object.assign({}, a.r, {time: new Date(tp).toISOString(), _flight: true});
+    for (const [name, va] of Object.entries(a.r))
+    {
+      const vb = b.r[name];
+      if (typeof va !== 'number' || typeof vb !== 'number' || ['lat', 'lon', 'level'].includes(name))
+        continue;
+      if (directions.has(name.toLowerCase()))
+      {
+        const diff = ((((vb - va) % 360) + 540) % 360) - 180;
+        row[name] = (va + f * diff + 360) % 360;
+      }
+      else
+        row[name] = va + f * (vb - va);
+    }
+    out.push(row);
+  }
+  return out;
+}
+
 // The spacing of the points along a path (km): the chosen one, or about 40 points at least
 // 1 km apart. '' for the marked points or no path.
 function pathStepOf(s, sel)
@@ -5813,6 +5976,7 @@ function timeSeriesModule(app, api, state, save)
              label));
     const areaValuesRow = el('div', null, el('label', null, 'Values of an area'), areaValues);
     const pathChooser = pathPointsChooser(s, (rerender) => refresh(rerender));
+    const flightChoice = flightChooser(s, () => refresh(), () => dataStep());
 
     // An area, radius or box, or several locations, whose values the server can aggregate
     const isArea = () => ['bbox', 'radius', 'area', 'path'].includes(s.locmode) ||
@@ -6090,10 +6254,11 @@ function timeSeriesModule(app, api, state, save)
         else if (name === 'Section')
           drawSection(panes.Section, rows, dataParams(), kind, mapSettings(app.element));
         else if (name === 'Cross section')
-          drawCrossSection(panes['Cross section'], rows, dataParams(), kind, mapSettings(app.element));
+          drawCrossSection(panes['Cross section'], rows, dataParams(), kind, mapSettings(app.element),
+                           {flight: flightChoice.flight()});
         else if (name === 'Along the path')
           drawAlongPath(panes['Along the path'], rows, dataParams(), kind,
-                        {onPosition: (p) => map.setCursor(p)});
+                        {onPosition: (p) => map.setCursor(p), flight: flightChoice.flight()});
         else if (name === 'Sounding')
           drawSounding(panes.Sounding, rows, kind);
         else if (name === 'Map')
@@ -6534,8 +6699,12 @@ function timeSeriesModule(app, api, state, save)
         langInput.value = s.lang || '';
       areaValuesRow.hidden = !isArea();
       pathChooser.element.hidden = s.locmode !== 'path';
+      flightChoice.element.hidden = s.locmode !== 'path';
       if (s.locmode === 'path')
+      {
         pathChooser.update(selection(), rerender !== false);
+        flightChoice.update(selection());
+      }
       Array.from(areaValues.children)
           .forEach(
               (b) => b.setAttribute(
@@ -6580,6 +6749,7 @@ function timeSeriesModule(app, api, state, save)
                locModes,
                el('div', {class: 'row'}, locInput, showButton),
                pathChooser.element,
+               flightChoice.element,
                stationSearch.element,
                stationNote,
                areaNote,
@@ -6959,6 +7129,7 @@ function edrModule(app, api, state, save)
     const locInput = el('input', {type: 'text', 'aria-label': 'Location', spellcheck: 'false'});
     const areaNote = el('p', {class: 'warn small'});
     const pathChooser = pathPointsChooser(s, (rerender) => refresh(rerender));
+    const flightChoice = flightChooser(s, () => refresh(), () => 180);
     const map = createMap(mapSettings(app.element), (shape) => {
       s.location = formatSelection(shape);
       refresh();
@@ -7286,10 +7457,11 @@ function edrModule(app, api, state, save)
         else if (name === 'Section')
           drawSection(panes.Section, rows, params, kind, mapSettings(app.element));
         else if (name === 'Cross section')
-          drawCrossSection(panes['Cross section'], rows, params, kind, mapSettings(app.element));
+          drawCrossSection(panes['Cross section'], rows, params, kind, mapSettings(app.element),
+                           {flight: flightChoice.flight()});
         else if (name === 'Along the path')
           drawAlongPath(panes['Along the path'], rows, params, kind,
-                        {onPosition: (p) => map.setCursor(p)});
+                        {onPosition: (p) => map.setCursor(p), flight: flightChoice.flight()});
         else if (name === 'Sounding')
           drawSkewT(panes.Sounding, rows, kind, {
             type: s.diagram || 'skewt',
@@ -7474,8 +7646,12 @@ function edrModule(app, api, state, save)
           q === 'trajectory'                  ? '24.3,60.0,25.0,60.2,25.8,60.3 (lon,lat,...), or click the map' :
                                                 '21,60,26,62, or drag on the map';
       pathChooser.element.hidden = q !== 'trajectory';
+      flightChoice.element.hidden = q !== 'trajectory';
       if (q === 'trajectory')
+      {
         pathChooser.update(selection(), rerender !== false);
+        flightChoice.update(selection());
+      }
       if (rerender !== false && !isLocations)
         locInput.value = s.location || '';
       map.setTools(tool ? ['move', tool] : ['move'], tool || 'move');
@@ -7536,6 +7712,7 @@ function edrModule(app, api, state, save)
                queryButtons,
                el('div', {class: 'row'}, locInput),
                pathChooser.element,
+               flightChoice.element,
                locationSearch.element,
                areaNote,
                map.element),
@@ -8307,6 +8484,8 @@ root.SmartMetExplorer = {
   hasProfiles,
   hasSounding,
   drawAlongPath,
+  flightRows,
+  flightTimes,
   flightLevelPressure,
   flightLevelsBetween,
   verticalAxes,
