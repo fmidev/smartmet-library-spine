@@ -2356,11 +2356,17 @@ async function main()
       document.querySelector('.coverage-maps [aria-label="Next time"]').click();
       await wait(200);
       const next = titles();
+      // No more panels than parameters and levels to show
       const count = document.querySelector('.coverage-maps [aria-label="Panels"]');
-      count.value = '4';
+      const choices = [...count.options].map((o) => o.value);
+      count.value = '1';
+      count.dispatchEvent(new Event('change', { bubbles: true }));
+      await wait(200);
+      count.value = '2';
       count.dispatchEvent(new Event('change', { bubbles: true }));
       await wait(300);
-      return { params, before, zoomed, first, next,
+      const again = [...document.querySelectorAll('.coverage-panel [aria-label="Parameter of the map"]')].map((x) => x.value);
+      return { params, before, zoomed, first, next, choices, again,
                cursors: panels.map((p) => p.querySelectorAll('.xmap-cursor').length),
                panels: document.querySelectorAll('.coverage-panel').length,
                rasters: document.querySelectorAll('.coverage-panel .xmap-raster').length,
@@ -2380,8 +2386,9 @@ async function main()
             coverageMaps.zoomed[0] !== coverageMaps.before[0] &&
             coverageMaps.first[0].startsWith('Temperature at') && coverageMaps.first[1].startsWith('Pressure at') &&
             coverageMaps.first[0].includes('03:00') && coverageMaps.next[0].includes('04:00') &&
-            JSON.stringify(coverageMaps.cursors) === '[1,1]' && coverageMaps.panels === 4 &&
-            coverageMaps.rasters === 4,
+            JSON.stringify(coverageMaps.cursors) === '[1,1]' && coverageMaps.panels === 2 &&
+            coverageMaps.rasters === 2 && JSON.stringify(coverageMaps.choices) === '["1","2"]' &&
+            JSON.stringify(coverageMaps.again) === '["Temperature","Pressure"]',
         coverageMaps);
 
     // Narrow screens

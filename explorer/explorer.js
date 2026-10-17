@@ -10069,10 +10069,16 @@ function drawCoverageMaps(container, tiff, settings, options = {})
     lon: west + ((col + 0.5) / tiff.width) * (east - west),
     lat: north - ((row + 0.5) / tiff.height) * (north - south)
   });
+  // The parameters and levels a panel can show: as many panels as there are of them
+  const combinations = params.flatMap((p) => {
+    const ls = levelsOf(p);
+    return ls.length ? ls.map((l) => ({param: p, level: String(l)})) : [{param: p, level: ''}];
+  });
   const shared = {time: 0, point: null};
   const count = el('select', {'aria-label': 'Panels'},
-                   COVERAGE_PANELS.map((n) => el('option', {value: String(n)}, n === 1 ? '1 map' : `${n} maps`)));
-  count.value = String(Math.min(2, params.length));
+                   COVERAGE_PANELS.filter((n) => n <= combinations.length)
+                       .map((n) => el('option', {value: String(n)}, n === 1 ? '1 map' : `${n} maps`)));
+  count.value = String(Math.min(2, combinations.length));
   const slider = timeSlider(times.map((t) => new Date(t).getTime()), {
     label: 'Time of the maps',
     onChange: () => {
@@ -10084,18 +10090,23 @@ function drawCoverageMaps(container, tiff, settings, options = {})
   container.append(
       el('div', {class: 'row'}, el('label', null, 'Panels', count), slider.element),
       el('p', {class: 'muted small'},
-         `${tiff.width} × ${tiff.height} cells, ${params.length} parameters, ${times.length} times. ` +
+         `${tiff.width} × ${tiff.height} cells, ${params.length} parameter${params.length === 1 ? '' : 's'}, ` +
+             `${times.length} time${times.length === 1 ? '' : 's'}. ` +
              'The maps move together; click a value for the time series of the point'),
       grid);
 
   let panels = [];
   // A panel: its map, choices, legend and series of the point clicked
-  const makePanel = (i) => {
-    const param = params[i % params.length];
-    const levels = levelsOf(param);
+  const makePanel = () => {
+    // The first parameter and level no other panel shows: a new parameter before a new level
+    const used = new Set(panels.map((p) => `${p.state.param}|${p.state.level}`));
+    const free = combinations.filter((c) => !used.has(`${c.param}|${c.level}`));
+    const shownParams = new Set(panels.map((p) => p.state.param));
+    const choice = free.find((c) => !shownParams.has(c.param)) || free[0] || combinations[0];
+    const param = choice.param;
     const state = {
       param,
-      level: levels.length ? String(levels[0]) : '',
+      level: choice.level,
       palette: PALETTES[quantityOf(param)] ? quantityOf(param) : 'viridis',
       min: null,
       max: null,
@@ -10251,6 +10262,7 @@ function drawCoverageMaps(container, tiff, settings, options = {})
     return {
       map,
       box,
+      state,
       draw,
       showProbe,
       closeProbe: () => {
@@ -10271,7 +10283,7 @@ function drawCoverageMaps(container, tiff, settings, options = {})
       p.box.remove();
     panels = panels.slice(0, n);
     while (panels.length < n)
-      panels.push(makePanel(panels.length));
+      panels.push(makePanel());
     panels.forEach((p) => p.draw());
     if (!view)
       panels[0].map.fit(tiff.bbox);
