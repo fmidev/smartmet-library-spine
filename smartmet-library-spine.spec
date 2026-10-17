@@ -267,7 +267,7 @@ make %{_smp_mflags}
   keyword locations on a map, and uPlot charts (lines per location, or the median and
   percentiles or a swarm of many locations), tables and trees; points, radii and boxes
   chosen on a map narrow the producers to those covering them; the statistics of areas and
-  keywords can be computed by the server (needs smartmet-library-timeseries 26.10.16-2 on
+  keywords can be computed by the server (needs smartmet-library-timeseries 26.10.17-1 on
   the server for the percentiles); EDR queries (position, radius, area, cube, locations)
   built from the collection metadata, CoverageJSON drawn as charts; Coverages downloads with
   the native grid, the area of the download in the chosen projection and its size before
