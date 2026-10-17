@@ -340,3 +340,6 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* The API key */
 .apikey input { width: 14em; }
+
+/* The sensors of stations */
+.sensors-line { gap: 4px; align-items: center; margin: 2px 0; }

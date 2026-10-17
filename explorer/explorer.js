@@ -6733,7 +6733,103 @@ function timeSeriesModule(app, api, state, save)
       placeholder: 'e.g. le 1, or in 0,1'
     });
     const qualityCodes = el('input', {type: 'checkbox', 'aria-label': 'Quality codes'});
-    const sensorsRow = el('div', null, el('label', null, 'Sensors', sensorsInput), sensorsNote);
+    // The sensors of the chosen stations, listed by the observation engine
+    const sensorsList = el('div', {class: 'sensors-list'});
+    const sensorsRow =
+        el('div', null, el('label', null, 'Sensors', sensorsInput), sensorsNote, sensorsList);
+    const sensorDetails = new Map();
+    // Loads the sensors of the chosen stations and parameters once, and shows them
+    function renderSensors()
+    {
+      const p = producer();
+      const ids = chosenStations().slice(0, 10);
+      const params = dataParams();
+      if (!p || ids.length === 0 || params.length === 0)
+      {
+        sensorsList.replaceChildren(ids.length === 0 ?
+            el('p', {class: 'muted small'}, 'Choose stations to see their sensors') : '');
+        return;
+      }
+      const query = queryString([
+        ['source', 'observation'],
+        ['fmisid', ids.join(',')],
+        ['param', params.join(',')],
+        ['starttime', fromInput(s.start)],
+        ['endtime', fromInput(s.end)]
+      ]);
+      const key = `${p.name}?${query}`;
+      if (!sensorDetails.has(key))
+      {
+        sensorDetails.set(key, null);
+        fetchJson(`${app.base}${rootPath.replace(/^\//, '')}/api/producers/${encodeURIComponent(p.name)}?${query}`)
+            .then((doc) => {
+              sensorDetails.set(key, doc.sensors || {available: false, note: 'No sensors listed'});
+              refresh(false);
+            })
+            .catch((e) => {
+              sensorDetails.set(key, {available: false, note: e.message});
+              refresh(false);
+            });
+      }
+      const found = sensorDetails.get(key);
+      if (!found)
+      {
+        sensorsList.replaceChildren(el('p', {class: 'muted small'}, 'Loading the sensors…'));
+        return;
+      }
+      if (!found.available)
+      {
+        sensorsList.replaceChildren(el('p', {class: 'muted small'}, found.note || 'No sensors listed'));
+        return;
+      }
+      const chosen = new Set((s.sensors ? parseNumberList(s.sensors, SENSOR_NUMBERS) : []) || []);
+      const toggle = (n) => {
+        if (chosen.has(n))
+          chosen.delete(n);
+        else
+          chosen.add(n);
+        s.sensors = Array.from(chosen).sort((a, b) => a - b).join(',');
+        refresh();
+      };
+      const end = s.end ? new Date(fromInput(s.end)).getTime() : Date.now();
+      const lines = [];
+      for (const param of params)
+        for (const id of ids)
+        {
+          const items = found.list.filter(
+              (x) => String(x.fmisid) === String(id) &&
+                  (x.parameters || []).some((n) => n.toLowerCase() === param.toLowerCase()));
+          // A sensor may have several configurations: one button each sensor
+          const sensors = new Map();
+          for (const x of items)
+            if (!sensors.has(x.sensor) || (x.last || '') > (sensors.get(x.sensor).last || ''))
+              sensors.set(x.sensor, x);
+          if (sensors.size === 0)
+            continue;
+          const name = (stations().find((st) => String(st.id) === String(id)) || {}).name || id;
+          lines.push(el('div', {class: 'row sensors-line'},
+                        el('span', {class: 'small'}, `${param} at ${name}:`),
+                        ...Array.from(sensors.values()).sort((a, b) => a.sensor - b.sensor).map((x) => {
+                          // A sensor whose values ended before the period is marked
+                          const ended = x.last && new Date(x.last).getTime() < end - 86400e3;
+                          return el('button', {
+                            type: 'button',
+                            class: `small${chosen.has(x.sensor) ? '' : ' meta'}`,
+                            'aria-pressed': chosen.has(x.sensor) ? 'true' : 'false',
+                            'data-sensor': String(x.sensor),
+                            title: [x.default ? 'The default sensor' : 'An additional sensor',
+                                    x.configuration_start ? `configured ${x.configuration_start.slice(0, 10)}` : '',
+                                    x.last ? `values until ${x.last.slice(0, 10)}` : '',
+                                    x.values ? `${x.values} values` : ''].filter(Boolean).join(', '),
+                            onclick: () => toggle(x.sensor)
+                          }, `${x.sensor}${x.default ? ' (default)' : ''}${ended ? ` · until ${x.last.slice(0, 10)}` : ''}`);
+                        }),
+                        Array.from(sensors.values()).some((x) => x.default) ? '' :
+                            el('span', {class: 'warn small'}, 'no default sensor: give one')));
+        }
+      sensorsList.replaceChildren(...(lines.length ? lines :
+          [el('p', {class: 'muted small'}, 'No sensors of the parameters at the stations in the period')]));
+    }
     const qualityRow =
         el('div',
            {class: 'row'},
@@ -6944,6 +7040,7 @@ function timeSeriesModule(app, api, state, save)
             'The default sensor of each station' :
             `${sensors.length} sensor${sensors.length === 1 ? '' : 's'}, a series each; ` +
                 'a sensor without values gives no rows';
+        renderSensors();
         qualitySelect.value = s.quality || '';
         qualityInput.closest('label').hidden = s.quality !== 'custom';
         if (document.activeElement !== qualityInput)

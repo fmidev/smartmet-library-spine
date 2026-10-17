@@ -495,7 +495,23 @@ const server = http.createServer((req, res) => {
           start: '1950-01-01T00:00:00Z',
           end: '1990-01-01T00:00:00Z'
         }
-      ]
+      ],
+      // The sensors of the stations asked for, as the observation engine lists them
+      sensors: url.searchParams.get('fmisid') ? {
+        available: true,
+        note: 'From the observation metadata',
+        list: [
+          {fmisid: 101004, measurand_id: 1, code: 'TA', parameters: ['temperature'], sensor: 1,
+           default: true, configuration_start: '2006-10-11T00:00:00Z', last: '2099-01-01T00:00:00Z',
+           values: 100},
+          {fmisid: 101004, measurand_id: 1, code: 'TA', parameters: ['temperature'], sensor: 11,
+           default: false, configuration_start: '2010-01-01T00:00:00Z', last: '2099-01-01T00:00:00Z',
+           values: 50},
+          {fmisid: 101004, measurand_id: 1, code: 'TA', parameters: ['temperature'], sensor: 23,
+           default: false, configuration_start: '2008-01-01T00:00:00Z', last: '2009-01-01T00:00:00Z',
+           values: 10}
+        ]
+      } : undefined
     }));
   if (p === '/timeseries/api/producers/ens')
     return send(200, 'application/json', JSON.stringify(ensDetails(url.searchParams)));
@@ -1098,6 +1114,24 @@ async function main()
       input.dispatchEvent(new Event("input", { bubbles: true }));
     })()`);
     await sleep(500);
+    // The sensors of the station, listed by the engine, toggle the sensor numbers
+    await waitFor(b, `document.querySelectorAll('.sensors-line button[data-sensor]').length === 3`,
+                  'the sensors of the station');
+    const sensorButtons = await b.evaluate(`[...document.querySelectorAll('.sensors-line button[data-sensor]')]
+      .map((x) => [x.textContent, x.getAttribute('aria-pressed')])`);
+    check(
+        'the sensors of the station',
+        JSON.stringify(sensorButtons) ===
+            '[["1 (default)","true"],["11","true"],["23 · until 2009-01-01","false"]]',
+        sensorButtons);
+    await b.evaluate(`document.querySelector('.sensors-line button[data-sensor="23"]').click()`);
+    await sleep(300);
+    const toggledOn = await b.evaluate(`document.querySelector('[aria-label="Sensors"]').value`);
+    await b.evaluate(`document.querySelector('.sensors-line button[data-sensor="23"]').click()`);
+    await sleep(300);
+    const toggledOff = await b.evaluate(`document.querySelector('[aria-label="Sensors"]').value`);
+    check('a sensor toggled', toggledOn === '1,11,23' && toggledOff === '1,11',
+          {toggledOn, toggledOff});
     await b.evaluate(`(() => {
       const select = document.querySelector('[aria-label="Quality"]');
       select.value = "custom";
