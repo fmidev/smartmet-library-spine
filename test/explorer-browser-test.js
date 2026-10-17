@@ -1164,6 +1164,24 @@ async function main()
             !vertical.skewt.noPressure &&
             vertical.skewt.info.startsWith('Lifting condensation level'),
         vertical.skewt);
+    const kelvins = await b.evaluate(`(() => {
+      const E = SmartMetExplorer;
+      const rows = (offset) => [1000, 850, 700, 500].map((p, i) => ({ name: 'A', time: '2026-10-15T00:00:00Z',
+        level: p, 't-k': 15 - i * 12 + offset, 'rh-prcnt': 70 }));
+      const lcl = (offset) => {
+        const box = document.createElement('div');
+        document.body.append(box);
+        E.drawSkewT(box, rows(offset), 'pressure');
+        const text = box.querySelector('.skewt-info').textContent;
+        box.remove();
+        return text.split(',')[1].trim();
+      };
+      return [lcl(0), lcl(273.15)];
+    })()`);
+    check(
+        'temperatures in Kelvins or already in Celsius',
+        kelvins[0] === kelvins[1] && /^[0-9.]+ C$/.test(kelvins[0]),
+        kelvins);
     check(
         'condensation level and moist adiabat',
         JSON.stringify(vertical.lcl) === '[861,7.8]' && vertical.moist > -9.5 &&

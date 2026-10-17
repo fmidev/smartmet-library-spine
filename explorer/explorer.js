@@ -1835,17 +1835,22 @@ function soundingOf(profile, columns, axis)
   return out.sort((a, b) => b.p - a.p);
 }
 
-// The columns of a sounding the rows have: {temperature: [name, offset], ...}
+// The columns of a sounding the rows have: {temperature: [name, offset], ...}. A temperature
+// named in Kelvins may have been converted to Celsius by the server (the grid parameter T-K
+// is), so the values decide whether the offset applies.
 function soundingColumns(rows)
 {
   const out = {};
   for (const [what, candidates] of Object.entries(SOUNDING_PARAMS))
     for (const [name, offset] of candidates)
-      if (rows.some((r) => columnValue(r, name) !== null))
-      {
-        out[what] = [name, offset];
-        break;
-      }
+    {
+      const values = rows.map((r) => columnValue(r, name)).filter((v) => v !== null);
+      if (values.length === 0)
+        continue;
+      const kelvins = offset !== 0 && quantile(values.slice().sort((a, b) => a - b), 0.5) > 100;
+      out[what] = [name, kelvins ? offset : 0];
+      break;
+    }
   return out;
 }
 
