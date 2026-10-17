@@ -11326,6 +11326,344 @@ function coveragesModule(app, api, state, save)
 }
 
 // ------------------------------------------------------------------
+// Browsing the data
+// ------------------------------------------------------------------
+
+// The kinds of data, recognised from the names, descriptions, sources and levels: id, label
+const DATA_KINDS = [
+  ['forecast', L('Forecast models')],
+  ['ensemble', L('Ensembles')],
+  ['observations', L('Observations')],
+  ['soundings', L('Soundings')],
+  ['radar', L('Radar')],
+  ['satellite', L('Satellite')],
+  ['marine', L('Marine')],
+  ['airquality', L('Air quality')],
+  ['climate', L('Climate')]
+];
+
+// The themes of the parameters, recognised from their names: id, label, pattern
+const DATA_THEMES = [
+  ['temperature', L('Temperature'), /temperature|^t2m|dewpoint|^t-[kc]|^td(-|$)|^ta_|^tamax|^tamin|^tmax|^tmin/],
+  ['wind', L('Wind'), /wind|^ws(_|$)|^wd(_|$)|gust|^ff(-|_)|^dd(-|_)|^[uv]-ms|^wg_/],
+  ['precipitation', L('Precipitation'), /precip|rain|^rr(_|-)|^pr_|^ri_|snowfall|^prec/],
+  ['cloud', L('Clouds and fog'), /cloud|^n_|^n-|fog|ceiling|^cl_/],
+  ['humidity', L('Humidity'), /humid|^rh(_|-|$)/],
+  ['pressure', L('Pressure'), /pressure|^p_|^p-|pmsl|geopot|^z-m/],
+  ['radiation', L('Radiation and sun'), /radiat|^glob|^sun|^uv|^lw|^sw|sunshine/],
+  ['snow', L('Snow and ice'), /snow|^sd(_|-|$)|ice|frost/],
+  ['sea', L('Sea'), /sea|wave|salin|current|^sst|waterlevel|watertemp/],
+  ['air', L('Air quality'), /aqindex|^pm(10|25)|^no2|^no_|^o3|^so2|^co_|pollen|aerosol|concentration/],
+  ['visibility', L('Visibility'), /visib|^vis(_|$)/]
+];
+
+// The kind of a dataset
+function dataKind(d)
+{
+  const text = `${d.name} ${d.title || ''} ${d.description || ''}`.toLowerCase();
+  if (/radar|tutka/.test(text))
+    return 'radar';
+  if (/satel/.test(text))
+    return 'satellite';
+  if (/sounding|luotaus|radiosond/.test(text))
+    return 'soundings';
+  if (/air ?quality|airquality|ilmanlaatu|silam/.test(text))
+    return 'airquality';
+  if (/climat|normal|ilmasto/.test(text))
+    return 'climate';
+  if (/(^|[^a-z])(sea|wave|marine|ocean|hbm|meri|aalto)/.test(text))
+    return 'marine';
+  if (d.sources.has('observation'))
+    return 'observations';
+  if (d.levelTypes.has('member') || /(^|[^a-z])(eps|ens|ensemble)([^a-z]|$)/.test(text))
+    return 'ensemble';
+  return 'forecast';
+}
+
+// The themes of a parameter by its key and name
+function parameterThemes(key, name)
+{
+  const n = `${key} ${name || ''}`.toLowerCase();
+  return DATA_THEMES.filter(([, , re]) => n.split(' ').some((w) => re.test(w))).map(([id]) => id);
+}
+
+// The datasets of the APIs of the server, one per name however many APIs offer it: name, title,
+// description, bbox, time, sources, level types, parameters (key -> {name, description, unit}),
+// and the APIs as {api, index, key, source}
+async function loadDatasets(app, apis)
+{
+  const datasets = new Map();
+  const dataset = (name) => {
+    if (!datasets.has(name))
+      datasets.set(name, {
+        name,
+        title: '',
+        description: '',
+        bbox: null,
+        time: null,
+        sources: new Set(),
+        levelTypes: new Set(),
+        parameters: new Map(),
+        apis: []
+      });
+    return datasets.get(name);
+  };
+  // The fields a dataset does not have yet are taken from each API
+  const fill = (d, from) => {
+    d.title = d.title || from.title || '';
+    d.description = d.description || from.description || '';
+    d.bbox = d.bbox || from.bbox || null;
+    if (from.time && (!d.time || String(from.time.end) > String(d.time.end)))
+      d.time = from.time;
+    for (const l of from.levels || [])
+      d.levelTypes.add(l.type);
+  };
+  const url = (api, path) => `${app.base}${api.root.replace(/^\//, '')}${path}`;
+  const loads = apis.map(async (api, index) => {
+    try
+    {
+      if (api.kind === 'timeseries')
+      {
+        const doc = await fetchJson(url(api, '/api/producers'));
+        for (const p of doc.producers || [])
+        {
+          const d = dataset(p.name);
+          fill(d, p);
+          d.sources.add(p.source);
+          d.apis.push({api, index, key: p.name, source: p.source});
+          for (const key of p.parameters || [])
+          {
+            const info = (doc.parameters || {})[key] || {};
+            if (!d.parameters.has(key))
+              d.parameters.set(key, {name: info.name || key, description: info.description || '', unit: info.unit || ''});
+          }
+        }
+      }
+      else if (api.kind === 'edr')
+      {
+        const edr = buildEdrIndex(await fetchJson(url(api, '/collections')));
+        for (const c of edr.producers.values())
+        {
+          const d = dataset(c.name);
+          fill(d, c);
+          d.apis.push({api, index, key: c.name, parameters: c.parameters});
+          for (const key of c.parameters)
+          {
+            const info = edr.parameters.get(key) || {};
+            if (!d.parameters.has(key))
+              d.parameters.set(key, {name: info.name || key, description: info.description || '', unit: info.unit || ''});
+          }
+        }
+      }
+      else if (api.kind === 'coverages')
+      {
+        const coverages = buildCoverageIndex(await fetchJson(url(api, '/collections')));
+        for (const c of coverages.producers.values())
+        {
+          const d = dataset(c.name);
+          fill(d, c);
+          d.apis.push({api, index, key: c.name});
+        }
+      }
+    }
+    catch (e)
+    {
+      // The other APIs are shown
+    }
+  });
+  await Promise.all(loads);
+  const out = Array.from(datasets.values());
+  for (const d of out)
+  {
+    d.kind = dataKind(d);
+    d.themes = new Map();
+    for (const [key, info] of d.parameters)
+      for (const theme of parameterThemes(key, info.name))
+        d.themes.set(theme, (d.themes.get(theme) || 0) + 1);
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// How current the data of a period is: until a time ahead (forecasts) or until a time ago
+function dataFreshness(time)
+{
+  if (!time || !time.end)
+    return '';
+  const end = new Date(time.end);
+  if (isNaN(end))
+    return '';
+  const hours = (end.getTime() - Date.now()) / 3600e3;
+  const span = (h) => (Math.abs(h) < 48 ? L`${Math.round(Math.abs(h))} h` : L`${Math.round(Math.abs(h) / 24)} days`);
+  return hours > 0 ? L`until ${formatTime(end)}, ${span(hours)} ahead` : L`until ${formatTime(end)}, ${span(hours)} ago`;
+}
+
+// The Browse page: the datasets of all the APIs as cards, narrowed by a search, the kinds of
+// data, the themes of the parameters and a point on the map, each opening in the APIs offering
+// it with the parameters searched for
+function browseModule(app, apis, state, save, openApi)
+{
+  const view = el('div', {class: 'module browse'});
+  const status = el('p', {class: 'muted'}, L('Loading the data of the APIs…'));
+  view.append(status);
+  loadDatasets(app, apis).then((datasets) => build(datasets));
+
+  function build(datasets)
+  {
+    view.replaceChildren();
+    const s = state;
+    const search = el('input', {type: 'search', 'aria-label': L('Search the data'), spellcheck: 'false',
+                                placeholder: L('Search names, descriptions and parameters, e.g. wind gust')});
+    search.value = s.q || '';
+    const kinds = el('div', {class: 'row browse-facets', role: 'group', 'aria-label': L('Kinds of data')});
+    const themes = el('div', {class: 'row browse-facets', role: 'group', 'aria-label': L('Themes of the parameters')});
+    const pointNote = el('div', {class: 'row small'});
+    const summary = el('p', {class: 'muted small'});
+    const cards = el('div', {class: 'browse-cards'});
+    const map = createMap(mapSettings(app.element), (shape) => {
+      if (shape.type === 'point')
+      {
+        s.point = `${shape.lon},${shape.lat}`;
+        refresh();
+      }
+    });
+    map.setTools(['move', 'point'], 'point');
+    view.append(
+        el('div', {class: 'browse-layout'},
+           el('div', null,
+              el('div', {class: 'row'}, search),
+              el('div', {class: 'small muted'}, L('Kind of data')), kinds,
+              el('div', {class: 'small muted'}, L('Themes')), themes,
+              pointNote, summary, cards),
+           el('div', {class: 'browse-map'},
+              el('p', {class: 'map-hint'}, L('Click the map for the data covering the point.')), map.element)));
+
+    const chosenList = (key) => (s[key] ? s[key].split(',').filter(Boolean) : []);
+    const point = () => {
+      const m = /^(-?[\d.]+),(-?[\d.]+)$/.exec(s.point || '');
+      return m ? [Number(m[1]), Number(m[2])] : null;
+    };
+    const covers = (d, p) => d.bbox && p[0] >= d.bbox[0] && p[0] <= d.bbox[2] && p[1] >= d.bbox[1] && p[1] <= d.bbox[3];
+    // The parameters of a dataset matching the search
+    const matching = (d, q) => Array.from(d.parameters).filter(([key, info]) =>
+      matchScore(q, info.name || key, `${key} ${info.description}`) !== null);
+    const matches = (d, q) => !q || matchScore(q, d.name, `${d.title} ${d.description}`) !== null || matching(d, q).length > 0;
+    // A chip of a facet: the label, the count, chosen or not
+    const facet = (key, id, label, count) => {
+      const chosen = chosenList(key).includes(id);
+      return el('button', {
+        type: 'button',
+        class: `chip facet${chosen ? '' : ' meta'}`,
+        'aria-pressed': chosen ? 'true' : 'false',
+        'data-facet': `${key}:${id}`,
+        onclick: () => {
+          const list = chosenList(key);
+          s[key] = (chosen ? list.filter((x) => x !== id) : [...list, id]).join(',');
+          refresh();
+        }
+      }, `${label} ${count}`);
+    };
+
+    // Opens a dataset in an API with the parameters searched for, or a first parameter
+    const openIn = (d, entry, q) => {
+      const found = q ? matching(d, q).map(([key]) => key) : [];
+      const own = entry.parameters || (entry.api.kind === 'timeseries' ? Array.from(d.parameters.keys()) : []);
+      const usable = found.filter((k) => own.includes(k));
+      const first = own.find((k) => parameterThemes(k, (d.parameters.get(k) || {}).name).includes('temperature')) || own[0];
+      const params = (usable.length ? usable.slice(0, 5) : first ? [first] : []);
+      const preset = entry.api.kind === 'timeseries' ? {producer: entry.key, source: entry.source, params} :
+                                                        {collection: entry.key, params: entry.api.kind === 'edr' ? params : []};
+      openApi(entry.index, preset);
+    };
+
+    // The card of a dataset
+    const card = (d, q) => {
+      const kindLabel = (DATA_KINDS.find(([id]) => id === d.kind) || [null, d.kind])[1];
+      const found = q ? matching(d, q) : [];
+      const params = Array.from(d.parameters);
+      const list = (found.length ? found : params).slice(0, 200).map(([key, info]) =>
+        el('li', null, el('strong', null, info.name || key),
+           info.description && info.description !== (info.name || key) ? ` · ${info.description}` : '',
+           info.unit ? ` [${info.unit}]` : ''));
+      const box = el('div', {class: 'browse-card', 'data-dataset': d.name},
+          el('div', {class: 'row'},
+             el('strong', null, d.name),
+             el('span', {class: `badge badge-kind`}, kindLabel),
+             ...Array.from(d.sources).filter(Boolean).map((x) => el('span', {class: `badge badge-${x}`}, x))),
+          d.title && d.title !== d.name ? el('div', null, d.title) : '',
+          d.description && d.description !== d.title ? el('div', {class: 'small muted'}, d.description) : '',
+          el('div', {class: 'small'},
+             [d.time ? `${formatTime(new Date(d.time.start))} – ${dataFreshness(d.time)}` : '',
+              d.parameters.size ? L`${d.parameters.size} parameters` : '',
+              d.levelTypes.size ? Array.from(d.levelTypes).join(', ') : ''].filter(Boolean).join(' · ')),
+          el('div', {class: 'row browse-themes'},
+             ...DATA_THEMES.filter(([id]) => d.themes.has(id)).map(([id, label]) =>
+                 el('span', {class: 'chip meta small'}, `${label} ${d.themes.get(id)}`))),
+          params.length ?
+              el('details', {class: 'small', open: found.length > 0 && found.length <= 12},
+                 el('summary', null, found.length ? counted(found.length, L('parameter matches'), L('parameters match')) :
+                                                     L('Parameters')),
+                 el('ul', {class: 'browse-params'}, list)) :
+              '',
+          el('div', {class: 'row'},
+             ...d.apis.map((entry) => el('button', {type: 'button', class: 'small', onclick: () => openIn(d, entry, q)},
+                                         L`Open in ${entry.api.title}`))));
+      box.addEventListener('mouseenter', () => highlight(d));
+      box.addEventListener('mouseleave', () => highlight(null));
+      return box;
+    };
+
+    let shown = [];
+    // The extents of the datasets shown on the map, the one pointed highlighted
+    const highlight = (h) => {
+      map.setRegions(shown.filter((d) => d.bbox).map((d) => ({
+        bbox: d.bbox,
+        label: d.name,
+        cls: d === h ? 'xmap-region highlight' : 'xmap-region faint'
+      })));
+    };
+
+    function refresh()
+    {
+      const q = (s.q || '').trim().toLowerCase();
+      const p = point();
+      const chosenKinds = chosenList('kinds');
+      const chosenThemes = chosenList('themes');
+      // The facets count the datasets the other choices leave
+      const base = datasets.filter((d) => matches(d, q) && (!p || covers(d, p)));
+      const byTheme = base.filter((d) => chosenThemes.every((t) => d.themes.has(t)));
+      const byKind = base.filter((d) => !chosenKinds.length || chosenKinds.includes(d.kind));
+      kinds.replaceChildren(...DATA_KINDS.map(([id, label]) => [id, label, byTheme.filter((d) => d.kind === id).length])
+                                  .filter(([id, , n]) => n > 0 || chosenKinds.includes(id))
+                                  .map(([id, label, n]) => facet('kinds', id, label, n)));
+      themes.replaceChildren(...DATA_THEMES.map(([id, label]) => [id, label, byKind.filter((d) => d.themes.has(id)).length])
+                                   .filter(([id, , n]) => n > 0 || chosenThemes.includes(id))
+                                   .map(([id, label, n]) => facet('themes', id, label, n)));
+      shown = byKind.filter((d) => chosenThemes.every((t) => d.themes.has(t)));
+      pointNote.replaceChildren(...(p ? [
+        el('span', null, L`Covering ${round(p[0], 2)}, ${round(p[1], 2)}`),
+        el('button', {type: 'button', class: 'small', onclick: () => {
+          delete s.point;
+          refresh();
+        }}, L('Anywhere'))
+      ] : []));
+      map.setSelection(p ? {type: 'point', lon: p[0], lat: p[1]} : null);
+      summary.textContent = L`${shown.length} of ${datasets.length} datasets`;
+      cards.replaceChildren(...shown.map((d) => card(d, q)));
+      highlight(null);
+      save();
+    }
+    search.addEventListener('input', debounce(() => {
+      s.q = search.value;
+      refresh();
+    }, 250));
+    refresh();
+    if (!point())
+      map.fit(map.extent());
+  }
+  return view;
+}
+
+// ------------------------------------------------------------------
 // The application
 // ------------------------------------------------------------------
 
@@ -11531,21 +11869,33 @@ async function main()
   }
 
   const state = readState();
+  // Browsing the data of all the APIs, then each API
+  apiSelect.append(el('option', {value: 'browse'}, L('Browse the data of all the APIs')));
   apis.forEach(
       (a, i) => apiSelect.append(el('option', {value: String(i)}, `${a.title} (${a.root})`)));
-  let current = Math.max(0, apis.findIndex((a) => a.root === state.api));
-  apiSelect.value = String(current);
+  let current = state.api === 'browse' ? 'browse' : Math.max(0, apis.findIndex((a) => a.root === state.api));
 
-  // Opens API i; keep keeps the state read from the address of the page
-  const open = (i, keep) => {
+  // Opens API i, or the Browse page; keep keeps the state read from the address of the page,
+  // preset gives the state of an API opened from the Browse page
+  const open = (i, keep, preset) => {
     current = i;
-    const api = apis[i];
-    const s = keep ? state : {};
-    s.api = api.root;
+    apiSelect.value = String(i);
+    const s = preset ? Object.assign({}, preset) : keep ? state : {};
     const save = () => writeState(s);
+    if (i === 'browse')
+    {
+      s.api = 'browse';
+      content.replaceChildren(browseModule(app, apis, s, save, (index, p) => open(index, false, p)));
+      return;
+    }
+    const api = apis[i];
+    s.api = api.root;
+    if (preset)
+      save();
     content.replaceChildren(MODULES[api.kind](app, api, s, save));
   };
-  apiSelect.addEventListener('change', () => open(Number(apiSelect.value), false));
+  apiSelect.addEventListener('change', () =>
+    open(apiSelect.value === 'browse' ? 'browse' : Number(apiSelect.value), false));
   open(current, true);
 }
 
@@ -11604,6 +11954,8 @@ root.SmartMetExplorer = {
   locationModes,
   timeText,
   parseTimeText,
+  dataKind,
+  parameterThemes,
   missingTexts: () => Array.from(MISSING_TEXTS),
   language: () => LANGUAGE,
   readGeoTiff

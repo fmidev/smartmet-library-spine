@@ -173,6 +173,9 @@ make %{_smp_mflags}
 
 %changelog
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
+- Data explorer: a Browse page of the data of all the APIs: one card per dataset with its kind,
+  period, themes and parameters, narrowed by a search, kinds, themes and a point on the map, and
+  opened in each API offering it with the parameters searched for
 - Data explorer: Finnish and Swedish besides English (explorer-fi.js, explorer-sv.js, the
   language chosen in the settings menu or by explorer_defaults.language or the browser)
 - Data explorer: regional defaults of the server (api_catalog.explorer_defaults: first map

@@ -371,3 +371,19 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .time-input .time-text { font-variant-numeric: tabular-nums; }
 .time-input .time-text[aria-invalid="true"] { border-color: #d1242f; outline-color: #d1242f; }
 .time-input .time-picker { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
+.browse-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .browse-layout { grid-template-columns: 1fr; } }
+.browse-map { position: sticky; top: 8px; }
+.browse .row input[type="search"] { flex: 1; min-width: 0; }
+.browse-facets { gap: 6px; margin: 2px 0 8px; }
+.chip.facet { padding: 1px 10px; cursor: pointer; border: 1px solid transparent; }
+.chip.facet[aria-pressed="true"] { border-color: var(--accent); }
+.browse-cards { display: flex; flex-direction: column; gap: 8px; }
+.browse-card { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.browse-card:hover { border-color: var(--accent); }
+.browse-themes .chip { padding: 0 8px; }
+.browse-params { margin: 4px 0; padding-left: 1.2em; max-height: 240px; overflow: auto; }
+.badge-kind { background: var(--chip); }
+.xmap-region.faint { fill: rgba(9, 105, 218, 0.02); stroke-opacity: 0.35; }
+.xmap-region.highlight { fill: rgba(9, 105, 218, 0.18); stroke-width: 2.5; stroke-dasharray: none; }
+.module.browse { display: block; }

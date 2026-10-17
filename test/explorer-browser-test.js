@@ -620,7 +620,7 @@ async function main()
     check(
         'only the APIs with a module are offered',
         JSON.stringify(apis) ===
-            JSON.stringify(['EDR (/edr)', 'Coverages (/coverages)', 'TimeSeries (/timeseries)']),
+            JSON.stringify(['Browse the data of all the APIs', 'EDR (/edr)', 'Coverages (/coverages)', 'TimeSeries (/timeseries)']),
         apis);
 
     // A parameter narrows the producers
@@ -2473,6 +2473,57 @@ async function main()
         reopened.hash === lastView && lastView.includes('api=%2Fcoverages') && reopened.cookies === '' &&
             `#${reopened.stored}` === lastView,
         {lastView, reopened});
+
+    // Browsing the data of all the APIs: one card per dataset, the APIs offering it, kinds,
+    // themes, a search of the parameters and opening a dataset in an API
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {url: `${base}/api/explorer#api=browse`});
+    await waitFor(b, `document.querySelectorAll('.browse-card').length > 0`, 'the datasets');
+    const browse = await b.evaluate(`(async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const cards = () => [...document.querySelectorAll('.browse-card')];
+      const card = (name) => cards().find((c) => c.dataset.dataset === name);
+      const buttons = (name) => [...card(name).querySelectorAll('button')].map((x) => x.textContent);
+      const badges = (name) => [...card(name).querySelectorAll('.badge')].map((x) => x.textContent);
+      const out = { names: cards().map((c) => c.dataset.dataset), pal: buttons('pal'), ecmwf: badges('ecmwf'),
+                    opendata: badges('opendata')[0], ens: badges('ens')[0],
+                    kinds: [...document.querySelectorAll('[data-facet^="kinds:"]')].map((x) => x.textContent),
+                    themes: [...document.querySelectorAll('[data-facet^="themes:"]')].map((x) => x.textContent) };
+      // A theme narrows the datasets
+      document.querySelector('[data-facet="themes:wind"]').click();
+      await wait(100);
+      out.wind = cards().map((c) => c.dataset.dataset);
+      document.querySelector('[data-facet="themes:wind"]').click();
+      // A search of the parameters
+      const search = document.querySelector('[aria-label="Search the data"]');
+      search.value = 'wave';
+      search.dispatchEvent(new Event('input', { bubbles: true }));
+      await wait(400);
+      out.wave = cards().map((c) => c.dataset.dataset);
+      out.waveMatch = card('pal').querySelector('summary').textContent;
+      out.hash = location.hash;
+      [...card('pal').querySelectorAll('button')].find((x) => x.textContent.includes('TimeSeries')).click();
+      await wait(1500);
+      out.opened = location.hash;
+      out.chips = [...document.querySelectorAll('.chip')].map((c) => c.textContent);
+      return out;
+    })()`);
+    check(
+        'browsing the data of all the APIs',
+        browse.names.includes('pal') && browse.names.includes('ecmwf_pressure') &&
+            browse.names.filter((n) => n === 'ecmwf').length === 1 &&
+            browse.pal.some((x) => x.includes('TimeSeries')) && browse.pal.some((x) => x.includes('Coverages')) &&
+            browse.pal.some((x) => x.includes('EDR')) &&
+            JSON.stringify(browse.ecmwf.slice(1)) === '["querydata","grid"]' &&
+            browse.opendata === 'Observations' && browse.ens === 'Ensembles' &&
+            browse.kinds.length >= 3 && browse.themes.some((x) => x.startsWith('Wind')) &&
+            !browse.wind.includes('pal') && browse.wind.includes('opendata') &&
+            JSON.stringify(browse.wave) === '["pal"]' && browse.waveMatch === '1 parameter matches' &&
+            browse.hash.includes('q=wave') && browse.opened.includes('producer=pal') &&
+            browse.opened.includes('params=wavedirection') && browse.opened.includes('api=%2Ftimeseries') &&
+            browse.chips.some((x) => x.startsWith('WaveDirection')),
+        browse);
 
     // The languages: every text of explorer.js in the translations, and none missing when the
     // views are shown in Finnish and Swedish
