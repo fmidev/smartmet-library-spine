@@ -1752,6 +1752,7 @@ function timeSlider(times, options = {})
   let index = 0;
   let all = false;
   let timer = null;
+  let frame = null;
 
   const slider = el('input', {
     type: 'range',
@@ -1798,18 +1799,29 @@ function timeSlider(times, options = {})
   const stop = () => {
     if (timer)
       clearTimeout(timer);
+    if (frame)
+      cancelAnimationFrame(frame);
     timer = null;
+    frame = null;
     play.textContent = '▶';
     play.setAttribute('aria-label', 'Play');
   };
+  // The next step is scheduled only after the previous one has been painted, so that a slow
+  // browser animates more slowly instead of skipping times
   const tick = () => {
+    timer = null;
     if (!box.isConnected)
     {
       stop();
       return;
     }
+    const started = performance.now();
     choose((index + 1) % times.length);
-    timer = setTimeout(tick, animationDelay);
+    frame = requestAnimationFrame(() => {
+      frame = null;
+      if (play.getAttribute('aria-label') === 'Pause')
+        timer = setTimeout(tick, Math.max(0, animationDelay - (performance.now() - started)));
+    });
   };
 
   // The nearest available time to the slider
@@ -1834,7 +1846,7 @@ function timeSlider(times, options = {})
     choose(index + (step !== undefined ? step : jump));
   });
   play.addEventListener('click', () => {
-    if (timer)
+    if (play.getAttribute('aria-label') === 'Pause')
     {
       stop();
       return;
