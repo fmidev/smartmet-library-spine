@@ -1264,6 +1264,13 @@ async function main()
                     cells: cells.length, readout: box.querySelector('.sk-readout').textContent,
                     colours: box.querySelector('[aria-label="Colours of the cross section"]').value,
                     has: E.hasCrossSection(rows) };
+      const check = box.querySelector('input[aria-label="Flight levels"]');
+      check.click();
+      out.flightLevels = [...box.querySelectorAll('.flight-level-label')].map((x) => x.textContent);
+      out.fl100 = Math.round(E.flightLevelPressure(100) * 10) / 10;
+      out.fl390 = Math.round(E.flightLevelPressure(390) * 10) / 10;
+      check.click();
+      out.after = box.querySelectorAll('.flight-level').length;
       box.remove();
       return out;
     })()`);
@@ -1272,6 +1279,11 @@ async function main()
         cross.points === 5 && cross.km > 40 && cross.cells === 50 && cross.has &&
             /^\d+ km \(/.test(cross.readout) && cross.colours === 'production:temperature',
         cross);
+    check(
+        'flight levels on the cross section',
+        cross.flightLevels.join(',') === 'FL050,FL100,FL150,FL200,FL250,FL300,FL350' &&
+            cross.fl100 === 696.8 && cross.fl390 === 196.8 && cross.after === 0,
+        {flightLevels: cross.flightLevels, fl100: cross.fl100, fl390: cross.fl390, after: cross.after});
 
     // Locations reporting at different intervals, and a parameter without values
     const mixed = await b.evaluate(`(() => {

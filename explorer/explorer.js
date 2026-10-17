@@ -1926,6 +1926,153 @@ function colourScale(settings, label, onChange)
 // A time-height section of a parameter: time horizontally, the vertical coordinate
 // vertically, the values as coloured cells. Each profile keeps its own levels, as the height
 // or pressure of model levels changes in time.
+// Flight levels: pressure altitudes of the ICAO standard atmosphere in hundreds of feet. The
+// troposphere has a lapse rate of 6.5 K/km from 288.15 K and 1013.25 hPa, the stratosphere
+// above 11 km a constant 216.65 K.
+function flightLevelPressure(fl)
+{
+  const z = fl * 30.48;
+  if (z <= 11000)
+    return 1013.25 * Math.pow(1 - (0.0065 * z) / 288.15, 5.25588);
+  return 226.321 * Math.exp(-0.000157688 * (z - 11000));
+}
+
+function pressureFlightLevel(p)
+{
+  const z = p >= 226.321 ? (288.15 / 0.0065) * (1 - Math.pow(p / 1013.25, 1 / 5.25588)) :
+                           11000 - Math.log(p / 226.321) / 0.000157688;
+  return z / 30.48;
+}
+
+// The flight levels between two pressures (hPa), at most count of them at round intervals
+function flightLevelsBetween(pmin, pmax, count = 8)
+{
+  const low = Math.max(0, pressureFlightLevel(pmax));
+  const high = pressureFlightLevel(pmin);
+  const step = [10, 20, 50, 100, 200].find((s) => (high - low) / s <= count) || 500;
+  const out = [];
+  for (let fl = Math.ceil(low / step) * step; fl <= high; fl += step)
+    if (fl > 0)
+      out.push(fl);
+  return out;
+}
+
+// Whether flight levels are drawn on vertical sections, shared by the sections of the page and
+// remembered by the browser
+const FLIGHT_LEVELS_KEY = 'smartmet-explorer-flight-levels';
+let showFlightLevels = (() => {
+  try
+  {
+    return localStorage.getItem(FLIGHT_LEVELS_KEY) === '1';
+  }
+  catch (e)
+  {
+    return false;
+  }
+})();
+
+// A checkbox for the flight levels of a section, hidden when there are no pressures
+function flightLevelCheck(pressureAxis, onChange)
+{
+  const input = el('input', {type: 'checkbox', 'aria-label': 'Flight levels'});
+  input.checked = showFlightLevels;
+  input.addEventListener('change', () => {
+    showFlightLevels = input.checked;
+    try
+    {
+      localStorage.setItem(FLIGHT_LEVELS_KEY, showFlightLevels ? '1' : '0');
+    }
+    catch (e)
+    {
+      // Not remembered
+    }
+    onChange();
+  });
+  const label = el('label', {class: 'check'}, input, 'Flight levels');
+  label.hidden = !pressureAxis;
+  return label;
+}
+
+// Flight levels on a section: columns [{x, levels: [{z, p}]}] with the vertical coordinate z of
+// the axis and the pressure p (hPa) of each level. Each flight level is drawn where the
+// pressures of a column reach it, interpolated in the logarithm of the pressure.
+function drawFlightLevels(g, columns, axis, sy, w)
+{
+  const ps = columns.flatMap((c) => c.levels.map((l) => l.p)).filter((p) => p > 0);
+  if (ps.length === 0)
+    return;
+  // Candidates at fine intervals, thinned below where the axis squeezes them together
+  const lines = [];
+  for (const fl of flightLevelsBetween(Math.min(...ps), Math.max(...ps), 16))
+  {
+    const target = Math.log(flightLevelPressure(fl));
+    const segments = [[]];
+    for (const c of columns)
+    {
+      const levels = c.levels.filter((l) => l.p > 0);
+      let y = null;
+      for (let k = 0; k + 1 < levels.length && y === null; k++)
+      {
+        const a = Math.log(levels[k].p);
+        const b = Math.log(levels[k + 1].p);
+        if (a === b || (target - a) * (target - b) > 0)
+          continue;
+        const f = (target - a) / (b - a);
+        y = axis.id === 'pressure' ? sy(Math.exp(target)) :
+                                     sy(levels[k].z + f * (levels[k + 1].z - levels[k].z));
+      }
+      if (y === null)
+      {
+        if (segments[segments.length - 1].length > 0)
+          segments.push([]);
+        continue;
+      }
+      segments[segments.length - 1].push([Math.max(0, Math.min(w, c.x)), y]);
+    }
+    const drawn = segments.filter((s) => s.length > 0);
+    if (drawn.length === 0)
+      continue;
+    const all = drawn.flat();
+    lines.push({fl, drawn, y: all.reduce((sum, [, y]) => sum + y, 0) / all.length});
+  }
+  // From the bottom up, a line at least 16 pixels above the previous one drawn, the round
+  // hundreds preferred
+  lines.sort((a, b) => b.y - a.y);
+  const kept = [];
+  for (const line of lines)
+  {
+    const previous = kept[kept.length - 1];
+    if (!previous || previous.y - line.y >= 16)
+      kept.push(line);
+    else if (line.fl % 100 === 0 && previous.fl % 100 !== 0 &&
+             (kept.length < 2 || kept[kept.length - 2].y - line.y >= 16))
+      kept[kept.length - 1] = line;
+  }
+  for (const {fl, drawn} of kept)
+  {
+    for (const s of drawn)
+    {
+      // A single column is drawn as a short line
+      const pts = s.length > 1 ? s : [[s[0][0] - 6, s[0][1]], [s[0][0] + 6, s[0][1]]];
+      g.append(svg('polyline', {
+        class: 'flight-level',
+        points: pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
+      }));
+    }
+    const last = drawn[drawn.length - 1];
+    const [x, y] = last[last.length - 1];
+    // Above the line, or below it at the top of the frame
+    const label = svg('text', {
+      class: 'flight-level-label',
+      x: Math.min(w - 2, x),
+      y: y < 12 ? y + 11 : y - 3,
+      'text-anchor': 'end'
+    });
+    label.textContent = `FL${String(fl).padStart(3, '0')}`;
+    g.append(label);
+  }
+}
+
 function drawSection(container, rows, parameters, levelKind, settings)
 {
   container.replaceChildren();
@@ -1937,6 +2084,8 @@ function drawSection(container, rows, parameters, levelKind, settings)
     return;
   }
   const state = {axis: axes[0], param: numeric[0], palette: 'viridis', key: null};
+  const pressureAxis = axes.find((a) => a.id === 'pressure');
+  const flightLevels = flightLevelCheck(pressureAxis, () => draw());
   const axisSelect =
       el('select',
          {'aria-label': 'Vertical axis of the section'},
@@ -1967,7 +2116,8 @@ function drawSection(container, rows, parameters, levelKind, settings)
          el('label', null, 'Vertical axis', axisSelect),
          el('label', null, 'Top', topSelect),
          el('label', null, 'Colours', paletteSelect),
-         keySelect),
+         keySelect,
+         flightLevels),
       legend,
       readout,
       plot);
@@ -2007,7 +2157,11 @@ function drawSection(container, rows, parameters, levelKind, settings)
     }
     const cells = profiles.map(
         (p) => p.rows.filter(({z}) => withinTop(state.axis, state.top, z))
-                   .map(({z, row}) => ({z, v: columnValue(row, state.param)}))
+                   .map(({z, row}) => ({
+                          z,
+                          v: columnValue(row, state.param),
+                          p: pressureAxis ? pressureAxis.value(row) : null
+                        }))
                    .filter((c) => c.v !== null));
     const values = cells.flat().map((c) => c.v).sort((a, b) => a - b);
     const zs = cells.flat().map((c) => c.z);
@@ -2079,6 +2233,9 @@ function drawSection(container, rows, parameters, levelKind, settings)
     root.addEventListener('mouseleave', () => {
       readout.textContent = '';
     });
+    if (showFlightLevels && pressureAxis)
+      drawFlightLevels(
+          g, profiles.map((p, i) => ({x: sx(p.time), levels: cells[i]})), state.axis, sy, w);
     for (const z of verticalTicks(state.axis, zmin, zmax))
     {
       const t = svg('text', {class: 'vtick', x: -6, y: sy(z) + 4, 'text-anchor': 'end'});
@@ -2161,6 +2318,8 @@ function drawCrossSection(container, rows, parameters, levelKind, settings)
   const times = Array.from(new Set(rows.map((r) => parseTime(r.time)).filter(Boolean).map((d) => d.getTime())))
                     .sort((a, b) => a - b);
   const state = {axis: axes[0], param: numeric[0], palette: 'viridis', top: '', time: 0};
+  const pressureAxis = axes.find((a) => a.id === 'pressure');
+  const flightLevels = flightLevelCheck(pressureAxis, () => draw());
   const select = (label, items, value) => {
     const s = el('select', {'aria-label': label}, items.map(([v, l]) => el('option', {value: v}, l)));
     s.value = value;
@@ -2195,7 +2354,8 @@ function drawCrossSection(container, rows, parameters, levelKind, settings)
                       el('label', null, 'Parameter', paramSelect),
                       el('label', null, 'Vertical axis', axisSelect),
                       el('label', null, 'Top', topSelect),
-                      el('label', null, 'Colours', paletteSelect)),
+                      el('label', null, 'Colours', paletteSelect),
+                      flightLevels),
                    el('div', {class: 'row profile-times'}, slider, timeLabel),
                    legend,
                    readout,
@@ -2235,7 +2395,7 @@ function drawCrossSection(container, rows, parameters, levelKind, settings)
       all.push(v);
       const t = parseTime(r.time);
       if (t && t.getTime() === time)
-        columns[i].push({z, v});
+        columns[i].push({z, v, p: pressureAxis ? pressureAxis.value(r) : null});
     }
     for (const c of columns)
       c.sort((a, b) => a.z - b.z);
@@ -2303,6 +2463,9 @@ function drawCrossSection(container, rows, parameters, levelKind, settings)
     root.addEventListener('mouseleave', () => {
       readout.textContent = '';
     });
+    if (showFlightLevels && pressureAxis)
+      drawFlightLevels(
+          g, points.map((p, i) => ({x: sx(p.km), levels: columns[i]})), state.axis, sy, w);
     for (const z of verticalTicks(state.axis, zmin, zmax))
     {
       const label = svg('text', {class: 'vtick', x: -6, y: sy(z) + 4, 'text-anchor': 'end'});
@@ -7264,6 +7427,8 @@ root.SmartMetExplorer = {
   pathPoints,
   hasProfiles,
   hasSounding,
+  flightLevelPressure,
+  flightLevelsBetween,
   verticalAxes,
   liftingCondensationLevel,
   moistAdiabat,

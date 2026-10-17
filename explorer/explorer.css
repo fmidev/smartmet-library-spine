@@ -269,3 +269,19 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .sk-readout { min-height: 1.4em; color: var(--muted); }
 .section-cell { stroke: none; }
 .section-cell:hover { stroke: var(--fg); stroke-width: 1; }
+
+.flight-level {
+  fill: none;
+  stroke: #212529;
+  stroke-width: 1;
+  stroke-dasharray: 6 3;
+  pointer-events: none;
+}
+.flight-level-label {
+  font-size: 10px;
+  fill: #212529;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 3;
+  pointer-events: none;
+}
