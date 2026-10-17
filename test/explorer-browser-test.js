@@ -1556,6 +1556,38 @@ async function main()
             JSON.stringify(meteogram.adds) === '["precipitationamount","windums","windvms"]',
         meteogram);
 
+    // Export: the view as an image, the rows as CSV
+    const exported = await b.evaluate(`(async () => {
+      const E = SmartMetExplorer;
+      const rows = [];
+      for (let k = 0; k < 12; k++)
+        rows.push({ name: 'x', time: '2026-10-15T00:00:00Z', lat: 60, lon: 25, level: k + 1, pressure: 1000 - k * 75,
+                    temperature: 15 - k * 6, dewpoint: 10 - k * 7 });
+      const box = document.createElement('div');
+      box.style.width = '600px';
+      document.body.append(box);
+      E.drawSkewT(box, rows, 'hybrid');
+      const chart = document.createElement('div');
+      chart.style.width = '600px';
+      document.body.append(chart);
+      E.drawCharts(chart, [{ name: 'a', time: '2026-10-15T00:00:00Z', t: 1 }, { name: 'a', time: '2026-10-15T01:00:00Z', t: 2 }], ['t']);
+      await new Promise((r) => setTimeout(r, 300));
+      const blob = await E.viewImage(box);
+      const bitmap = await createImageBitmap(blob);
+      const chartBlob = await E.viewImage(chart);
+      const svgWidth = Math.round(box.querySelector('svg.skewt-diagram').getBoundingClientRect().width);
+      box.remove();
+      chart.remove();
+      const csv = E.rowsCsv([{ name: 'a, b', time: 't', v: 1, _hidden: 2 }, { name: 'say "x"', time: 't', v: null }]);
+      return { type: blob.type, width: bitmap.width, svgWidth, size: blob.size, chart: chartBlob && chartBlob.size, csv };
+    })()`);
+    check(
+        'export of a view and of the rows',
+        exported.type === 'image/png' && exported.width >= 2 * exported.svgWidth && exported.size > 5000 &&
+            exported.chart > 1000 &&
+            exported.csv === 'name,time,v\r\n"a, b",t,1\r\n"say ""x""",t,\r\n',
+        exported);
+
     // Locations reporting at different intervals, and a parameter without values
     const mixed = await b.evaluate(`(() => {
       const rows = [];

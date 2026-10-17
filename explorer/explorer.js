@@ -5269,6 +5269,188 @@ function drawValueMap(container, rows, parameters, settings)
 const MAX_TABLE_ROWS = 1000;
 
 // The rows as a table, at most MAX_TABLE_ROWS of them, the columns in the order of the rows
+// ------------------------------------------------------------------
+// Export
+// ------------------------------------------------------------------
+
+// Offers a file made in the browser for saving
+function saveFile(blob, name)
+{
+  const a = el('a', {href: URL.createObjectURL(blob), download: name});
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+// The rows as CSV: the columns of the table, the values quoted when needed
+function rowsCsv(rows)
+{
+  const columns = [];
+  for (const row of rows)
+    for (const k of Object.keys(row))
+      if (!k.startsWith('_') && !columns.includes(k))
+        columns.push(k);
+  const quote = (v) => {
+    if (v === null || v === undefined)
+      return '';
+    const s = String(v);
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return [columns.join(','), ...rows.map((r) => columns.map((c) => quote(r[c])).join(','))].join('\r\n') + '\r\n';
+}
+
+// The SVG properties the stylesheet sets, copied to an exported clone that has no stylesheet
+const SVG_STYLE = ['fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-opacity',
+                   'opacity', 'font-size', 'font-family', 'font-weight', 'visibility', 'paint-order',
+                   'stroke-linejoin', 'stroke-linecap', 'text-anchor', 'dominant-baseline'];
+
+// A standalone copy of an SVG element of the page: its computed styles inline
+function standaloneSvg(node)
+{
+  const clone = node.cloneNode(true);
+  const from = [node, ...node.querySelectorAll('*')];
+  const to = [clone, ...clone.querySelectorAll('*')];
+  from.forEach((n, i) => {
+    const css = getComputedStyle(n);
+    to[i].setAttribute('style', SVG_STYLE.map((p) => `${p}:${css.getPropertyValue(p)}`).join(';'));
+  });
+  const r = node.getBoundingClientRect();
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('width', Math.round(r.width));
+  clone.setAttribute('height', Math.round(r.height));
+  return new XMLSerializer().serializeToString(clone);
+}
+
+// An image of what a view of the results shows: its diagrams (SVG) and charts (canvas) from
+// top to bottom with the titles of the charts, on the background of the page. Resolves to a
+// PNG blob, or null when the view has nothing to draw.
+async function viewImage(pane)
+{
+  const css = getComputedStyle(document.documentElement);
+  const background = css.getPropertyValue('--bg').trim() || '#fff';
+  const fg = css.getPropertyValue('--fg').trim() || '#000';
+  // The parts in the order of the page: the charts with their titles, the diagrams
+  const parts = [];
+  for (const node of pane.querySelectorAll(
+           '.chart, svg.vdiagram, svg.skewt-diagram, svg.hodograph, svg.xmap-svg, .legend, .sk-analysis, .skewt-info, .compare-stats'))
+  {
+    if (node.closest('.chart') && node.tagName.toLowerCase() === 'svg')
+      continue;
+    if (node.closest('.chart') && node.classList.contains('legend'))
+      continue;
+    const r = node.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0)
+      continue;
+    parts.push({node, r});
+  }
+  if (parts.length === 0)
+    return null;
+  const left = Math.min(...parts.map((p) => p.r.left));
+  const top = Math.min(...parts.map((p) => p.r.top));
+  const width = Math.max(...parts.map((p) => p.r.right)) - left;
+  const height = Math.max(...parts.map((p) => p.r.bottom)) - top;
+  const scale = 2;
+  const canvas = el('canvas', {width: Math.ceil(width * scale), height: Math.ceil(height * scale)});
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+  ctx.fillStyle = background;
+  ctx.fillRect(0, 0, width, height);
+  const image = (src) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+  for (const {node, r} of parts)
+  {
+    const x = r.left - left;
+    const y = r.top - top;
+    if (node.tagName.toLowerCase() !== 'svg' && !node.classList.contains('chart'))
+    {
+      // A block of the page: the coloured boxes and the text of its elements
+      for (const e of [node, ...node.querySelectorAll('*')])
+      {
+        const style = getComputedStyle(e);
+        const er = e.getBoundingClientRect();
+        if (style.display === 'none' || er.width === 0)
+          continue;
+        const bg = style.backgroundColor;
+        if (bg && bg !== 'transparent' && !/rgba\(.*, 0\)$/.test(bg))
+        {
+          ctx.fillStyle = bg;
+          ctx.fillRect(er.left - left, er.top - top, er.width, er.height);
+        }
+        for (const text of e.childNodes)
+        {
+          if (text.nodeType !== 3 || !text.textContent.trim())
+            continue;
+          const range = document.createRange();
+          range.selectNodeContents(text);
+          const tr = range.getBoundingClientRect();
+          ctx.fillStyle = style.color;
+          ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+          ctx.textBaseline = 'alphabetic';
+          ctx.fillText(text.textContent.trim(), tr.left - left, tr.bottom - top - 3);
+        }
+      }
+      continue;
+    }
+    if (node.classList.contains('chart'))
+    {
+      // The title, and the canvases of the chart
+      const title = node.querySelector('.chart-title');
+      if (title)
+      {
+        const tr = title.getBoundingClientRect();
+        ctx.fillStyle = fg;
+        ctx.font = `600 13px ${getComputedStyle(title).fontFamily}`;
+        ctx.fillText(title.textContent, tr.left - left, tr.top - top + 13);
+      }
+      for (const c of node.querySelectorAll('canvas'))
+      {
+        const cr = c.getBoundingClientRect();
+        ctx.drawImage(c, cr.left - left, cr.top - top, cr.width, cr.height);
+      }
+      for (const svgNode of node.querySelectorAll('svg'))
+      {
+        const sr = svgNode.getBoundingClientRect();
+        const img = await image(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(standaloneSvg(svgNode))}`);
+        ctx.drawImage(img, sr.left - left, sr.top - top, sr.width, sr.height);
+      }
+      continue;
+    }
+    const img = await image(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(standaloneSvg(node))}`);
+    ctx.drawImage(img, x, y, r.width, r.height);
+  }
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+}
+
+// The buttons saving the visible view as an image and the rows as CSV
+function exportButtons(visiblePane, rows, name)
+{
+  const status = el('span', {class: 'muted small'});
+  const png = el('button', {type: 'button', class: 'small', title: 'Save the view as a PNG image'}, 'PNG');
+  const csv = el('button', {type: 'button', class: 'small', title: 'Save all the rows as CSV'}, 'CSV');
+  png.addEventListener('click', async () => {
+    status.textContent = '';
+    try
+    {
+      const blob = await viewImage(visiblePane());
+      if (blob)
+        saveFile(blob, `${name}.png`);
+      else
+        status.textContent = 'Nothing to draw in this view';
+    }
+    catch (e)
+    {
+      status.textContent = e.message;
+    }
+  });
+  csv.addEventListener('click', () => saveFile(new Blob([rowsCsv(rows)], {type: 'text/csv'}), `${name}.csv`));
+  return el('span', {class: 'export-buttons'}, png, csv, status);
+}
+
 function drawTable(container, rows)
 {
   container.replaceChildren();
@@ -7139,7 +7321,9 @@ function timeSeriesModule(app, api, state, save)
              el('span',
                 {class: 'muted small'},
                 `${rows.length} rows${locationsCount > 1 ? `, ${locationsCount} locations` : ''}${
-                    byLevel ? `, ${levelCount} ${kind === 'member' ? 'members' : 'levels'}` : ''}`)),
+                    byLevel ? `, ${levelCount} ${kind === 'member' ? 'members' : 'levels'}` : ''}`),
+             exportButtons(() => Object.values(panes).find((p) => !p.hidden), rows,
+                           `${s.producer || 'timeseries'}`)),
           ...Object.values(panes));
       show(s.tab && panes[s.tab] ? s.tab :
                crossSection        ? 'Cross section' :
@@ -8464,7 +8648,9 @@ function edrModule(app, api, state, save)
              el('span',
                 {class: 'muted small'},
                 `${rows.length} rows${count > 1 ? `, ${count} locations` : ''}${
-                    byLevel ? `, ${levelCount} ${kind === 'member' ? 'members' : 'levels'}` : ''}`)),
+                    byLevel ? `, ${levelCount} ${kind === 'member' ? 'members' : 'levels'}` : ''}`),
+             exportButtons(() => Object.values(panes).find((p) => !p.hidden), rows,
+                           `${s.collection || 'edr'}`)),
           ...Object.values(panes));
       show(s.tab && panes[s.tab] ? s.tab :
                crossSection        ? 'Cross section' :
@@ -9444,6 +9630,8 @@ root.SmartMetExplorer = {
   pathPoints,
   hasProfiles,
   hasSounding,
+  rowsCsv,
+  viewImage,
   hasMeteogram,
   drawMeteogram,
   meteogramParameters,

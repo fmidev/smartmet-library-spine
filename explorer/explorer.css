@@ -330,3 +330,6 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* Comparison with another producer */
 .compare-stats { margin: 4px 0 8px; color: var(--muted); }
+
+/* Export */
+.export-buttons { display: inline-flex; gap: 4px; align-items: center; margin-left: auto; }
