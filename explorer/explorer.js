@@ -8,8 +8,22 @@
 //
 // Served by spine (Spine::OpenAPI::Catalog) at /api/explorer. Uses uPlot for
 // the charts and the SmartMet Swagger UI plugin (SmartMetSwaggerUI) for the
-// code snippets, the response tree and the location map. The DOM is built from
-// text nodes only, never from HTML strings.
+// code snippets and the response tree. The DOM is built from text nodes only,
+// never from HTML strings.
+//
+// The parts of this file, in order:
+// - utilities, the autocomplete field and the TimeSeries parameter index
+// - map settings, palettes and the basemap, and the map with its drawing
+//   tools (createMap)
+// - the vertical views: profiles, time-height sections, cross sections and
+//   time series along paths, flight levels, the animated time slider, and the
+//   thermodynamic diagrams (skew-T, tephigram, Stuve)
+// - charts of time series (lines, percentiles and swarms of many locations),
+//   values on a map with colour scales, tables and code snippets
+// - the modules of the APIs: TimeSeries, EDR and Coverages, each building
+//   its form, its request and the views of its results
+// - the application: the API catalog, the choice of the API, and the state
+//   kept in the address of the page
 // ======================================================================
 
 (function(root) {
@@ -47,6 +61,7 @@ function el(tag, attrs, ...children)
   return node;
 }
 
+// A function calling fn only once the calls have paused for ms milliseconds, e.g. while typing
 function debounce(fn, ms)
 {
   let timer = null;
@@ -56,6 +71,7 @@ function debounce(fn, ms)
   };
 }
 
+// GET a JSON document; a failed request throws with the status and the start of the response
 async function fetchJson(url)
 {
   const response = await fetch(url, {headers: {accept: 'application/json'}});
@@ -79,6 +95,7 @@ function encode(value)
       .replace(/%2F/gi, '/');
 }
 
+// A query string of [name, value] pairs, empty values left out
 function queryString(params)
 {
   return params.filter(([, v]) => v !== undefined && v !== null && v !== '')
@@ -101,6 +118,7 @@ function fromInput(value)
   return value ? `${value}:00Z` : '';
 }
 
+// A time for display: 2026-10-16 12:00 UTC
 function formatTime(date)
 {
   return `${toInput(date).replace('T', ' ')} UTC`;
@@ -139,6 +157,7 @@ function flattenRows(data)
 // The value of an area: "[16 15 nan]", the values of the points of the area
 const AREA_VALUES = /^\[(.*)\]$/;
 
+// A value of a bracket list of an area query: a number, null for nan, or text
 function areaValue(text)
 {
   if (text === 'nan' || text === 'NaN' || text === '')
@@ -316,6 +335,7 @@ function parseNumberList(text, allowed)
   return allowed.filter((n) => out.has(n));
 }
 
+// The q quantile (0...1) of sorted numbers, interpolated linearly; null for none
 function quantile(sorted, q)
 {
   if (sorted.length === 0)
@@ -348,6 +368,10 @@ const palette = [
 // one is chosen with the mouse or the keyboard.
 // ------------------------------------------------------------------
 
+// A search field with a list of suggestions. options: label, placeholder, search(text) -> the
+// matching items, select(item) when one is chosen, empty(text) for a note when nothing matches,
+// limit (30 items), clearOnSelect (true). The list is navigated with the arrow keys and Enter.
+// Returns {element, input, refresh}.
 function autocomplete(options)
 {
   const input = el('input', {
@@ -364,6 +388,7 @@ function autocomplete(options)
   let items = [];
   let active = -1;
 
+  // Draws the list of suggestions, the active one highlighted
   function render()
   {
     list.replaceChildren();
@@ -391,6 +416,7 @@ function autocomplete(options)
         document.activeElement !== input;
   }
 
+  // Searches with the text of the field and shows the matches
   function update()
   {
     items = options.search(input.value.trim()).slice(0, options.limit || 30);
@@ -398,6 +424,7 @@ function autocomplete(options)
     render();
   }
 
+  // Chooses suggestion i
   function choose(i)
   {
     const item = items[i];
@@ -537,6 +564,8 @@ const META = new Map(META_PARAMETERS);
 // The same producer name may come from several sources, for example querydata and grid
 const producerKey = (source, name) => (source ? `${source}:${name}` : name);
 
+// The index of the TimeSeries producer listing (<ts_url>/api/producers): the producers by
+// source:name, and the parameters with the producers having them, for the faceted search
 function buildIndex(doc)
 {
   const producers = new Map();
@@ -592,9 +621,11 @@ function matchScore(q, name, text)
 }
 
 // ------------------------------------------------------------------
-// The map of the explorer: the SVG map of the Swagger plugin
+// Map settings, production palettes and the basemap
 // ------------------------------------------------------------------
 
+// The settings of maps and colours from the data attributes of the explorer element: map tiles
+// or the built-in basemap, and the production palettes
 function mapSettings(app)
 {
   const d = app.dataset;
@@ -613,6 +644,7 @@ function mapSettings(app)
 // The isoband colours of the production products (palettes.json): loaded once
 let palettesPromise = null;
 
+// The production palettes (palettes.json), loaded once and shared; none if missing
 function loadPalettes(url)
 {
   if (!palettesPromise)
@@ -625,6 +657,7 @@ function loadPalettes(url)
 // Loaded once.
 let basemapPromise = null;
 
+// The basemap, loaded once and shared, its rings decoded into coordinate arrays
 function loadBasemap(url)
 {
   if (!basemapPromise)
@@ -675,6 +708,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const EARTH_RADIUS_KM = 6371;
 const MAP_HEIGHT = 300;
 
+// An SVG element with attributes, like el() for HTML
 function svg(tag, attrs)
 {
   const node = document.createElementNS(SVG_NS, tag);
@@ -690,6 +724,7 @@ function project(lon, lat)
   return [((lon + 180) / 360) * 256, (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * 256];
 }
 
+// Web Mercator world pixels (256 at zoom 0) to [lon, lat]
 function unproject(x, y)
 {
   const n = Math.PI - (2 * Math.PI * y) / 256;
@@ -754,6 +789,7 @@ function pathLength(points)
   return km;
 }
 
+// Whether two [minlon, minlat, maxlon, maxlat] boxes overlap
 function boxesIntersect(a, b)
 {
   return a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
@@ -761,6 +797,11 @@ function boxesIntersect(a, b)
 
 const round = (v, decimals) => Number(v.toFixed(decimals));
 
+// The map of the explorer: an SVG Web Mercator map over tiles or the basemap, with tools to
+// pick a point, drag a radius or a box, or click the vertices of a path. onSelect(shape) is
+// called with each drawn selection. Overlays: the areas of the data (regions), the selection,
+// points (stations, results), coloured values (cells) and a cursor. Returns the methods that
+// set them, the tools and the view.
 function createMap(settings, onSelect)
 {
   const box = el('div', {class: 'xmap'});
@@ -803,6 +844,7 @@ function createMap(settings, onSelect)
 
   const width = () => box.clientWidth || 400;
   const scale = () => 2 ** state.zoom;
+  // World pixels (Web Mercator, 256 at zoom 0) to the pixels of the view, and back
   const toScreen = ([x, y]) =>
       [(x - state.center[0]) * scale() + width() / 2,
        (y - state.center[1]) * scale() + MAP_HEIGHT / 2];
@@ -820,6 +862,7 @@ function createMap(settings, onSelect)
     const cy = state.center[1];
     const w2 = width() / 2;
     const h2 = MAP_HEIGHT / 2;
+    // The SVG path of the rings of the basemap that are in the view, in pixels of the view
     const path = (rings, closed) => {
       let d = '';
       for (const ring of rings)
@@ -859,6 +902,7 @@ function createMap(settings, onSelect)
       g.append(svg('path', {class: 'xmap-border', d: borders}));
   }
 
+  // The background: the tiles, or the land, lakes and borders of the basemap
   function drawBackground()
   {
     const g = layers.background;
@@ -911,6 +955,7 @@ function createMap(settings, onSelect)
     }
   }
 
+  // A box in longitude and latitude as an SVG rectangle
   function rect(bbox, cls)
   {
     const [ax, ay] = screenOf(bbox[0], bbox[3]);
@@ -924,6 +969,7 @@ function createMap(settings, onSelect)
     });
   }
 
+  // A circle of km kilometres around a point, as a polygon of points every 5 degrees
   function circlePath(sel, cls)
   {
     const points = [];
@@ -932,6 +978,7 @@ function createMap(settings, onSelect)
     return svg('polygon', {class: cls, points: points.join(' ')});
   }
 
+  // Draws a selection: a box, a circle, a point, or a path with its vertices
   function drawShape(g, sel, cls)
   {
     if (!sel)
@@ -960,6 +1007,8 @@ function createMap(settings, onSelect)
     }
   }
 
+  // Draws everything on the background: the regions, the selection, the values, the cursor and the
+  // points
   function drawOverlays()
   {
     layers.regions.replaceChildren();
@@ -1064,6 +1113,7 @@ function createMap(settings, onSelect)
     layers.cursor.append(svg('circle', {class: 'xmap-cursor', cx: sx, cy: sy, r: 7}));
   }
 
+  // The name and the details of a point next to it
   function showTooltip(point, sx, sy)
   {
     const rows = Object.entries(point.info || {})
@@ -1078,6 +1128,7 @@ function createMap(settings, onSelect)
 
   // One redraw per animation frame while the map is dragged
   let pending = false;
+  // Redraws once at the next animation frame, however many times asked meanwhile
   function scheduleRedraw()
   {
     if (pending)
@@ -1096,6 +1147,7 @@ function createMap(settings, onSelect)
     drawOverlays();
   }
 
+  // Zooms to level z keeping the place under (sx, sy) of the view where it is
   function zoomAt(z, sx, sy)
   {
     z = Math.max(0, Math.min(18, z));
@@ -1127,6 +1179,7 @@ function createMap(settings, onSelect)
 
   // --- Interaction ------------------------------------------------------
   let drag = null;
+  // The position of a pointer event in the view
   const local = (e) => {
     const r = surface.getBoundingClientRect();
     return [e.clientX - r.left, e.clientY - r.top];
@@ -1196,6 +1249,7 @@ function createMap(settings, onSelect)
       onSelect(shape);
   });
 
+  // The shape dragged from d to (sx, sy) with the current tool: a box or a circle
   function shapeOf(d, sx, sy)
   {
     const [lon0, lat0] = lonLatOf(d.sx, d.sy);
@@ -1354,13 +1408,13 @@ function createMap(settings, onSelect)
   return api;
 }
 
-// ------------------------------------------------------------------
-// Charts
-// ------------------------------------------------------------------
-
 // ----------------------------------------------------------------------
 // Vertical profiles and soundings
 // ----------------------------------------------------------------------
+
+// Rows with several levels per location and time are drawn as profiles, time-height sections,
+// thermodynamic diagrams (see below), and along paths as cross sections and animated time
+// series. Flight levels and the animated time slider are shared by these views.
 
 // The value of a column, or of the median of an area computed by the server
 function columnValue(row, name)
@@ -1569,6 +1623,7 @@ function verticalScale(axis, zmin, zmax, h)
   return axis.down ? (v) => ((f(v) - a) / span) * h : (v) => h - ((f(v) - a) / span) * h;
 }
 
+// The ticks of a vertical axis: the standard pressure levels on a pressure axis
 function verticalTicks(axis, zmin, zmax)
 {
   if (axis.log)
@@ -1768,6 +1823,8 @@ if (typeof document !== 'undefined')
   });
 }
 
+// Sends the events of the pointer again to whatever is now under it, after a diagram has been
+// redrawn under a pointer that did not move
 function replayPointer()
 {
   if (!pointerAt)
@@ -1834,6 +1891,7 @@ function timeSlider(times, options = {})
   speed.value = String(animationDelay);
   const allBox = el('input', {type: 'checkbox', 'aria-label': 'All times'});
 
+  // Shows the chosen step on the slider and in the label
   const update = () => {
     slider.value = String(positions[index]);
     slider.setAttribute('aria-valuetext', formatAt(index));
@@ -1841,6 +1899,7 @@ function timeSlider(times, options = {})
     slider.disabled = all;
     play.disabled = all;
   };
+  // Chooses step i; the views are redrawn by onChange
   const choose = (i) => {
     const next = Math.max(0, Math.min(times.length - 1, i));
     const changed = next !== index;
@@ -1852,6 +1911,7 @@ function timeSlider(times, options = {})
       replayPointer();
     }
   };
+  // Stops the animation
   const stop = () => {
     if (timer)
       clearTimeout(timer);
@@ -1962,6 +2022,7 @@ function drawProfiles(container, rows, parameters, levelKind)
   const chooser = timeChooser(times, () => draw());
   const topSelect = el('select', {'aria-label': 'Top of the profiles'});
   let top = '';
+  // The tops the axis offers; the top is reset when the axis changes
   const setTops = () => {
     topSelect.replaceChildren(...verticalTops(axis).map(([v, l]) => el('option', {value: v}, l)));
     top = '';
@@ -1986,6 +2047,7 @@ function drawProfiles(container, rows, parameters, levelKind)
   });
   container.append(tools, diagrams);
 
+  // Draws a diagram of each parameter at the chosen times
   function draw()
   {
     diagrams.replaceChildren();
@@ -2128,6 +2190,7 @@ function flightLevelPressure(fl)
   return 226.321 * Math.exp(-0.000157688 * (z - 11000));
 }
 
+// The flight level of a pressure (hPa), the inverse of flightLevelPressure()
 function pressureFlightLevel(p)
 {
   const z = p >= 226.321 ? (288.15 / 0.0065) * (1 - Math.pow(p / 1013.25, 1 / 5.25588)) :
@@ -2264,6 +2327,9 @@ function drawFlightLevels(g, columns, axis, sy, w)
   }
 }
 
+// A time-height section at one location: time horizontally, the vertical coordinate
+// vertically, the values of a parameter as coloured cells, with the colour scale, axis, top,
+// location and flight level choices
 function drawSection(container, rows, parameters, levelKind, settings)
 {
   container.replaceChildren();
@@ -2289,6 +2355,7 @@ function drawSection(container, rows, parameters, levelKind, settings)
   const paletteSelect = scale.select;
   const keySelect = el('select', {'aria-label': 'Location of the section'});
   const topSelect = el('select', {'aria-label': 'Top of the section'});
+  // The tops the axis offers; the top is reset when the axis changes
   const setTops = () => {
     topSelect.replaceChildren(
         ...verticalTops(state.axis).map(([v, l]) => el('option', {value: v}, l)));
@@ -2330,6 +2397,7 @@ function drawSection(container, rows, parameters, levelKind, settings)
     draw();
   });
 
+  // Draws the section of the chosen parameter at the chosen location
   function draw()
   {
     plot.replaceChildren();
@@ -2525,6 +2593,7 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
   });
 
   let slider = null;
+  // Builds the slider and the charts of the chosen level
   function build()
   {
     charts.replaceChildren();
@@ -2617,6 +2686,7 @@ function drawAlongPath(container, rows, parameters, levelKind, options = {})
       charts.append(el('p', {class: 'muted'}, 'No values to draw.'));
       return;
     }
+    // Shows point i: its series in each chart, and its place on the map
     const show = (i) => {
       const point = points[i];
       for (const {p, u, title, stats} of plots)
@@ -2676,6 +2746,7 @@ function drawCrossSection(container, rows, parameters, levelKind, settings)
   const scale = colourScale(settings, 'Colours of the cross section', () => draw());
   const paletteSelect = scale.select;
   const topSelect = el('select', {'aria-label': 'Top of the cross section'});
+  // The tops the axis offers; the top is reset when the axis changes
   const setTops = () => {
     topSelect.replaceChildren(...verticalTops(state.axis).map(([v, l]) => el('option', {value: v}, l)));
     state.top = '';
@@ -2715,6 +2786,7 @@ function drawCrossSection(container, rows, parameters, levelKind, settings)
       apply();
       draw();
     });
+  // Draws the cross section at the chosen time
   function draw()
   {
     plot.replaceChildren();
@@ -3030,6 +3102,8 @@ function hasSounding(rows, levelKind)
 // - Stuve: v = -p^(R/cp), u = T, so that the dry adiabats are straight lines
 const THERMO_DIAGRAMS = [['skewt', 'Skew-T log-p'], ['tephigram', 'Tephigram'], ['stuve', 'Stüve']];
 
+// The projection of a thermodynamic diagram: (T C, p hPa) -> [u, v] before scaling, v growing
+// upwards
 function thermoProjection(type)
 {
   if (type === 'tephigram')
@@ -3155,6 +3229,7 @@ function drawSkewT(container, rows, levelKind, options)
   if (opts.controls)
     extra.append(...opts.controls);
 
+  // Draws the chosen diagram of the soundings at the chosen times and location
   function draw()
   {
     diagram.replaceChildren();
@@ -3207,6 +3282,7 @@ function drawSkewT(container, rows, levelKind, options)
         all.flatMap((l) => (l.td === null ? [[l.t, l.p]] : [[l.t, l.p], [l.td, l.p]])));
     const x = view.x;
     const y = view.y;
+    // A path through [p, t] points of the diagram
     const line = (points, cls, attrs) => {
       let d = '';
       points.forEach(([p, t], i) => {
@@ -3352,6 +3428,7 @@ function drawSkewT(container, rows, levelKind, options)
     plot.append(guide, tMark, dMark);
     g.append(hover);
     const readout = el('div', {class: 'sk-readout small'});
+    // Shows or hides the guide and the marks of the pointer
     const setVisible = (on) => {
       for (const n of [guide, tMark, dMark])
         n.setAttribute('visibility', on ? 'visible' : 'hidden');
@@ -3419,6 +3496,10 @@ function drawSkewT(container, rows, levelKind, options)
   return {redraw: draw};
 }
 
+// ------------------------------------------------------------------
+// Charts of time series
+// ------------------------------------------------------------------
+
 // More locations than this are drawn as percentiles by default, and as a swarm of thin lines
 // without a legend when lines are chosen
 const MAX_LINES = 20;
@@ -3472,6 +3553,8 @@ function drawServerStatistics(container, rows, parameters)
     container.append(el('p', {class: 'muted'}, 'No numeric values to draw.'));
 }
 
+// The charts of statistics computed by the server for one group of locations: the median and
+// the 10-90 % and 25-75 % ranges of each parameter
 function drawServerStatisticsGroup(container, series, parameters, label)
 {
   const xs = series.map(([t]) => Math.round(t.getTime() / 1000));
@@ -3575,6 +3658,8 @@ function swarmLayer(xs, lines)
       colours.set(line.colour, []);
     colours.get(line.colour).push(line);
   }
+  // Draws the lines on the canvas of the chart before the series (the drawAxes hook), so that the
+  // median is on top
   const draw = (u) => {
     const ctx = u.ctx;
     const {left, top, width, height} = u.bbox;
@@ -3612,6 +3697,7 @@ function swarmLayer(xs, lines)
   let overlay = null;
   let path = null;
   let label = null;
+  // The overlay of the highlighted line and its label, once the chart exists
   const ready = (u) => {
     overlay = svg('svg', {class: 'swarm-hover'});
     path = svg('path', {class: 'swarm-line'});
@@ -3619,6 +3705,7 @@ function swarmLayer(xs, lines)
     overlay.append(path);
     u.over.append(overlay, label);
   };
+  // Highlights the line nearest to the pointer at the time under it, if within 12 pixels
   const setCursor = (u) => {
     const k = u.cursor.idx;
     const cy = u.cursor.top;
@@ -3843,6 +3930,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
 
   for (const param of numeric)
   {
+    // The value of the parameter at time x of a location, null if none
     const valueOf = (map, x) => {
       const row = map.get(x);
       const v = row ? row[param] : null;
@@ -4036,6 +4124,7 @@ const PALETTES = {
   grey: ['#f7f7f7', '#252525']
 };
 
+// '#rrggbb' -> [r, g, b]
 function hexColour(hex)
 {
   return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
@@ -4176,6 +4265,7 @@ function drawValueMap(container, rows, parameters, settings)
   };
 
   let size = null;
+  // Draws the values at the chosen time on the map, and the legend
   const draw = () => {
     const [lo, hi] = [state.min, state.max];
     const t = times[state.time];
@@ -4235,6 +4325,7 @@ function drawValueMap(container, rows, parameters, settings)
                }))),
         el('span', {class: 'small'}, hi === null ? '' : round(hi, 2)));
   };
+  // The default range of the colour scale into the minimum and maximum fields
   const setRange = () => {
     [state.min, state.max] = defaultRange();
     minInput.value = state.min === null ? '' : round(state.min, 2);
@@ -4303,6 +4394,7 @@ function drawValueMap(container, rows, parameters, settings)
 
 const MAX_TABLE_ROWS = 1000;
 
+// The rows as a table, at most MAX_TABLE_ROWS of them, the columns in the order of the rows
 function drawTable(container, rows)
 {
   container.replaceChildren();
@@ -4339,11 +4431,14 @@ function drawTable(container, rows)
 // Code snippets
 // ------------------------------------------------------------------
 
+// A string quoted for a POSIX shell
 function shellQuote(s)
 {
   return `'${String(s).replace(/'/g, '\'\\\'\'')}'`;
 }
 
+// The code of a request in several languages: [[language, code]], curl first, the others from
+// the generators of the SmartMet Swagger UI plugin when it is loaded
 function snippets(url)
 {
   const request = {url: url, method: 'GET', headers: {}};
@@ -4370,6 +4465,7 @@ function snippets(url)
   return ret;
 }
 
+// The code of a request as tabs of languages, with a copy button
 function codeTabs(container, url)
 {
   container.replaceChildren();
@@ -4378,6 +4474,7 @@ function codeTabs(container, url)
   const copy = el('button', {type: 'button', class: 'small'}, 'Copy');
   const tabs = el('div', {class: 'tabs', role: 'tablist'});
   let current = 0;
+  // Shows the code of language i
   const show = (i) => {
     current = i;
     pre.textContent = items[i][1];
@@ -4460,6 +4557,7 @@ function pathPointsChooser(s, onChange)
     delete s.pathpoints;
     onChange(false);
   });
+  // Shows the choice, the step and the number of points of the path sel
   const update = (sel, rerender = true) => {
     const isMarked = s.pathpoints === 'marked';
     marked.setAttribute('aria-checked', isMarked ? 'true' : 'false');
@@ -4521,6 +4619,7 @@ function parseSelection(mode, text)
   return null;
 }
 
+// A selection of the map as the text of the location field (see parseSelection)
 function formatSelection(sel)
 {
   if (sel.type === 'path')
@@ -4541,6 +4640,11 @@ function covers(producer, sel)
   return boxesIntersect(producer.bbox, area);
 }
 
+// The TimeSeries module: parameters and producers narrowing each other, model details (runs,
+// geometries, levels, ensembles, observation sensors and quality), times, locations of many
+// kinds (places, points, radii, boxes, paths, keywords, stations), the output options, and the
+// results as profiles, soundings, sections, charts, maps, tables and trees. The choices are kept
+// in state, which the page keeps in its address (save()).
 function timeSeriesModule(app, api, state, save)
 {
   const rootPath = api.root;
@@ -4554,6 +4658,7 @@ function timeSeriesModule(app, api, state, save)
         status.textContent = `The producers could not be loaded: ${e.message}`;
       });
 
+  // Builds the module once the producer listing has been loaded
   function build(index)
   {
     view.replaceChildren();
@@ -4569,6 +4674,7 @@ function timeSeriesModule(app, api, state, save)
 
     const dataParams = () => s.params.filter((p) => !META.has(p));
     const selection = () => parseSelection(s.locmode, s.location);
+    // The producers having all the chosen parameters and covering the selection
     const candidates = () => {
       const wanted = dataParams();
       const sel = selection();
@@ -4584,6 +4690,7 @@ function timeSeriesModule(app, api, state, save)
     // The details of grid producers are loaded when one is chosen
     const details = new Map();  // producer key @ run -> details, null while loading
     const detailsKey = (p) => `${p.key}@${s.run || ''}`;
+    // The details of the chosen grid producer, null until loaded
     const gridDetails = () => {
       const p = producer();
       return p && p.source === 'grid' ? details.get(detailsKey(p)) || null : null;
@@ -4595,6 +4702,7 @@ function timeSeriesModule(app, api, state, save)
       return p && p.source === 'observation' ? 'fmisid' : 'qdstation';
     };
     const stationMode = () => (stationType() === 'fmisid' ? 'fmisid' : 'wmo');
+    // The stations of the chosen producer
     const stations = () => {
       const p = producer();
       const d = p && p.source !== 'grid' ? details.get(detailsKey(p)) : null;
@@ -4608,10 +4716,12 @@ function timeSeriesModule(app, api, state, save)
           (l) => (!end || !l.start || new Date(l.start) <= end) &&
               (!start || !l.end || new Date(l.end) >= start));
     };
+    // The ids of the chosen stations
     const chosenStations = () =>
         (s.locmode === stationMode() ?
              String(s.location || '').split(',').map((x) => x.trim()).filter(Boolean) :
              []);
+    // Adds a station to the chosen ones, or removes it
     function toggleStation(id)
     {
       const chosen = chosenStations();
@@ -4620,6 +4730,8 @@ function timeSeriesModule(app, api, state, save)
           (chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id]).join(',');
       refresh();
     }
+    // Loads the details of the chosen producer once (<ts_url>/api/producers/{name}), refreshing the
+    // form when they arrive
     function loadDetails()
     {
       const p = producer();
@@ -4683,10 +4795,12 @@ function timeSeriesModule(app, api, state, save)
                   x, {values: Array.from(x.values, ([value, key]) => ({value, key}))}))
           .filter((x) => x.values.length > 1 || types.size > 1);
     }
+    // The chosen level type, the first one by default
     const chosenLevelType = () => {
       const types = levelTypes();
       return types.find((x) => x.id === s.leveltype) || types[0] || null;
     };
+    // The chosen levels of that type, none meaning all of them
     const chosenLevels = () => {
       const type = chosenLevelType();
       const wanted = new Set(String(s.levels || '').split(',').filter(Boolean));
@@ -4719,6 +4833,7 @@ function timeSeriesModule(app, api, state, save)
       const types = forecastTypes();
       return types.length > 1 || types.some((f) => f.members.length > 1);
     };
+    // The chosen forecast type of an ensemble, by default the one with the most members
     const chosenForecast = () => {
       if (!hasEnsemble())
         return null;
@@ -4726,6 +4841,7 @@ function timeSeriesModule(app, api, state, save)
       return types.find((f) => String(f.type) === s.forecast) ||
           types.reduce((a, b) => (b.members.length > a.members.length ? b : a));
     };
+    // The chosen members of the forecast, all of them by default
     const chosenMembers = () => {
       const f = chosenForecast();
       if (!f)
@@ -4741,8 +4857,11 @@ function timeSeriesModule(app, api, state, save)
       return !!p && p.source === 'observation';
     };
     const SENSOR_NUMBERS = Array.from({length: 1000}, (_, i) => i);
+    // The chosen sensors of observations, none for the default sensor
     const chosenSensors = () =>
         (isObservation() && s.sensors ? parseNumberList(s.sensors, SENSOR_NUMBERS) : []);
+    // The data_quality option of observations: the default filter, all values, or a filter of the
+    // codes
     const qualityOption = () => {
       if (!isObservation())
         return '';
@@ -4900,6 +5019,8 @@ function timeSeriesModule(app, api, state, save)
       return out;
     }
 
+    // The response columns that stand for a chosen parameter at some level or member, for
+    // splitVariants()
     function variantColumns()
     {
       const columns = new Map();
@@ -4992,6 +5113,7 @@ function timeSeriesModule(app, api, state, save)
       limit: 200
     });
 
+    // The period of the data of a producer for display
     function timeRange(p)
     {
       const t = p.time || {};
@@ -5000,6 +5122,7 @@ function timeSeriesModule(app, api, state, save)
       return `${formatTime(new Date(t.start))} – ${formatTime(new Date(t.end))}`;
     }
 
+    // Chooses a producer; its details are loaded, and observations are chosen by station
     function setProducer(key)
     {
       const p = index.producers.get(key);
@@ -5017,6 +5140,7 @@ function timeSeriesModule(app, api, state, save)
       fitMap();
     }
 
+    // Forgets the choices that belong to the previous producer
     function resetDetails()
     {
       for (const k
@@ -5145,6 +5269,8 @@ function timeSeriesModule(app, api, state, save)
       select.value = value;
     };
 
+    // Shows the choices of the model that offer something to choose from: runs, geometries,
+    // levels, ensembles, sensors and quality
     function renderDetails()
     {
       const p = producer();
@@ -5327,6 +5453,7 @@ function timeSeriesModule(app, api, state, save)
     ].map(([v, t]) => el('option', {value: v}, t)));
     const dataPeriod = el('span', {class: 'muted small'});
 
+    // The default period: the data period of the producer, or a recent part of it for observations
     function defaultTimes(force)
     {
       const p = producer();
@@ -5355,6 +5482,7 @@ function timeSeriesModule(app, api, state, save)
       s.timestep = p.source === 'observation' ? '60' : 'data';
     }
 
+    // A button setting the period
     const preset = (label, fn) =>
         el('button',
            {
@@ -5488,6 +5616,7 @@ function timeSeriesModule(app, api, state, save)
       refreshSoon();
     });
 
+    // The time step of the data of the producer in minutes, 0 if unknown
     const dataStep = () => {
       const p = producer();
       return p && p.time && p.time.step ? Number(p.time.step) : 0;
@@ -5651,6 +5780,7 @@ function timeSeriesModule(app, api, state, save)
       return Array.from(seen.values());
     }
 
+    // Fits the map to what it shows
     function fitMap()
     {
       const extent = map.extent();
@@ -5707,6 +5837,8 @@ function timeSeriesModule(app, api, state, save)
                },
                data),
            label);
+    // The extra columns of the response (location, station, time and sun details), as groups of
+    // buttons
     function renderExtraColumns()
     {
       const p = producer();
@@ -5773,6 +5905,7 @@ function timeSeriesModule(app, api, state, save)
         'click', () => navigator.clipboard.writeText(currentUrl()).catch(() => {}));
     runButton.addEventListener('click', run);
 
+    // The options of the request as [name, value] pairs
     function requestParams()
     {
       // The coordinates show the locations of the data on the map. The statistics of an area
@@ -5851,11 +5984,13 @@ function timeSeriesModule(app, api, state, save)
                                                                                        '';
     }
 
+    // The URL of the request
     function currentUrl()
     {
       return new URL(`${rootPath}?${queryString(requestParams())}`, app.base).href;
     }
 
+    // What the request still lacks, for the note under it
     function missingParts()
     {
       const out = [];
@@ -5870,6 +6005,7 @@ function timeSeriesModule(app, api, state, save)
       return out;
     }
 
+    // Runs the request and shows its results
     async function run()
     {
       results.replaceChildren(el('p', {class: 'muted'}, 'Running…'));
@@ -5905,6 +6041,8 @@ function timeSeriesModule(app, api, state, save)
       showResults(rows, text);
     }
 
+    // The results as tabs of views: the vertical views and the path views when the rows have them,
+    // then charts, maps, tables and the response itself
     function showResults(rows, text)
     {
       const statistics = serverStatistics();
@@ -5933,6 +6071,7 @@ function timeSeriesModule(app, api, state, save)
       panes.Tree = el('div', {class: 'pane tree-pane'});
       const tabs = el('div', {class: 'tabs', role: 'tablist'});
       const drawn = new Set();
+      // Shows a tab, drawing its view the first time
       const show = (name) => {
         for (const [n, pane] of Object.entries(panes))
           pane.hidden = n !== name;
@@ -6219,6 +6358,7 @@ function timeSeriesModule(app, api, state, save)
       return out;
     }
 
+    // Redraws the form and the request after a change; rerender = false keeps the text being typed
     function refresh(rerender = true)
     {
       const p = producer();
@@ -6408,6 +6548,7 @@ function timeSeriesModule(app, api, state, save)
       save();
     }
 
+    // A step of the form with its heading
     const section = (title, ...content) =>
         el('section', {class: 'step'}, el('h2', null, title), ...content);
     view.append(
@@ -6556,6 +6697,7 @@ function coverageRows(doc)
     if (axes.composite && Array.isArray(axes.composite.values))
     {
       const coordinates = axes.composite.coordinates || ['t', 'x', 'y', 'z'];
+      // Coordinate c of a tuple of the composite axis
       const at = (tuple, c) => {
         const i = coordinates.indexOf(c);
         return i >= 0 ? tuple[i] : undefined;
@@ -6635,6 +6777,9 @@ const EDR_QUERIES = [
   ['locations', 'Locations', null]
 ];
 
+// The EDR module: collections and parameters narrowing each other, times and levels, the query
+// types of the collection (position, radius, area, cube, trajectory, locations) with the map,
+// and the CoverageJSON or GeoJSON results drawn like those of TimeSeries
 function edrModule(app, api, state, save)
 {
   const rootPath = api.root;
@@ -6648,6 +6793,7 @@ function edrModule(app, api, state, save)
         status.textContent = `The collections could not be loaded: ${e.message}`;
       });
 
+  // Builds the module once the collections have been loaded
   function build(index)
   {
     view.replaceChildren();
@@ -6657,14 +6803,17 @@ function edrModule(app, api, state, save)
     s.params = s.params || [];
 
     const collection = () => index.producers.get(s.collection);
+    // The query types of the chosen collection the explorer can make
     const queries = () => {
       const c = collection();
       return EDR_QUERIES.filter(([q]) => !c || c.queries.includes(q));
     };
+    // The chosen query type, the first one available by default
     const query = () => {
       const available = queries();
       return available.find(([q]) => q === s.query) || available[0];
     };
+    // The selection of the map for the query type, null if none
     const selection = () => {
       const [q] = query();
       if (q === 'position')
@@ -6677,6 +6826,7 @@ function edrModule(app, api, state, save)
         return parseSelection('path', s.location);
       return null;
     };
+    // The collections having all the chosen parameters and covering the selection
     const candidates = () => {
       const sel = selection();
       return Array.from(index.producers.values())
@@ -6754,6 +6904,7 @@ function edrModule(app, api, state, save)
       limit: 200
     });
 
+    // The period of the data of a collection for display
     function timeRangeOf(c)
     {
       if (!c.time || !c.time.start || !c.time.end)
@@ -6784,6 +6935,7 @@ function edrModule(app, api, state, save)
       refresh();
     });
 
+    // The default period: the data period of the collection
     function defaultTimes(force)
     {
       const c = collection();
@@ -6839,6 +6991,8 @@ function edrModule(app, api, state, save)
       return rows;
     }
 
+    // Loads the locations of the collection once, for the location search and for naming the
+    // results
     function loadLocations()
     {
       const c = collection();
@@ -6884,6 +7038,7 @@ function edrModule(app, api, state, save)
       limit: 50
     });
 
+    // Fits the map to what it shows
     function fitMap()
     {
       const extent = map.extent();
@@ -6909,6 +7064,7 @@ function edrModule(app, api, state, save)
         'click', () => navigator.clipboard.writeText(currentUrl()).catch(() => {}));
     runButton.addEventListener('click', run);
 
+    // The location options of the query: coords (and within) for the selection, or bbox for a cube
     function coords()
     {
       const sel = selection();
@@ -6934,6 +7090,7 @@ function edrModule(app, api, state, save)
       return [['coords', `POLYGON((${a} ${b},${c} ${b},${c} ${d},${a} ${d},${a} ${b}))`]];
     }
 
+    // The URL of the request
     function currentUrl()
     {
       const c = collection();
@@ -7013,6 +7170,7 @@ function edrModule(app, api, state, save)
         run();
     }
 
+    // What the request still lacks, for the note under it
     function missingParts()
     {
       const out = [];
@@ -7035,6 +7193,7 @@ function edrModule(app, api, state, save)
       return out;
     }
 
+    // Runs the request and shows its results
     async function run()
     {
       results.replaceChildren(el('p', {class: 'muted'}, 'Running…'));
@@ -7108,6 +7267,7 @@ function edrModule(app, api, state, save)
                          .filter(
                              (k) => !['name', 'time', 'lat', 'lon', 'level'].includes(k) &&
                                  !k.startsWith('_') && !placing.includes(k.toLowerCase()));
+      // Shows a tab, drawing its view the first time
       const show = (name) => {
         for (const [n, pane] of Object.entries(panes))
           pane.hidden = n !== name;
@@ -7180,6 +7340,7 @@ function edrModule(app, api, state, save)
                                      'Chart');
     }
 
+    // Redraws the form and the request after a change; rerender = false keeps the text being typed
     function refresh(rerender = true)
     {
       const c = collection();
@@ -7344,6 +7505,7 @@ function edrModule(app, api, state, save)
       save();
     }
 
+    // A step of the form with its heading
     const section = (title, ...content) =>
         el('section', {class: 'step'}, el('h2', null, title), ...content);
     view.append(
@@ -7419,6 +7581,7 @@ function projectionName(wkt)
   return m ? m[1] : '';
 }
 
+// A size for display: 12.3 MB
 function formatBytes(n)
 {
   if (!(n > 0))
@@ -7428,6 +7591,8 @@ function formatBytes(n)
   return `${(n / 10 ** (3 * i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
+// The index of the Coverages collections: their extents, native grids and CRSs, the
+// parameters loaded later from the schema of each collection
 function buildCoverageIndex(doc)
 {
   const producers = new Map();
@@ -7465,6 +7630,8 @@ function buildCoverageIndex(doc)
   return {producers, parameters: new Map()};
 }
 
+// The Coverages module: a collection, its parameters, a bounding box in a chosen CRS with the
+// output area outlined on the map and the size of the result estimated, and the download link
 function coveragesModule(app, api, state, save)
 {
   const rootPath = api.root;
@@ -7477,6 +7644,7 @@ function coveragesModule(app, api, state, save)
     status.textContent = `The collections could not be loaded: ${e.message}`;
   });
 
+  // Builds the module once the collections have been loaded
   function build(index)
   {
     view.replaceChildren();
@@ -7488,6 +7656,7 @@ function coveragesModule(app, api, state, save)
     // The parameters come from the schemas of the collections, four at a time
     const queue = Array.from(index.producers.values());
     let loading = queue.length;
+    // Loads the schemas of the collections one at a time for their parameters
     const loadNext = () => {
       const c = queue.shift();
       if (!c)
@@ -7536,11 +7705,13 @@ function coveragesModule(app, api, state, save)
       const entry = index.parameters.get(key);
       return (entry && entry.names.get(c.name)) || key;
     });
+    // Whether a collection has a parameter
     const has = (c, key) => {
       const entry = index.parameters.get(key);
       return !!(entry && entry.names.has(c.name));
     };
     const selection = () => parseSelection('bbox', s.location);
+    // The collections having all the chosen parameters and covering the box
     const candidates = () => {
       const sel = selection();
       return Array.from(index.producers.values())
@@ -7615,6 +7786,7 @@ function coveragesModule(app, api, state, save)
       limit: 200
     });
 
+    // The period of the data of a collection for display
     function timeRangeOf(c)
     {
       if (!c.time || !c.time.start || !c.time.end)
@@ -7637,6 +7809,7 @@ function coveragesModule(app, api, state, save)
       refresh();
     });
 
+    // The default period: the first day of the data
     function defaultTimes(force)
     {
       const c = collection();
@@ -7695,6 +7868,7 @@ function coveragesModule(app, api, state, save)
 
     // The native grid of the collection on the map
     let nativeOutline = null;
+    // Loads the outline of the native grid of the collection, drawn on the map
     function loadNative()
     {
       const c = collection();
@@ -7752,6 +7926,7 @@ function coveragesModule(app, api, state, save)
     }, 300);
     let outline = null;
 
+    // The native grid and the area of the download on the map
     function drawRegions()
     {
       const regions = [];
@@ -7798,6 +7973,7 @@ function coveragesModule(app, api, state, save)
       ];
     }
 
+    // The URL of the download
     function currentUrl()
     {
       const id = encodeURIComponent(s.collection || '{collectionId}');
@@ -7806,6 +7982,7 @@ function coveragesModule(app, api, state, save)
           .href;
     }
 
+    // Redraws the form and the request after a change; rerender = false keeps the text being typed
     function refresh(rerender = true)
     {
       const c = collection();
@@ -7954,6 +8131,7 @@ function coveragesModule(app, api, state, save)
       save();
     }
 
+    // A step of the form with its heading
     const section = (title, ...content) =>
         el('section', {class: 'step'}, el('h2', null, title), ...content);
     view.append(
@@ -8011,6 +8189,7 @@ const MODULES = {
   coverages: coveragesModule
 };
 
+// The state of the explorer from the address of the page (#api=...&params=a,b)
 function readState()
 {
   const p = new URLSearchParams(location.hash.slice(1));
@@ -8022,6 +8201,7 @@ function readState()
   return s;
 }
 
+// The state of the explorer into the address of the page, empty values left out
 function writeState(s)
 {
   const p = new URLSearchParams();
@@ -8034,6 +8214,8 @@ function writeState(s)
   history.replaceState(null, '', `#${p.toString()}`);
 }
 
+// Starts the explorer: reads the API catalog, offers its APIs, and shows the module of the
+// chosen one, keeping the choices in the address of the page
 async function main()
 {
   const element = document.getElementById('explorer');
@@ -8089,6 +8271,7 @@ async function main()
   let current = Math.max(0, apis.findIndex((a) => a.root === state.api));
   apiSelect.value = String(current);
 
+  // Opens API i; keep keeps the state read from the address of the page
   const open = (i, keep) => {
     current = i;
     const api = apis[i];
