@@ -4663,7 +4663,7 @@ function timeSeriesModule(app, api, state, save)
       if (p && ['hybrid', 'sounding'].includes(levelKind()))
       {
         const extras = [
-          PRESSURE_PARAMS.find((n) => p.parameterSet.has(n)),
+          [...PRESSURE_PARAMS, ...PRESSURE_PA_PARAMS].find((n) => p.parameterSet.has(n)),
           HEIGHT_PARAMS.find((n) => p.parameterSet.has(n))
         ].filter((n) => n && !params.includes(n));
         for (const n of extras)
@@ -4942,7 +4942,7 @@ function timeSeriesModule(app, api, state, save)
       if (levels.length === 0 || !SOUNDING_PARAMS.temperature.some(([n]) => p.parameterSet.has(n)))
         return false;
       return levels.some((l) => l.type === 'pressure') ||
-          PRESSURE_PARAMS.some((n) => p.parameterSet.has(n));
+          [...PRESSURE_PARAMS, ...PRESSURE_PA_PARAMS].some((n) => p.parameterSet.has(n));
     }
 
     // The parameters of a sounding of a producer: the vertical coordinates, temperature,
@@ -4950,7 +4950,7 @@ function timeSeriesModule(app, api, state, save)
     function soundingNames(p)
     {
       const out = [];
-      for (const candidates of [PRESSURE_PARAMS, HEIGHT_PARAMS])
+      for (const candidates of [[...PRESSURE_PARAMS, ...PRESSURE_PA_PARAMS], HEIGHT_PARAMS])
       {
         const n = candidates.find((x) => p.parameterSet.has(x));
         if (n)
@@ -5654,7 +5654,7 @@ function edrModule(app, api, state, save)
       // Model levels are placed vertically by the pressure and height of each level
       const names = s.params.slice();
       if (c && edrLevelKind(c) === 'hybrid')
-        for (const candidates of [PRESSURE_PARAMS, HEIGHT_PARAMS])
+        for (const candidates of [[...PRESSURE_PARAMS, ...PRESSURE_PA_PARAMS], HEIGHT_PARAMS])
         {
           const n = candidates.find((x) => c.parameterSet.has(x));
           if (n && !names.includes(n))

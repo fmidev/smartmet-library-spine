@@ -1178,6 +1178,12 @@ async function main()
     } catch (e) { return { error: String(e.stack) }; } })()`);
     if (vertical.error)
       console.log('VERTICAL ERROR', vertical.error);
+    const paAxes = await b.evaluate(
+        `SmartMetExplorer.verticalAxes([{ level: 1, 'p-pa': 85000 }], 'hybrid').map((a) => a.id + ':' + a.value({ level: 1, 'p-pa': 85000 }))`);
+    check(
+        'model level pressures in Pa',
+        JSON.stringify(paAxes) === '["pressure:850","level:1"]',
+        paAxes);
     check(
         'vertical axes of model levels',
         JSON.stringify(vertical.axes) === '["pressure","height","level"]',
