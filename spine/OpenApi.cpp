@@ -8,12 +8,18 @@
 #include <macgyver/Exception.h>
 #include <macgyver/Hash.h>
 #include <macgyver/StringConversion.h>
+#include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <iterator>
 #include <libconfig.h++>
+#include <map>
+#include <mutex>
+#include <set>
 #include <sstream>
 
 namespace SmartMet
@@ -28,6 +34,8 @@ const char* const REL_SERVICE_DESC = "service-desc";
 const char* const REL_SERVICE_DOC = "service-doc";
 const char* const REL_CONFORMANCE = "http://www.opengis.net/def/rel/ogc/1.0/conformance";
 const char* const REL_DATA = "http://www.opengis.net/def/rel/ogc/1.0/data";
+const char* const CATALOG_MEDIA_TYPE =
+    "application/linkset+json; profile=\"https://www.rfc-editor.org/info/rfc9727\"";
 
 // The SmartMet Swagger UI plugin, see OpenApiPlugin.cpp
 extern const char* const SWAGGER_UI_PLUGIN_JS;
@@ -284,6 +292,86 @@ Json::Value objectSetting(const libconfig::Setting& group,
       ret[field] = value;
   }
   return ret;
+}
+
+// The content security policy of the documentation pages. The origin of an absolute tile
+// URL is allowed for the location maps.
+std::string docsPolicy(const Settings& settings)
+{
+  std::string policy = DOCS_CONTENT_SECURITY_POLICY;
+  const auto origin = tileOrigin(settings.map_tiles);
+  if (!origin.empty())
+    boost::algorithm::replace_first(policy, "img-src 'self'", "img-src 'self' " + origin);
+  return policy;
+}
+
+// ----------------------------------------------------------------------
+// The API catalog registry
+// ----------------------------------------------------------------------
+
+struct CatalogRegistration
+{
+  std::uint64_t order = 0;  // later registrations win for the same root
+  CatalogEntry entry;
+};
+
+struct CatalogRegistry
+{
+  std::mutex mutex;
+  std::uint64_t counter = 0;
+  std::map<const Publisher*, CatalogRegistration> entries;
+};
+
+// Never destroyed, since publishers may be destroyed during static destruction
+CatalogRegistry& catalogRegistry()
+{
+  static auto* registry = new CatalogRegistry;  // NOLINT(cppcoreguidelines-owning-memory)
+  return *registry;
+}
+
+// A plain absolute path usable as an API root
+bool validRootPath(const std::string& path)
+{
+  if (path.size() < 2 || path.size() > 256 || path[0] != '/' || path.back() == '/')
+    return false;
+  if (path.find("//") != std::string::npos || path.find("/./") != std::string::npos ||
+      path.find("/../") != std::string::npos || boost::algorithm::ends_with(path, "/..") ||
+      boost::algorithm::ends_with(path, "/."))
+    return false;
+  for (char c : path)
+  {
+    const bool ok = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+                    c == '/' || c == '-' || c == '_' || c == '.' || c == '~';
+    if (!ok)
+      return false;
+  }
+  return true;
+}
+
+// The path of a catalog URL: the origin of an absolute URL and an apikey prefix are removed.
+// Returns an empty string for anything else than a plain path.
+std::string catalogPath(const std::string& href)
+{
+  std::string path = href;
+  for (const char* scheme : {"https://", "http://"})
+  {
+    if (boost::algorithm::starts_with(path, scheme))
+    {
+      const auto pos = path.find('/', std::strlen(scheme));
+      if (pos == std::string::npos)
+        return {};
+      path = path.substr(pos);
+      break;
+    }
+  }
+  if (boost::algorithm::starts_with(path, "/fmi-apikey/"))
+  {
+    const auto pos = path.find('/', 12);
+    if (pos == std::string::npos)
+      return {};
+    path = path.substr(pos);
+  }
+  return validRootPath(path) ? path : std::string();
 }
 
 }  // namespace
@@ -846,7 +934,52 @@ Publisher::Publisher(Settings settings) : itsSettings(std::move(settings))
         missing);
 }
 
-Publisher::~Publisher() = default;
+Publisher::~Publisher()
+{
+  auto& registry = catalogRegistry();
+  std::lock_guard<std::mutex> lock(registry.mutex);
+  registry.entries.erase(this);
+}
+
+void Publisher::addToCatalog(const std::string& rootPath,
+                             const std::string& title,
+                             const std::string& description)
+{
+  addToCatalog(rootPath, title, description, "");
+}
+
+void Publisher::addToCatalog(const std::string& rootPath,
+                             const std::string& title,
+                             const std::string& description,
+                             const std::string& kind)
+{
+  try
+  {
+    if (!itsSettings.enabled)
+      return;
+
+    std::string root = rootPath;
+    while (!root.empty() && root.back() == '/')
+      root.pop_back();
+    if (!validRootPath(root))
+      throw Fmi::Exception(BCP, "Invalid API root path for the API catalog")
+          .addParameter("Path", rootPath);
+
+    auto& registry = catalogRegistry();
+    std::lock_guard<std::mutex> lock(registry.mutex);
+    auto& registration = registry.entries[this];
+    registration.order = ++registry.counter;
+    registration.entry.root = root;
+    registration.entry.title = title;
+    registration.entry.description = description;
+    registration.entry.kind = kind;
+    registration.entry.docs = (itsSettings.ui && itsSwaggerUi);
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to add an API to the API catalog");
+  }
+}
 
 void Publisher::publish(const Document& doc)
 {
@@ -1041,11 +1174,7 @@ window.onload = function () {{
 
   response.setStatus(HTTP::Status::ok);
   response.setHeader("Content-Type", "text/html; charset=UTF-8");
-  std::string policy = DOCS_CONTENT_SECURITY_POLICY;
-  const auto origin = tileOrigin(itsSettings.map_tiles);
-  if (!origin.empty())
-    boost::algorithm::replace_first(policy, "img-src 'self'", "img-src 'self' " + origin);
-  response.setHeader("Content-Security-Policy", policy);
+  response.setHeader("Content-Security-Policy", docsPolicy(itsSettings));
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setContent(html);
 }
@@ -1140,6 +1269,832 @@ bool prefersHtml(const HTTP::Request& request)
   }
 
   return (html_q > json_q);
+}
+
+// ----------------------------------------------------------------------
+// The API catalog
+// ----------------------------------------------------------------------
+
+namespace
+{
+// The units the explorer can show by quantity
+const std::map<std::string, std::set<std::string>> explorerUnits = {
+    {"temperature", {"C", "F", "K"}},
+    {"speed", {"ms", "kt", "kmh", "mph"}},
+    {"pressure", {"hPa", "Pa", "inHg"}},
+    {"height", {"m", "ft"}}};
+
+// The explorer_defaults group as JSON, validated so that the page can trust it
+Json::Value parseExplorerDefaults(const libconfig::Setting& group)
+{
+  const auto where = [&group](const std::string& name)
+  { return std::string(group.getPath()) + "." + name; };
+  if (!group.isGroup())
+    throw Fmi::Exception(BCP, "explorer_defaults must be a group").addParameter("path", group.getPath());
+  Json::Value out(Json::objectValue);
+  for (const auto& item : group)
+  {
+    const std::string name = item.getName();
+    if (name == "center")
+    {
+      if (!item.isArray() || item.getLength() != 2)
+        throw Fmi::Exception(BCP, "center must be [longitude, latitude]").addParameter("path", where(name));
+      const double lon = item[0];
+      const double lat = item[1];
+      if (lon < -180 || lon > 180 || lat < -85 || lat > 85)
+        throw Fmi::Exception(BCP, "center is out of range").addParameter("path", where(name));
+      out["center"].append(lon);
+      out["center"].append(lat);
+    }
+    else if (name == "zoom")
+    {
+      const int zoom = item;
+      if (zoom < 0 || zoom > 18)
+        throw Fmi::Exception(BCP, "zoom must be 0-18").addParameter("path", where(name));
+      out["zoom"] = zoom;
+    }
+    else if (name == "language")
+    {
+      const std::string value = static_cast<const char*>(item);
+      if (value.size() != 2 || !std::islower(static_cast<unsigned char>(value[0])) ||
+          !std::islower(static_cast<unsigned char>(value[1])))
+        throw Fmi::Exception(BCP, "language must be a two letter code such as fi")
+            .addParameter("path", where(name));
+      out["language"] = value;
+    }
+    else if (name == "clock")
+    {
+      const std::string value = static_cast<const char*>(item);
+      if (value != "24" && value != "12")
+        throw Fmi::Exception(BCP, "clock must be \"24\" or \"12\"").addParameter("path", where(name));
+      out["clock"] = value;
+    }
+    else if (name == "examples")
+    {
+      if (!item.isGroup())
+        throw Fmi::Exception(BCP, "examples must be a group").addParameter("path", where(name));
+      for (const auto& example : item)
+      {
+        const std::string mode = example.getName();
+        if (mode != "place" && mode != "fmisid" && mode != "wmo" && mode != "keyword" &&
+            mode != "area")
+          throw Fmi::Exception(BCP, "Unknown example of explorer_defaults")
+              .addParameter("path", where(name + "." + mode));
+        out["examples"][mode] = static_cast<const char*>(example);
+      }
+    }
+    else if (name == "projections")
+    {
+      if (!item.isArray() && !item.isList())
+        throw Fmi::Exception(BCP, "projections must be a list of \"code label\" strings")
+            .addParameter("path", where(name));
+      out["projections"] = Json::Value(Json::arrayValue);
+      for (const auto& p : item)
+      {
+        const std::string text = static_cast<const char*>(p);
+        const auto space = text.find(' ');
+        const auto code = text.substr(0, space);
+        if (code.empty() || code.find_first_of("\"'<>&") != std::string::npos)
+          throw Fmi::Exception(BCP, "Invalid projection").addParameter("projection", text);
+        Json::Value entry(Json::arrayValue);
+        entry.append(code);
+        entry.append(space == std::string::npos ? code : boost::algorithm::trim_copy(text.substr(space)));
+        out["projections"].append(entry);
+      }
+    }
+    else if (name == "units")
+    {
+      if (!item.isGroup())
+        throw Fmi::Exception(BCP, "units must be a group").addParameter("path", where(name));
+      for (const auto& unit : item)
+      {
+        const std::string quantity = unit.getName();
+        const std::string value = static_cast<const char*>(unit);
+        const auto known = explorerUnits.find(quantity);
+        if (known == explorerUnits.end() || known->second.count(value) == 0)
+          throw Fmi::Exception(BCP, "Unknown unit of the explorer")
+              .addParameter("quantity", quantity)
+              .addParameter("unit", value);
+        out["units"][quantity] = value;
+      }
+    }
+    else
+      throw Fmi::Exception(BCP, "Unknown setting of explorer_defaults").addParameter("path", where(name));
+  }
+  return out;
+}
+}  // namespace
+
+CatalogSettings CatalogSettings::parse(const libconfig::Config& config, const std::string& path)
+{
+  try
+  {
+    CatalogSettings settings;
+    settings.openapi = Settings::parse(config, path);
+    if (config.exists(path))
+    {
+      const auto& group = config.lookup(path);
+      group.lookupValue("title", settings.title);
+      group.lookupValue("description", settings.description);
+      group.lookupValue("explorer", settings.explorer);
+      group.lookupValue("explorer_dir", settings.explorer_dir);
+      group.lookupValue("uplot_dir", settings.uplot_dir);
+      group.lookupValue("palette_dir", settings.palette_dir);
+      group.lookupValue("palette_config", settings.palette_config);
+      if (group.exists("explorer_defaults"))
+        settings.explorer_defaults = parseExplorerDefaults(group["explorer_defaults"]);
+    }
+    return settings;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to parse the API catalog settings");
+  }
+}
+
+std::vector<CatalogEntry> localCatalogEntries()
+{
+  try
+  {
+    // The latest registration of each root
+    std::map<std::string, std::pair<std::uint64_t, CatalogEntry>> latest;
+    {
+      auto& registry = catalogRegistry();
+      std::lock_guard<std::mutex> lock(registry.mutex);
+      for (const auto& item : registry.entries)
+      {
+        auto entry = item.second.entry;
+        if (entry.title.empty())
+        {
+          auto definition = item.first->definition();
+          entry.title =
+              (definition && !definition->title().empty() ? definition->title() : entry.root);
+        }
+        auto& current = latest[entry.root];
+        if (item.second.order > current.first)
+          current = std::make_pair(item.second.order, std::move(entry));
+      }
+    }
+
+    std::vector<CatalogEntry> ret;
+    ret.reserve(latest.size());
+    for (auto& item : latest)
+      ret.push_back(std::move(item.second.second));
+    return ret;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to list the API catalog");
+  }
+}
+
+std::vector<CatalogEntry> parseCatalog(const Json::Value& linkset)
+{
+  try
+  {
+    std::vector<CatalogEntry> ret;
+    if (!linkset.isObject())
+      return ret;
+    const auto& contexts = linkset["linkset"];
+    if (!contexts.isArray())
+      return ret;
+
+    // The APIs with documentation pages
+    std::set<std::string> documented;
+    for (const auto& context : contexts)
+    {
+      if (!context.isObject() || !context["anchor"].isString() || !context["service-doc"].isArray())
+        continue;
+      const auto root = catalogPath(context["anchor"].asString());
+      if (!root.empty())
+        documented.insert(root);
+    }
+
+    std::set<std::string> seen;
+    for (const auto& context : contexts)
+    {
+      if (!context.isObject() || !context["item"].isArray())
+        continue;
+      for (const auto& item : context["item"])
+      {
+        if (!item.isObject() || !item["href"].isString())
+          continue;
+        CatalogEntry entry;
+        entry.root = catalogPath(item["href"].asString());
+        if (entry.root.empty() || !seen.insert(entry.root).second)
+          continue;
+        entry.title = (item["title"].isString() ? item["title"].asString() : entry.root);
+        if (item["description"].isString())
+          entry.description = item["description"].asString();
+        if (item["x-smartmet-kind"].isString())
+          entry.kind = item["x-smartmet-kind"].asString();
+        entry.docs = (documented.count(entry.root) > 0);
+        ret.push_back(std::move(entry));
+      }
+    }
+    std::sort(ret.begin(),
+              ret.end(),
+              [](const CatalogEntry& a, const CatalogEntry& b) { return a.root < b.root; });
+    return ret;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to parse an API catalog");
+  }
+}
+
+Catalog::Catalog(CatalogSettings settings) : itsSettings(std::move(settings))
+{
+  if (itsSettings.openapi.enabled && itsSettings.openapi.ui)
+    itsFiles = std::make_unique<Publisher>(itsSettings.openapi);
+
+  if (!itsSettings.openapi.enabled || !itsSettings.explorer)
+    return;
+
+  // The explorer, uPlot, and the SmartMet Swagger UI plugin for the snippets and the viewer
+  const std::vector<std::pair<std::string, std::string>> files{
+      {itsSettings.explorer_dir + "/explorer.js", "text/javascript; charset=UTF-8"},
+      {itsSettings.explorer_dir + "/explorer.css", "text/css; charset=UTF-8"},
+      {itsSettings.uplot_dir + "/uPlot.iife.min.js", "text/javascript; charset=UTF-8"},
+      {itsSettings.uplot_dir + "/uPlot.min.css", "text/css; charset=UTF-8"}};
+
+  std::string missing;
+  std::map<std::string, ExplorerFile> loaded;
+  for (const auto& file : files)
+  {
+    std::ifstream in(file.first, std::ios::binary);
+    if (!in)
+    {
+      missing += (missing.empty() ? "" : ", ") + file.first;
+      continue;
+    }
+    ExplorerFile f;
+    f.content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+    f.contentType = file.second;
+    f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
+    loaded.emplace(file.first.substr(file.first.rfind('/') + 1), std::move(f));
+  }
+
+  if (!missing.empty())
+  {
+    std::cerr << fmt::format(
+        "{} {}Warning:{} The data explorer is unavailable, files missing: {} (packages "
+        "smartmet-library-spine and smartmet-uplot)\n",
+        log_time_str(),
+        ANSI_FG_YELLOW,
+        ANSI_FG_DEFAULT,
+        missing);
+    return;
+  }
+
+  // The production palettes are optional: {palettes: {name: [[lo, hi, r, g, b], ...]},
+  // parameters: {lower case parameter name: palette name}}
+  {
+    Json::Value doc;
+    Json::CharReaderBuilder reader;
+    reader["allowComments"] = true;
+    const auto readJson = [&reader](const std::string& path, Json::Value& value)
+    {
+      std::ifstream in(path);
+      std::string errors;
+      return in && Json::parseFromStream(reader, in, &value, &errors);
+    };
+    std::error_code ec;
+    if (std::filesystem::is_directory(itsSettings.palette_dir, ec))
+    {
+      for (const auto& file : std::filesystem::directory_iterator(itsSettings.palette_dir, ec))
+      {
+        if (file.path().extension() != ".json")
+          continue;
+        Json::Value palette;
+        if (!readJson(file.path().string(), palette) || !palette["isobands"].isArray())
+          continue;
+        Json::Value bands(Json::arrayValue);
+        for (const auto& band : palette["isobands"])
+        {
+          const auto& rgb = band["rgb"];
+          if (!band["lo"].isNumeric() || !band["hi"].isNumeric() || !rgb.isArray() ||
+              rgb.size() < 3)
+            continue;
+          Json::Value b(Json::arrayValue);
+          b.append(band["lo"]);
+          b.append(band["hi"]);
+          for (Json::ArrayIndex i = 0; i < 3; i++)
+            b.append(rgb[i]);
+          bands.append(b);
+        }
+        if (bands.size() > 0)
+          doc["palettes"][file.path().stem().string()] = bands;
+      }
+    }
+    Json::Value config;
+    if (doc.isMember("palettes") && readJson(itsSettings.palette_config, config) &&
+        config["palettes"].isObject())
+      for (const auto& name : config["palettes"].getMemberNames())
+        if (config["palettes"][name].isString() &&
+            doc["palettes"].isMember(config["palettes"][name].asString()))
+          doc["parameters"][boost::algorithm::to_lower_copy(name)] = config["palettes"][name];
+    if (doc.isMember("palettes"))
+    {
+      ExplorerFile f;
+      f.content = toJsonText(doc);
+      f.contentType = "application/json";
+      f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
+      loaded.emplace("palettes.json", std::move(f));
+    }
+  }
+
+  // The background map is optional
+  {
+    std::ifstream in(itsSettings.explorer_dir + "/basemap.json", std::ios::binary);
+    if (in)
+    {
+      ExplorerFile f;
+      f.content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+      f.contentType = "application/json";
+      f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
+      loaded.emplace("basemap.json", std::move(f));
+    }
+  }
+
+  // The translations of the page: explorer-<language>.js, e.g. explorer-fi.js
+  {
+    std::error_code ec;
+    for (const auto& entry : std::filesystem::directory_iterator(itsSettings.explorer_dir, ec))
+    {
+      const auto name = entry.path().filename().string();
+      if (name.size() != 14 || name.compare(0, 9, "explorer-") != 0 ||
+          name.compare(11, 3, ".js") != 0 || !std::islower(static_cast<unsigned char>(name[9])) ||
+          !std::islower(static_cast<unsigned char>(name[10])))
+        continue;
+      std::ifstream in(entry.path(), std::ios::binary);
+      if (!in)
+        continue;
+      ExplorerFile f;
+      f.content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+      f.contentType = "text/javascript; charset=UTF-8";
+      f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
+      loaded.emplace(name, std::move(f));
+    }
+  }
+
+  ExplorerFile plugin;
+  plugin.content = SWAGGER_UI_PLUGIN_JS;
+  plugin.contentType = "text/javascript; charset=UTF-8";
+  plugin.etag = quotedETag(Fmi::hash_value(plugin.content), "explorer");
+  loaded.emplace(PLUGIN_FILE, std::move(plugin));
+  itsExplorerFiles = std::move(loaded);
+}
+
+Catalog::~Catalog() = default;
+
+bool Catalog::isCatalogResource(const std::string& resource)
+{
+  return (resource == "/.well-known/api-catalog" || resource == "/api" || resource == "/api/" ||
+          resource == "/api/docs" || resource == "/api/docs/" ||
+          boost::algorithm::starts_with(resource, "/api/docs/") || resource == "/api/explorer" ||
+          resource == "/api/explorer/" ||
+          boost::algorithm::starts_with(resource, "/api/explorer/"));
+}
+
+Json::Value Catalog::linkset(const HTTP::Request& request, const std::vector<CatalogEntry>& entries)
+{
+  try
+  {
+    const auto base = serverUrl(request, "");
+
+    Json::Value catalog;
+    catalog["anchor"] = base + "/.well-known/api-catalog";
+    catalog["item"] = Json::Value(Json::arrayValue);
+
+    Json::Value contexts(Json::arrayValue);
+    for (const auto& entry : entries)
+    {
+      const auto root = base + entry.root;
+
+      Json::Value item;
+      item["href"] = root;
+      item["title"] = entry.title;
+      if (!entry.description.empty())
+        item["description"] = entry.description;
+      if (!entry.kind.empty())
+        item["x-smartmet-kind"] = entry.kind;
+      catalog["item"].append(item);
+
+      Json::Value context;
+      context["anchor"] = root;
+      Json::Value desc;
+      desc["href"] = root + "/api";
+      desc["type"] = MEDIA_TYPE;
+      desc["title"] = entry.title + " - OpenAPI definition";
+      context[REL_SERVICE_DESC].append(desc);
+      if (entry.docs)
+      {
+        Json::Value doc;
+        doc["href"] = root + "/api/docs";
+        doc["type"] = "text/html";
+        doc["title"] = entry.title + " - API documentation";
+        context[REL_SERVICE_DOC].append(doc);
+      }
+      contexts.append(context);
+    }
+
+    Json::Value ret;
+    ret["linkset"].append(catalog);
+    for (const auto& context : contexts)
+      ret["linkset"].append(context);
+    return ret;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to build the API catalog");
+  }
+}
+
+bool Catalog::handle(const HTTP::Request& request,
+                     HTTP::Response& response,
+                     const std::vector<CatalogEntry>& entries) const
+{
+  try
+  {
+    if (!itsSettings.openapi.enabled)
+      return false;
+
+    const auto& resource = request.getResource();
+    if (!isCatalogResource(resource))
+      return false;
+
+    // Every response links to the catalog, which is how RFC 9727 answers HEAD requests
+    response.setHeader(
+        "Link", "<" + serverUrl(request, "") + "/.well-known/api-catalog>; rel=\"api-catalog\"");
+
+    const bool ui = (itsSettings.openapi.ui && itsFiles);
+
+    if (resource == "/api/explorer" || resource == "/api/explorer/")
+    {
+      handleExplorer(request, response);
+      return true;
+    }
+    if (boost::algorithm::starts_with(resource, "/api/explorer/"))
+    {
+      handleExplorerFile(request, response, resource.substr(14));
+      return true;
+    }
+
+    if (resource == "/.well-known/api-catalog")
+    {
+      handleLinkset(request, response, entries);
+    }
+    else if (resource == "/api" || resource == "/api/")
+    {
+      const auto f = request.getParameter("f");
+      if (f && *f != "json" && *f != "html")
+        problem(response, 400, "Bad Request", "Unsupported format '" + *f + "', use json or html");
+      else if (prefersHtml(request))
+        handlePage(request, response, entries);
+      else
+        handleLinkset(request, response, entries);
+    }
+    else if (!ui)
+    {
+      problem(response, 404, "Not Found", "API documentation is disabled");
+    }
+    else if (resource == "/api/docs" || resource == "/api/docs/")
+    {
+      handleDocs(request, response, entries);
+    }
+    else
+    {
+      itsFiles->handleAsset(request, response, resource.substr(10));
+    }
+    return true;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to serve the API catalog");
+  }
+}
+
+void Catalog::handleLinkset(const HTTP::Request& request,
+                            HTTP::Response& response,
+                            const std::vector<CatalogEntry>& entries) const
+{
+  const auto text = toJsonText(linkset(request, entries));
+
+  response.setHeader("Access-Control-Allow-Origin", "*");
+  response.setHeader("Vary", "Accept");
+  response.setHeader("Cache-Control", cacheControl(request));
+  if (etagOnly(request, response, quotedETag(Fmi::hash_value(text), "catalog")))
+    return;
+
+  response.setStatus(HTTP::Status::ok);
+  response.setHeader("Content-Type", CATALOG_MEDIA_TYPE);
+  response.setContent(text);
+}
+
+void Catalog::handlePage(const HTTP::Request& request,
+                         HTTP::Response& response,
+                         const std::vector<CatalogEntry>& entries) const
+{
+  const auto& resource = request.getResource();
+  const bool ui = (itsSettings.openapi.ui && itsFiles);
+
+  std::string rows;
+  for (const auto& entry : entries)
+  {
+    const auto definition = htmlEscape(relativeHref(resource, entry.root + "/api"));
+    const auto docs = htmlEscape(relativeHref(resource, entry.root + "/api/docs"));
+    rows += fmt::format(
+        "<tr><td><a href=\"{}\">{}</a><div class=\"root\">{}</div></td><td>{}</td>"
+        "<td class=\"links\"><a href=\"{}\">OpenAPI definition</a>{}</td></tr>\n",
+        entry.docs ? docs : definition,
+        htmlEscape(entry.title),
+        htmlEscape(entry.root),
+        htmlEscape(entry.description),
+        definition,
+        entry.docs ? fmt::format("<br><a href=\"{}\">Documentation</a>", docs) : "");
+  }
+  if (entries.empty())
+    rows = "<tr><td colspan=\"3\">No APIs are available.</td></tr>\n";
+
+  std::string links = fmt::format("<a href=\"{}\">API catalog (RFC 9727 linkset)</a>",
+                                  htmlEscape(relativeHref(resource, "/.well-known/api-catalog")));
+  if (ui && !entries.empty())
+    links = fmt::format("<a href=\"{}\">All APIs in one documentation page</a> · {}",
+                        htmlEscape(relativeHref(resource, "/api/docs")),
+                        links);
+  if (!itsExplorerFiles.empty() && !entries.empty())
+    links = fmt::format("<a href=\"{}\">Data explorer</a> · {}",
+                        htmlEscape(relativeHref(resource, "/api/explorer")),
+                        links);
+
+  const auto html = fmt::format(
+      R"HTML(<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{0}</title>
+<style>
+:root {{ color-scheme: light dark; --fg: #1b1f23; --muted: #57606a; --line: #d0d7de; --bg: #ffffff; --head: #f6f8fa; --link: #0969da; }}
+@media (prefers-color-scheme: dark) {{ :root {{ --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --bg: #0d1117; --head: #151b23; --link: #4493f8; }} }}
+body {{ margin: 0; padding: 24px 16px; font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); }}
+main {{ max-width: 960px; margin: 0 auto; }}
+h1 {{ font-size: 1.6em; margin: 0 0 4px; }}
+p {{ color: var(--muted); margin: 0 0 16px; }}
+a {{ color: var(--link); }}
+table {{ width: 100%; border-collapse: collapse; margin: 16px 0; }}
+th, td {{ text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }}
+th {{ background: var(--head); font-weight: 600; }}
+.root {{ font-family: ui-monospace, monospace; font-size: 0.85em; color: var(--muted); }}
+.links {{ white-space: nowrap; }}
+@media (max-width: 600px) {{ .links {{ white-space: normal; }} th, td {{ padding: 6px; }} }}
+</style>
+</head>
+<body>
+<main>
+<h1>{0}</h1>
+<p>{1}</p>
+<table>
+<thead><tr><th>API</th><th>Description</th><th>Links</th></tr></thead>
+<tbody>
+{2}</tbody>
+</table>
+<p>{3}</p>
+</main>
+</body>
+</html>
+)HTML",
+      htmlEscape(itsSettings.title),
+      htmlEscape(itsSettings.description),
+      rows,
+      links);
+
+  response.setHeader("Access-Control-Allow-Origin", "*");
+  response.setHeader("Vary", "Accept");
+  response.setHeader("Cache-Control", cacheControl(request));
+  if (etagOnly(request, response, quotedETag(Fmi::hash_value(html), "cataloghtml")))
+    return;
+
+  response.setStatus(HTTP::Status::ok);
+  response.setHeader("Content-Type", "text/html; charset=UTF-8");
+  response.setHeader("Content-Security-Policy",
+                     "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; "
+                     "form-action 'none'; frame-ancestors 'self'");
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setContent(html);
+}
+
+void Catalog::handleDocs(const HTTP::Request& request,
+                         HTTP::Response& response,
+                         const std::vector<CatalogEntry>& entries) const
+{
+  if (!itsFiles->itsSwaggerUi)
+  {
+    problem(response,
+            503,
+            "Service Unavailable",
+            "The API documentation is not available: Swagger UI is not installed");
+    return;
+  }
+  if (entries.empty())
+  {
+    problem(response, 404, "Not Found", "No APIs are available");
+    return;
+  }
+
+  const auto& resource = request.getResource();
+
+  // The definitions in the selector of the top bar
+  Json::Value urls(Json::arrayValue);
+  for (const auto& entry : entries)
+  {
+    Json::Value url;
+    url["url"] = relativeHref(resource, entry.root + "/api");
+    url["name"] = entry.title + " (" + entry.root + ")";
+    urls.append(url);
+  }
+  // Escape '<' so that no text can close the script element
+  auto urls_text = toJsonText(urls);
+  boost::algorithm::replace_all(urls_text, "<", "\\u003c");
+
+  const auto a = htmlEscape(relativeHref(resource, "/api/docs/"));
+  const auto html = fmt::format(
+      R"HTML(<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{0} - API documentation</title>
+<link rel="icon" type="image/png" href="{1}favicon-32x32.png" sizes="32x32">
+<link rel="icon" type="image/png" href="{1}favicon-16x16.png" sizes="16x16">
+<link rel="stylesheet" href="{1}swagger-ui.css">
+<style>body {{ margin: 0; }} .swagger-ui .topbar .link {{ display: none; }}</style>
+</head>
+<body>
+<div id="swagger-ui"></div>
+<script src="{1}swagger-ui-bundle.js"></script>
+<script src="{1}swagger-ui-standalone-preset.js"></script>
+<script src="{1}smartmet-swagger-ui.js"></script>
+<script>
+window.onload = function () {{
+  var urls = {2};
+  urls.forEach(function (u) {{ u.url = new URL(u.url, window.location.href).href; }});
+  window.ui = SwaggerUIBundle({{
+    urls: urls,
+    dom_id: "#swagger-ui",
+    deepLinking: true,
+    validatorUrl: null,
+    queryConfigEnabled: false,
+    tryItOutEnabled: true,
+    requestSnippetsEnabled: true,
+    requestSnippets: SmartMetSwaggerUI.snippetConfig,
+    presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+    plugins: [SmartMetSwaggerUI.plugin],
+    layout: "StandaloneLayout"
+  }});
+}};
+</script>
+</body>
+</html>
+)HTML",
+      htmlEscape(itsSettings.title),
+      a,
+      urls_text);
+
+  response.setHeader("Access-Control-Allow-Origin", "*");
+  response.setHeader("Cache-Control", cacheControl(request));
+  if (etagOnly(request, response, quotedETag(Fmi::hash_value(html), "catalogdocs")))
+    return;
+
+  response.setStatus(HTTP::Status::ok);
+  response.setHeader("Content-Type", "text/html; charset=UTF-8");
+  response.setHeader("Content-Security-Policy", docsPolicy(itsSettings.openapi));
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setContent(html);
+}
+
+void Catalog::handleExplorer(const HTTP::Request& request, HTTP::Response& response) const
+{
+  if (!itsSettings.explorer)
+  {
+    problem(response, 404, "Not Found", "The data explorer is disabled");
+    return;
+  }
+  if (itsExplorerFiles.empty())
+  {
+    problem(response,
+            503,
+            "Service Unavailable",
+            "The data explorer is not available: its files are not installed");
+    return;
+  }
+
+  const auto& resource = request.getResource();
+  const auto a = htmlEscape(relativeHref(resource, "/api/explorer/"));
+  const auto catalog = htmlEscape(relativeHref(resource, "/api"));
+
+  // The file hashes in the links, since the files are cached for a day
+  const auto v = [this](const std::string& name)
+  {
+    const auto& etag = itsExplorerFiles.at(name).etag;
+    return etag.substr(1, etag.find('-') - 1);
+  };
+
+  // The background of the location maps: the tiles, or the map of the explorer
+  std::string map;
+  if (itsExplorerFiles.count("basemap.json") > 0)
+    map += fmt::format(R"( data-basemap="{}basemap.json?v={}")", a, v("basemap.json"));
+  if (itsExplorerFiles.count("palettes.json") > 0)
+    map += fmt::format(R"( data-palettes="{}palettes.json?v={}")", a, v("palettes.json"));
+  // The translations, loaded before the explorer which takes its language from them
+  std::string translations;
+  for (const auto& file : itsExplorerFiles)
+    if (file.first.size() == 14 && file.first.compare(0, 9, "explorer-") == 0 &&
+        file.first.compare(11, 3, ".js") == 0)
+      translations += fmt::format("<script src=\"{}{}?v={}\"></script>\n", a, file.first, v(file.first));
+
+  // The defaults of the region and the users of the server
+  if (!itsSettings.explorer_defaults.isNull())
+  {
+    Json::StreamWriterBuilder builder;
+    builder["indentation"] = "";
+    map += fmt::format(R"( data-defaults="{}")",
+                       htmlEscape(Json::writeString(builder, itsSettings.explorer_defaults)));
+  }
+  const auto& o = itsSettings.openapi;
+  if (!o.map_tiles.empty())
+    map += fmt::format(R"( data-map-tiles="{}" data-map-tile-size="{}" data-map-attribution="{}")",
+                      htmlEscape(o.map_tiles),
+                      o.map_tile_size,
+                      htmlEscape(o.map_attribution));
+
+  const auto html = fmt::format(
+      R"HTML(<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{0} - Data explorer</title>
+<link rel="stylesheet" href="{1}uPlot.min.css?v={3}">
+<link rel="stylesheet" href="{1}explorer.css?v={4}">
+</head>
+<body>
+<div id="explorer" data-catalog="{2}" data-title="{0}"{8}></div>
+<script src="{1}uPlot.iife.min.js?v={5}"></script>
+<script src="{1}smartmet-swagger-ui.js?v={6}"></script>
+{9}<script src="{1}explorer.js?v={7}"></script>
+</body>
+</html>
+)HTML",
+      htmlEscape(itsSettings.title),
+      a,
+      catalog,
+      v("uPlot.min.css"),
+      v("explorer.css"),
+      v("uPlot.iife.min.js"),
+      v(PLUGIN_FILE),
+      v("explorer.js"),
+      map,
+      translations);
+
+  response.setHeader("Cache-Control", cacheControl(request));
+  if (etagOnly(request, response, quotedETag(Fmi::hash_value(html), "explorerhtml")))
+    return;
+
+  response.setStatus(HTTP::Status::ok);
+  response.setHeader("Content-Type", "text/html; charset=UTF-8");
+  // No inline scripts, and data only from this server and the map tiles
+  std::string policy =
+      "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+      "img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; "
+      "frame-ancestors 'self'";
+  const auto origin = tileOrigin(itsSettings.openapi.map_tiles);
+  if (!origin.empty())
+    boost::algorithm::replace_first(policy, "img-src 'self'", "img-src 'self' " + origin);
+  response.setHeader("Content-Security-Policy", policy);
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setContent(html);
+}
+
+void Catalog::handleExplorerFile(const HTTP::Request& request,
+                                 HTTP::Response& response,
+                                 const std::string& name) const
+{
+  auto it = itsExplorerFiles.find(name);
+  if (!itsSettings.explorer || it == itsExplorerFiles.end())
+  {
+    problem(response, 404, "Not Found", "No such explorer file");
+    return;
+  }
+  const auto& file = it->second;
+  response.setHeader("Cache-Control", ASSET_CACHE_CONTROL);
+  if (etagOnly(request, response, file.etag))
+    return;
+  response.setStatus(HTTP::Status::ok);
+  response.setHeader("Content-Type", file.contentType);
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  response.setContent(file.content);
 }
 
 }  // namespace OpenAPI

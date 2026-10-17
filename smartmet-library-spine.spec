@@ -14,6 +14,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 %if 0%{rhel} >= 8
 Requires: mariadb-connector-c
 #TestRequires: mariadb-connector-c
+#TestRequires: smartmet-uplot
 %else
 Requires: mariadb-libs
 #TestRequires: mariadb-devel
@@ -96,6 +97,7 @@ Requires: hdf5
 Requires: jsoncpp >= 1.8.4
 Requires: libconfig17 >= 1.7.3
 Requires: libicu
+Requires: smartmet-uplot
 Requires: libbacktrace
 Requires: double-conversion
 Requires: smartmet-library-gis >= 26.10.17
@@ -157,6 +159,8 @@ make %{_smp_mflags}
 %files
 %defattr(0755,root,root,0755)
 %{_libdir}/lib%{LIBNAME}.so
+%defattr(0644,root,root,0755)
+%{_datadir}/smartmet/explorer
 
 %files -n %{SPECNAME}-devel
 %defattr(0644,root,root,0755)
@@ -169,6 +173,119 @@ make %{_smp_mflags}
 
 %changelog
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
+- Data explorer: the error message of the server (problem detail, plugin error header or
+  text) and empty results are shown below the request
+- Data explorer: a Browse page of the data of all the APIs: one card per dataset with its kind,
+  period, themes and parameters, narrowed by a search, kinds, themes and a point on the map, and
+  opened in each API offering it with the parameters searched for
+- Data explorer: Finnish and Swedish besides English (explorer-fi.js, explorer-sv.js, the
+  language chosen in the settings menu or by explorer_defaults.language or the browser)
+- Data explorer: regional defaults of the server (api_catalog.explorer_defaults: first map
+  view, location examples, Coverages projections, clock, units) with neutral built-in defaults;
+  a settings menu with the 12/24-hour clock, the units, the language and the licences; times
+  entered as text in the chosen clock; temperatures in K and pressures in Pa shown in the
+  chosen units (C/F/K, m/s/kt/km/h/mph, hPa/Pa/inHg, m/ft), also on the Coverages maps;
+  the last view opens again when the page is opened without one (local storage, no cookies)
+- Data explorer: maps of a Coverages request in up to four linked panels (shared view, time and
+  point, a parameter, level and colours each), read by the browser from a small GeoTIFF in
+  longitude and latitude, with the time series of the point clicked
+- Data explorer: one time back or forward on every time slider; a value clicked on the map shows
+  the time series of the point (the profile when there is one time), and maps of several levels
+  show the level chosen
+- Data explorer: soundings side by side in panels sharing their scales, and the values of the
+  levels of a sounding as a table that marks the level pointed
+- Data explorer: the sensors of the chosen observation stations listed per parameter as buttons
+  toggling the sensor numbers, marking the default sensor and sensors whose values ended
+- Data explorer: an optional API key, sent as the fmi-apikey header of the requests
+- Data explorer: units of temperatures (C, K, F), wind speeds (m/s, kt, km/h) and heights (m, ft)
+- Data explorer: the visible view saved as a PNG image (diagrams, charts, legends and the
+  analysis of soundings) and the rows as CSV
+- Data explorer: the charts of a place compared with another producer, observations or EDR
+  collection, with the mean and the mean absolute difference
+- Data explorer: meteograms (temperature, precipitation, cloud cover, wind and gusts with
+  barbs), of ensembles as the median and the spread of the members
+- Data explorer: the analysis of soundings (CAPE, CIN, LFC, EL, lifted index, freezing level,
+  K-index, Total totals, precipitable water, 0-6 km shear) and a hodograph
+- Data explorer: isotherms, wind barbs and the edge of humid air on cross sections and
+  time-height sections
+- Data explorer: ensembles with their members stored as levels (leveltype ensemble): the
+  members as series, their spread, and the probability of exceeding a threshold
+- Data explorer: flights along paths: departure and arrival times, the cross section, the values
+  met along the flight and the time series at the times the points are passed
+- Data explorer: EDR trajectory queries drawn on the map; paths at their marked points or every
+  N km; an animated view of the time series along a path; trajectory CoverageJSON read
+- Data explorer: charts of areas with several levels show one level at a time (the lowest by
+  default); swarms of thousands of locations are drawn on the canvas and hover in milliseconds;
+  charts are drawn when scrolled to
+- Data explorer: the hover readouts and guides of diagrams stay under a resting pointer and
+  follow the times of an animation
+- Data explorer: EDR collections on hybrid sigma-pressure model levels were taken for pressure
+  levels, so their soundings were not drawn
+- Data explorer: the results open on the chosen view (profile, section, sounding, cross
+  section, map) also when the request is run again; the sounding diagram buttons choose it
+- Data explorer: animations advance only after the previous time has been drawn, so that a
+  slow browser animates more slowly instead of skipping times
+- Data explorer: time sliders of profiles, soundings, cross sections and maps animate with a
+  play button and a speed choice, and show the available times as ticks
+- Data explorer: optional flight levels (ICAO standard atmosphere) on cross sections and
+  time-height sections
+- Data explorer: TimeSeries paths clicked on the map (e.g. a flight path) with a cross section
+  of the levels along the path
+- Data explorer: sections use the production isoband colours of the parameter when they cover
+  the values, with continuous scales fitted to the data as alternatives
+- Data explorer: sounding diagram buttons for level data add the parameters of a sounding,
+  run the request and open the chosen diagram
+- Data explorer: model levels of grid data are placed by their pressure in Pa (P-PA)
+- Data explorer: tephigram and Stüve diagrams next to the skew-T, the sounding of another
+  producer for comparison, time-height sections, values under the mouse in all vertical
+  diagrams, a top for profiles and sections, and WMO stations of point querydata
+- Data explorer skew-T: temperatures named in Kelvins but returned in Celsius (grid T-K) are
+  no longer converted twice
+- Data explorer: vertical profiles of pressure, model, height and depth levels (value against
+  pressure, height, depth or model level, a time slider or all times) and a skew-T log-p
+  diagram of soundings with wind barbs and a lifted parcel, in the TimeSeries and EDR modules
+- Data explorer charts: locations reporting at different intervals are drawn as lines and their
+  percentiles no longer make a comb; parameters without values are named instead of left out
+- Data explorer: observation stations operating in the chosen period shown on the map, chosen
+  by clicking or by name; EDR results named by the locations of the collection; no "Whole
+  data" or "Next 24 h" for observations but "Last week" and "Last month", and a warning of
+  long observation periods
+- Data explorer: extra columns chosen by group (the data, the location, the station, the time
+  and the sun), and for grid producers the details of the data of each parameter (@AT-N model
+  run, @L-N level, @FN-N member, @LATLON-N grid point, ...) shown with its series
+- Data explorer: producers of the same name from several sources are told apart and
+  requested with source; model details for grid producers (model run, geometry, level type,
+  levels, ensemble forecast and members) build the parameter keys, with a series per level
+  and member; querydata levels are chosen with the levels option
+- Data explorer: values over a period (mean, minimum, maximum, sum, median, percentile, ...)
+  with the function recommended for each kind of parameter (sums of amounts, circular means
+  of directions, warnings for categories), the periods counting the data step right
+- Data explorer: observation sensors (a series each), quality code filters and the quality
+  codes in the table
+- Data explorer at /api/explorer: TimeSeries queries built from the producer metadata with
+  parameter and producer autocomplete narrowing each other, default times from the data,
+  keyword locations on a map, and uPlot charts (lines per location, or the median and
+  percentiles or a swarm of many locations), tables and trees; points, radii and boxes
+  chosen on a map narrow the producers to those covering them; the statistics of areas and
+  keywords can be computed by the server (needs smartmet-library-timeseries 26.10.17-1 on
+  the server for the percentiles); EDR queries (position, radius, area, cube, locations)
+  built from the collection metadata, CoverageJSON drawn as charts; Coverages downloads with
+  the native grid, the area of the download in the chosen projection and its size before
+  downloading; values of grids and stations on a map with a time slider and an editable
+  colour scale, by default the production isoband colours of the parameter (the palettes of
+  qdless, api_catalog.palette_dir and palette_config); a background map of the
+  land, lakes and borders from Natural Earth (public domain) when no tile layer is
+  configured; files installed to
+  /usr/share/smartmet/explorer, requires smartmet-uplot
+- API catalog entries have a kind (x-smartmet-kind), Publisher::addToCatalog() with a kind
+- ABI change compared to 26.10.16-2: CatalogEntry, CatalogSettings and Catalog have new
+  members, smartmet-plugin-frontend must be rebuilt
+- API catalog (RFC 9727): Spine::OpenAPI::Publisher::addToCatalog() lists an API in the
+  catalog of the server, served by the reactor at /api, /.well-known/api-catalog and
+  /api/docs (Swagger UI with all APIs in a selector) when some plugin has added an API.
+  Settings in the api_catalog group of the server configuration. Spine::OpenAPI::Catalog
+  and parseCatalog() let the frontend serve the merged catalog of the backends.
+  No ABI change: only new functions and classes
 - boost_any_to_string: cast char* values as char*
 - expandVariables: name the referenced setting in the non-string value error
 - ContentHandlerMap::removeContentHandlers: erase an emptied admin request entry after its loop

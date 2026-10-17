@@ -1231,6 +1231,7 @@ const char* const SWAGGER_UI_PLUGIN_JS = R"JS(/*
     generators: generators,
     parseTime: parseTime,
     timeWindow: timeWindow,
+    extension: extension,
     renderTree: renderTree,
     setOpen: setOpen,
     responseKind: responseKind,

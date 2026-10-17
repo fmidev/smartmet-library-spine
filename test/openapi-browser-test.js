@@ -11,21 +11,13 @@
 
 "use strict";
 
-const childProcess = require("node:child_process");
 const fs = require("node:fs");
-const http = require("node:http");
-const os = require("node:os");
+const http = require('node:http');
 const path = require("node:path");
 
 const [dir, swaggerDir] = process.argv.slice(2);
 
-function findBrowser() {
-  for (const name of ["chromium-browser", "chromium", "google-chrome", "google-chrome-stable"])
-    if (childProcess.spawnSync("sh", ["-c", `command -v ${name}`]).status === 0) return name;
-  return null;
-}
-
-const browser = findBrowser();
+const {browser, startBrowser, sleep, waitFor} = require('./browser-harness.js');
 if (!browser || !fs.existsSync(path.join(swaggerDir || "", "swagger-ui-bundle.js"))) {
   console.log("Chromium or the Swagger UI files are not available, the browser tests are not run");
   process.exit(0);
@@ -70,6 +62,14 @@ const definition = {
   "x-smartmet-map": { tiles: "/tiles/{z}/{y}/{x}?f=png", tileSize: 256, attribution: "Test <tiles>" }
 };
 
+// The second definition of the catalog page
+const other = {
+  openapi: '3.1.1',
+  info: {title: 'Other API', version: '1.0'},
+  servers: [{url: '/other'}],
+  paths: {'/things': {get: {operationId: 'getThings', responses: {200: {description: 'x'}}}}}
+};
+
 const locations = [
   { name: "Helsinki <b>", lat: 60.17, lon: 24.94, fmisid: 100971 },
   { name: "Tampere", lat: 61.5, lon: 23.76, fmisid: null },
@@ -90,6 +90,19 @@ const server = http.createServer((req, res) => {
   };
   const url = req.url.split("?")[0];
   if (url === "/edr/api") return send(200, "application/vnd.oai.openapi+json;version=3.1", JSON.stringify(definition));
+  if (url === '/other/api')
+    return send(200, 'application/vnd.oai.openapi+json;version=3.1', JSON.stringify(other));
+  if (url === '/api/docs')
+    return send(200, 'text/html; charset=UTF-8', fs.readFileSync(path.join(dir, 'catalog.html')));
+  if (url === '/api/docs/smartmet-swagger-ui.js')
+    return send(200, 'text/javascript', fs.readFileSync(path.join(dir, 'smartmet-swagger-ui.js')));
+  if (url.startsWith('/api/docs/'))
+  {
+    const file = path.join(swaggerDir, path.basename(url));
+    if (fs.existsSync(file))
+      return send(
+          200, types[path.extname(file)] || 'application/octet-stream', fs.readFileSync(file));
+  }
   if (url === "/edr/api/docs") return send(200, "text/html; charset=UTF-8", fs.readFileSync(path.join(dir, "docs.html")));
   if (url === "/edr/api/docs/smartmet-swagger-ui.js")
     return send(200, "text/javascript", fs.readFileSync(path.join(dir, "smartmet-swagger-ui.js")));
@@ -108,51 +121,6 @@ const server = http.createServer((req, res) => {
 // ----------------------------------------------------------------------
 // Chromium over the DevTools protocol
 // ----------------------------------------------------------------------
-
-async function startBrowser() {
-  const profile = fs.mkdtempSync(path.join(os.tmpdir(), "viewer-test-"));
-  const child = childProcess.spawn(browser, ["--headless=new", "--disable-gpu", "--no-sandbox",
-    `--user-data-dir=${profile}`, "--remote-debugging-port=0", "about:blank"], { stdio: "ignore" });
-  const portFile = path.join(profile, "DevToolsActivePort");
-  for (let i = 0; i < 100 && !fs.existsSync(portFile); i++) await new Promise((r) => setTimeout(r, 100));
-  const port = fs.readFileSync(portFile, "utf8").split("\n")[0];
-  const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
-  const page = targets.find((t) => t.type === "page");
-  const ws = new WebSocket(page.webSocketDebuggerUrl);
-  await new Promise((r) => (ws.onopen = r));
-  let id = 0;
-  const pending = new Map();
-  const errors = [];
-  ws.onmessage = (event) => {
-    const m = JSON.parse(event.data);
-    if (m.id && pending.has(m.id)) {
-      pending.get(m.id)(m.result);
-      pending.delete(m.id);
-    } else if (m.method === "Runtime.exceptionThrown")
-      errors.push(m.params.exceptionDetails.exception?.description || m.params.exceptionDetails.text);
-  };
-  const send = (method, params = {}) =>
-    new Promise((r) => {
-      const i = ++id;
-      pending.set(i, r);
-      ws.send(JSON.stringify({ id: i, method, params }));
-    });
-  await send("Runtime.enable");
-  await send("Page.enable");
-  const evaluate = async (expression) =>
-    (await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true })).result.value;
-  return { child, profile, send, evaluate, errors };
-}
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function waitFor(b, expression, what) {
-  for (let i = 0; i < 100; i++) {
-    if (await b.evaluate(expression)) return;
-    await sleep(100);
-  }
-  throw new Error("timed out waiting for " + what);
-}
 
 // Execute an operation and return when its response tree is shown
 async function execute(b, operationId) {
@@ -415,6 +383,28 @@ async function main() {
     const roundTrip = await b.evaluate(`(() => { const [x, y] = SmartMetSwaggerUI.project(24.94, 60.17);
       return SmartMetSwaggerUI.unproject(x, y); })()`);
     check("projection round trip", Math.abs(roundTrip[0] - 24.94) < 1e-9 && Math.abs(roundTrip[1] - 60.17) < 1e-9, roundTrip);
+
+    // The documentation page of the API catalog: all definitions in the top bar selector
+    await b.send('Page.navigate', {url: `${base}/api/docs`});
+    await waitFor(
+        b, `!!document.querySelector('[id$="-getJson"]')`, 'first definition of the catalog');
+    const selector = await b.evaluate(`(() => {
+      const select = document.querySelector(".topbar select");
+      return select ? [...select.options].map((o) => o.textContent) : null;
+    })()`);
+    check(
+        'catalog selector',
+        JSON.stringify(selector) === JSON.stringify(['Viewer test (/edr)', 'Other API (/other)']),
+        selector);
+    await b.evaluate(`(() => {
+      const select = document.querySelector(".topbar select");
+      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set;
+      setter.call(select, select.options[1].value);
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    })()`);
+    await waitFor(
+        b, `!!document.querySelector('[id$="-getThings"]')`, 'second definition of the catalog');
+    check('catalog plugin loaded', await b.evaluate(`typeof SmartMetSwaggerUI === "object"`), null);
 
     check("no page errors", b.errors.length === 0, b.errors);
   } finally {

@@ -355,9 +355,96 @@ Most plugins produce tables of values:
   `inkeyword` parameters. The map background is the Web Mercator tile layer of the
   `map_tiles` setting (normally an OGC API - Tiles layer of the same server; an absolute
   URL's origin is added to the page's `img-src` policy), or a longitude/latitude grid.
+  Only the EDR plugin's TimeSeries pages have such parameters, so the `map_*` settings
+  have no effect in the other plugins.
   The plugin is in `OpenApiPlugin.cpp`; `test/openapi-snippets-test.js` runs the generated
   scripts against a local server and `test/openapi-browser-test.js` checks the tree, the
   request preview and the map in a headless browser.
+* **API catalog** (`OpenApi.h`, RFC 9727): `Publisher::addToCatalog(root, title,
+  description)` lists an API in the catalog of the server for as long as the publisher
+  exists (a reload's new publisher replaces the old one for the same root). After the
+  plugins are initialized, the Reactor serves the catalog of these APIs if there are any
+  and no plugin serves it already: `/.well-known/api-catalog` and `/api` (a linkset,
+  `application/linkset+json` with the RFC 9727 profile; `/api` gives an HTML page for
+  `f=html` or browsers), and `/api/docs` (Swagger UI with every definition in the top bar
+  selector). The handlers are public, so sputnik tells the frontends which backends have a
+  catalog; the frontend serves the merged catalog of the cluster with `OpenAPI::Catalog`
+  and `parseCatalog()`. URLs are absolute when the request has a valid `Host`, relative
+  otherwise (the frontend asks the backends without one). Settings are read from the
+  `api_catalog` group of the server configuration (`enabled`, `ui`, `swagger_ui_dir`,
+  `title`, `description`, `explorer`, `explorer_dir`, `uplot_dir`). An API added with a
+  `kind` (`edr`, `timeseries`, `coverages`, `tiles`, `wmts`) carries it as
+  `x-smartmet-kind` in the catalog.
+* **Data explorer** (`explorer/`, served by `OpenAPI::Catalog` at `/api/explorer`): a page
+  that builds queries from the metadata of the APIs in the catalog instead of from their
+  OpenAPI definitions. For TimeSeries (kind `timeseries`) it loads
+  `<root>/api/producers` and lets the parameters and the producers narrow each other with
+  autocomplete, sets the times from the producer's data, and draws the results with uPlot:
+  a chart per parameter with a line per location, or for more than 20 locations the
+  median and the 10/25/75/90 % percentiles or a swarm of thin lines coloured from south to
+  north with the median, and a table and the JSON tree. The map shows the area of the
+  producer, the locations of a place, keyword, station or area name and of the results,
+  and lets the user click a point, drag a radius or drag a box; a selected area narrows the
+  producers to those covering it. Area and radius results, whose values TimeSeries returns
+  as lists, are split into a row per point.
+  For areas, radii, boxes and (grouped with `grouplocations=1`) keywords and station lists,
+  the server can compute the median and the percentiles instead (`nanpercentile_a[p]`,
+  `nanmedian_a`), which scales to large areas; "Every point" fetches all the values for the
+  swarm. For EDR (kind `edr`) the explorer reads `<root>/collections`: the parameters and
+  the collections narrow each other, the query types are those of the collection
+  (position, radius, area, cube and locations, with the location list of the collection on
+  the map), the times and the levels come from the extents, and CoverageJSON and GeoJSON
+  responses are turned into rows for the same charts and tables, with a series per
+  location and level. For Coverages (kind `coverages`) the parameters come from the schemas
+  of the collections, the card shows the native projection, grid and resolution, the map
+  shows the native grid, and as the box, the output projection, the grid size, the times,
+  the parameters or the levels change, `<root>/collections/{id}/outline` gives the area the
+  download would cover (drawn on the map) and its size; the result is a download link and
+  the code of the request. Results with values at several locations also get a Map tab:
+  the values of a parameter at a time as coloured cells (grids, sized by the median
+  distance to the nearest point) or dots (stations), with a time slider, a play button and
+  an editable colour scale (palette, minimum and maximum, continuous or in classes). The
+  isoband colours of the production products, as converted by qdless from `wms-conf`
+  (`palette_dir`, by default `/usr/share/smartmet/qdless/palettes`, and the parameter map of
+  `palette_config`, `/usr/share/smartmet/qdless/qdless.conf`), are served as
+  `palettes.json` and used by default for the parameters they are mapped to: the values
+  are coloured band by band and values outside the bands are left out, as in qdless. The state is kept in the URL fragment, so a query can be shared as a
+  link. Without a tile layer (`map_tiles`) the map draws the land, the lakes and
+  the country borders of `basemap.json`, generated from the public domain Natural Earth 1:50m
+  data by `explorer/make-basemap.py` (see the script for the source), so that areas can be
+  chosen without any online map service. `explorer.js`, `explorer.css` and `basemap.json`
+  are installed to `/usr/share/smartmet/explorer`,
+  uPlot comes from the `smartmet-uplot` package (`/usr/share/smartmet/uplot`), and the
+  snippets, the tree and the map are those of `OpenApiPlugin.cpp`. The page loads no inline
+  scripts. `test/explorer-browser-test.js` checks it in a headless browser
+  (`UPLOT_DIR` overrides the uPlot location).
+- The explorer has no regional defaults of its own: without configuration the maps open on
+  the whole world and the location fields show neutral examples. `api_catalog.explorer_defaults`
+  sets them for the region and the users of a server: `center` (longitude, latitude) and `zoom`
+  of the first map view (point, box and path examples are made from the center), `examples`
+  of the `place`, `fmisid`, `wmo`, `keyword` and `area` fields, extra Coverages output
+  `projections` (`"EPSG:3067 ETRS-TM35FIN"`; the native grid, EPSG:4326 and EPSG:3857 are
+  always offered), the `clock` (`"24"` or `"12"`) and `units` (`temperature` C|F|K, `speed`
+  ms|kt|kmh|mph, `pressure` hPa|Pa|inHg, `height` m|ft). The settings are validated when the
+  configuration is read and passed to the page as the JSON attribute `data-defaults`.
+- The settings menu of the page (clock, units, language, licences) overrides the defaults per
+  browser. Without a choice or a server default the units and the clock follow the language
+  of the browser, except that en-US is only taken as the United States when the time zone of
+  the browser is in the Americas or the Pacific (it is the language of many browsers
+  elsewhere). Temperatures in K (raw GRIB data) and pressures in Pa are recognised by their
+  values and shown in the units chosen, also on the Coverages maps. Times are entered as text
+  in the clock chosen (`2026-10-17 13:00` or `2026-10-17 1:00 PM`, UTC) with a button for the
+  date picker of the browser, since `datetime-local` inputs always follow the language of the
+  browser.
+- The texts of the page are in English in `explorer.js`, wrapped in `L('...')` or, with values,
+  tagged as ``L`${n} rows` `` (translation key `{0} rows`). The translations are
+  `explorer/explorer-<code>.js` (Finnish `fi` and Swedish `sv`), one object of English text to
+  translation each; every such file in `explorer_dir` is loaded before `explorer.js`. The
+  language is the choice of the settings menu (a new language reloads the page), else
+  `explorer_defaults.language`, else the first language of the browser with a translation, else
+  English. Keys, tab names and the state in the address stay English. The browser test checks
+  that every `L('...')` text is in both translations and that the views shown in Finnish and
+  Swedish ask for no text without one; a new text needs its translations in both files.
 * **OpenTelemetry** (`OTelOptions`, `OTelLogger`, `OTelMetricsExporter`) is optional.
   Tracing is compiled in with `SMARTMET_SPINE_OPENTELEMETRY`
   (see [build-opentelemetry.md](build-opentelemetry.md)), and cache statistics are

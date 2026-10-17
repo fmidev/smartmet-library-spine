@@ -14,6 +14,7 @@
 #include "LoadedPackages.h"
 #include "MallocStats.h"
 #include "Names.h"
+#include "OpenApi.h"
 #include "Options.h"
 #include "SmartMet.h"
 #include "SmartMetEngine.h"
@@ -379,6 +380,7 @@ void Reactor::init()
       throw Fmi::Exception(BCP, "At least one of initialization tasks failed");
     }
     addRobotsHandler();
+    addApiCatalogHandler();
 
     // Set ContentEngine default logging. Do this after plugins are loaded so handlers are
     // recognized
@@ -446,6 +448,53 @@ void Reactor::addRobotsHandler()
   catch (...)
   {
     throw Fmi::Exception::Trace(BCP, "Failed to set up /robots.txt");
+  }
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Serve the API catalog of the APIs of the plugins
+ *
+ * Nothing is served if no plugin added an API to the catalog, or if a plugin
+ * (the frontend) serves the catalog itself.
+ */
+// ----------------------------------------------------------------------
+
+void Reactor::addApiCatalogHandler()
+{
+  try
+  {
+    auto settings = OpenAPI::CatalogSettings::parse(itsOptions.itsConfig);
+    if (!settings.openapi.enabled || OpenAPI::localCatalogEntries().empty())
+      return;
+
+    if (hasHandlerView("/api") || hasHandlerView("/.well-known/api-catalog"))
+      return;
+
+    auto catalog = std::make_shared<OpenAPI::Catalog>(std::move(settings));
+    auto handler = [catalog](Reactor& /* theReactor */,
+                             const HTTP::Request& theRequest,
+                             HTTP::Response& theResponse)
+    {
+      if (!catalog->handle(theRequest, theResponse, OpenAPI::localCatalogEntries()))
+      {
+        theResponse.setStatus(HTTP::Status::not_found);
+        theResponse.setHeader("Content-Type", "text/plain; charset=UTF-8");
+        theResponse.setContent("Not found\n");
+      }
+    };
+
+    // Public, so that the backends tell the frontend they have a catalog
+    addContentHandler(nullptr, "/api", handler);
+    addContentHandler(nullptr, "/.well-known/api-catalog", handler);
+    if (catalog->settings().openapi.ui)
+      addContentHandler(nullptr, "/api/docs", handler, {}, true);
+    if (catalog->settings().explorer)
+      addContentHandler(nullptr, "/api/explorer", handler, {}, true);
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Failed to set up the API catalog");
   }
 }
 
