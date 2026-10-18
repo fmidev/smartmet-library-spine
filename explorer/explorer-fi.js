@@ -74,6 +74,7 @@
     "Below": "Alle",
     "BigTIFF files are not supported": "BigTIFF-tiedostoja ei tueta",
     "Box": "Suorakulmio",
+    "Browse all data": "Selaa kaikkia aineistoja",
     "Browse the data of all the APIs": "Selaa kaikkien rajapintojen aineistoja",
     "Change": "Muutos",
     "Chart": "Kaavio",

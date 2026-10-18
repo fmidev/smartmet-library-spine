@@ -2544,6 +2544,13 @@ async function main()
       await wait(1500);
       out.opened = location.hash;
       out.chips = [...document.querySelectorAll('.chip')].map((c) => c.textContent);
+      // The Browse button of the navigation returns from any API
+      const back = document.querySelector('nav .browse-button');
+      out.pressedInApi = back.getAttribute('aria-pressed');
+      back.click();
+      await wait(500);
+      out.back = { pressed: back.getAttribute('aria-pressed'), cards: cards().length,
+                   hash: location.hash, select: document.querySelector('nav select').value };
       return out;
     })()`);
     check(
@@ -2559,7 +2566,9 @@ async function main()
             JSON.stringify(browse.wave) === '["pal"]' && browse.waveMatch === '1 parameter matches' &&
             browse.hash.includes('q=wave') && browse.opened.includes('producer=pal') &&
             browse.opened.includes('params=wavedirection') && browse.opened.includes('api=%2Ftimeseries') &&
-            browse.chips.some((x) => x.startsWith('WaveDirection')),
+            browse.chips.some((x) => x.startsWith('WaveDirection')) && browse.pressedInApi === 'false' &&
+            browse.back.pressed === 'true' && browse.back.cards > 0 &&
+            browse.back.hash.includes('api=browse') && browse.back.select === 'browse',
         browse);
 
     // The languages: every text of explorer.js in the translations, and none missing when the

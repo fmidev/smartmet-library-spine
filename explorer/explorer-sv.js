@@ -74,6 +74,7 @@
     "Below": "Under",
     "BigTIFF files are not supported": "BigTIFF-filer stöds inte",
     "Box": "Rektangel",
+    "Browse all data": "Bläddra i alla data",
     "Browse the data of all the APIs": "Bläddra i alla gränssnitts data",
     "Change": "Förändring",
     "Chart": "Diagram",

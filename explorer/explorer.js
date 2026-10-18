@@ -11909,11 +11909,14 @@ async function main()
   const header =
       el('header', null, el('h1', null, L('Data explorer')), el('span', {class: 'muted'}, title));
   const apiSelect = el('select', {'aria-label': L('API')});
+  // The Browse page is always one click away, whichever API is open
+  const browseButton = el('button', {type: 'button', class: 'browse-button'}, L('Browse all data'));
   const content = el('main');
   element.replaceChildren(
       header,
       el('nav',
          null,
+         browseButton,
          el('label', null, L('API '), apiSelect),
          el('a', {href: new URL('api/docs', app.base).href}, L('API documentation')),
          el('a', {href: base.href + '?f=html'}, L('API catalog')),
@@ -11959,6 +11962,7 @@ async function main()
   const open = (i, keep, preset) => {
     current = i;
     apiSelect.value = String(i);
+    browseButton.setAttribute('aria-pressed', String(i === 'browse'));
     const s = preset ? Object.assign({}, preset) : keep ? state : {};
     const save = () => writeState(s);
     if (i === 'browse')
@@ -11973,6 +11977,7 @@ async function main()
       save();
     content.replaceChildren(MODULES[api.kind](app, api, s, save));
   };
+  browseButton.addEventListener('click', () => open('browse', false));
   apiSelect.addEventListener('change', () =>
     open(apiSelect.value === 'browse' ? 'browse' : Number(apiSelect.value), false));
   open(current, true);
