@@ -394,8 +394,9 @@ Most plugins produce tables of values:
   map are those of `OpenApiPlugin.cpp`. The page loads no inline scripts and uses no cookies.
   `test/explorer-browser-test.js` checks it in a headless browser against a mock server
   (`UPLOT_DIR` overrides the uPlot location).
-  * **Browse** (the first choice of the API selector) lists the datasets of all the APIs as
-    one card per name: the TimeSeries producers, the EDR collections and the Coverages
+  * **Browse** (the Browse all data button of the navigation bar, or the first choice of the
+    API selector) lists the datasets of all the APIs as one card per name: the TimeSeries
+    producers, the EDR collections and the Coverages
     collections. A card shows the kind of data (forecast, ensemble, observations, soundings,
     radar, satellite, marine, air quality, climate, guessed from the names, sources and
     levels), the period and how current it is, the themes of the parameters and the
