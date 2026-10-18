@@ -393,7 +393,10 @@ Most plugins produce tables of values:
   `smartmet-uplot` package (`/usr/share/smartmet/uplot`), and the snippets, the tree and the
   map are those of `OpenApiPlugin.cpp`. The page loads no inline scripts and uses no cookies.
   `test/explorer-browser-test.js` checks it in a headless browser against a mock server
-  (`UPLOT_DIR` overrides the uPlot location).
+  (`UPLOT_DIR` overrides the uPlot location). The user guide is
+  [docs/data-explorer.md](https://github.com/fmidev/smartmet-server/blob/master/docs/data-explorer.md)
+  of smartmet-server, and its images are made with the scripts in `docs/tools/explorer-capture/`
+  there. The maps expose `screenOf(lon, lat)` on their element for such scripts.
   * **Browse** (the Browse all data button of the navigation bar, or the first choice of the
     API selector) lists the datasets of all the APIs as one card per name: the TimeSeries
     producers, the EDR collections and the Coverages

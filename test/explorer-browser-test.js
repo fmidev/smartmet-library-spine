@@ -1427,7 +1427,7 @@ async function main()
     check(
         'time-height section and its pointer',
         vertical.section.cells === 40 && vertical.section.readout.includes('temperature') &&
-            JSON.stringify(vertical.section.tops) === '["","200","500","700","900"]' &&
+            JSON.stringify(vertical.section.tops) === '["","100","200","500","700","900"]' &&
             vertical.section.limited > 0 && vertical.section.limited < 40,
         vertical.section);
     check(

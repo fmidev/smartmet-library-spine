@@ -328,6 +328,8 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .sk-analysis dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px 12px; margin: 6px 0; }
 .sk-panels { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
 .sk-panel { min-width: 0; max-width: 100%; }
+.sk-panels.several { flex-wrap: nowrap; overflow-x: auto; }
+.sk-panels.several > .sk-panel { flex: 1 1 0; }
 .sk-panels > .sk-panel + .sk-panel { border-left: 1px solid var(--line); padding-left: 16px; }
 .sk-values { margin-top: 6px; }
 .sk-values table td, .sk-values table th { text-align: right; }

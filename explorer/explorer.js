@@ -2292,6 +2292,7 @@ function verticalTops(axis)
   if (axis.id === 'pressure')
     return [
       ['', L('All')],
+      ['100', '100 hPa'],
       ['200', '200 hPa'],
       ['500', '500 hPa'],
       ['700', '700 hPa'],
@@ -4523,7 +4524,11 @@ function drawSkewT(container, rows, levelKind, options)
     const fit = n > 1 ? Math.floor((total - 16 * (n - 1)) / n) : total;
     return Math.max(340, Math.min(640, fit));
   };
-  const redraw = () => panels.forEach((p) => p.redraw());
+  const redraw = () => {
+    // Several panels share the row equally, their hodographs below the diagrams
+    panelsBox.classList.toggle('several', panels.length > 1);
+    panels.forEach((p) => p.redraw());
+  };
   // A panel of its own location and time, by default the next location or else the next time
   const addPanel = () => {
     const last = panels[panels.length - 1];
@@ -4655,7 +4660,9 @@ function skewTPanel(container, profiles, keys, times, columns, axis, options)
         tmin,
         tmax,
         tSurface,
-        all.flatMap((l) => (l.td === null ? [[l.t, l.p]] : [[l.t, l.p], [l.td, l.p]])));
+        // The levels above the top of the diagram are not drawn, nor fitted to
+        all.filter((l) => l.p >= pTop)
+            .flatMap((l) => (l.td === null ? [[l.t, l.p]] : [[l.t, l.p], [l.td, l.p]])));
     const x = view.x;
     const y = view.y;
     // A path through [p, t] points of the diagram
