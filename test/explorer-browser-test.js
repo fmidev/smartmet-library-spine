@@ -893,6 +893,9 @@ async function main()
         'server statistics drawn',
         serverTitle === 'temperature: median and percentiles of the area, computed by the server',
         serverTitle);
+    // The statistics columns are values of the parameters: no warning of rows without values
+    const statisticsNote = await b.evaluate(`document.querySelector('.request-note').hidden`);
+    check('no missing values warning with statistics', statisticsNote === true, statisticsNote);
 
     // ... or every point
     await b.evaluate(`document.querySelector('[data-areavalues="points"]').click()`);

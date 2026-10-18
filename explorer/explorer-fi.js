@@ -273,6 +273,7 @@
     "Only 32 bit floating point GeoTIFF files are supported": "Vain 32-bittisiä liukuluku-GeoTIFF-tiedostoja tuetaan",
     "Only the first {0} combinations of levels and members are requested": "Vain ensimmäiset {0} tasojen ja jäsenten yhdistelmää pyydetään",
     "Open in {0}": "Avaa: {0}",
+    "Open in {0} ({1})": "Avaa: {0} ({1})",
     "Optional: the values met along a flight": "Valinnainen: lennon varrella kohdatut arvot",
     "Origin time of the model run": "Malliajon lähtöaika",
     "Other EPSG code…": "Muu EPSG-koodi…",
@@ -554,6 +555,7 @@
     "{0} maps": "{0} karttaa",
     "{0} median": "{0}, mediaani",
     "{0} met": "{0} kohdattu",
+    "{0} months": "{0} kk",
     "{0} of the {1} stations of {2} operate in the chosen period{3}": "{0}/{1} tuottajan {2} asemasta toimii valitulla jaksolla{3}",
     "{0} of {1} collections have {2}{3}": "{0}/{1} kokoelmasta sisältää {2}{3}",
     "{0} of {1} collections{2}{3}": "{0}/{1} kokoelmasta{2}{3}",
@@ -568,6 +570,7 @@
     "{0} rows{1}{2}": "{0} riviä{1}{2}",
     "{0} text": "{0}, teksti",
     "{0} times": "{0} aikaa",
+    "{0} years": "{0} v",
     "{0} × {1} cells, {2}, {3}. The maps move together.": "{0} × {1} solua, {2}, {3}. Kartat liikkuvat yhdessä.",
     "{0} × {1} grid": "{0} × {1} -hila",
     "{0} × {1} grid (estimated)": "{0} × {1} -hila (arvio)",
@@ -590,8 +593,7 @@
     "{0}{1} at {2} km of {3} km ({4}, {5}){6}{7}, against the median and 10-90 % of the path": "{0}{1} kohdassa {2} km / {3} km ({4}, {5}){6}{7}, verrattuna reitin mediaaniin ja 10–90 %:iin",
     "{0}{1} at {2}, {3}: {4}": "{0}{1}, {2}, {3}: {4}",
     "{0}{1} met on the flight, {2} – {3}": "{0}{1} lennolla kohdattuna, {2} – {3}",
-    "{0}{1}: median and percentiles of the area, computed by the server": "{0}{1}: alueen mediaani ja persentiilit, palvelimen laskemina",
-    "⚙ Settings": "⚙ Asetukset"
+    "{0}{1}: median and percentiles of the area, computed by the server": "{0}{1}: alueen mediaani ja persentiilit, palvelimen laskemina"
   }
 };
 })(typeof window !== 'undefined' ? window : globalThis);

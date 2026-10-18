@@ -556,6 +556,13 @@ function expandRow(row)
 
 // The location of a row: the name, or the coordinates when there is no name or the row is a
 // point of an area
+// Whether a location name is a coordinate selection (the points of a box or a radius are
+// named by it) rather than a name
+function isCoordinateName(name)
+{
+  return /^[-\d.,:\s]+$/.test(String(name));
+}
+
 function locationOf(row)
 {
   // Each level and each variant (a level or a member of a grid parameter key) is a series of
@@ -564,7 +571,7 @@ function locationOf(row)
       (row._variant ? ` · ${row._variant}` : '');
   const coords = row.lat !== undefined && row.lat !== null ? `${row.lat},${row.lon}` : '';
   if (row._point !== undefined)
-    return `${row.name !== null && row.name !== undefined ? row.name + ' ' : ''}(${
+    return `${row.name !== null && row.name !== undefined && !isCoordinateName(row.name) ? row.name + ' ' : ''}(${
         coords || row._point})${level}`;
   if (row.name !== undefined && row.name !== null)
     return String(row.name) + level;
@@ -1226,6 +1233,8 @@ function createMap(settings, onSelect)
        state.center[1] + (sy - MAP_HEIGHT / 2) / scale()];
   const screenOf = (lon, lat) => toScreen(project(lon, lat));
   const lonLatOf = (sx, sy) => unproject(...toWorld(sx, sy));
+  // The pixel of a longitude and latitude in the map, for scripts driving the page
+  box.screenOf = (lon, lat) => screenOf(lon, lat);
 
   // The land, the lakes and the borders in view, with at most a point per pixel
   function drawBasemap(g, x0, y0, x1, y1)
@@ -4283,6 +4292,10 @@ function drawHodograph(levels)
 
 // Wind barb of speed s (m/s) from direction d (deg) at (x, y): a staff towards the direction
 // the wind comes from, pennants of 50 kt, barbs of 10 kt and half barbs of 5 kt
+// The height of the strip of the wind barbs below a wind chart: a staff and its feathers
+// fit in it whatever the direction
+const BARB_STRIP = 58;
+
 function windBarb(x, y, speed, direction)
 {
   const g = svg('g', {class: 'barb', transform: `translate(${x},${y}) rotate(${direction})`});
@@ -5221,14 +5234,24 @@ function drawMeteogram(container, rows, levelKind)
           if (meanDirection[k] === null || medianSpeed[k] === null || px - last < 28)
             return;
           last = px;
-          layer.append(windBarb(px, u.over.clientHeight - 6, medianSpeed[k], meanDirection[k]));
+          layer.append(windBarb(px, u.over.clientHeight - BARB_STRIP / 2, medianSpeed[k], meanDirection[k]));
         });
         u.over.append(layer);
       };
+      // The barbs turn with the wind, so they get a strip of their own below zero, where the
+      // scale has no ticks
+      const windAxes = axes(sUnit);
+      windAxes[1].filter = (u, splits) => splits.map((v) => (v < 0 ? null : v));
+      const windHeight = 170 + BARB_STRIP;
       panel(L`Wind${columns.gust ? L(' and gusts') : ''} (${sUnit})${ensemble ? L(', median and 10-90 % of the members') : ''}`,
             series, [xs, ...data],
-            {unit: sUnit, scales: {y: {range: (u, lo, hi) => [0, Math.max(5, hi * 1.25)]}},
-             extra: {bands: wb.bands, hooks: {draw: [barbs]}}});
+            {unit: sUnit,
+             scales: {y: {range: (u, lo, hi) => {
+               const top = Math.max(5, hi * 1.25);
+               const plotHeight = windHeight - 44;
+               return [-top * BARB_STRIP / (plotHeight - BARB_STRIP), top];
+             }}},
+             extra: {bands: wb.bands, hooks: {draw: [barbs]}, height: windHeight, axes: windAxes}});
     }
   }
 }
@@ -6140,7 +6163,9 @@ function valueProbe(box, rows, state, times, options)
       options.onClose();
   });
   const at = (r) => r.lat === state.probe.lat && r.lon === state.probe.lon;
-  const place = () => `${state.probe.name ? `${state.probe.name} ` : ''}(${state.probe.lat.toFixed(3)}, ${
+  // The points of a box or a radius are named by the box or the radius: such names are left out
+  const named = () => state.probe.name && !isCoordinateName(state.probe.name);
+  const place = () => `${named() ? `${state.probe.name} ` : ''}(${state.probe.lat.toFixed(3)}, ${
       state.probe.lon.toFixed(3)})`;
   // The title with the value at the time of the map
   const update = () => {
@@ -8544,7 +8569,11 @@ function timeSeriesModule(app, api, state, save)
       const rows = splitVariants(flattenRows(data), variantColumns());
       // An empty result is explained below the request
       const observed = isObservation();
-      if (rows.length === 0 || rowsWithoutValues(rows, dataParams()))
+      // Statistics of an area are in columns such as nanmedian_a(temperature)
+      const valueColumns = serverStatistics() && rows.length ?
+          Object.keys(rows[0]).filter((k) => dataParams().some((p) => k.endsWith(`(${p})`))) :
+          dataParams();
+      if (rows.length === 0 || rowsWithoutValues(rows, valueColumns))
         requestStatus.show('warn', rows.length === 0 ? L('The server returned no data for this request.') :
                                              L('The server returned rows without values of the parameters.'),
                   ' ', observed ?
@@ -11572,7 +11601,11 @@ function dataFreshness(time)
   if (isNaN(end))
     return '';
   const hours = (end.getTime() - Date.now()) / 3600e3;
-  const span = (h) => (Math.abs(h) < 48 ? L`${Math.round(Math.abs(h))} h` : L`${Math.round(Math.abs(h) / 24)} days`);
+  const span = (h) => {
+    const a = Math.abs(h);
+    return a < 48 ? L`${Math.round(a)} h` : a < 24 * 60 ? L`${Math.round(a / 24)} days` :
+           a < 24 * 730 ? L`${Math.round(a / 24 / 30.44)} months` : L`${Math.round(a / 24 / 365.25)} years`;
+  };
   return hours > 0 ? L`until ${formatTime(end)}, ${span(hours)} ahead` : L`until ${formatTime(end)}, ${span(hours)} ago`;
 }
 
@@ -11685,7 +11718,10 @@ function browseModule(app, apis, state, save, openApi)
               '',
           el('div', {class: 'row'},
              ...d.apis.map((entry) => el('button', {type: 'button', class: 'small', onclick: () => openIn(d, entry, q)},
-                                         L`Open in ${entry.api.title}`))));
+                                         // An API offering the dataset from several sources names the source
+                                         d.apis.filter((x) => x.api === entry.api).length > 1 ?
+                                             L`Open in ${entry.api.title} (${entry.source || entry.key})` :
+                                             L`Open in ${entry.api.title}`))));
       box.addEventListener('mouseenter', () => highlight(d));
       box.addEventListener('mouseleave', () => highlight(null));
       return box;
@@ -11808,8 +11844,15 @@ function writeState(s)
 function settingsMenu()
 {
   const panel = el('div', {class: 'settings-panel', role: 'dialog', 'aria-label': L('Settings'), hidden: true});
-  const button = el('button', {type: 'button', class: 'small', 'aria-expanded': 'false',
-                               'aria-label': L('Settings')}, L('⚙ Settings'));
+  // A drawn gear: many systems have no font with the gear character
+  const gear = svg('svg', {class: 'icon', viewBox: '0 0 24 24', width: 14, height: 14, 'aria-hidden': 'true'});
+  gear.append(svg('path', {
+    fill: 'currentColor',
+    'fill-rule': 'evenodd',
+    d: 'M10.3 2h3.4l.5 2.6 1.8.8 2.2-1.5 2.4 2.4-1.5 2.2.8 1.8 2.6.5v3.4l-2.6.5-.8 1.8 1.5 2.2-2.4 2.4-2.2-1.5-1.8.8-.5 2.6h-3.4l-.5-2.6-1.8-.8-2.2 1.5-2.4-2.4 1.5-2.2-.8-1.8L2 13.7v-3.4l2.6-.5.8-1.8-1.5-2.2 2.4-2.4 2.2 1.5 1.8-.8zM12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z'
+  }));
+  const button = el('button', {type: 'button', class: 'small settings-button', 'aria-expanded': 'false',
+                               'aria-label': L('Settings')}, gear, L('Settings'));
   const close = () => {
     panel.hidden = true;
     button.setAttribute('aria-expanded', 'false');

@@ -273,6 +273,7 @@
     "Only 32 bit floating point GeoTIFF files are supported": "Endast GeoTIFF-filer med 32-bitars flyttal stöds",
     "Only the first {0} combinations of levels and members are requested": "Endast de första {0} kombinationerna av nivåer och medlemmar begärs",
     "Open in {0}": "Öppna i {0}",
+    "Open in {0} ({1})": "Öppna i {0} ({1})",
     "Optional: the values met along a flight": "Valfritt: värdena längs en flygning",
     "Origin time of the model run": "Modellkörningens ursprungstid",
     "Other EPSG code…": "Annan EPSG-kod…",
@@ -554,6 +555,7 @@
     "{0} maps": "{0} kartor",
     "{0} median": "{0} median",
     "{0} met": "{0} uppmätt",
+    "{0} months": "{0} mån",
     "{0} of the {1} stations of {2} operate in the chosen period{3}": "{0} av de {1} stationerna för {2} är i drift under den valda perioden{3}",
     "{0} of {1} collections have {2}{3}": "{0} av {1} samlingar har {2}{3}",
     "{0} of {1} collections{2}{3}": "{0} av {1} samlingar{2}{3}",
@@ -568,6 +570,7 @@
     "{0} rows{1}{2}": "{0} rader{1}{2}",
     "{0} text": "{0}, text",
     "{0} times": "{0} tider",
+    "{0} years": "{0} år",
     "{0} × {1} cells, {2}, {3}. The maps move together.": "{0} × {1} celler, {2}, {3}. Kartorna rör sig tillsammans.",
     "{0} × {1} grid": "{0} × {1}-rutnät",
     "{0} × {1} grid (estimated)": "{0} × {1}-rutnät (uppskattat)",
@@ -590,8 +593,7 @@
     "{0}{1} at {2} km of {3} km ({4}, {5}){6}{7}, against the median and 10-90 % of the path": "{0}{1} vid {2} km av {3} km ({4}, {5}){6}{7}, jämfört med ruttens median och 10–90 %",
     "{0}{1} at {2}, {3}: {4}": "{0}{1} vid {2}, {3}: {4}",
     "{0}{1} met on the flight, {2} – {3}": "{0}{1} under flygningen, {2} – {3}",
-    "{0}{1}: median and percentiles of the area, computed by the server": "{0}{1}: områdets median och percentiler, beräknade av servern",
-    "⚙ Settings": "⚙ Inställningar"
+    "{0}{1}: median and percentiles of the area, computed by the server": "{0}{1}: områdets median och percentiler, beräknade av servern"
   }
 };
 })(typeof window !== 'undefined' ? window : globalThis);

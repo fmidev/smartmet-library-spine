@@ -175,6 +175,10 @@ make %{_smp_mflags}
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
 - The --stacktrace option now turns on stack traces instead of quiet mode
 - The OpenTelemetry settings are read only once
+- Data explorer fixes: the settings gear is drawn (many systems have no font for it), Browse
+  buttons name the source when an API offers a dataset twice and old data ages are given in
+  months or years, no false warning of missing values with area statistics, meteogram wind
+  barbs get a strip of their own, points of a box are not named by the box
 - Data explorer: the error message of the server (problem detail, plugin error header or
   text) and empty results are shown below the request
 - Data explorer: a Browse page of the data of all the APIs: one card per dataset with its kind,
