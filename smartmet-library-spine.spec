@@ -173,6 +173,8 @@ make %{_smp_mflags}
 
 %changelog
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi
+- The --stacktrace option now turns on stack traces instead of quiet mode
+- The OpenTelemetry settings are read only once
 - Data explorer: the error message of the server (problem detail, plugin error header or
   text) and empty results are shown below the request
 - Data explorer: a Browse page of the data of all the APIs: one card per dataset with its kind,

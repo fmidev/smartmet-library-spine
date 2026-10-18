@@ -225,7 +225,7 @@ bool Options::parseOptions(int argc, char* argv[])
         "debug,d", po::bool_switch(&debug)->default_value(debug), msgdebug)(
         "verbose,v", po::bool_switch(&verbose)->default_value(verbose), msgverbose)(
         "quiet", po::bool_switch(&quiet)->default_value(quiet), msgquiet)(
-        "stacktrace", po::bool_switch(&quiet)->default_value(stacktrace), msgstacktrace)(
+        "stacktrace", po::bool_switch(&stacktrace)->default_value(stacktrace), msgstacktrace)(
         "logrequests", po::bool_switch(&logrequests)->default_value(logrequests), msglogrequest)(
         "configfile,c", po::value(&configfile)->default_value(configfile), msgconf)(
         "libdir,L", po::value(&directory)->default_value(directory), msglib)(
@@ -375,8 +375,6 @@ void Options::parseConfig()
       lookupHostSetting(itsConfig, clientHostNameMaxQueueSize, "dns.maxqueuesize");
       lookupHostSetting(itsConfig, staleWhileRevalidate, "stalewhilerevalidate");
       lookupHostSetting(itsConfig, staleIfError, "staleiferror");
-
-      otel = OTelOptions::fromConfig(itsConfig);
 
       otel = OTelOptions::fromConfig(itsConfig);
 
