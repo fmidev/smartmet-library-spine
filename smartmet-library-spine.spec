@@ -179,7 +179,9 @@ make %{_smp_mflags}
   buttons name the source when an API offers a dataset twice and old data ages are given in
   months or years, no false warning of missing values with area statistics, meteogram wind
   barbs get a strip of their own, points of a box are not named by the box, the tephigram
-  is fitted to the levels drawn, sounding panels share the row, 100 hPa top for sections
+  is fitted to the levels drawn, sounding panels share the row, 100 hPa top for sections,
+  maps show no empty space beyond 180 degrees, the Browse map fits the regional datasets,
+  the comparison choices show the whole producer name
 - Data explorer: the error message of the server (problem detail, plugin error header or
   text) and empty results are shown below the request
 - Data explorer: a Browse page of the data of all the APIs: one card per dataset with its kind,

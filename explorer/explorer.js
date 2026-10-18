@@ -1232,6 +1232,16 @@ function createMap(settings, onSelect)
       [state.center[0] + (sx - width() / 2) / scale(),
        state.center[1] + (sy - MAP_HEIGHT / 2) / scale()];
   const screenOf = (lon, lat) => toScreen(project(lon, lat));
+  // The world is at least as wide as the view, and the view stays in the world: beyond
+  // 180 degrees there would be only empty space
+  const minZoom = () => Math.max(0, Math.log2(width() / 256));
+  const clampView = () => {
+    state.zoom = Math.max(minZoom(), state.zoom);
+    const hw = width() / 2 / scale();
+    const hh = MAP_HEIGHT / 2 / scale();
+    state.center[0] = Math.min(256 - hw, Math.max(hw, state.center[0]));
+    state.center[1] = hh >= 128 ? 128 : Math.min(256 - hh, Math.max(hh, state.center[1]));
+  };
   const lonLatOf = (sx, sy) => unproject(...toWorld(sx, sy));
   // The pixel of a longitude and latitude in the map, for scripts driving the page
   box.screenOf = (lon, lat) => screenOf(lon, lat);
@@ -1535,6 +1545,7 @@ function createMap(settings, onSelect)
 
   function redraw()
   {
+    clampView();
     surface.setAttribute('viewBox', `0 0 ${width()} ${MAP_HEIGHT}`);
     drawBackground();
     drawRaster();
@@ -1613,7 +1624,7 @@ function createMap(settings, onSelect)
   // Zooms to level z keeping the place under (sx, sy) of the view where it is
   function zoomAt(z, sx, sy)
   {
-    z = Math.max(0, Math.min(18, z));
+    z = Math.max(minZoom(), Math.min(18, z));
     if (z === state.zoom)
       return;
     const world = toWorld(sx, sy);
@@ -5275,7 +5286,7 @@ function drawMeteogram(container, rows, levelKind)
 function drawComparison(pane, rows, options)
 {
   const {params, kind, ownName, others} = options;
-  const select = el('select', {'aria-label': L('Compare with')}, [
+  const select = el('select', {class: 'compare-select', 'aria-label': L('Compare with')}, [
     el('option', {value: ''}, L('No comparison')),
     ...others.map((o) => el('option', {value: o.key}, o.label))
   ]);
@@ -8806,7 +8817,7 @@ function timeSeriesModule(app, api, state, save)
       const own = producer();
       const others = Array.from(index.producers.values())
                          .filter((p) => p !== own && p.source !== 'grid' && soundingCapable(p));
-      const select = el('select', {'aria-label': L('Compare with')}, [
+      const select = el('select', {class: 'compare-select', 'aria-label': L('Compare with')}, [
         el('option', {value: ''}, L('No comparison')),
         ...others.map((p) => el('option', {value: p.key}, `${p.name} (${p.source})`))
       ]);
@@ -11780,7 +11791,14 @@ function browseModule(app, apis, state, save, openApi)
     }, 250));
     refresh();
     if (!point())
-      map.fit(map.extent());
+    {
+      // Global datasets would always make the view the whole world: the map shows the regional
+      // ones, if there are any
+      const regional = shown.map((d) => d.bbox).filter((b) => b && b[2] - b[0] < 300);
+      map.fit(regional.length ? [Math.min(...regional.map((b) => b[0])), Math.min(...regional.map((b) => b[1])),
+                                 Math.max(...regional.map((b) => b[2])), Math.max(...regional.map((b) => b[3]))] :
+                                map.extent());
+    }
   }
   return view;
 }

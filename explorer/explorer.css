@@ -240,6 +240,8 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .legend-label { position: absolute; left: 0; top: 15px; font-size: 9px; color: var(--muted); transform: translateX(-50%); white-space: nowrap; }
 .legend:has(.legend-bands) { margin-bottom: 20px; }
 .pane .row select { max-width: 14em; }
+/* The producers to compare with are told by their names and sources in full */
+.pane .row select.compare-select { max-width: 100%; }
 
 /* Vertical profiles and soundings */
 .vdiagrams { display: flex; flex-wrap: wrap; gap: 12px; }
