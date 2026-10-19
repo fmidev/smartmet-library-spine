@@ -1,0 +1,20 @@
+# what=changelog lists the changelog entries of the loaded SmartMet packages
+# newest first. The entries depend on the installed packages, so only the
+# structure is validated. days=0 lists all entries, so that the installed
+# SmartMet libraries always have some.
+
+(?(DEFINE)
+  (?<str>    "(?:[^"\\]|\\.)*" )
+  (?<value>  null | (?&str) )
+  (?<row>
+    \{
+    "Date":"[0-9]{4}-[0-9]{2}-[0-9]{2}",
+    "Package":"[^"]*smartmet[^"]*",
+    "Version":(?&value),
+    "Author":(?&value),
+    "Text":(?&value)
+    \}
+  )
+)
+
+\[ (?&row) (?:,(?&row))* \]

@@ -8,10 +8,12 @@
 #include <sys/wait.h>
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cerrno>
 #include <cinttypes>
 #include <csignal>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
 #include <fstream>
@@ -20,6 +22,7 @@
 #include <optional>
 #include <set>
 #include <spawn.h>
+#include <tuple>
 #include <unistd.h>
 
 namespace SmartMet
@@ -706,6 +709,174 @@ std::unique_ptr<Table> requestPackages(const HTTP::Request& theRequest)
       table->set(column++, row, origin(obj));
       table->set(column++, row, obj.buildid);
       table->set(column++, row, obj.file);
+      ++row;
+    }
+
+    return table;
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief Parse changelogs printed by rpm
+ *
+ * The entry header is of the form "Name <email> - version", the version
+ * part is optional.
+ */
+// ----------------------------------------------------------------------
+
+std::vector<ChangelogEntry> parseRpmChangelog(const std::string& theOutput)
+{
+  std::vector<ChangelogEntry> ret;
+  std::size_t pos = 0;
+  while (pos < theOutput.size())
+  {
+    auto next = theOutput.find('\x1e', pos);
+    if (next == std::string::npos)
+      next = theOutput.size();
+    const auto fields = split(theOutput.substr(pos, next - pos), '\x1f');
+    pos = next + 1;
+
+    if (fields.size() != 4 || fields[0].empty())
+      continue;
+
+    ChangelogEntry entry;
+    char* end = nullptr;
+    entry.time = static_cast<std::time_t>(std::strtoll(fields[0].c_str(), &end, 10));
+    if (*end != '\0')
+      continue;
+    entry.package = fields[1];
+
+    std::string header = fields[2];
+    const auto dash = header.rfind(" - ");
+    if (dash != std::string::npos)
+    {
+      entry.version = header.substr(dash + 3);
+      header.resize(dash);
+    }
+    const auto email = header.find(" <");
+    if (email != std::string::npos)
+      header.resize(email);
+    entry.author = header;
+
+    entry.text = fields[3];
+    while (!entry.text.empty() && std::isspace(static_cast<unsigned char>(entry.text.back())))
+      entry.text.pop_back();
+
+    ret.push_back(std::move(entry));
+  }
+  return ret;
+}
+
+namespace
+{
+// Installed SmartMet rpm packages mapped to the names shown, optionally only one package
+std::map<std::string, std::string> changelog_packages(const std::vector<Object>& theObjects,
+                                                      const std::optional<std::string>& thePackage)
+{
+  std::map<std::string, std::string> names;
+  for (const auto& obj : theObjects)
+  {
+    if (!is_smartmet(obj) || obj.installed_name.empty() || obj.package_manager != "rpm")
+      continue;
+    const std::string name =
+        (obj.smartmet && !obj.smartmet->name.empty() ? obj.smartmet->name : obj.installed_name);
+    if (!thePackage || *thePackage == name || *thePackage == obj.installed_name)
+      names.insert({obj.installed_name, name});
+  }
+  return names;
+}
+
+std::vector<ChangelogEntry> query_rpm_changelog(const std::map<std::string, std::string>& theNames)
+{
+  if (theNames.empty())
+    return {};
+
+  std::vector<std::string> args{
+      "rpm",
+      "-q",
+      "--qf",
+      "[%{CHANGELOGTIME}\x1f%{=NAME}\x1f%{CHANGELOGNAME}\x1f%{CHANGELOGTEXT}\x1e]"};
+  for (const auto& item : theNames)
+    args.push_back(item.first);
+
+  auto output = run(args);
+  if (!output)
+    return {};
+  return parseRpmChangelog(*output);
+}
+
+}  // namespace
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief The admin request what=changelog
+ *
+ * Only rpm stores changelogs in the package database. The entries of
+ * binary packages built from the same source are identical, and are
+ * shown once under the source package named by the SmartMet note.
+ */
+// ----------------------------------------------------------------------
+
+std::unique_ptr<Table> requestChangelog(const HTTP::Request& theRequest)
+{
+  try
+  {
+    const int days = optional_int(theRequest.getParameter("days"), 30);
+
+    auto objects = collect();
+    resolveInstalled(objects);
+
+    const auto names = changelog_packages(objects, theRequest.getParameter("package"));
+    auto entries = query_rpm_changelog(names);
+
+    const std::time_t cutoff = std::time(nullptr) - static_cast<std::time_t>(days + 1) * 86400;
+
+    std::set<std::tuple<std::string, std::time_t, std::string, std::string>> seen;
+    std::vector<ChangelogEntry> shown;
+    for (auto& entry : entries)
+    {
+      if (days > 0 && entry.time < cutoff)
+        continue;
+      const auto name = names.find(entry.package);
+      if (name == names.end())
+        continue;
+      entry.package = name->second;
+      if (seen.insert({entry.package, entry.time, entry.version, entry.text}).second)
+        shown.push_back(std::move(entry));
+    }
+
+    // Newest first. rpm lists the entries of a package newest first.
+    std::stable_sort(shown.begin(),
+                     shown.end(),
+                     [](const ChangelogEntry& a, const ChangelogEntry& b)
+                     {
+                       if (a.time != b.time)
+                         return a.time > b.time;
+                       return a.package < b.package;
+                     });
+
+    auto table = std::make_unique<Table>();
+    table->setTitle("Changelog");
+    table->setNames({"Date", "Package", "Version", "Author", "Text"});
+
+    std::size_t row = 0;
+    for (const auto& entry : shown)
+    {
+      std::tm tm{};
+      gmtime_r(&entry.time, &tm);
+      std::size_t column = 0;
+      table->set(column++,
+                 row,
+                 fmt::format("{:04}-{:02}-{:02}", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday));
+      table->set(column++, row, entry.package);
+      table->set(column++, row, entry.version);
+      table->set(column++, row, entry.author);
+      table->set(column++, row, entry.text);
       ++row;
     }
 

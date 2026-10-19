@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.19
-Release: 2%{?dist}.fmi
+Release: 3%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Oct 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.19-3.fmi
+- New admin request what=changelog: the recent changelog entries of the loaded SmartMet packages
+  from the rpm database, newest first (days=N, default 30, 0 for all; package=name)
+
 * Mon Oct 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.19-2.fmi
 - Data explorer: the points of a result on the map are cleared with a new selection or location type
 - Data explorer: Reset clears the choices and the remembered settings except the API key

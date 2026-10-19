@@ -223,6 +223,31 @@ void status()
   TEST_PASSED();
 }
 
+void parse_changelog()
+{
+  const std::string output =
+      "1792411200\x1fsmartmet-library-spine\x1fMika Heiskanen <mika.heiskanen@fmi.fi> - "
+      "26.10.19-1.fmi\x1f- First line\n  continued\n- Second line\n\x1e"
+      "1792324800\x1fsmartmet-library-spine\x1fJohn Doe <john@example.com>\x1f- No version\x1e"
+      "bad\x1fsmartmet-library-spine\x1fJohn Doe\x1f- Bad time\x1e"
+      "1792324800\x1fmissing fields\x1e";
+
+  const auto entries = LP::parseRpmChangelog(output);
+  if (entries.size() != 2)
+    TEST_FAILED("Expected 2 entries, got " + std::to_string(entries.size()));
+  const auto& first = entries[0];
+  if (first.time != 1792411200 || first.package != "smartmet-library-spine" ||
+      first.version != "26.10.19-1.fmi" || first.author != "Mika Heiskanen" ||
+      first.text != "- First line\n  continued\n- Second line")
+    TEST_FAILED("First entry parsed incorrectly: '" + first.version + "' '" + first.author + "' '" +
+                first.text + "'");
+  const auto& second = entries[1];
+  if (!second.version.empty() || second.author != "John Doe" || second.text != "- No version")
+    TEST_FAILED("Entry without a version parsed incorrectly: '" + second.version + "' '" +
+                second.author + "'");
+  TEST_PASSED();
+}
+
 void collect()
 {
   const auto objects = LP::collect();
@@ -380,6 +405,19 @@ void request()
   if (smartmet->maxj() >= all->maxj())
     TEST_FAILED("Default listing should be shorter than all=1");
 
+  // The installed SmartMet libraries such as macgyver are loaded and have changelogs
+  SmartMet::Spine::HTTP::Request changelog_req;
+  changelog_req.addParameter("days", "0");
+  const auto changelog = LP::requestChangelog(changelog_req);
+  if (changelog->getNames() !=
+      std::vector<std::string>{"Date", "Package", "Version", "Author", "Text"})
+    TEST_FAILED("Unexpected changelog columns");
+  if (changelog->empty())
+    TEST_FAILED("The changelog of the installed SmartMet packages should not be empty");
+  for (std::size_t row = 1; row <= changelog->maxj(); row++)
+    if (changelog->get(0, row, "") > changelog->get(0, row - 1, ""))
+      TEST_FAILED("The changelog should be newest first");
+
   TEST_PASSED();
 }
 
@@ -392,6 +430,7 @@ class tests : public tframe::tests
     TEST(parse_notes_aligned_8);
     TEST(parse_truncated);
     TEST(parse_json);
+    TEST(parse_changelog);
     TEST(status);
     TEST(collect);
     TEST(deleted);

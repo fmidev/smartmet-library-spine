@@ -1,6 +1,7 @@
 "What","Target","Authentication","Public","Unique","Description"
 "activerequests","<builtin>","no","no","yes","Get active request info"
 "cachestats","<builtin>","no","no","yes","Request cache stats"
+"changelog","<builtin>","no","no","yes","Recent changelog entries of the loaded packages (days=N, default 30)"
 "engineinfo","<builtin>","no","no","yes","Request engine info"
 "getlogging","<builtin>","no","no","yes","Get logging status"
 "lastrequests","<builtin>","no","no","yes","Get last requests"

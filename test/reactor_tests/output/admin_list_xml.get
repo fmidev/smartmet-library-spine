@@ -2,6 +2,7 @@
 <result>
 <row What="activerequests" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Get active request info"/>
 <row What="cachestats" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Request cache stats"/>
+<row What="changelog" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Recent changelog entries of the loaded packages (days=N, default 30)"/>
 <row What="engineinfo" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Request engine info"/>
 <row What="getlogging" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Get logging status"/>
 <row What="lastrequests" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Get last requests"/>

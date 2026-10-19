@@ -4,6 +4,7 @@
 <table><tr><th>What</th><th>Target</th><th>Authentication</th><th>Public</th><th>Unique</th><th>Description</th></tr><tr>
 <td>activerequests</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Get active request info</td></tr><tr>
 <td>cachestats</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Request cache stats</td></tr><tr>
+<td>changelog</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Recent changelog entries of the loaded packages (days=N, default 30)</td></tr><tr>
 <td>engineinfo</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Request engine info</td></tr><tr>
 <td>getlogging</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Get logging status</td></tr><tr>
 <td>lastrequests</td><td>&lt;builtin&gt;</td><td>no</td><td>no</td><td>yes</td><td>Get last requests</td></tr><tr>

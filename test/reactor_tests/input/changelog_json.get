@@ -1,0 +1,2 @@
+GET /admin?what=changelog&days=0&format=json HTTP/1.0
+

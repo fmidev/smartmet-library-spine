@@ -308,6 +308,14 @@ Reactor::Reactor(const Options& options)
         { return LoadedPackages::requestPackages(theRequest); },
         "Versions of the loaded packages (all=1 lists all libraries)");
 
+    addAdminTableRequestHandler(
+        NoTarget{},
+        "changelog",
+        AdminRequestAccess::Private,
+        [](Reactor& /* theReactor */, const HTTP::Request& theRequest)
+        { return LoadedPackages::requestChangelog(theRequest); },
+        "Recent changelog entries of the loaded packages (days=N, default 30)");
+
     addAdminCustomRequestHandler(
         NoTarget{},
         "waitforready",

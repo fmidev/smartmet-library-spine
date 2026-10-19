@@ -268,7 +268,7 @@ The admin URI is set by `admin.uri`, and the allowed clients by `admin.ip_filter
 Always configure `admin.ip_filters` together with `admin.uri`.
 
 The Reactor registers its own requests: `list`, `lastrequests`, `activerequests`,
-`cachestats`, `servicestats`, `engineinfo`, `plugininfo`, `packages`, `waitforready`,
+`cachestats`, `servicestats`, `engineinfo`, `plugininfo`, `packages`, `changelog`, `waitforready`,
 `mallocstats`, the logging switches, and others; the server's `docs/Admin-Requests.md` describes them from
 the user side. Handlers registered by a plugin or engine are removed automatically when
 it shuts down (`removeContentHandlers()`).

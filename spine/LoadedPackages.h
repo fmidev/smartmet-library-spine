@@ -20,13 +20,14 @@
  * based systems) is queried for the currently installed versions, and
  * for the owners of objects which have no notes.
  *
- * Used by the admin request what=packages.
+ * Used by the admin requests what=packages and what=changelog.
  */
 // ======================================================================
 
 #pragma once
 
 #include <cstddef>
+#include <ctime>
 #include <memory>
 #include <string>
 #include <vector>
@@ -97,6 +98,26 @@ std::string status(const Object& theObject);
 // The admin request what=packages. Parameter all=1 lists all objects
 // instead of SmartMet packages only.
 std::unique_ptr<Table> requestPackages(const HTTP::Request& theRequest);
+
+// One changelog entry of an installed package
+struct ChangelogEntry
+{
+  std::time_t time = 0;  // the date of the entry, rpm stores it as noon UTC
+  std::string package;   // binary package as known to the package manager
+  std::string version;   // version given in the entry header, if any
+  std::string author;    // author without the e-mail address
+  std::string text;
+};
+
+// Parse the output of rpm --qf with records terminated by \x1e and the
+// fields time, package, changelog name and changelog text separated by \x1f
+std::vector<ChangelogEntry> parseRpmChangelog(const std::string& theOutput);
+
+// The admin request what=changelog: the recent changelog entries of the
+// installed versions of the loaded SmartMet packages, newest first.
+// Parameter days=N limits the entries to the last N days (default 30,
+// 0 for all) and package=name to one package.
+std::unique_ptr<Table> requestChangelog(const HTTP::Request& theRequest);
 
 }  // namespace LoadedPackages
 }  // namespace Spine
