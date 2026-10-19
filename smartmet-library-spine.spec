@@ -175,6 +175,7 @@ make %{_smp_mflags}
 * Mon Oct 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.19-2.fmi
 - Data explorer: the points of a result on the map are cleared with a new selection or location type
 - Data explorer: Reset clears the choices and the remembered settings except the API key
+- Data explorer: the producer or collection is chosen before the parameters
 
 * Mon Oct 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.19-1.fmi
 - Data explorer: place and area names are suggested while typed (from <ts_url>/api/places and /api/areas)

@@ -9329,14 +9329,17 @@ function timeSeriesModule(app, api, state, save)
            {class: 'form'},
            section(
                L('What'),
-               el('label', null, L('Parameters')),
-               chips,
-               paramSearch.element,
-               meteogram.element,
+               // The model first, as most users start from it; the parameters narrow the models
+               // too, so either can be chosen first. The levels and members of the model come
+               // after the parameters, which they depend on.
                el('label', null, L('Producer')),
                candidatesNote,
                modelSearch.element,
                modelCard,
+               el('label', null, L('Parameters')),
+               chips,
+               paramSearch.element,
+               meteogram.element,
                detailsBox),
            section(
                L('When'),
@@ -10383,14 +10386,14 @@ function edrModule(app, api, state, save)
            {class: 'form'},
            section(
                L('What'),
-               el('label', null, L('Parameters')),
-               chips,
-               paramSearch.element,
-               meteogram.element,
                el('label', null, L('Collection')),
                note,
                collectionSearch.element,
-               card),
+               card,
+               el('label', null, L('Parameters')),
+               chips,
+               paramSearch.element,
+               meteogram.element),
            section(
                L('When'),
                el('div',
@@ -11539,13 +11542,13 @@ function coveragesModule(app, api, state, save)
            {class: 'form'},
            section(
                L('What'),
-               el('label', null, L('Parameters')),
-               chips,
-               paramSearch.element,
                el('label', null, L('Collection')),
                note,
                collectionSearch.element,
-               card),
+               card,
+               el('label', null, L('Parameters')),
+               chips,
+               paramSearch.element),
            section(
                L('When'),
                el('div',
