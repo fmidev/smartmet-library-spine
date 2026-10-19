@@ -493,6 +493,22 @@ std::string htmlescape(const std::string& theValue)
   return buffer;
 }
 
+std::string htmlescape_lines(const std::string& theValue)
+{
+  std::string buffer;
+  std::size_t pos = 0;
+  while (true)
+  {
+    const auto next = theValue.find('\n', pos);
+    buffer += htmlescape(theValue.substr(pos, next - pos));
+    if (next == std::string::npos)
+      break;
+    buffer += "<br>";
+    pos = next + 1;
+  }
+  return buffer;
+}
+
 bool str_iless(const std::string& a, const std::string& b, const std::locale& locale)
 {
   try

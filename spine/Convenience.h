@@ -68,6 +68,9 @@ Fmi::DateTime required_time(const std::optional<std::string>& theValue,
 
 std::string htmlescape(const std::string& theValue);
 
+// HTML escaped text whose line breaks are kept as <br>
+std::string htmlescape_lines(const std::string& theValue);
+
 /**
  *  @brief Returns content of std::any as string
  */

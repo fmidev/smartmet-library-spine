@@ -70,7 +70,7 @@ std::string HtmlFormatter::format(const Table& theTable,
       out += "<tr>\n";
       for (const auto i : cols)
       {
-        std::string value = htmlescape(theTable.get(i, j));
+        std::string value = htmlescape_lines(theTable.get(i, j));
         out += "<td>";
         out += (value.empty() ? miss : value);
         out += "</td>";

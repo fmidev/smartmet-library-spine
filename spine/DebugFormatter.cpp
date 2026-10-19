@@ -65,14 +65,16 @@ std::string DebugFormatter::make_content(const Table& theTable,
     out += "<tr>\n";
     for (const auto i : cols)
     {
-      out += "<td>";
       const auto& value = theTable.get(i, j);
+      // Lines of a multiline value are easier to read aligned left than centered
+      const bool multiline = (escape && value.find('\n') != std::string::npos);
+      out += (multiline ? "<td style=\"text-align: left\">" : "<td>");
       if (value.empty())
         out += miss;
       else if (!escape)
         out += value;
       else
-        out += htmlescape(value);
+        out += htmlescape_lines(value);
       out += "</td>";
     }
     out += "</tr>";

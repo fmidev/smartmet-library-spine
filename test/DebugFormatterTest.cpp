@@ -154,6 +154,38 @@ void empty()
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Test that the lines of a multiline value are separated
+ */
+// ----------------------------------------------------------------------
+
+void multiline()
+{
+  SmartMet::Spine::Table tab;
+  SmartMet::Spine::TableFormatter::Names names;
+  names.push_back("text");
+  tab.set(0, 0, "- first <change>\n- second change");
+
+  SmartMet::Spine::HTTP::Request req;
+
+  SmartMet::Spine::DebugFormatter fmt;
+  auto out = fmt.format(tab, names, req, config);
+
+  const char* res =
+      "<!DOCTYPE html><html><head><title>Debug mode output</title><style>table {border-collapse: "
+      "collapse;}th, td {border-bottom: 1px solid black; padding: 3px 0.5em 3px 0.5em; text-align: "
+      "center;}tr:nth-child(even) {background-color: #f2f2f2;}tr:hover {background-color: "
+      "#e2e2e2;}</style>\n</head><body>\n<table><tr><th>text</th></tr><tr>\n"
+      "<td style=\"text-align: left\">- first &lt;change&gt;<br>- second change</td></tr>"
+      "</table></body></html>";
+
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "\nexpected:\n" + res);
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+/*!
  * The actual test suite
  */
 // ----------------------------------------------------------------------
@@ -167,6 +199,7 @@ class tests : public tframe::tests
     TEST(basic_names_from_table);
     TEST(basic_incomplete_names_from_table);
     TEST(empty);
+    TEST(multiline);
   }
 };
 
