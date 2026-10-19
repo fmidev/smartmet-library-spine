@@ -1034,8 +1034,10 @@ async function main()
                 (c) => ['rgb(0,0,255)', 'rgb(0,255,0)', 'rgb(255,0,0)'].includes(c)),
         production);
 
-    // A box dragged on the map
+    // A box dragged on the map: the points of the radius results are cleared with the radius
     await setMode(b, 'bbox');
+    const stalePoints = await b.evaluate(`document.querySelectorAll('.xmap-point').length`);
+    check('no points of the radius after the location type changed', stalePoints === 0, stalePoints);
     m = await mapRect(b);
     await drag(b, m.x + m.w / 2 - 60, m.y + m.h / 2 - 40, m.x + m.w / 2 + 60, m.y + m.h / 2 + 40);
     mq = await currentQuery(b);
@@ -1962,6 +1964,33 @@ async function main()
             keyed.code.includes("fmi-apikey: <your API key>") && !keyed.code.includes('secret-key-1') &&
             !keyed.url.includes('secret-key-1'),
         {apikeys: apikeys.slice(0, 4), code: keyed.code.slice(0, 200)});
+
+    // Reset forgets the choices and the settings, but not the API key
+    await b.evaluate(`(() => {
+      localStorage.setItem('smartmet-explorer-clock', '12');
+      localStorage.setItem('smartmet-explorer-apikey', 'reset-key');
+    })()`);
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {
+      url: `${base}/api/explorer#api=/timeseries&producer=pal&source=querydata&params=temperature&locmode=lonlat&location=25,60`
+    });
+    await waitFor(b, `!!document.querySelector('.reset-button')`, 'the reset button');
+    await b.evaluate(`document.querySelector('.reset-button').click()`);
+    await sleep(500);
+    await waitFor(b, `!!document.querySelector('.reset-button')`, 'the page after the reset');
+    await sleep(500);
+    const afterReset = await b.evaluate(`({
+      hash: decodeURIComponent(location.hash),
+      clock: localStorage.getItem('smartmet-explorer-clock'),
+      apikey: localStorage.getItem('smartmet-explorer-apikey')
+    })`);
+    check('reset',
+          !afterReset.hash.includes('producer=') && !afterReset.hash.includes('location=') &&
+              afterReset.hash.includes('api=/timeseries') && afterReset.clock === null &&
+              afterReset.apikey === 'reset-key',
+          afterReset);
+    await b.evaluate(`localStorage.removeItem('smartmet-explorer-apikey')`);
 
     // A path clicked on the map, vertex by vertex
     await b.send('Page.navigate', {url: `${base}/api`});

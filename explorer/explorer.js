@@ -8356,8 +8356,11 @@ function timeSeriesModule(app, api, state, save)
       limit: 50
     });
     const areaNote = el('p', {class: 'warn small'});
+    // The points on the map (the result of a request or the shown locations) belong to the
+    // location they were for: a new selection or location type clears them
     const map = createMap(mapSettings(app.element), (shape) => {
       s.location = formatSelection(shape);
+      map.setPoints([]);
       refresh();
     });
     for (const [mode, label] of locationModes())
@@ -8371,9 +8374,9 @@ function timeSeriesModule(app, api, state, save)
                onclick: () => {
                  if (s.locmode === mode)
                    return;
-                 // The locations already on the map stay as a reference
                  s.locmode = mode;
                  s.location = '';
+                 map.setPoints([]);
                  // Each location type has its own default for the values of an area
                  s.areavalues = '';
                  refresh();
@@ -9739,8 +9742,10 @@ function edrModule(app, api, state, save)
       if (missingParts().length === 0)
         run();
     });
+    // The points of a result belong to the location they were for: a new selection clears them
     const map = createMap(mapSettings(app.element), (shape) => {
       s.location = formatSelection(shape);
+      map.setPoints([]);
       refresh();
     });
     locInput.addEventListener('input', () => {
@@ -10275,6 +10280,7 @@ function edrModule(app, api, state, save)
                        return;
                      s.query = name;
                      s.location = '';
+                     map.setPoints([]);
                      refresh();
                    }
                  },
@@ -11155,8 +11161,10 @@ function coveragesModule(app, api, state, save)
            {type: 'number', min: 1, 'aria-label': L('Grid height'), placeholder: L('height'), size: 6});
     const areaNote = el('p', {class: 'warn small'});
     const estimate = el('p', {class: 'size-estimate small'});
+    // The points of a result belong to the location they were for: a new selection clears them
     const map = createMap(mapSettings(app.element), (shape) => {
       s.location = formatSelection(shape);
+      map.setPoints([]);
       refresh();
     });
     locInput.addEventListener('input', () => {
@@ -11993,6 +12001,29 @@ function writeState(s)
   }
 }
 
+// Starts over: the choices of the form and everything the page remembers in this browser (the
+// units, the clock, the language and the drawing choices) are forgotten, except the API key, and
+// the page opens the API in its defaults. The previous request stays in the history of the
+// browser, so Back returns to it.
+function resetExplorer(api)
+{
+  try
+  {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++)
+      keys.push(localStorage.key(i));
+    for (const key of keys)
+      if (key && key.startsWith('smartmet-explorer-') && key !== APIKEY_KEY)
+        localStorage.removeItem(key);
+  }
+  catch (e)
+  {
+    // Nothing remembered
+  }
+  history.pushState(null, '', `#${new URLSearchParams(api ? {api} : {}).toString()}`);
+  location.reload();
+}
+
 // The settings of the page: the clock, the units, the language and the licences of the parts
 function settingsMenu()
 {
@@ -12107,6 +12138,16 @@ async function main()
   const apiSelect = el('select', {'aria-label': L('API')});
   // The Browse page is always one click away, whichever API is open
   const browseButton = el('button', {type: 'button', class: 'browse-button'}, L('Browse all data'));
+  // The API open when Reset is pressed, set when one is opened
+  let openRoot = '';
+  const resetButton = el('button',
+                         {
+                           type: 'button',
+                           class: 'small reset-button',
+                           title: L('Clear the choices and the settings of the page, except the API key'),
+                           onclick: () => resetExplorer(openRoot)
+                         },
+                         L('Reset'));
   const content = el('main');
   element.replaceChildren(
       header,
@@ -12117,6 +12158,7 @@ async function main()
          el('a', {href: new URL('api/docs', app.base).href}, L('API documentation')),
          el('a', {href: base.href + '?f=html'}, L('API catalog')),
          apiKeyField(() => open(current, true)),
+         resetButton,
          settingsMenu()),
       content);
 
@@ -12161,6 +12203,7 @@ async function main()
     browseButton.setAttribute('aria-pressed', String(i === 'browse'));
     const s = preset ? Object.assign({}, preset) : keep ? state : {};
     const save = () => writeState(s);
+    openRoot = i === 'browse' ? 'browse' : apis[i].root;
     if (i === 'browse')
     {
       s.api = 'browse';

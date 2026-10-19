@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.19
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Oct 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.19-2.fmi
+- Data explorer: the points of a result on the map are cleared with a new selection or location type
+- Data explorer: Reset clears the choices and the remembered settings except the API key
+
 * Mon Oct 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.19-1.fmi
 - Data explorer: place and area names are suggested while typed (from <ts_url>/api/places and /api/areas)
 - Data explorer: the chosen levels of grid parameter keys are levels of the rows, so three or more give
