@@ -40,6 +40,8 @@
 
 #pragma once
 
+#include "Basemap.h"
+
 #include <json/json.h>
 #include <cstddef>
 #include <map>
@@ -372,6 +374,21 @@ class Publisher
  *         speed       = "kt";
  *       };
  *     };
+ *
+ *     // The background maps of the explorer: land, lakes and country borders. By default the
+ *     // files basemap.json (Natural Earth 1:50m) and basemap-10m.json (1:10m, drawn on
+ *     // enlarged and zoomed in maps) of explorer_dir. Any OGR data source can be read instead:
+ *     // a shapefile, a GeoJSON file or a PostGIS database ("PG:..."), with a layer (the first
+ *     // one by default) and an attribute filter (all features by default). Land is required,
+ *     // lakes and borders are optional. A source that cannot be read leaves the file in use.
+ *     basemap_detail:
+ *     {
+ *       land    = { source = "/smartmet/share/naturalearth/ne_10m_land.shp"; };
+ *       lakes   = { source = "PG:host=gis dbname=gis user=reader"; layer = "natural_earth.ne_10m_lakes"; };
+ *       borders = { source = "PG:host=gis dbname=gis user=reader";
+ *                   layer  = "natural_earth.ne_10m_admin_0_boundary_lines_land"; };
+ *     };
+ *     // basemap: the same for the 1:50m map
  *   };
  */
 // ----------------------------------------------------------------------
@@ -408,6 +425,10 @@ struct CatalogSettings
   std::string palette_config = "/usr/share/smartmet/qdless/qdless.conf";
   // The validated explorer_defaults group as JSON for the explorer page, null when not set
   Json::Value explorer_defaults;
+  // The background maps of the explorer from OGR data sources instead of the files
+  // basemap.json and basemap-10m.json of explorer_dir, when configured
+  BasemapSources basemap;
+  BasemapSources basemap_detail;
 
   // Read the group at 'path'. A missing group yields the defaults.
   static CatalogSettings parse(const libconfig::Config& config,

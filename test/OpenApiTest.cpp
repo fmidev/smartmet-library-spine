@@ -518,6 +518,98 @@ BOOST_AUTO_TEST_CASE(explorer_tests)
   BOOST_TEST(std::system(command.c_str()) == 0);
 }
 
+BOOST_AUTO_TEST_CASE(configured_basemap)
+{
+  // The background maps can be read from OGR data sources: here GeoJSON files, one of them in
+  // Web Mercator. A source that cannot be read leaves the file of the explorer in use.
+  AssetDir assets;
+  std::ofstream(assets.path / "land.geojson")
+      << R"({"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"kind": "a"},)"
+      << R"( "geometry": {"type": "Polygon", "coordinates": [[[20, 60], [30, 60], [30, 70], [20, 70], [20, 60]],)"
+      << R"( [[24, 64], [25, 64], [25, 65], [24, 64]]]}},)"
+      << R"( {"type": "Feature", "properties": {"kind": "b"}, "geometry": {"type": "Polygon",)"
+      << R"( "coordinates": [[[0, 0], [1, 0], [1, 1], [0, 0]]]}}]})";
+  // 10 degrees east, 0 north and 11 degrees east in Web Mercator metres
+  std::ofstream(assets.path / "borders.geojson")
+      << R"({"type": "FeatureCollection", "crs": {"type": "name", "properties": {"name": "EPSG:3857"}},)"
+      << R"( "features": [{"type": "Feature", "properties": {}, "geometry": {"type": "LineString",)"
+      << R"( "coordinates": [[1113194.9079327357, 0], [1224514.3987260093, 0]]}}]})";
+
+  const auto catalogWith = [&](const std::string& basemaps)
+  {
+    libconfig::Config config;
+    config.readString("api_catalog: { explorer_dir = \"../explorer\"; " + basemaps + " };");
+    return std::make_unique<OpenAPI::Catalog>(OpenAPI::CatalogSettings::parse(config));
+  };
+  const std::vector<OpenAPI::CatalogEntry> entries{
+      {"/timeseries", "TimeSeries", "", "timeseries", true}};
+  const auto file = [&](OpenAPI::Catalog& catalog, const std::string& name)
+  {
+    HTTP::Response response;
+    BOOST_TEST(catalog.handle(makeRequest("/api/explorer/" + name), response, entries));
+    return response;
+  };
+
+  const auto land = (assets.path / "land.geojson").string();
+  const auto borders = (assets.path / "borders.geojson").string();
+  auto catalog = catalogWith("basemap_detail: { land = { source = \"" + land +
+                             "\"; where = \"kind = 'a'\"; }; borders = { source = \"" + borders +
+                             "\"; }; };");
+  auto detail = file(*catalog, "basemap-10m.json");
+  BOOST_TEST(detail.getStatus() == HTTP::Status::ok);
+  const auto doc = parse(detail.getContent());
+  BOOST_TEST(doc["source"].asString() == "1:10m (configured)");
+  BOOST_TEST(doc["scale"].asInt() == 500);
+  // The rings of the chosen feature, delta encoded in 1/500 degrees; the other one filtered out
+  BOOST_TEST_REQUIRE(doc["land"].size() == 2U);
+  Json::StreamWriterBuilder compact;
+  compact["indentation"] = "";
+  BOOST_TEST(Json::writeString(compact, doc["land"][0]) ==
+             "[10000,30000,5000,0,0,5000,-5000,0,0,-5000]");
+  BOOST_TEST(doc["lakes"].size() == 0U);
+  // The line converted to longitude and latitude
+  BOOST_TEST_REQUIRE(doc["borders"].size() == 1U);
+  BOOST_TEST(doc["borders"][0][0].asInt() == 5000);
+  BOOST_TEST(doc["borders"][0][1].asInt() == 0);
+  BOOST_TEST(doc["borders"][0][2].asInt() == 500);
+  // The 1:50m map is still the file
+  BOOST_TEST(parse(file(*catalog, "basemap.json").getContent())["source"].asString().find(
+                 "Natural Earth") == 0);
+  HTTP::Response page;
+  BOOST_TEST(catalog->handle(makeRequest("/api/explorer"), page, entries));
+  BOOST_TEST(page.getContent().find("data-basemap-detail=") != std::string::npos);
+
+  // A source that cannot be read: the file
+  catalog = catalogWith("basemap_detail: { land = { source = \"/nonexistent/land.shp\"; }; };");
+  BOOST_TEST(parse(file(*catalog, "basemap-10m.json").getContent())["source"].asString().find(
+                 "Natural Earth 1:10m") == 0);
+
+  // A basemap needs its land, and the layers are groups with a source
+  const auto fails = [](const std::string& text)
+  {
+    libconfig::Config config;
+    config.readString("api_catalog: { " + text + " };");
+    try
+    {
+      OpenAPI::CatalogSettings::parse(config);
+      return false;
+    }
+    catch (...)
+    {
+      return true;
+    }
+  };
+  BOOST_TEST(fails("basemap: { lakes = { source = \"x.shp\"; }; };"));
+  BOOST_TEST(fails("basemap: { land = \"x.shp\"; };"));
+  BOOST_TEST(fails("basemap: { land = { layer = \"x\"; }; };"));
+  BOOST_TEST(!fails("basemap: { land = { source = \"x.shp\"; }; };"));
+
+  // Passwords of connection strings are not shown
+  BOOST_TEST(OpenAPI::redactedSource("PG:host=db password=secret dbname=gis") ==
+             "PG:host=db password=*** dbname=gis");
+  BOOST_TEST(OpenAPI::redactedSource("PG:password='a b' host=db") == "PG:password=*** host=db");
+}
+
 BOOST_AUTO_TEST_CASE(explorer_defaults)
 {
   // The defaults are validated, and passed to the page as JSON

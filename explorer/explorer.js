@@ -1032,7 +1032,7 @@ function mapSettings(app)
         tileSize: Number(d.mapTileSize) || 256,
         attribution: d.mapAttribution || ''
       } :
-      (d.basemap ? {basemap: d.basemap, attribution: 'Natural Earth'} : {});
+      (d.basemap ? {basemap: d.basemap, basemapDetail: d.basemapDetail || '', attribution: 'Natural Earth'} : {});
   if (d.palettes)
     settings.palettes = d.palettes;
   return settings;
@@ -1058,13 +1058,13 @@ function loadPalettes(url)
 // The background map of the explorer (basemap.json, see make-basemap.py): land, lakes and
 // country borders as rings in Web Mercator world coordinates with their bounding boxes.
 // Loaded once.
-let basemapPromise = null;
+const basemapPromises = new Map();  // url -> the decoded basemap
 
-// The basemap, loaded once and shared, its rings decoded into coordinate arrays
+// A basemap, loaded once and shared, its rings decoded into coordinate arrays
 function loadBasemap(url)
 {
-  if (!basemapPromise)
-    basemapPromise = fetchJson(url).then((doc) => {
+  if (!basemapPromises.has(url))
+    basemapPromises.set(url, fetchJson(url).then((doc) => {
       const scale = doc.scale || 100;
       const decode = (rings) => rings.map((e) => {
         const n = e.length / 2;
@@ -1094,8 +1094,8 @@ function loadBasemap(url)
         lakes: decode(doc.lakes || []),
         borders: decode(doc.borders || [])
       };
-    });
-  return basemapPromise;
+    }));
+  return basemapPromises.get(url);
 }
 
 // ------------------------------------------------------------------
@@ -1232,7 +1232,12 @@ function createMap(settings, onSelect)
     box.append(attribution);
 
   const tileSize = (settings && settings.tileSize) || 256;
+  // The basemap, and a more detailed one (basemapDetail) loaded when the map is expanded or
+  // zoomed in, and drawn then
   let basemap = null;
+  let detailedBasemap = null;
+  let detailRequested = false;
+  const DETAIL_ZOOM = 5;
   if (settings && settings.basemap && !settings.tiles)
     loadBasemap(settings.basemap)
         .then((map) => {
@@ -1243,6 +1248,24 @@ function createMap(settings, onSelect)
             () => {
                 // The grid alone is drawn
             });
+  // The details are drawn in an expanded map from continents closer, or when zoomed in
+  const wantsDetail = () =>
+      (box.classList.contains('xmap-expanded') && state.zoom >= 3) || state.zoom >= DETAIL_ZOOM;
+  function requestDetail()
+  {
+    if (detailRequested || !settings || !settings.basemapDetail || settings.tiles)
+      return;
+    detailRequested = true;
+    loadBasemap(settings.basemapDetail)
+        .then((map) => {
+          detailedBasemap = map;
+          redraw();
+        })
+        .catch(
+            () => {
+                // The basemap is drawn
+            });
+  }
   const first = DEFAULTS.center ? {center: DEFAULTS.center, zoom: DEFAULTS.zoom !== undefined ? DEFAULTS.zoom : 4} :
                                   WORLD_VIEW;
   const state = {
@@ -1257,14 +1280,15 @@ function createMap(settings, onSelect)
   const hooks = {view: null, click: null, shown: ''};
 
   const width = () => box.clientWidth || 400;
+  const height = () => box.clientHeight || MAP_HEIGHT;
   const scale = () => 2 ** state.zoom;
   // World pixels (Web Mercator, 256 at zoom 0) to the pixels of the view, and back
   const toScreen = ([x, y]) =>
       [(x - state.center[0]) * scale() + width() / 2,
-       (y - state.center[1]) * scale() + MAP_HEIGHT / 2];
+       (y - state.center[1]) * scale() + height() / 2];
   const toWorld = (sx, sy) =>
       [state.center[0] + (sx - width() / 2) / scale(),
-       state.center[1] + (sy - MAP_HEIGHT / 2) / scale()];
+       state.center[1] + (sy - height() / 2) / scale()];
   const screenOf = (lon, lat) => toScreen(project(lon, lat));
   // The world is at least as wide as the view, and the view stays in the world: beyond
   // 180 degrees there would be only empty space
@@ -1272,7 +1296,7 @@ function createMap(settings, onSelect)
   const clampView = () => {
     state.zoom = Math.max(minZoom(), state.zoom);
     const hw = width() / 2 / scale();
-    const hh = MAP_HEIGHT / 2 / scale();
+    const hh = height() / 2 / scale();
     state.center[0] = Math.min(256 - hw, Math.max(hw, state.center[0]));
     state.center[1] = hh >= 128 ? 128 : Math.min(256 - hh, Math.max(hh, state.center[1]));
   };
@@ -1287,7 +1311,7 @@ function createMap(settings, onSelect)
     const cx = state.center[0];
     const cy = state.center[1];
     const w2 = width() / 2;
-    const h2 = MAP_HEIGHT / 2;
+    const h2 = height() / 2;
     // The SVG path of the rings of the basemap that are in the view, in pixels of the view
     const path = (rings, closed) => {
       let d = '';
@@ -1317,13 +1341,16 @@ function createMap(settings, onSelect)
       }
       return d;
     };
-    const land = path(basemap.land, true);
+    if (wantsDetail())
+      requestDetail();
+    const map = (wantsDetail() && detailedBasemap) || basemap;
+    const land = path(map.land, true);
     if (land)
       g.append(svg('path', {class: 'xmap-land', d: land}));
-    const lakes = path(basemap.lakes, true);
+    const lakes = path(map.lakes, true);
     if (lakes)
       g.append(svg('path', {class: 'xmap-lake', d: lakes}));
-    const borders = path(basemap.borders, false);
+    const borders = path(map.borders, false);
     if (borders)
       g.append(svg('path', {class: 'xmap-border', d: borders}));
   }
@@ -1334,7 +1361,7 @@ function createMap(settings, onSelect)
     const g = layers.background;
     g.replaceChildren();
     const [x0, y0] = toWorld(0, 0);
-    const [x1, y1] = toWorld(width(), MAP_HEIGHT);
+    const [x1, y1] = toWorld(width(), height());
     if (settings && settings.tiles)
     {
       const z = Math.max(0, Math.min(18, Math.round(state.zoom + Math.log2(256 / tileSize))));
@@ -1366,8 +1393,8 @@ function createMap(settings, onSelect)
     for (let lon = Math.ceil(lonW / step) * step; lon <= lonE; lon += step)
     {
       const [sx] = screenOf(lon, 0);
-      g.append(svg('line', {class: 'xmap-grid', x1: sx, y1: 0, x2: sx, y2: MAP_HEIGHT}));
-      const t = svg('text', {class: 'xmap-label', x: sx + 2, y: MAP_HEIGHT - 4});
+      g.append(svg('line', {class: 'xmap-grid', x1: sx, y1: 0, x2: sx, y2: height()}));
+      const t = svg('text', {class: 'xmap-label', x: sx + 2, y: height() - 4});
       t.textContent = `${round(lon, 2)}°`;
       g.append(t);
     }
@@ -1468,7 +1495,7 @@ function createMap(settings, onSelect)
         {
           const [ax, ay] = screenOf(cell.lon - dx / 2, cell.lat + dy / 2);
           const [bx, by] = screenOf(cell.lon + dx / 2, cell.lat - dy / 2);
-          if (bx < 0 || by < 0 || ax > width() || ay > MAP_HEIGHT)
+          if (bx < 0 || by < 0 || ax > width() || ay > height())
             continue;
           shape = svg('rect', {
             class: 'xmap-cell',
@@ -1482,7 +1509,7 @@ function createMap(settings, onSelect)
         else
         {
           const [sx, sy] = screenOf(cell.lon, cell.lat);
-          if (sx < -10 || sy < -10 || sx > width() + 10 || sy > MAP_HEIGHT + 10)
+          if (sx < -10 || sy < -10 || sx > width() + 10 || sy > height() + 10)
             continue;
           shape = svg('circle', {class: 'xmap-dot', cx: sx, cy: sy, r: 6, fill: cell.color});
         }
@@ -1514,7 +1541,7 @@ function createMap(settings, onSelect)
     for (const point of state.points)
     {
       const [sx, sy] = screenOf(point.lon, point.lat);
-      if (sx < -10 || sy < -10 || sx > width() + 10 || sy > MAP_HEIGHT + 10)
+      if (sx < -10 || sy < -10 || sx > width() + 10 || sy > height() + 10)
         continue;
       const c = svg('circle', {
         class: `xmap-point${point.selected ? ' selected' : ''}${point.onclick ? ' clickable' : ''}`,
@@ -1560,7 +1587,7 @@ function createMap(settings, onSelect)
     tooltip.hidden = false;
     const left = sx + 12 + tooltip.offsetWidth > width() ? sx - 12 - tooltip.offsetWidth : sx + 12;
     tooltip.style.left = `${Math.max(0, left)}px`;
-    tooltip.style.top = `${Math.max(0, Math.min(MAP_HEIGHT - tooltip.offsetHeight, sy - 10))}px`;
+    tooltip.style.top = `${Math.max(0, Math.min(height() - tooltip.offsetHeight, sy - 10))}px`;
   }
 
   // One redraw per animation frame while the map is dragged
@@ -1580,7 +1607,7 @@ function createMap(settings, onSelect)
   function redraw()
   {
     clampView();
-    surface.setAttribute('viewBox', `0 0 ${width()} ${MAP_HEIGHT}`);
+    surface.setAttribute('viewBox', `0 0 ${width()} ${height()}`);
     drawBackground();
     drawRaster();
     drawOverlays();
@@ -1608,7 +1635,7 @@ function createMap(settings, onSelect)
     const x0 = Math.max(0, Math.floor(ax));
     const y0 = Math.max(0, Math.floor(ay));
     const x1 = Math.min(width(), Math.ceil(bx));
-    const y1 = Math.min(MAP_HEIGHT, Math.ceil(by));
+    const y1 = Math.min(height(), Math.ceil(by));
     if (x1 <= x0 || y1 <= y0 || typeof document === 'undefined')
       return;
     const canvas = document.createElement('canvas');
@@ -1664,7 +1691,7 @@ function createMap(settings, onSelect)
     const world = toWorld(sx, sy);
     state.zoom = z;
     state.center =
-        [world[0] - (sx - width() / 2) / scale(), world[1] - (sy - MAP_HEIGHT / 2) / scale()];
+        [world[0] - (sx - width() / 2) / scale(), world[1] - (sy - height() / 2) / scale()];
     redraw();
   }
 
@@ -1679,7 +1706,7 @@ function createMap(settings, onSelect)
     const dx = Math.max(1e-6, Math.abs(b[0] - a[0]));
     const dy = Math.max(1e-6, Math.abs(b[1] - a[1]));
     let z = 0;
-    while (z < 12 && dx * 2 ** (z + 1) < width() * 0.85 && dy * 2 ** (z + 1) < MAP_HEIGHT * 0.85)
+    while (z < 12 && dx * 2 ** (z + 1) < width() * 0.85 && dy * 2 ** (z + 1) < height() * 0.85)
       z++;
     state.zoom = z;
     redraw();
@@ -1807,9 +1834,52 @@ function createMap(settings, onSelect)
          {type: 'button', class: 'small', title: title, 'aria-label': title, onclick: fn},
          label);
   zoom.append(
-      button('+', L('Zoom in'), () => zoomAt(state.zoom + 1, width() / 2, MAP_HEIGHT / 2)),
-      button('−', L('Zoom out'), () => zoomAt(state.zoom - 1, width() / 2, MAP_HEIGHT / 2)),
+      button('+', L('Zoom in'), () => zoomAt(state.zoom + 1, width() / 2, height() / 2)),
+      button('−', L('Zoom out'), () => zoomAt(state.zoom - 1, width() / 2, height() / 2)),
       button(L('Fit'), L('Show everything on the map'), () => fit(api.extent())));
+
+  // Expanded over the page and back, the centre of the view kept: the button, Escape or a click
+  // beside the map
+  const backdrop = el('div', {class: 'xmap-backdrop', hidden: true});
+  const expandIcon = (expanded) => {
+    const icon = svg('svg', {class: 'icon', viewBox: '0 0 16 16', width: 14, height: 14, 'aria-hidden': 'true'});
+    icon.append(svg('path', {
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': 1.6,
+      d: expanded ? 'M6 1v5H1M10 1v5h5M6 15v-5H1M10 15v-5h5' : 'M1 6V1h5M15 6V1h-5M1 10v5h5M15 10v5h-5'
+    }));
+    return icon;
+  };
+  const expandButton = button(expandIcon(false), L('Enlarge the map'), () => setExpanded(!expanded()));
+  const expanded = () => box.classList.contains('xmap-expanded');
+  function setExpanded(on)
+  {
+    if (on === expanded())
+      return;
+    const centre = state.center.slice();
+    box.classList.toggle('xmap-expanded', on);
+    backdrop.hidden = !on;
+    if (on)
+      box.before(backdrop);
+    else
+      backdrop.remove();
+    const title = on ? L('Make the map smaller') : L('Enlarge the map');
+    expandButton.replaceChildren(expandIcon(on));
+    expandButton.title = title;
+    expandButton.setAttribute('aria-label', title);
+    expandButton.setAttribute('aria-pressed', on ? 'true' : 'false');
+    // A larger view shows more around the same centre, one zoom level closer
+    state.center = centre;
+    state.zoom = Math.max(0, Math.min(18, state.zoom + (on ? 1 : -1)));
+    redraw();
+  }
+  backdrop.addEventListener('click', () => setExpanded(false));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && expanded())
+      setExpanded(false);
+  });
+  zoom.append(expandButton);
 
   const TOOLS = [
     ['move', L('Move'), L('Move the map')],
@@ -1949,11 +2019,12 @@ function createMap(settings, onSelect)
   // Redraw when the width changes, e.g. on the first layout
   if (typeof ResizeObserver !== 'undefined')
   {
-    let last = 0;
+    let last = '';
     new ResizeObserver(() => {
-      if (box.clientWidth !== last)
+      const size = `${box.clientWidth}x${box.clientHeight}`;
+      if (size !== last)
       {
-        last = box.clientWidth;
+        last = size;
         redraw();
       }
     }).observe(box);

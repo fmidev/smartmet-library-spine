@@ -448,7 +448,11 @@ Most plugins produce tables of values:
     fitted to the data.
   * **Maps**: without a tile layer (`map_tiles`) the map draws the land, the lakes and the
     country borders of `basemap.json`, generated from the public domain Natural Earth 1:50m
-    data by `explorer/make-basemap.py`, so that no online map service is needed.
+    data by `explorer/make-basemap.py`, so that no online map service is needed. The 1:10m
+    `basemap-10m.json` (`make-basemap.py --10m`) is loaded when a map is enlarged over the
+    page or zoomed in to level 5. `api_catalog.basemap` and `basemap_detail` can read the
+    layers from OGR data sources instead (shapefiles, PostGIS); `Basemap.cpp` encodes them
+    into the same format when the catalog is created.
   * **Requests**: the request is shown as a URL and as bash, Python, R and JavaScript code. An
     optional API key is sent as the `fmi-apikey` header and kept in the browser. An error of
     the server (the `detail` of a problem document, the `X-...-Error` header of the plugin,

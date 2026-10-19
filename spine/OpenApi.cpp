@@ -21,6 +21,7 @@
 #include <mutex>
 #include <set>
 #include <sstream>
+#include <tuple>
 
 namespace SmartMet
 {
@@ -1403,6 +1404,8 @@ CatalogSettings CatalogSettings::parse(const libconfig::Config& config, const st
       group.lookupValue("palette_config", settings.palette_config);
       if (group.exists("explorer_defaults"))
         settings.explorer_defaults = parseExplorerDefaults(group["explorer_defaults"]);
+      settings.basemap = BasemapSources::parse(group, "basemap");
+      settings.basemap_detail = BasemapSources::parse(group, "basemap_detail");
     }
     return settings;
   }
@@ -1604,17 +1607,38 @@ Catalog::Catalog(CatalogSettings settings) : itsSettings(std::move(settings))
     }
   }
 
-  // The background map is optional
+  // The background map is optional, and so is its more detailed version for enlarged and
+  // zoomed in maps. Configured OGR data sources replace the files.
+  for (const auto& [name, sources, scale, title] :
+       {std::make_tuple("basemap.json", &itsSettings.basemap, 100, "1:50m"),
+        std::make_tuple("basemap-10m.json", &itsSettings.basemap_detail, 500, "1:10m")})
   {
-    std::ifstream in(itsSettings.explorer_dir + "/basemap.json", std::ios::binary);
-    if (in)
+    ExplorerFile f;
+    bool read = false;
+    if (sources->configured())
     {
-      ExplorerFile f;
-      f.content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
-      f.contentType = "application/json";
-      f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
-      loaded.emplace("basemap.json", std::move(f));
+      try
+      {
+        f.content = basemapJson(*sources, scale, fmt::format("{} (configured)", title));
+        read = true;
+      }
+      catch (...)
+      {
+        Fmi::Exception e(BCP, "Failed to read the configured background map, using the file", nullptr);
+        e.addParameter("File", name);
+        e.printError();
+      }
     }
+    if (!read)
+    {
+      std::ifstream in(itsSettings.explorer_dir + "/" + name, std::ios::binary);
+      if (!in)
+        continue;
+      f.content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+    }
+    f.contentType = "application/json";
+    f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
+    loaded.emplace(name, std::move(f));
   }
 
   // The translations of the page: explorer-<language>.js, e.g. explorer-fi.js
@@ -2005,6 +2029,9 @@ void Catalog::handleExplorer(const HTTP::Request& request, HTTP::Response& respo
   std::string map;
   if (itsExplorerFiles.count("basemap.json") > 0)
     map += fmt::format(R"( data-basemap="{}basemap.json?v={}")", a, v("basemap.json"));
+  if (itsExplorerFiles.count("basemap.json") > 0 && itsExplorerFiles.count("basemap-10m.json") > 0)
+    map += fmt::format(
+        R"( data-basemap-detail="{}basemap-10m.json?v={}")", a, v("basemap-10m.json"));
   if (itsExplorerFiles.count("palettes.json") > 0)
     map += fmt::format(R"( data-palettes="{}palettes.json?v={}")", a, v("palettes.json"));
   // The translations, loaded before the explorer which takes its language from them

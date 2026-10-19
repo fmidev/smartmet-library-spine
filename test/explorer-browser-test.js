@@ -451,8 +451,8 @@ const server = http.createServer((req, res) => {
     return send(200, 'text/javascript', fs.readFileSync(path.join(explorerDir, 'explorer.js')));
   if (p === '/api/explorer/palettes.json')
     return send(200, 'application/json', fs.readFileSync(path.join(dir, 'palettes.json')));
-  if (p === '/api/explorer/basemap.json')
-    return send(200, 'application/json', fs.readFileSync(path.join(explorerDir, 'basemap.json')));
+  if (p === '/api/explorer/basemap.json' || p === '/api/explorer/basemap-10m.json')
+    return send(200, 'application/json', fs.readFileSync(path.join(explorerDir, path.basename(p))));
   if (p === '/api/explorer/explorer.css')
     return send(200, 'text/css', fs.readFileSync(path.join(explorerDir, 'explorer.css')));
   if (p === '/api/explorer/uPlot.iife.min.js')
@@ -1033,6 +1033,32 @@ async function main()
             production.colours.every(
                 (c) => ['rgb(0,0,255)', 'rgb(0,255,0)', 'rgb(255,0,0)'].includes(c)),
         production);
+
+    // The map enlarged over the page, with the detailed basemap, and back with Escape
+    const small = await b.evaluate(`document.querySelector('.xmap').getBoundingClientRect().height`);
+    await b.evaluate(`document.querySelector('.xmap-zoom [aria-label="Enlarge the map"]').click()`);
+    await sleep(800);
+    const big = await b.evaluate(`(() => {
+      const box = document.querySelector('.xmap');
+      const r = box.getBoundingClientRect();
+      return { expanded: box.classList.contains('xmap-expanded'), height: r.height, width: r.width,
+               backdrop: !!document.querySelector('.xmap-backdrop:not([hidden])'),
+               viewBox: box.querySelector('.xmap-svg').getAttribute('viewBox') };
+    })()`);
+    check('the map enlarged',
+          big.expanded && big.backdrop && big.height > 2 * small &&
+              big.viewBox === `0 0 ${Math.round(big.width) - 2} ${Math.round(big.height) - 2}`,
+          {small, big});
+    check('the detailed basemap loaded',
+          requested.some((u) => u.startsWith('/api/explorer/basemap-10m.json')),
+          requested.filter((u) => u.includes('basemap')));
+    await b.send('Input.dispatchKeyEvent', {type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27});
+    await sleep(300);
+    const after = await b.evaluate(`({ expanded: document.querySelector('.xmap').classList.contains('xmap-expanded'),
+      height: document.querySelector('.xmap').getBoundingClientRect().height,
+      backdrop: !!document.querySelector('.xmap-backdrop') })`);
+    check('the map back with Escape', !after.expanded && !after.backdrop && after.height === small,
+          {small, after});
 
     // A box dragged on the map: the points of the radius results are cleared with the radius
     await setMode(b, 'bbox');

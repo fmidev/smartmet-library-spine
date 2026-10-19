@@ -176,6 +176,10 @@ make %{_smp_mflags}
 - Data explorer: the points of a result on the map are cleared with a new selection or location type
 - Data explorer: Reset clears the choices and the remembered settings except the API key
 - Data explorer: the producer or collection is chosen before the parameters
+- Data explorer: an enlarge button opens the map over the page; the detailed Natural Earth 1:10m
+  basemap-10m.json is drawn on enlarged maps and when zoomed in
+- api_catalog.basemap and basemap_detail read the background maps from OGR data sources
+  (shapefiles, PostGIS) instead of the files; ABI change in CatalogSettings (rebuild frontend)
 
 * Mon Oct 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.19-1.fmi
 - Data explorer: place and area names are suggested while typed (from <ts_url>/api/places and /api/areas)

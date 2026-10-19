@@ -208,6 +208,11 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .xmap-tools button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .xmap-zoom { position: absolute; right: 6px; top: 6px; display: flex; flex-direction: column; gap: 2px; z-index: 1; }
 .xmap-zoom button { min-width: 28px; padding: 2px 4px; }
+.xmap-zoom button .icon { display: block; margin: 0 auto; }
+/* The map enlarged over the page */
+.xmap.xmap-expanded { position: fixed; inset: 4vh 4vw; height: auto; z-index: 40; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35); }
+.xmap-backdrop { position: fixed; inset: 0; z-index: 39; background: rgba(0, 0, 0, 0.35); }
+.xmap-backdrop[hidden] { display: none; }
 .xmap-attribution { position: absolute; right: 0; bottom: 0; font-size: 10px; padding: 1px 4px; background: var(--bg); opacity: 0.85; }
 .xmap-tooltip { position: absolute; z-index: 2; pointer-events: none; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 8px; font-size: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25); white-space: nowrap; }
 .xmap-tooltip td { padding: 0 6px 0 0; }
@@ -369,7 +374,7 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .xmap-hint { margin-top: 4px; font-style: italic; color: var(--muted); }
 .map-hint { margin: 4px 0; }
 .settings { position: relative; margin-left: auto; }
-nav .reset-button { margin-left: auto; align-self: flex-end; }
+nav .reset-button { margin-left: auto; }
 nav .reset-button + .settings { margin-left: 0; }
 .settings-panel { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; width: min(360px, calc(100vw - 32px));
   background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px;
