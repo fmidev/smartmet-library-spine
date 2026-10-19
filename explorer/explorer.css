@@ -110,6 +110,7 @@ label > input, label > select { color: var(--fg); font-size: 15px; }
 /* Autocomplete */
 .ac { position: relative; }
 .ac-input { width: 100%; }
+.ac.loc-suggest { flex: 1; min-width: 160px; }
 .ac-list {
   position: absolute; z-index: 10; left: 0; right: 0; top: 100%;
   margin: 2px 0 0; padding: 0; list-style: none;

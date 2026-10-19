@@ -567,7 +567,7 @@ function locationOf(row)
 {
   // Each level and each variant (a level or a member of a grid parameter key) is a series of
   // its own
-  const level = (row.level !== undefined && row.level !== null ? ` · ${row.level}` : '') +
+  const level = (row.level !== undefined && row.level !== null ? ` · ${row._levelLabel || row.level}` : '') +
       (row._variant ? ` · ${row._variant}` : '');
   const coords = row.lat !== undefined && row.lat !== null ? `${row.lat},${row.lon}` : '';
   if (row._point !== undefined)
@@ -580,7 +580,9 @@ function locationOf(row)
 
 // The rows of a request whose columns are parameter keys standing for one parameter at some
 // level or ensemble member: the row is split into a row per variant with the columns named by
-// the parameter. columns maps a requested column to {name, variant}.
+// the parameter. columns maps a requested column to {name, variant, level, levelLabel, series,
+// member}: the rows of a level of the key have it as the level (and levelLabel as _levelLabel),
+// the series name (series, or the variant) as _variant, and the member as _member.
 function splitVariants(rows, columns)
 {
   if (!columns || columns.size === 0)
@@ -590,6 +592,9 @@ function splitVariants(rows, columns)
   {
     const base = {};
     const variants = new Map();
+    const members = new Map();
+    const levels = new Map();
+    const series = new Map();
     for (const [k, v] of Object.entries(row))
     {
       const c = columns.get(k);
@@ -601,11 +606,23 @@ function splitVariants(rows, columns)
       if (!variants.has(c.variant))
         variants.set(c.variant, {});
       variants.get(c.variant)[c.name] = v;
+      if (c.member !== undefined)
+        members.set(c.variant, c.member);
+      if (c.level !== undefined && Number.isFinite(c.level))
+      {
+        levels.set(c.variant, {level: c.level, _levelLabel: c.levelLabel || String(c.level)});
+        series.set(c.variant, c.series || '');
+      }
     }
     if (variants.size === 0)
       out.push(row);
     for (const [variant, values] of variants)
-      out.push(Object.assign({}, base, values, variant ? {_variant: variant} : {}));
+    {
+      const name = series.has(variant) ? series.get(variant) : variant;
+      out.push(Object.assign({}, base, values, name ? {_variant: name} : {},
+                             members.has(variant) ? {_member: members.get(variant)} : {},
+                             levels.has(variant) ? levels.get(variant) : {}));
+    }
   }
   return out;
 }
@@ -732,24 +749,27 @@ const palette = [
 // ------------------------------------------------------------------
 
 // A search field with a list of suggestions. options: label, placeholder, search(text) -> the
-// matching items, select(item) when one is chosen, empty(text) for a note when nothing matches,
-// limit (30 items), clearOnSelect (true). The list is navigated with the arrow keys and Enter.
+// matching items (or a promise of them), select(item) when one is chosen, empty(text) for a note
+// when nothing matches, limit (30 items), clearOnSelect (true), input (an existing field to
+// suggest for instead of a new one). The list is navigated with the arrow keys and Enter.
 // Returns {element, input, refresh}.
 function autocomplete(options)
 {
-  const input = el('input', {
+  const input = options.input || el('input', {
     type: 'search',
     class: 'ac-input',
     placeholder: options.placeholder,
     autocomplete: 'off',
     spellcheck: 'false',
-    'aria-autocomplete': 'list',
     'aria-label': options.label
   });
+  input.setAttribute('aria-autocomplete', 'list');
   const list = el('ul', {class: 'ac-list', role: 'listbox', hidden: true});
   const box = el('div', {class: 'ac'}, input, list);
   let items = [];
   let active = -1;
+  // Closed after a choice until the user types again
+  let closed = false;
 
   // Draws the list of suggestions, the active one highlighted
   function render()
@@ -775,14 +795,20 @@ function autocomplete(options)
     });
     if (items.length === 0 && input.value.trim() !== '' && options.empty)
       list.append(el('li', {class: 'ac-empty'}, options.empty(input.value)));
-    list.hidden = (items.length === 0 && !(input.value.trim() !== '' && options.empty)) ||
+    list.hidden = closed || (items.length === 0 && !(input.value.trim() !== '' && options.empty)) ||
         document.activeElement !== input;
   }
 
-  // Searches with the text of the field and shows the matches
-  function update()
+  // Searches with the text of the field and shows the matches; an answer to an older text is
+  // left out
+  let searches = 0;
+  async function update()
   {
-    items = options.search(input.value.trim()).slice(0, options.limit || 30);
+    const search = ++searches;
+    const found = await options.search(input.value.trim());
+    if (search !== searches)
+      return;
+    items = (found || []).slice(0, options.limit || 30);
     active = items.length > 0 ? 0 : -1;
     render();
   }
@@ -796,19 +822,26 @@ function autocomplete(options)
     options.select(item);
     if (options.clearOnSelect !== false)
       input.value = '';
+    closed = true;
     update();
-    // Closed until the user types again
-    list.hidden = true;
   }
 
-  input.addEventListener('input', debounce(update, 60));
-  input.addEventListener('focus', update);
+  const updateSoon = debounce(update, 60);
+  input.addEventListener('input', () => {
+    closed = false;
+    updateSoon();
+  });
+  input.addEventListener('focus', () => {
+    closed = false;
+    update();
+  });
   input.addEventListener('blur', () => {
     list.hidden = true;
   });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown')
     {
+      closed = false;
       active = Math.min(items.length - 1, active + 1);
       render();
       e.preventDefault();
@@ -821,7 +854,7 @@ function autocomplete(options)
     }
     else if (e.key === 'Enter')
     {
-      if (active >= 0)
+      if (active >= 0 && !list.hidden)
       {
         choose(active);
         e.preventDefault();
@@ -829,6 +862,7 @@ function autocomplete(options)
     }
     else if (e.key === 'Escape')
     {
+      closed = true;
       list.hidden = true;
     }
   });
@@ -5747,10 +5781,13 @@ function drawCharts(container, rows, parameters, mode, options = {})
 
   const names = Array.from(locations.keys());
   const many = names.length > MAX_LINES;
-  // The series are the members of an ensemble at one place, or locations
-  const places = new Set(rows.map((r) => locationOf(Object.assign({}, r, {level: null})))).size;
-  const what = options.seriesWord ||
-      (options.levelKind === 'member' && level === '' && places === 1 ? 'members' : 'locations');
+  // The series are the members of an ensemble at one place, or locations. The members are levels
+  // of an EDR collection, or the members of grid parameter keys.
+  const places =
+      new Set(rows.map((r) => locationOf(Object.assign({}, r, {level: null, _variant: null})))).size;
+  const members = (options.levelKind === 'member' && level === '') ||
+      (rows.length > 0 && rows.every((r) => r._member !== undefined));
+  const what = options.seriesWord || (members && places === 1 ? 'members' : 'locations');
   const chosen = mode || (many ? 'percentiles' : 'lines');
 
   // The choice of the drawing for several locations, and of the level
@@ -7336,6 +7373,7 @@ function timeSeriesModule(app, api, state, save)
                    .map((v) => ({
                           levelId: own.levelId,
                           key: v.key,
+                          value: Number(v.value),
                           label: `${v.value}${own.unit ? ' ' + own.unit : ''}`
                         }));
         else if ((info.levels || []).length === 1 && info.levels[0].keys.length === 1)
@@ -7359,6 +7397,11 @@ function timeSeriesModule(app, api, state, save)
                        .replace(/:+$/, ''),
               name,
               variant: [levels.length > 1 ? l.label : '', m.label].filter(Boolean).join(' · '),
+              // The level of a key is the level of its rows; the member alone names the series
+              level: levels.length > 1 ? l.value : undefined,
+              levelLabel: levels.length > 1 ? l.label : undefined,
+              series: levels.length > 1 ? m.label : undefined,
+              member: m.label ? m.number : undefined,
               levelFixed: l.key !== ''
             });
       }
@@ -7393,10 +7436,23 @@ function timeSeriesModule(app, api, state, save)
                 column: statisticParameter(fn, column),
                 response: statisticParameter(fn, column) + suffix,
                 name: statisticParameter(fn, name),
-                variant: b.variant
+                variant: b.variant,
+                level: b.level,
+                levelLabel: b.levelLabel,
+                series: b.series,
+                member: b.member
               });
           else
-            out.push({column, response: column + suffix, name, variant: b.variant});
+            out.push({
+              column,
+              response: column + suffix,
+              name,
+              variant: b.variant,
+              level: b.level,
+              levelLabel: b.levelLabel,
+              series: b.series,
+              member: b.member
+            });
         }
       }
       return out;
@@ -7460,7 +7516,14 @@ function timeSeriesModule(app, api, state, save)
       const details = gridDetailColumns(String(requested).split(','), dataColumns());
       for (const c of [...dataColumns(), ...qualityColumns(), ...details])
         if (c.response !== c.name || c.variant)
-          columns.set(c.response, {name: c.name, variant: c.variant});
+          columns.set(c.response, {
+            name: c.name,
+            variant: c.variant,
+            level: c.level,
+            levelLabel: c.levelLabel,
+            series: c.series,
+            member: c.member
+          });
       return columns;
     }
 
@@ -7869,7 +7932,10 @@ function timeSeriesModule(app, api, state, save)
             type.type === 'height'               ? L('height levels') :
             type.type === 'depth'                ? L('depth levels') :
                                                    L`${type.type} levels`;
-        levelNote.textContent = chosen.size === 0 ?
+        // A grid request without levels gets the default level of each parameter
+        levelNote.textContent = chosen.size === 0 && p && p.source === 'grid' ?
+            L`None chosen: the default level of each parameter. Choose ${levelWord} for a series of each.` :
+            chosen.size === 0 ?
             L`None chosen: the values of all ${type.values.length} ${levelWord}` :
             L`${chosen.size} of ${type.values.length} ${levelWord}${
                 type.unit ? ` (${type.unit})` : ''}, a series each`;
@@ -8210,6 +8276,66 @@ function timeSeriesModule(app, api, state, save)
         el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': L('Location type')});
     const showButton = el('button', {type: 'button', class: 'small'}, L('Show locations'));
     const stationNote = el('p', {class: 'muted small'});
+
+    // Suggestions of place and area names: the places of the server whose names begin with the
+    // text (<ts_url>/api/places), and the named areas of the server (<ts_url>/api/areas). A
+    // server without them suggests nothing.
+    const apiUrl = (path) => `${app.base}${rootPath.replace(/^\//, '')}/api/${path}`;
+    const placeAnswers = new Map();  // pattern -> the places
+    let areaNames = null;            // a promise of the names, once asked
+    async function placeSuggestions(text)
+    {
+      // A radius (name:20) or an area (name,area) is no longer a name to complete
+      if (text.length < 2 || /[:,]/.test(text))
+        return [];
+      const key = `${s.lang || ''}|${text.toLowerCase()}`;
+      if (!placeAnswers.has(key))
+        placeAnswers.set(
+            key,
+            fetchJson(`${apiUrl('places')}?${queryString([['pattern', text], ['lang', s.lang], ['max', '15']])}`)
+                .then((doc) => doc.places || [])
+                .catch(() => []));
+      const places = await placeAnswers.get(key);
+      // A name shared by several places is told apart by its area
+      const count = new Map();
+      places.forEach((p) => count.set(p.name, (count.get(p.name) || 0) + 1));
+      return places.map((p) => ({
+                          key: count.get(p.name) > 1 && p.area ? `${p.name},${p.area}` : p.name,
+                          label: p.name,
+                          detail: [p.area, p.population > 0 ? L`population ${p.population.toLocaleString()}` : '']
+                                      .filter(Boolean)
+                                      .join(' · ')
+                        }));
+    }
+    async function areaSuggestions(text)
+    {
+      if (/:/.test(text))
+        return [];
+      if (!areaNames)
+        areaNames = fetchJson(apiUrl('areas')).then((doc) => doc.areas || []).catch(() => []);
+      const q = text.toLowerCase();
+      return (await areaNames)
+          .map((name) => ({name, score: matchScore(q, name, '')}))
+          .filter((x) => x.score !== null)
+          .sort((a, b) => a.score - b.score || a.name.localeCompare(b.name))
+          .map(({name}) => ({key: name, label: name}));
+    }
+    locInput.classList.add('ac-input');
+    const locSuggest = autocomplete({
+      input: locInput,
+      label: L('Location'),
+      clearOnSelect: false,
+      limit: 15,
+      search: (text) => (s.locmode === 'place' ? placeSuggestions(text) :
+                         s.locmode === 'area'  ? areaSuggestions(text) :
+                                                 []),
+      select: (item) => {
+        locInput.value = item.key;
+        s.location = item.key;
+        refresh();
+      }
+    });
+    locSuggest.element.classList.add('loc-suggest');
     const stationSearch = autocomplete({
       label: L('Station'),
       placeholder: L('Type a station name or id'),
@@ -8699,12 +8825,13 @@ function timeSeriesModule(app, api, state, save)
                          }
                        },
                        L(name)));
-      // Profiles are counted by their levels, and ensembles by their members, not as locations
-      const levelCount = new Set(rows.map((r) => r.level)).size;
-      const byLevel = vertical || kind === 'member';
-      const locationsCount = byLevel ?
-          new Set(rows.map((r) => locationOf({name: r.name, lat: r.lat, lon: r.lon}))).size :
-          new Set(rows.map(locationOf)).size;
+      // Levels and ensemble members (levels of an EDR collection, or members of grid parameter
+      // keys) are counted as such, not as locations
+      const levelCount =
+          new Set(rows.map((r) => r.level).filter((v) => v !== undefined && v !== null)).size;
+      const memberCount = new Set(rows.map((r) => r._member).filter((m) => m !== undefined)).size;
+      const locationsCount =
+          new Set(rows.map((r) => locationOf({name: r.name, lat: r.lat, lon: r.lon, _point: r._point}))).size;
       results.replaceChildren(
           el('div',
              {class: 'results-head'},
@@ -8712,7 +8839,8 @@ function timeSeriesModule(app, api, state, save)
              el('span',
                 {class: 'muted small'},
                 L`${rows.length} rows${locationsCount > 1 ? L`, ${locationsCount} locations` : ''}${
-                    byLevel ? `, ${levelCount} ${kind === 'member' ? L('members') : L('levels')}` : ''}`),
+                    levelCount > 1 ? `, ${levelCount} ${kind === 'member' ? L('members') : L('levels')}` : ''}${
+                    memberCount > 1 ? `, ${memberCount} ${L('members')}` : ''}`),
              unitsChooser(settingsChanged),
              exportButtons(() => Object.values(panes).find((p) => !p.hidden), shown.rows,
                            `${s.producer || 'timeseries'}`, shown.labels)),
@@ -9219,7 +9347,7 @@ function timeSeriesModule(app, api, state, save)
            section(
                L('Where'),
                locModes,
-               el('div', {class: 'row'}, locInput, showButton),
+               el('div', {class: 'row'}, locSuggest.element, showButton),
                pathChooser.element,
                flightChoice.element,
                stationSearch.element,
@@ -10009,12 +10137,12 @@ function edrModule(app, api, state, save)
                          }
                        },
                        L(name)));
-      // Profiles are counted by their levels, and ensembles by their members, not as locations
-      const byLevel = vertical || kind === 'member';
-      const count = byLevel ?
-          new Set(rows.map((r) => locationOf({name: r.name, lat: r.lat, lon: r.lon}))).size :
-          new Set(rows.map(locationOf)).size;
-      const levelCount = new Set(rows.map((r) => r.level)).size;
+      // Levels and ensemble members (the levels of a collection) are counted as such, not as
+      // locations
+      const count =
+          new Set(rows.map((r) => locationOf({name: r.name, lat: r.lat, lon: r.lon, _point: r._point}))).size;
+      const levelCount =
+          new Set(rows.map((r) => r.level).filter((v) => v !== undefined && v !== null)).size;
       results.replaceChildren(
           el('div',
              {class: 'results-head'},
@@ -10022,7 +10150,7 @@ function edrModule(app, api, state, save)
              el('span',
                 {class: 'muted small'},
                 L`${rows.length} rows${count > 1 ? L`, ${count} locations` : ''}${
-                    byLevel ? `, ${levelCount} ${kind === 'member' ? L('members') : L('levels')}` : ''}`),
+                    levelCount > 1 ? `, ${levelCount} ${kind === 'member' ? L('members') : L('levels')}` : ''}`),
              unitsChooser(settingsChanged),
              exportButtons(() => Object.values(panes).find((p) => !p.hidden), shown.rows,
                            `${s.collection || 'edr'}`, shown.labels)),

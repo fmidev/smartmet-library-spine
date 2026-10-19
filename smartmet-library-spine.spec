@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.10.17
-Release: 2%{?dist}.fmi
+Version: 26.10.19
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,12 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Oct 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.19-1.fmi
+- Data explorer: place and area names are suggested while typed (from <ts_url>/api/places and /api/areas)
+- Data explorer: the chosen levels of grid parameter keys are levels of the rows, so three or more give
+  the vertical views; levels and ensemble members are no longer counted as locations
+- Data explorer: a grid request without chosen levels is told to give the default level of each parameter
+
 * Mon Oct 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-2.fmi
 - Repackaged: simultaneous CI runs corrupted the 26.10.17-1 RPMs
 * Sat Oct 17 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.17-1.fmi

@@ -463,6 +463,22 @@ const server = http.createServer((req, res) => {
     return send(200, 'text/javascript', fs.readFileSync(path.join(dir, 'smartmet-swagger-ui.js')));
   if (p === '/timeseries/api/producers')
     return send(200, 'application/json', JSON.stringify(producers));
+  // The places whose names begin with the pattern, and the named areas
+  if (p === '/timeseries/api/places')
+  {
+    const q = (url.searchParams.get('pattern') || '').toLowerCase();
+    const places = [
+      {name: 'Portland', area: 'USA', population: 652503},
+      {name: 'Portland', area: 'Britannia', population: 12710},
+      {name: 'Portlaoise', area: 'Irlanti', population: 23494},
+      {name: 'Helsinki', area: 'Suomi', population: 558457}
+    ];
+    return send(200, 'application/json', JSON.stringify({
+      places: places.filter((x) => x.name.toLowerCase().startsWith(q))
+    }));
+  }
+  if (p === '/timeseries/api/areas')
+    return send(200, 'application/json', JSON.stringify({areas: ['lappi', 'pirkanmaa', 'uusimaa']}));
   if (p === '/timeseries/api/producers/opendata')
     return send(200, 'application/json', JSON.stringify({
       name: 'opendata',
@@ -1995,6 +2011,47 @@ async function main()
     const cleared = await b.evaluate(`document.querySelector('.missing').textContent`);
     check('the path cleared', cleared.includes('a location'), cleared);
 
+    // Place names are completed by the places of the server, a shared name told apart by its
+    // area; area names by the areas of the server; other location types have no suggestions
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {
+      url: `${base}/api/explorer#api=/timeseries&producer=pal&params=temperature&locmode=place`
+    });
+    await waitFor(b, `!!document.querySelector('.loc-suggest input')`, 'the location field');
+    const typeLocation = async (text) => {
+      await b.evaluate(`(() => {
+        const input = document.querySelector('.loc-suggest input');
+        input.focus();
+        input.value = ${JSON.stringify(text)};
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      })()`);
+      await sleep(400);
+      return b.evaluate(`[...document.querySelectorAll('.loc-suggest .ac-list li')].map(
+          (x) => x.querySelector('.ac-label') ? x.querySelector('.ac-label').textContent : '')`);
+    };
+    const placeNames = await typeLocation('Portl');
+    check('place suggestions',
+          JSON.stringify(placeNames) === JSON.stringify(['Portland', 'Portland', 'Portlaoise']),
+          placeNames);
+    await b.evaluate(`document.querySelectorAll('.loc-suggest .ac-list li')[1]
+        .dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))`);
+    await sleep(300);
+    let sq = await currentQuery(b);
+    check('a shared place name with its area',
+          sq.get('place') === 'Portland,Britannia' &&
+              (await b.evaluate(`document.querySelector('.loc-suggest .ac-list').hidden`)),
+          sq.toString());
+    check('no suggestions for a radius', (await typeLocation('Portland:20')).length === 0);
+    await b.evaluate(`document.querySelector('[data-mode="area"]').click()`);
+    await sleep(200);
+    const areaNames = await typeLocation('maa');
+    check('area suggestions',
+          JSON.stringify(areaNames) === JSON.stringify(['pirkanmaa', 'uusimaa']), areaNames);
+    await b.evaluate(`document.querySelector('[data-mode="lonlat"]').click()`);
+    await sleep(200);
+    check('no suggestions for a point', (await typeLocation('25,60')).length === 0);
+
     // The levels of a querydata producer are requested with the levels option
     await b.send('Page.navigate', {url: `${base}/api`});
     await sleep(200);
@@ -2077,6 +2134,19 @@ async function main()
     await b.evaluate(`document.querySelector('button.primary').click()`);
     await waitFor(
         b, `document.querySelectorAll('.chart canvas').length >= 1`, 'the ensemble chart');
+    // The levels of the keys are levels: one of them is charted at a time, or all
+    const keyLevels = await b.evaluate(`(() => {
+      const select = document.querySelector('[aria-label="Level of the charts"]');
+      if (!select)
+        return null;
+      const levels = [...select.options].map((x) => x.value);
+      select.value = '';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      return levels;
+    })()`);
+    check('the levels of the keys', JSON.stringify(keyLevels) === JSON.stringify(['', '500', '850']),
+          keyLevels);
+    await sleep(300);
     const ensembleSeries = await b.evaluate(
         `[...document.querySelectorAll('.chart[data-param="t-k"] .u-legend .u-series')].map((x) => x.textContent)`);
     check(
@@ -2084,6 +2154,10 @@ async function main()
         ensembleSeries.some((x) => x.includes('Helsinki · 850 hPa · member 1')) &&
             ensembleSeries.some((x) => x.includes('Helsinki · 500 hPa · member 2')),
         ensembleSeries);
+    // The members and the levels of the keys are no locations
+    const ensembleSummary = await b.evaluate(`document.querySelector('.results-head .muted').textContent`);
+    check('members and levels counted', !/locations/.test(ensembleSummary) && /2 members/.test(ensembleSummary),
+          ensembleSummary);
     await b.evaluate(`(() => {
       const select = document.querySelector('[aria-label="Level type"]');
       select.value = "6";
