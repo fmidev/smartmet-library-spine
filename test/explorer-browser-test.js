@@ -2022,6 +2022,45 @@ async function main()
           copiedUrl.label && copiedUrl.text === copiedUrl.url && copiedUrl.url.includes('lonlat=25,60'),
           copiedUrl);
 
+    // The period is kept within the data of the producer: the calendar offers only its days,
+    // typed times outside it are moved to its ends, and the end stays after the start
+    const toField = (t) => iso(t).slice(0, 16);
+    const fields = () => b.evaluate(`(() => {
+      const [start, end] = [...document.querySelectorAll('.time-input')];
+      const picker = (box) => box.querySelector('.time-picker');
+      return { startMin: picker(start).min, startMax: picker(start).max, endMin: picker(end).min,
+               endMax: picker(end).max, start: start.value, end: end.value,
+               adjusted: !!document.querySelector('.time-text.time-adjusted') };
+    })()`);
+    const typeTime = (index, text) => b.evaluate(`(() => {
+      const input = document.querySelectorAll('.time-text')[${index}];
+      input.value = ${JSON.stringify(text)};
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
+    let tf = await fields();
+    const palFirst = toField(Math.ceil((now - 6 * hour) / 60e3) * 60e3);
+    const palLast = toField(Math.floor((now.getTime() + 60 * hour) / 60e3) * 60e3);
+    check('the calendar limited to the data',
+          tf.startMin.slice(0, 13) === palFirst.slice(0, 13) && tf.endMax.slice(0, 13) === palLast.slice(0, 13) &&
+              tf.startMax === tf.end && tf.endMin === tf.start,
+          {tf, palFirst, palLast});
+    await typeTime(0, '2000-01-01 00:00');
+    await sleep(300);
+    tf = await fields();
+    const periodQuery = await currentQuery(b);
+    check('a start before the data moved to its first time',
+          tf.start === tf.startMin && tf.adjusted && periodQuery.get('starttime') === `${tf.start}:00Z`,
+          {tf, starttime: periodQuery.get('starttime')});
+    await typeTime(1, '2099-01-01 00:00');
+    await sleep(300);
+    tf = await fields();
+    check('an end after the data moved to its last time', tf.end === tf.endMax, tf);
+    await typeTime(1, tf.start.replace('T', ' '));
+    await sleep(300);
+    tf = await fields();
+    check('the start limits the end', tf.endMin === tf.start && tf.startMax === tf.end, tf);
+
     // Reset forgets the choices and the settings, but not the API key
     await b.evaluate(`(() => {
       localStorage.setItem('smartmet-explorer-clock', '12');

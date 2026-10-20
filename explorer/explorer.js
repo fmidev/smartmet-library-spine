@@ -444,6 +444,30 @@ function calendarIcon()
 // The time fields shown, written again in a new clock
 const timeFields = new Set();
 
+// A period {min, max} of ISO times as values of time fields ('' for an open end)
+function periodOf(start, end)
+{
+  const value = (t) => {
+    const d = t ? new Date(t) : null;
+    return d && !isNaN(d) ? toInput(d) : '';
+  };
+  return {min: value(start), max: value(end)};
+}
+
+// Keeps the period of the request (s.start and s.end) within the period of the data and the
+// start before the end, and lets the time fields offer only such times
+function limitPeriod(s, startInput, endInput, period)
+{
+  const limited = (v) => (!v ? v : period.min && v < period.min ? period.min :
+                                   period.max && v > period.max ? period.max : v);
+  s.start = limited(s.start);
+  s.end = limited(s.end);
+  if (s.start && s.end && s.end < s.start)
+    s.end = s.start;
+  startInput.setRange(period.min, s.end || period.max);
+  endInput.setRange(s.start || period.min, period.max);
+}
+
 // A time field in UTC in the clock chosen, with a button for the date picker of the browser:
 // an element whose value is 'YYYY-MM-DDTHH:MM' like that of a datetime-local input, and which
 // passes on the input and change events of its text
@@ -457,6 +481,23 @@ function timeInput(attrs)
                                title: L('Choose from a calendar')}, calendarIcon());
   const box = el('span', {class: 'time-input', 'aria-label': label}, text, button, picker);
   let current = '';
+  // The data period the value is kept in, 'YYYY-MM-DDTHH:MM' or '' for no limit
+  let range = {min: '', max: ''};
+  const limited = (v) => (!v ? v : range.min && v < range.min ? range.min : range.max && v > range.max ? range.max : v);
+  // A value outside the period is moved to its end, and the field tells it for a moment
+  const keepInRange = () => {
+    const v = limited(current);
+    if (v === current)
+      return;
+    current = v;
+    text.value = timeText(current);
+    text.title = L('Moved within the period of the data');
+    text.classList.add('time-adjusted');
+    setTimeout(() => {
+      text.classList.remove('time-adjusted');
+      text.title = '';
+    }, 2500);
+  };
   const placeholder = () => {
     text.placeholder = clock === '12' ? L('YYYY-MM-DD h:mm AM') : L('YYYY-MM-DD HH:MM');
   };
@@ -475,8 +516,9 @@ function timeInput(attrs)
     else
       text.setAttribute('aria-invalid', 'true');
   });
-  // The value written in the clock when the field is left
+  // The value written in the clock when the field is left, within the period of the data
   text.addEventListener('change', () => {
+    keepInRange();
     if (current)
       text.value = timeText(current);
   });
@@ -504,6 +546,19 @@ function timeInput(attrs)
   box.refresh = () => {
     placeholder();
     text.value = timeText(current);
+  };
+  // The period the times can be chosen in: the calendar offers only its days, and other times
+  // are moved within it
+  box.setRange = (min, max) => {
+    range = {min: min || '', max: max || ''};
+    if (range.min)
+      picker.min = range.min;
+    else
+      picker.removeAttribute('min');
+    if (range.max)
+      picker.max = range.max;
+    else
+      picker.removeAttribute('max');
   };
   timeFields.add(box);
   return box;
@@ -9316,7 +9371,17 @@ function timeSeriesModule(app, api, state, save)
       }
       renderDetails();
       renderExtraColumns();
-      // Times
+      // Times, within the period of the data: of the chosen run of a grid model, or of the
+      // producer (the latest run continued by the older ones). Observations are available by
+      // station before their recent data.
+      {
+        const d = gridDetails();
+        const t = s.run && d && d.run && d.run.start ? d.run : p && p.time ? p.time : {};
+        const period = periodOf(t.start, t.end);
+        if (p && p.source === 'observation')
+          period.min = '';
+        limitPeriod(s, startInput, endInput, period);
+      }
       startInput.value = s.start || '';
       endInput.value = s.end || '';
       stepSelect.value = s.timestep || 'data';
@@ -10398,6 +10463,7 @@ function edrModule(app, api, state, save)
                  label)));
 
       // Times and levels
+      limitPeriod(s, startInput, endInput, c && c.time ? periodOf(c.time.start, c.time.end) : {min: '', max: ''});
       startInput.value = s.start || '';
       endInput.value = s.end || '';
       dataPeriod.textContent = c && timeRangeOf(c) ? L`Data: ${timeRangeOf(c)}` : '';
@@ -11561,6 +11627,7 @@ function coveragesModule(app, api, state, save)
         collectionSearch.element.hidden = false;
       }
 
+      limitPeriod(s, startInput, endInput, c && c.time ? periodOf(c.time.start, c.time.end) : {min: '', max: ''});
       startInput.value = s.start || '';
       endInput.value = s.end || '';
       dataPeriod.textContent = c && timeRangeOf(c) ? L`Data: ${timeRangeOf(c)}` : '';

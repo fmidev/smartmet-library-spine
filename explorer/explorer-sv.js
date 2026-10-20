@@ -240,6 +240,7 @@
     "Modification time of the data": "Datats ändringstid",
     "Move": "Flytta",
     "Move the map": "Flytta kartan",
+    "Moved within the period of the data": "Flyttad till datans period",
     "Name of the observation station": "Observationsstationens namn",
     "Native grid of the model": "Modellens eget rutnät",
     "Next 24 h": "Nästa 24 h",

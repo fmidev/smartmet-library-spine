@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.20
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Oct 20 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.20-2.fmi
+- Data explorer: the period is kept within the data of the producer, run or collection: the
+  calendar offers only its days, other times are moved to its ends, and the end stays after the start
+
 * Tue Oct 20 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.20-1.fmi
 - Data explorer: Copy URL and the code Copy button work on plain HTTP pages too, where browsers
   have no Clipboard API, and tell whether the copy succeeded

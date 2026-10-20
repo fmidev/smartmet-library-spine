@@ -240,6 +240,7 @@
     "Modification time of the data": "Aineiston muutosaika",
     "Move": "Siirrä",
     "Move the map": "Siirrä karttaa",
+    "Moved within the period of the data": "Siirretty datan ajanjaksolle",
     "Name of the observation station": "Havaintoaseman nimi",
     "Native grid of the model": "Mallin oma hila",
     "Next 24 h": "Seuraavat 24 h",

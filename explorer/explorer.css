@@ -383,6 +383,7 @@ nav .reset-button + .settings { margin-left: 0; }
 .settings-head { justify-content: space-between; }
 .settings-panel ul { padding-left: 1.2em; margin: 6px 0; }
 .time-input { display: inline-flex; align-items: center; gap: 4px; position: relative; }
+.time-text.time-adjusted { outline: 2px solid #e67700; outline-offset: -1px; }
 .time-input .time-text { font-variant-numeric: tabular-nums; }
 .time-input .time-text[aria-invalid="true"] { border-color: #d1242f; outline-color: #d1242f; }
 .time-input .time-picker { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; padding: 0; }
