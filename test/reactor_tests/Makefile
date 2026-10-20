@@ -6,12 +6,13 @@ all:	all-test-engine	all-test-plugin
 clean:	clean-test-engine clean-test-plugin
 	rm -rf failures
 	rm -rf log
+	rm -f input/.ignore
 
 # Run tests (ensure that freshly built libsmartmet-spine.so is being used)
-run-test:	all $(SMARTMET_PLUGIN_TEST)
+run-test:	all $(SMARTMET_PLUGIN_TEST) input/.ignore
 	if [ -d log ] ; then rm -f log/* ; fi
 	mkdir -p log
-	LD_LIBRARY_PATH=../../ $(TEST_RUNNER) $(SMARTMET_PLUGIN_TEST) -c reactor.conf
+	LD_LIBRARY_PATH=../../ $(TEST_RUNNER) $(SMARTMET_PLUGIN_TEST) -c reactor.conf --ignore input/.ignore
 
 test:	run-test
 	@if [ -f log/nomatch-access-log ] ; then \
@@ -38,3 +39,8 @@ clean-test-plugin:
 
 $(SMARTMET_PLUGIN_TEST):
 	$(MAKE) -C $(shell dirname $(SMARTMET_PLUGIN_TEST))
+
+input/.ignore:
+	@./mkignore.sh changelog_json.get > $@
+
+.PHONY: input/.ignore
