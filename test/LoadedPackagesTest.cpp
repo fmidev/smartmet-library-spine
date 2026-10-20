@@ -2,6 +2,7 @@
 #include "LoadedPackages.h"
 #include "Table.h"
 #include <regression/tframe.h>
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <dlfcn.h>
@@ -412,7 +413,19 @@ void request()
   if (changelog->getNames() !=
       std::vector<std::string>{"Date", "Package", "Version", "Author", "Text"})
     TEST_FAILED("Unexpected changelog columns");
-  if (changelog->empty())
+  // Changelogs exist only for SmartMet libraries installed as rpm packages,
+  // not for ones installed with 'make install'
+  auto objects = LP::collect();
+  LP::resolveInstalled(objects);
+  const bool have_rpm =
+      std::any_of(objects.begin(),
+                  objects.end(),
+                  [](const LP::Object& obj)
+                  {
+                    return obj.package_manager == "rpm" && !obj.installed_name.empty() &&
+                           LP::packageName(obj).find("smartmet") != std::string::npos;
+                  });
+  if (have_rpm && changelog->empty())
     TEST_FAILED("The changelog of the installed SmartMet packages should not be empty");
   for (std::size_t row = 1; row <= changelog->maxj(); row++)
     if (changelog->get(0, row, "") > changelog->get(0, row - 1, ""))
