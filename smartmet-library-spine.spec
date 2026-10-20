@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.10.19
-Release: 3%{?dist}.fmi
+Version: 26.10.20
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Oct 20 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.20-1.fmi
+- Data explorer: Copy URL and the code Copy button work on plain HTTP pages too, where browsers
+  have no Clipboard API, and tell whether the copy succeeded
+
 * Mon Oct 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.19-3.fmi
 - New admin request what=changelog: the recent changelog entries of the loaded SmartMet packages
   from the rpm database, newest first (days=N, default 30, 0 for all; package=name)

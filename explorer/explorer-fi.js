@@ -112,6 +112,7 @@
     "Copied": "Kopioitu",
     "Copy": "Kopioi",
     "Copy URL": "Kopioi URL",
+    "Copying failed": "Kopiointi epäonnistui",
     "Country": "Maa",
     "Country code": "Maatunnus",
     "Covering {0}, {1}": "Kattaa pisteen {0}, {1}",

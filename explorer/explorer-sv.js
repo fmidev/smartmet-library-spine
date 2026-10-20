@@ -112,6 +112,7 @@
     "Copied": "Kopierad",
     "Copy": "Kopiera",
     "Copy URL": "Kopiera URL",
+    "Copying failed": "Kopieringen misslyckades",
     "Country": "Land",
     "Country code": "Landskod",
     "Covering {0}, {1}": "Täcker {0}, {1}",

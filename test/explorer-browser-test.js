@@ -1991,6 +1991,37 @@ async function main()
             !keyed.url.includes('secret-key-1'),
         {apikeys: apikeys.slice(0, 4), code: keyed.code.slice(0, 200)});
 
+    // Copy URL also works without the Clipboard API of secure pages (plain HTTP servers)
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {
+      url: `${base}/api/explorer#api=/timeseries&producer=pal&source=querydata&params=temperature&locmode=lonlat&location=25,60`
+    });
+    await waitFor(b, `[...document.querySelectorAll('button')].some((x) => x.textContent === 'Copy URL')`,
+                  'the Copy URL button');
+    const copyAt = await b.evaluate(`(() => {
+      Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+      window.copiedText = null;
+      document.addEventListener('copy', () => {
+        window.copiedText = document.activeElement && document.activeElement.value !== undefined ?
+            document.activeElement.value : String(document.getSelection());
+      }, true);
+      const x = [...document.querySelectorAll('button')].find((x) => x.textContent === 'Copy URL');
+      x.scrollIntoView({ block: 'center' });
+      const r = x.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    })()`);
+    await mouse(b, 'mouseMoved', copyAt.x, copyAt.y, 0);
+    await mouse(b, 'mousePressed', copyAt.x, copyAt.y, 1);
+    await mouse(b, 'mouseReleased', copyAt.x, copyAt.y, 0);
+    await sleep(200);
+    const copiedUrl = await b.evaluate(`({ text: window.copiedText,
+      url: document.querySelector('code.url').textContent,
+      label: [...document.querySelectorAll('button')].some((x) => x.textContent === 'Copied') })`);
+    check('Copy URL without the Clipboard API',
+          copiedUrl.label && copiedUrl.text === copiedUrl.url && copiedUrl.url.includes('lonlat=25,60'),
+          copiedUrl);
+
     // Reset forgets the choices and the settings, but not the API key
     await b.evaluate(`(() => {
       localStorage.setItem('smartmet-explorer-clock', '12');

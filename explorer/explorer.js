@@ -214,6 +214,52 @@ function serverError(response, text)
   return L`The server answered ${response.status} ${response.statusText}: ${detail}`;
 }
 
+// Copies text to the clipboard and tells it on the button for a moment. The Clipboard API is
+// only available on HTTPS pages (and localhost): elsewhere the text is copied from a hidden
+// field.
+async function copyText(text, button)
+{
+  let copied = false;
+  try
+  {
+    if (navigator.clipboard && window.isSecureContext)
+    {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+    }
+  }
+  catch (e)
+  {
+    // The fallback below
+  }
+  if (!copied)
+  {
+    const field = el('textarea', {readonly: '', 'aria-hidden': 'true',
+                                  style: 'position: fixed; top: 0; left: -9999px; opacity: 0'});
+    field.value = text;
+    document.body.append(field);
+    field.select();
+    try
+    {
+      copied = document.execCommand('copy');
+    }
+    catch (e)
+    {
+      copied = false;
+    }
+    field.remove();
+    button.focus();
+  }
+  if (!button.dataset.label)
+    button.dataset.label = button.textContent;
+  button.textContent = copied ? L('Copied') : L('Copying failed');
+  clearTimeout(button._copyTimer);
+  button._copyTimer = setTimeout(() => {
+    button.textContent = button.dataset.label;
+  }, 1200);
+  return copied;
+}
+
 // GET a JSON document; a failed request throws with the message of the server
 async function fetchJson(url)
 {
@@ -6901,16 +6947,7 @@ function codeTabs(container, url)
   items.forEach(
       ([title], i) =>
           tabs.append(el('button', {type: 'button', role: 'tab', onclick: () => show(i)}, title)));
-  copy.addEventListener('click', () => {
-    navigator.clipboard.writeText(items[current][1])
-        .then(() => {
-          copy.textContent = L('Copied');
-          setTimeout(() => {
-            copy.textContent = L('Copy');
-          }, 1200);
-        })
-        .catch(() => {});
-  });
+  copy.addEventListener('click', () => copyText(items[current][1], copy));
   container.append(el('div', {class: 'code-head'}, tabs, copy), pre);
   show(0);
 }
@@ -8650,7 +8687,7 @@ function timeSeriesModule(app, api, state, save)
     const results = el('div', {class: 'results'});
 
     copyUrl.addEventListener(
-        'click', () => navigator.clipboard.writeText(currentUrl()).catch(() => {}));
+        'click', () => copyText(currentUrl(), copyUrl));
     runButton.addEventListener('click', run);
 
     // The options of the request as [name, value] pairs
@@ -9924,7 +9961,7 @@ function edrModule(app, api, state, save)
         el('details', {class: 'code-details'}, el('summary', null, L('Code for this request')), code);
     const results = el('div', {class: 'results'});
     copyUrl.addEventListener(
-        'click', () => navigator.clipboard.writeText(currentUrl()).catch(() => {}));
+        'click', () => copyText(currentUrl(), copyUrl));
     runButton.addEventListener('click', run);
 
     // The location options of the query: coords (and within) for the selection, or bbox for a cube
@@ -11367,7 +11404,7 @@ function coveragesModule(app, api, state, save)
            el('summary', null, L('Code for this request')),
            code);
     copyUrl.addEventListener(
-        'click', () => navigator.clipboard.writeText(currentUrl()).catch(() => {}));
+        'click', () => copyText(currentUrl(), copyUrl));
 
     // The maps of the coverage: a small GeoTIFF in longitude and latitude read by the browser
     const showMaps = el('button', {type: 'button', class: 'small'}, L('Show maps'));
