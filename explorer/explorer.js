@@ -804,6 +804,21 @@ const RECOMMENDED_AREA_FUNCTION = {
   state: 'mean'
 };
 
+// The meta parameters that differ from point to point of an area, which one value of the area
+// computes with a function like the data, by their kind for the recommended function: the
+// maximum of dark tells that some of the area is dark
+const AREA_META_KINDS = {
+  dark: 'category',
+  sunelevation: 'state',
+  sunazimuth: 'direction',
+  sunrise: 'state',
+  sunset: 'state',
+  daylength: 'state',
+  moonphase: 'state',
+  elevation: 'state',
+  dem: 'state'
+};
+
 // Why a function over an area does not suit a kind of parameter, or ''
 function areaFunctionWarning(fn, kind)
 {
@@ -7871,7 +7886,7 @@ function timeSeriesModule(app, api, state, save)
       const columns = new Map();
       const requested = (requestParams().find(([k]) => k === 'param') || [])[1] || '';
       const details = gridDetailColumns(String(requested).split(','), dataColumns());
-      for (const c of [...dataColumns(), ...qualityColumns(), ...details])
+      for (const c of [...dataColumns(), ...qualityColumns(), ...details, ...areaMetaColumns()])
         if (c.response !== c.name || c.variant)
           columns.set(c.response, {
             name: c.name,
@@ -8864,7 +8879,8 @@ function timeSeriesModule(app, api, state, save)
     {
       const entry = index.parameters.get(name);
       const d = gridDetails();
-      const kind = parameterKind(name, entry, d && d.parameters ? d.parameters[name] : null);
+      const kind = AREA_META_KINDS[name] ||
+          parameterKind(name, entry, d && d.parameters ? d.parameters[name] : null);
       const chosen = chosenAreaFunctions().get(name);
       const choice = AREA_FUNCTIONS.some((f) => f[0] === chosen) ? chosen : RECOMMENDED_AREA_FUNCTION[kind];
       const def = AREA_FUNCTIONS.find((f) => f[0] === choice) || AREA_FUNCTIONS[0];
@@ -8872,6 +8888,15 @@ function timeSeriesModule(app, api, state, save)
       return {choice, fn: kind === 'direction' && def[3] ? def[3] : def[2], kind,
               warning: warning ? `${name} ${warning}` : ''};
     }
+    // The parameters given a function over the area: the data and the meta parameters that
+    // differ from point to point
+    const areaMetaParams = () => s.params.filter((p) => AREA_META_KINDS[p]);
+    const areaFunctionParams = () => [...dataParams(), ...areaMetaParams()];
+    // The columns of the meta parameters of one value of an area, named back by the parameter
+    const areaMetaColumns = () => (areaAggregate() ? areaMetaParams() : []).map((name) => {
+      const column = statisticParameter(areaFunction(name).fn, name);
+      return {column, response: column, name, variant: ''};
+    });
     // A choice of the function for each parameter
     function renderAreaFunctions()
     {
@@ -8880,7 +8905,7 @@ function timeSeriesModule(app, api, state, save)
       areaFunctionNote.hidden = !shown;
       if (!shown)
         return;
-      areaFunctionList.replaceChildren(...dataParams().map((name) => {
+      areaFunctionList.replaceChildren(...areaFunctionParams().map((name) => {
         const f = areaFunction(name);
         const select = el('select', {'aria-label': L`Function of ${name}`, 'data-param': name},
                           AREA_FUNCTIONS.map(([v, label]) => el('option', {value: v}, label)));
@@ -8897,7 +8922,7 @@ function timeSeriesModule(app, api, state, save)
         return [el('span', {class: 'small'}, name), select, el('code', {class: 'muted small'}, f.fn)];
       }).flat());
       areaFunctionNote.replaceChildren(
-          ...dataParams().map((name) => areaFunction(name).warning).filter(Boolean).map(
+          ...areaFunctionParams().map((name) => areaFunction(name).warning).filter(Boolean).map(
               (w) => el('li', {class: 'warn'}, w)));
     }
     const pathChooser = pathPointsChooser(s, (rerender) => refresh(rerender));
@@ -9031,7 +9056,10 @@ function timeSeriesModule(app, api, state, save)
             'name',
             'time',
             ...level,
-            ...s.params.filter((p) => META.has(p) && p !== 'lat' && p !== 'lon'),
+            ...s.params.filter((p) => META.has(p) && p !== 'lat' && p !== 'lon')
+                .map((p) => (areaAggregate() && AREA_META_KINDS[p] ?
+                                 statisticParameter(areaFunction(p).fn, p) :
+                                 p)),
             ...columns.map((c) => c.column)
           ])) :
           Array.from(new Set([

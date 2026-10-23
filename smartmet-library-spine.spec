@@ -176,7 +176,8 @@ make %{_smp_mflags}
 - Data explorer: WKT locations (POINT, MULTIPOINT, LINESTRING, POLYGON and their multi forms),
   drawn on the map; a drawn point, path, box or radius is converted to WKT
 - Data explorer: one value of an area for each parameter, computed by the server with a function
-  chosen per parameter (mean, a circular mean for directions, minimum, maximum, ...)
+  chosen per parameter (mean, a circular mean for directions, minimum, maximum, ...), also for
+  the meta parameters that differ from point to point (dark, sun elevation, ...)
 - Data explorer: an address changed within the page opens its state; a producer named in
   another case or with a source it does not have is found and the link corrected
 - Data explorer: the missing parts of a request are translated

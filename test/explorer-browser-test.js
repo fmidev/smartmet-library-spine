@@ -2839,6 +2839,16 @@ async function main()
           chosenQuery.get('param') === 'name,time,nanmax_a(temperature),nancirclemean_a(wavedirection)' &&
               chosenHash.includes('afn=temperature:max'),
           {param: chosenQuery.get('param'), chosenHash});
+    // A meta parameter differing from point to point gets a function too: the maximum of dark
+    await b.evaluate(`[...document.querySelectorAll('[data-meta]')].find((x) => x.dataset.meta === 'dark').click()`);
+    await sleep(200);
+    const metaQuery = await currentQuery(b);
+    const metaFunctions = await b.evaluate(
+        `[...document.querySelectorAll('.area-functions select')].map((x) => x.dataset.param + ':' + x.value)`);
+    check('a meta parameter of one value of an area',
+          metaQuery.get('param').split(',').includes('nanmax_a(dark)') &&
+              !metaQuery.get('param').split(',').includes('dark') && metaFunctions.includes('dark:max'),
+          {param: metaQuery.get('param'), metaFunctions});
     // The values come back under the names of the parameters, as one location
     await b.evaluate(`document.querySelector('button.primary').click()`);
     await waitFor(b, `document.querySelector('.chart[data-param="temperature"]')`, 'the chart of the area');
