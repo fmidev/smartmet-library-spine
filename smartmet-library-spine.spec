@@ -184,6 +184,8 @@ make %{_smp_mflags}
 - Data explorer: EDR and Coverages links with levels open again
 - Data explorer: the start and end of a TimeSeries request relative to now or to the data
   (-1h, +24h, now, the end of the data, a number of steps), kept as such in the request
+- Data explorer: geoid locations (a place name typed gives its geoid) and the default producer
+  of the server
 
 * Tue Oct 20 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.20-2.fmi
 - Data explorer: the period is kept within the data of the producer, run or collection: the

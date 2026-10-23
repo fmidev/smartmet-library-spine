@@ -651,7 +651,7 @@ async function main()
     // A parameter narrows the producers
     let r = await choose(b, PARAM, 'temp', 'Temperature');
     check(
-        'parameter search by name', r.found && r.labels.some((l) => l.includes('5 producers')), r);
+        'parameter search by name', r.found && r.labels.some((l) => l.includes('6 producers')), r);
     r = await choose(b, PARAM, 'relative', 'Humidity');
     check('parameter search by description', r.found, r);
     const chips = await b.evaluate(
@@ -663,13 +663,14 @@ async function main()
     const note = await b.evaluate(`document.querySelector('.form .step .muted.small').textContent`);
     check(
         'producers with all the parameters',
-        note === '1 of 6 producers have all these parameters',
+        // The default producer of the server has the parameters of the querydata producers
+        note === '2 of 7 producers have all these parameters',
         note);
     r = await choose(b, PRODUCER, '', 'pal');
     check(
         'only the producers with the parameters',
-        JSON.stringify(r.labels.map((l) => l.split(/querydata|grid|observation/)[0])) ===
-            JSON.stringify(['pal']),
+        r.labels.length === 2 && r.labels[0].startsWith('default') &&
+            r.labels[1].split(/querydata|grid|observation/)[0] === 'pal',
         r);
 
     // The producer sets the times and narrows the parameters
@@ -1088,7 +1089,7 @@ async function main()
         await b.evaluate(`document.querySelector('.form .step .muted.small').textContent`);
     check(
         'producers covering the selection',
-        covering === '0 of 6 producers have all these parameters in the selected area',
+        covering === '1 of 7 producers have all these parameters in the selected area',
         covering);
     await setLocation(b, 'not a box');
     const invalid = await b.evaluate(`document.querySelector('.warn').textContent`);
@@ -2920,6 +2921,35 @@ async function main()
               /Z$/.test(presetQuery.get('endtime') || '') && !presetHash.includes('startrel') &&
               !presetHash.includes('endrel'),
           {query: presetQuery.toString(), presetHash});
+
+    // The default producer of the server has the parameters of the querydata producers, and a
+    // place is asked by its geoid
+    const defaults = await b.evaluate(`(() => {
+      const E = SmartMetExplorer;
+      const index = E.addDefaultProducer(E.buildIndex({producers: [
+        {name: 'a', source: 'querydata', parameters: ['temperature']},
+        {name: 'b', source: 'querydata', parameters: ['humidity', 'temperature']},
+        {name: 'c', source: 'grid', parameters: ['t-k']}]}));
+      const listed = E.addDefaultProducer(E.buildIndex({producers: [
+        {name: 'default', source: 'querydata', parameters: ['x']}]}));
+      const d = index.producers.get('default');
+      return { parameters: d.parameters, source: d.source,
+               temperature: index.parameters.get('temperature').producers,
+               kept: listed.producers.size };
+    })()`);
+    check('the default producer of the server',
+          JSON.stringify(defaults.parameters) === '["humidity","temperature"]' && defaults.source === '' &&
+              defaults.temperature.includes('default') && defaults.kept === 1,
+          defaults);
+    await b.evaluate(`location.hash = 'api=/timeseries&producer=default&params=temperature&locmode=geoid&location=658225'`);
+    await waitFor(b, `document.querySelector('code.url') && document.querySelector('code.url').textContent.includes('geoid=')`,
+                  'the request of a geoid');
+    const geoidQuery = await currentQuery(b);
+    const defaultCard = await b.evaluate(`document.querySelector('.model-card').textContent`);
+    check('a geoid with the default producer',
+          geoidQuery.get('geoid') === '658225' && geoidQuery.get('producer') === 'default' &&
+              !geoidQuery.has('source') && defaultCard.startsWith('default'),
+          {query: geoidQuery.toString(), defaultCard});
 
     // An address changed within the page opens its state; a producer named in another case or
     // with a source it does not have is found and corrected

@@ -1216,6 +1216,37 @@ function buildIndex(doc)
   return {producers, parameters};
 }
 
+// The default producer of the server, for requests naming no producer: the TimeSeries API then
+// takes for each location the first of its default producers covering it, querydata producers.
+// Its parameters are those of the querydata producers. A producer listed as default is kept.
+function addDefaultProducer(index)
+{
+  if (index.producers.has('default') ||
+      Array.from(index.producers.values()).some((p) => p.name === 'default'))
+    return index;
+  const querydata = Array.from(index.producers.values()).filter((p) => p.source === 'querydata');
+  if (querydata.length === 0)
+    return index;
+  const parameters = Array.from(new Set(querydata.flatMap((p) => p.parameters || []))).sort();
+  index.producers.set('default', {
+    key: 'default',
+    name: 'default',
+    source: '',
+    title: L('The default producer of the server'),
+    description: L('The server takes for each location the first of its default producers covering it'),
+    parameters,
+    parameterSet: new Set(parameters),
+    serverDefault: true
+  });
+  for (const name of parameters)
+  {
+    const entry = index.parameters.get(name);
+    if (entry)
+      entry.producers.push('default');
+  }
+  return index;
+}
+
 // Score of a match of 'q' (lower case) in an item: lower is better, null for no match
 function matchScore(q, name, text)
 {
@@ -7165,6 +7196,7 @@ function locationModes()
     ['keyword', L('Keyword'), ex.keyword || L('A location keyword of the server'), null],
     ['fmisid', L('Station id'), ex.fmisid || L('Station ids, e.g. 1234,5678'), null],
     ['wmo', L('WMO id'), ex.wmo || L('WMO station ids, e.g. 1234,5678'), null],
+    ['geoid', L('Geoid'), ex.geoid || L('GeoNames ids of places, e.g. 658225,653492'), null],
     ['area', L('Area'), ex.area || L('An area name of the server'), null]
   ];
 }
@@ -7542,7 +7574,7 @@ function timeSeriesModule(app, api, state, save)
   view.append(status);
 
   fetchJson(`${app.base}${rootPath.replace(/^\//, '')}/api/producers`)
-      .then((doc) => build(buildIndex(doc)))
+      .then((doc) => build(addDefaultProducer(buildIndex(doc))))
       .catch((e) => {
         status.textContent = L`The producers could not be loaded: ${e.message}`;
       });
@@ -8776,7 +8808,7 @@ function timeSeriesModule(app, api, state, save)
     const apiUrl = (path) => `${app.base}${rootPath.replace(/^\//, '')}/api/${path}`;
     const placeAnswers = new Map();  // pattern -> the places
     let areaNames = null;            // a promise of the names, once asked
-    async function placeSuggestions(text)
+    async function placeSuggestions(text, byGeoid = false)
     {
       // A radius (name:20) or an area (name,area) is no longer a name to complete
       if (text.length < 2 || /[:,]/.test(text))
@@ -8792,13 +8824,17 @@ function timeSeriesModule(app, api, state, save)
       // A name shared by several places is told apart by its area
       const count = new Map();
       places.forEach((p) => count.set(p.name, (count.get(p.name) || 0) + 1));
-      return places.map((p) => ({
-                          key: count.get(p.name) > 1 && p.area ? `${p.name},${p.area}` : p.name,
-                          label: p.name,
-                          detail: [p.area, p.population > 0 ? L`population ${p.population.toLocaleString()}` : '']
-                                      .filter(Boolean)
-                                      .join(' · ')
-                        }));
+      // In the geoid mode a place gives its geoid
+      return places.filter((p) => !byGeoid || p.geoid)
+          .map((p) => ({
+                 key: byGeoid ? String(p.geoid) :
+                     count.get(p.name) > 1 && p.area ? `${p.name},${p.area}` : p.name,
+                 label: p.name,
+                 detail: [p.area, p.population > 0 ? L`population ${p.population.toLocaleString()}` : '',
+                          byGeoid ? `geoid ${p.geoid}` : '']
+                             .filter(Boolean)
+                             .join(' · ')
+               }));
     }
     async function areaSuggestions(text)
     {
@@ -8821,6 +8857,8 @@ function timeSeriesModule(app, api, state, save)
       limit: 15,
       search: (text) => (s.locmode === 'place' ? placeSuggestions(text) :
                          s.locmode === 'area'  ? areaSuggestions(text) :
+                         // A name typed in the geoid mode is completed to the geoid of the place
+                         s.locmode === 'geoid' && /[^\d,\s]/.test(text) ? placeSuggestions(text, true) :
                                                  []),
       select: (item) => {
         locInput.value = item.key;
@@ -12902,6 +12940,7 @@ root.SmartMetExplorer = {
   formatTime,
   coverageCrs,
   locationModes,
+  addDefaultProducer,
   parseWkt,
   selectionWkt,
   timeText,
