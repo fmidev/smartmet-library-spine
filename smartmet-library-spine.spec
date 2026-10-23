@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.10.20
-Release: 2%{?dist}.fmi
+Version: 26.10.23
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,15 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Oct 23 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.23-1.fmi
+- Data explorer: WKT locations (POINT, MULTIPOINT, LINESTRING, POLYGON and their multi forms),
+  drawn on the map; a drawn point, path, box or radius is converted to WKT
+- Data explorer: one value of an area for each parameter, computed by the server with a function
+  chosen per parameter (mean, a circular mean for directions, minimum, maximum, ...)
+- Data explorer: an address changed within the page opens its state; a producer named in
+  another case or with a source it does not have is found and the link corrected
+- Data explorer: the missing parts of a request are translated
+
 * Tue Oct 20 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.20-2.fmi
 - Data explorer: the period is kept within the data of the producer, run or collection: the
   calendar offers only its days, other times are moved to its ends, and the end stays after the start

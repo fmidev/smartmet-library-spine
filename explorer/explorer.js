@@ -781,6 +781,41 @@ const RECOMMENDED_FUNCTION = {
   state: 'mean'
 };
 
+// The functions over an area offered by the explorer, computing one value of all the points
+// of the area at each time: label, the TimeSeries function, and for directions its circular
+// variant. Missing values are skipped.
+const AREA_FUNCTIONS = [
+  ['mean', L('Mean'), 'nanmean_a', 'nancirclemean_a'],
+  ['min', L('Minimum'), 'nanmin_a'],
+  ['max', L('Maximum'), 'nanmax_a'],
+  ['median', L('Median'), 'nanmedian_a'],
+  ['sum', L('Sum'), 'nansum_a'],
+  ['sdev', L('Standard deviation'), 'nansdev_a']
+];
+
+// The function over an area recommended for a kind of parameter: an amount is averaged over
+// the area like a state, a category gives its most severe class
+const RECOMMENDED_AREA_FUNCTION = {
+  amount: 'mean',
+  direction: 'mean',
+  category: 'max',
+  maximum: 'max',
+  minimum: 'min',
+  state: 'mean'
+};
+
+// Why a function over an area does not suit a kind of parameter, or ''
+function areaFunctionWarning(fn, kind)
+{
+  if (kind === 'category' && !['max', 'min'].includes(fn))
+    return L('is a category: its mean or sum means nothing, the maximum gives the most severe class');
+  if (kind === 'direction' && fn !== 'mean')
+    return L('is a direction: only its mean, a circular mean, means something');
+  if (kind !== 'amount' && fn === 'sum')
+    return L('is not an amount: its sum means nothing');
+  return '';
+}
+
 // Why a function does not suit a kind of parameter, or ''
 function functionWarning(fn, kind)
 {
@@ -1275,10 +1310,11 @@ function selectionBox(sel)
     const e = destination(sel.lon, sel.lat, sel.km, 90);
     return [2 * sel.lon - e[0], 2 * sel.lat - n[1], e[0], n[1]];
   }
-  if (sel.type === 'path' && sel.points.length > 0)
+  const points = sel.type === 'path' ? sel.points : sel.type === 'wkt' ? wktPoints(sel) : [];
+  if (points.length > 0)
   {
-    const lons = sel.points.map((p) => p[0]);
-    const lats = sel.points.map((p) => p[1]);
+    const lons = points.map((p) => p[0]);
+    const lats = points.map((p) => p[1]);
     return [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)];
   }
   return null;
@@ -1553,6 +1589,25 @@ function createMap(settings, onSelect)
         const [sx, sy] = screenOf(lon, lat);
         g.append(svg('circle', {class: i === 0 ? 'xmap-centre start' : 'xmap-centre', cx: sx, cy: sy, r: 4}));
       });
+    }
+    else if (sel.type === 'wkt')
+    {
+      // The polygons with their holes, the lines and the points of a WKT geometry
+      const xy = (points) => points.map(([lon, lat]) => screenOf(lon, lat).join(',')).join(' ');
+      for (const part of sel.parts)
+        if (part.kind === 'polygon')
+          g.append(svg('path', {
+            class: cls,
+            'fill-rule': 'evenodd',
+            d: part.rings.map((ring) => `M${xy(ring).replace(/ /g, 'L')}Z`).join('')
+          }));
+        else if (part.kind === 'line')
+          g.append(svg('polyline', {class: `${cls} xmap-path`, fill: 'none', points: xy(part.points)}));
+        else
+        {
+          const [sx, sy] = screenOf(...part.points[0]);
+          g.append(svg('circle', {class: 'xmap-centre', cx: sx, cy: sy, r: 3}));
+        }
     }
     if (sel.type === 'point' || sel.type === 'circle')
     {
@@ -7025,6 +7080,7 @@ function locationModes()
     ['radius', L('Radius'), L`${c(lon, lat)}:25 (km), or drag on the map`, 'circle'],
     ['bbox', L('Box'), L`${[lon - 2, lat - 1, lon + 2, lat + 1].map((v) => round(v, 1)).join(',')}, or drag on the map`, 'box'],
     ['path', L('Path'), L`${c(lon - 0.5, lat - 0.2)},${c(lon, lat)},${c(lon + 0.5, lat + 0.1)} (lon,lat,...), or click the map`, 'line'],
+    ['wkt', L('WKT'), L`MULTIPOINT(${c(lon, lat).replace(',', ' ')},${c(lon + 0.1, lat).replace(',', ' ')}), LINESTRING or POLYGON in lon lat, or draw another type first`, 'wkt'],
     ['keyword', L('Keyword'), ex.keyword || L('A location keyword of the server'), null],
     ['fmisid', L('Station id'), ex.fmisid || L('Station ids, e.g. 1234,5678'), null],
     ['wmo', L('WMO id'), ex.wmo || L('WMO station ids, e.g. 1234,5678'), null],
@@ -7248,7 +7304,125 @@ function parseSelection(mode, text)
     const [a, b, c, d] = m.slice(1, 5).map(Number);
     return {type: 'box', bbox: [Math.min(a, c), Math.min(b, d), Math.max(a, c), Math.max(b, d)]};
   }
+  if (mode === 'wkt')
+    return parseWkt(text);
   return null;
+}
+
+// The geometry of a WKT text in longitude and latitude, as the parts to draw: points, lines
+// and polygons (their rings). POINT, MULTIPOINT (with or without parentheses around the
+// points), LINESTRING, MULTILINESTRING, POLYGON and MULTIPOLYGON are understood; null for
+// anything else or a text that is not valid.
+function parseWkt(text)
+{
+  const m = /^\s*(MULTIPOINT|POINT|MULTILINESTRING|LINESTRING|MULTIPOLYGON|POLYGON)\s*(\(.*\))\s*$/is.exec(text || '');
+  if (!m)
+    return null;
+  const kind = m[1].toUpperCase();
+  // The nested lists of the body: a list of coordinates is an array of [lon, lat]
+  let pos = 0;
+  const body = m[2];
+  function list()
+  {
+    if (body[pos] !== '(')
+      return null;
+    pos++;
+    const items = [];
+    const space = () => {
+      while (/\s/.test(body[pos] || ''))
+        pos++;
+    };
+    for (;;)
+    {
+      space();
+      if (body[pos] === '(')
+      {
+        const sub = list();
+        if (!sub)
+          return null;
+        items.push(sub);
+      }
+      else
+      {
+        const c = /^(-?\d+(?:\.\d*)?(?:[eE][-+]?\d+)?)\s+(-?\d+(?:\.\d*)?(?:[eE][-+]?\d+)?)/.exec(body.slice(pos));
+        if (!c)
+          return null;
+        items.push([Number(c[1]), Number(c[2])]);
+        pos += c[0].length;
+      }
+      space();
+      if (body[pos] === ',')
+        pos++;
+      else if (body[pos] === ')')
+      {
+        pos++;
+        return items;
+      }
+      else
+        return null;
+    }
+  }
+  const tree = list();
+  if (!tree || body.slice(pos).trim() !== '')
+    return null;
+  const isPoint = (x) => Array.isArray(x) && typeof x[0] === 'number';
+  const points = (x) => Array.isArray(x) && x.length > 0 && x.every(isPoint);
+  const parts = [];
+  if (kind === 'POINT' && tree.length === 1 && isPoint(tree[0]))
+    parts.push({kind: 'point', points: tree});
+  else if (kind === 'MULTIPOINT' && tree.length > 0)
+  {
+    // MULTIPOINT(1 2,3 4) or MULTIPOINT((1 2),(3 4))
+    const flat = tree.map((x) => (isPoint(x) ? x : points(x) && x.length === 1 ? x[0] : null));
+    if (flat.some((x) => !x))
+      return null;
+    flat.forEach((p) => parts.push({kind: 'point', points: [p]}));
+  }
+  else if (kind === 'LINESTRING' && points(tree) && tree.length >= 2)
+    parts.push({kind: 'line', points: tree});
+  else if (kind === 'MULTILINESTRING' && tree.length > 0 && tree.every((l) => points(l) && l.length >= 2))
+    tree.forEach((l) => parts.push({kind: 'line', points: l}));
+  else if (kind === 'POLYGON' && tree.length > 0 && tree.every((r) => points(r) && r.length >= 4))
+    parts.push({kind: 'polygon', rings: tree});
+  else if (kind === 'MULTIPOLYGON' && tree.length > 0 &&
+           tree.every((p) => Array.isArray(p) && p.length > 0 && p.every((r) => points(r) && r.length >= 4)))
+    tree.forEach((p) => parts.push({kind: 'polygon', rings: p}));
+  else
+    return null;
+  if (parts.some((p) => (p.points || p.rings.flat()).some(([lon, lat]) => !isFinite(lon) || !isFinite(lat))))
+    return null;
+  return {type: 'wkt', kind, parts};
+}
+
+// The longitudes and latitudes of a WKT selection
+const wktPoints = (sel) => sel.parts.flatMap((p) => p.points || p.rings.flat());
+
+// A selection of another location type as WKT, '' if it has none: a path as the MULTIPOINT
+// of its marked points, or as a LINESTRING when the points are taken along it, a box or a
+// radius as a POLYGON
+function selectionWkt(sel, marked)
+{
+  const xy = ([lon, lat]) => `${round(lon, 5)} ${round(lat, 5)}`;
+  if (!sel)
+    return '';
+  if (sel.type === 'point')
+    return `POINT(${xy([sel.lon, sel.lat])})`;
+  if (sel.type === 'path')
+    return marked ? `MULTIPOINT(${sel.points.map(xy).join(',')})` :
+                    `LINESTRING(${sel.points.map(xy).join(',')})`;
+  if (sel.type === 'box')
+  {
+    const [w, so, e, n] = sel.bbox;
+    return `POLYGON((${[[w, so], [e, so], [e, n], [w, n], [w, so]].map(xy).join(',')}))`;
+  }
+  if (sel.type === 'circle')
+  {
+    const ring = [];
+    for (let b = 0; b <= 360; b += 10)
+      ring.push(destination(sel.lon, sel.lat, sel.km, b % 360));
+    return `POLYGON((${ring.map(xy).join(',')}))`;
+  }
+  return '';
 }
 
 // A selection of the map as the text of the location field (see parseSelection)
@@ -7313,10 +7487,27 @@ function timeSeriesModule(app, api, state, save)
       return Array.from(index.producers.values())
           .filter((p) => wanted.every((w) => p.parameterSet.has(w)) && covers(p, sel));
     };
-    // A link without a source picks the first source that has the producer
-    const producer = () => index.producers.get(producerKey(s.source, s.producer)) ||
-        (s.source ? undefined :
-                    Array.from(index.producers.values()).find((p) => p.name === s.producer));
+    // A link without a source, or with a source the producer does not have, picks the first
+    // source that has the producer. Names are compared ignoring case, as the server does.
+    const producer = () => {
+      if (!s.producer)
+        return undefined;
+      const exact = index.producers.get(producerKey(s.source, s.producer));
+      if (exact)
+        return exact;
+      const name = s.producer.toLowerCase();
+      const all = Array.from(index.producers.values()).filter((p) => p.name.toLowerCase() === name);
+      return all.find((p) => p.source === s.source) || all[0];
+    };
+    // A link naming the producer differently from the listing is corrected to the listed one
+    {
+      const p = producer();
+      if (p && (p.name !== s.producer || p.source !== (s.source || p.source)))
+      {
+        s.producer = p.name;
+        s.source = p.source;
+      }
+    }
 
     // --- Model details: runs, geometries, levels and ensemble members ---------------
     // The details of grid producers are loaded when one is chosen
@@ -7589,9 +7780,12 @@ function timeSeriesModule(app, api, state, save)
         else if (sensors.length > 0)
           bases = sensors.map(
               (n) => ({key: `${name}(:${n})`, variant: `sensor ${n}`, suffix: `_#${n}`}));
+        // One value of an area is the function of the area of the value of each point
+        const af = areaAggregate() ? areaFunction(name).fn : '';
         for (const b of bases)
         {
-          const column = tf ? tf.expression(b.key) : b.key;
+          const timed = tf ? tf.expression(b.key) : b.key;
+          const column = af ? statisticParameter(af, timed) : timed;
           const suffix = b.suffix || '';
           if (serverStatistics())
             for (const [, , fn] of AREA_STATISTICS)
@@ -7624,7 +7818,7 @@ function timeSeriesModule(app, api, state, save)
     // The quality codes of observations, shown in the table
     function qualityColumns()
     {
-      if (!isObservation() || s.qc !== '1' || serverStatistics())
+      if (!isObservation() || s.qc !== '1' || serverStatistics() || areaAggregate())
         return [];
       const sensors = chosenSensors() || [];
       return dataParams().flatMap((name) => {
@@ -8537,8 +8731,10 @@ function timeSeriesModule(app, api, state, save)
                onclick: () => {
                  if (s.locmode === mode)
                    return;
+                 // A point, path, box or radius drawn is kept as WKT
+                 const wkt = mode === 'wkt' ? selectionWkt(selection(), s.pathpoints === 'marked') : '';
                  s.locmode = mode;
-                 s.location = '';
+                 s.location = wkt;
                  map.setPoints([]);
                  // Each location type has its own default for the values of an area
                  s.areavalues = '';
@@ -8547,9 +8743,16 @@ function timeSeriesModule(app, api, state, save)
              },
              label));
     }
+    // A WKT geometry typed or pasted is shown on the map, which is zoomed to it
+    const fitWktSoon = debounce(() => {
+      const sel = selection();
+      if (s.locmode === 'wkt' && sel)
+        map.fit(selectionBox(sel));
+    }, 600);
     locInput.addEventListener('input', () => {
       s.location = locInput.value.trim();
       refreshSoon();
+      fitWktSoon();
     });
 
     // The locations of a place, keyword, station or area name on the map
@@ -8609,10 +8812,12 @@ function timeSeriesModule(app, api, state, save)
       return Array.from(seen.values());
     }
 
-    // Fits the map to what it shows
+    // Fits the map to what it shows, or to a WKT geometry, which is usually much smaller than
+    // the area of the producer
     function fitMap()
     {
-      const extent = map.extent();
+      const sel = s.locmode === 'wkt' ? selection() : null;
+      const extent = sel ? selectionBox(sel) : map.extent();
       if (extent)
         map.fit(extent);
     }
@@ -8625,7 +8830,8 @@ function timeSeriesModule(app, api, state, save)
         (['keyword', 'fmisid', 'path'].includes(s.locmode) ? 'points' : 'statistics');
     const areaValues =
         el('div', {class: 'segmented', role: 'radiogroup', 'aria-label': L('Area values')});
-    for (const [value, label] of [['statistics', L('Statistics')], ['points', L('Every point')]])
+    for (const [value, label] of [['statistics', L('Statistics')], ['aggregate', L('One value')],
+                                  ['points', L('Every point')]])
       areaValues.append(
           el('button',
              {
@@ -8638,7 +8844,62 @@ function timeSeriesModule(app, api, state, save)
                }
              },
              label));
-    const areaValuesRow = el('div', null, el('label', null, L('Values of an area')), areaValues);
+    // One value of the area for each parameter: the function of each, the recommended one
+    // unless chosen (s.afn: name:function,...)
+    const areaFunctionList = el('div', {class: 'area-functions'});
+    const areaFunctionNote = el('ul', {class: 'agg-summary small'});
+    const areaValuesRow = el('div',
+                             null,
+                             el('label', null, L('Values of an area')),
+                             areaValues,
+                             areaFunctionList,
+                             areaFunctionNote);
+    const chosenAreaFunctions = () => new Map(
+        String(s.afn || '').split(',').filter((x) => x.includes(':')).map((x) => {
+          const i = x.lastIndexOf(':');
+          return [x.slice(0, i), x.slice(i + 1)];
+        }));
+    // The function over the area of a parameter: {choice, fn, kind, warning}
+    function areaFunction(name)
+    {
+      const entry = index.parameters.get(name);
+      const d = gridDetails();
+      const kind = parameterKind(name, entry, d && d.parameters ? d.parameters[name] : null);
+      const chosen = chosenAreaFunctions().get(name);
+      const choice = AREA_FUNCTIONS.some((f) => f[0] === chosen) ? chosen : RECOMMENDED_AREA_FUNCTION[kind];
+      const def = AREA_FUNCTIONS.find((f) => f[0] === choice) || AREA_FUNCTIONS[0];
+      const warning = areaFunctionWarning(choice, kind);
+      return {choice, fn: kind === 'direction' && def[3] ? def[3] : def[2], kind,
+              warning: warning ? `${name} ${warning}` : ''};
+    }
+    // A choice of the function for each parameter
+    function renderAreaFunctions()
+    {
+      const shown = areaAggregate();
+      areaFunctionList.hidden = !shown;
+      areaFunctionNote.hidden = !shown;
+      if (!shown)
+        return;
+      areaFunctionList.replaceChildren(...dataParams().map((name) => {
+        const f = areaFunction(name);
+        const select = el('select', {'aria-label': L`Function of ${name}`, 'data-param': name},
+                          AREA_FUNCTIONS.map(([v, label]) => el('option', {value: v}, label)));
+        select.value = f.choice;
+        select.addEventListener('change', () => {
+          const chosen = chosenAreaFunctions();
+          chosen.set(name, select.value);
+          // A choice of the recommended function is not kept
+          if (select.value === RECOMMENDED_AREA_FUNCTION[f.kind])
+            chosen.delete(name);
+          s.afn = Array.from(chosen).map(([k, v]) => `${k}:${v}`).join(',');
+          refresh();
+        });
+        return [el('span', {class: 'small'}, name), select, el('code', {class: 'muted small'}, f.fn)];
+      }).flat());
+      areaFunctionNote.replaceChildren(
+          ...dataParams().map((name) => areaFunction(name).warning).filter(Boolean).map(
+              (w) => el('li', {class: 'warn'}, w)));
+    }
     const pathChooser = pathPointsChooser(s, (rerender) => refresh(rerender));
     const flightChoice = flightChooser(s, () => refresh(), () => dataStep());
     // A meteogram of the chosen place with the parameters it needs
@@ -8652,12 +8913,17 @@ function timeSeriesModule(app, api, state, save)
 
     // An area, radius or box, or several locations, whose values the server can aggregate
     const isArea = () => ['bbox', 'radius', 'area', 'path'].includes(s.locmode) ||
+        (s.locmode === 'wkt' && !/^\s*POINT\b/i.test(s.location || '')) ||
         (s.locmode === 'place' && /:\s*\d/.test(s.location || '')) ||
         (s.locmode === 'keyword' && !!s.location) ||
         (s.locmode === 'fmisid' && (s.location || '').includes(','));
-    // Keywords and station lists are grouped into one area for the statistics
-    const groupLocations = () => serverStatistics() && ['keyword', 'fmisid'].includes(s.locmode);
+    // Keywords and station lists are grouped into one area for the statistics and the values
+    // of the area
+    const groupLocations = () =>
+        (serverStatistics() || areaAggregate()) && ['keyword', 'fmisid'].includes(s.locmode);
     const serverStatistics = () => isArea() && areaValuesOf() === 'statistics';
+    // One value of the area for each parameter at each time, computed by the server
+    const areaAggregate = () => isArea() && areaValuesOf() === 'aggregate';
 
     // Extra columns: the meta parameters by group, and the details of the grid data
     const extraGroups = el('div', {class: 'extra-groups'});
@@ -8760,7 +9026,7 @@ function timeSeriesModule(app, api, state, save)
       // The level column tells the levels apart when the request does not fix them
       const level =
           levelTypes().length > 0 && (!grid || grid.some((c) => !c.levelFixed)) ? ['level'] : [];
-      const params = serverStatistics() ?
+      const params = serverStatistics() || areaAggregate() ?
           Array.from(new Set([
             'name',
             'time',
@@ -8785,7 +9051,9 @@ function timeSeriesModule(app, api, state, save)
           HEIGHT_PARAMS.find((n) => p.parameterSet.has(n))
         ].filter((n) => n && !params.includes(n));
         for (const n of extras)
-          params.push(serverStatistics() ? statisticParameter('nanmedian_a', n) : n);
+          params.push(serverStatistics() ? statisticParameter('nanmedian_a', n) :
+                      areaAggregate()    ? statisticParameter('nanmean_a', n) :
+                                           n);
       }
       const details = gridDetailColumns(params, columns);
       return [
@@ -8835,13 +9103,15 @@ function timeSeriesModule(app, api, state, save)
     {
       const out = [];
       if (!s.producer)
-        out.push('a producer');
+        out.push(L('a producer'));
       if (dataParams().length === 0)
-        out.push('a parameter');
+        out.push(L('a parameter'));
       if (!s.location)
-        out.push('a location');
+        out.push(L('a location'));
       else if (s.locmode === 'path' && (selection() || {points: []}).points.length < 2)
-        out.push('a second vertex of the path');
+        out.push(L('a second vertex of the path'));
+      else if (s.locmode === 'wkt' && !selection())
+        out.push(L('a valid WKT geometry'));
       return out;
     }
 
@@ -8890,7 +9160,8 @@ function timeSeriesModule(app, api, state, save)
                       L('Observations are returned only for the times and the stations that reported the parameters: try another period or other stations.') :
                       L('Check the period, the locations and the parameters.'));
       // The stations being chosen stay on the map
-      if (!serverStatistics() && !(stations().length > 0 && s.locmode === stationMode()))
+      if (!serverStatistics() && !areaAggregate() &&
+          !(stations().length > 0 && s.locmode === stationMode()))
         map.setPoints(mapPoints(rows));
       showResults(rows, text);
     }
@@ -9086,14 +9357,21 @@ function timeSeriesModule(app, api, state, save)
         },
         fetchRows: async (other) => {
           const p = index.producers.get(other.key);
+          // One value of an area is compared with the same function of the other producer
+          const aggregate = areaAggregate();
+          const columns = new Map(params.map(
+              (n) => [aggregate ? statisticParameter(areaFunction(n).fn, n) : n, n]));
           const query = [
             ['producer', p.name],
             ['source', p.ambiguous && p.source === 'querydata' ? 'querydata' : ''],
-            ['param', ['name', 'time', 'lat', 'lon', ...params].join(',')],
+            ['param', [...(aggregate ? ['name', 'time'] : ['name', 'time', 'lat', 'lon']),
+                       ...columns.keys()].join(',')],
             ['starttime', fromInput(s.start)],
             ['endtime', fromInput(s.end)],
             ['timestep', p.source === 'observation' ? '' : 'data'],
             [locationOption(s.locmode), s.location],
+            ['step', pathStep()],
+            ['grouplocations', groupLocations() ? '1' : ''],
             ['maxdistance', p.source === 'observation' ? '50' : ''],
             ['format', 'json'],
             ['tz', 'UTC'],
@@ -9101,7 +9379,10 @@ function timeSeriesModule(app, api, state, save)
           ];
           const response = await fetch(`${app.base}${rootPath.replace(/^\//, '')}?${queryString(query)}`,
                                        {headers: apiHeaders()});
-          return flattenRows(response.ok ? await response.json() : []);
+          const rows = flattenRows(response.ok ? await response.json() : []);
+          return aggregate ? rows.map((r) => Object.fromEntries(
+                                 Object.entries(r).map(([k, v]) => [columns.get(k) || k, v]))) :
+                             rows;
         }
       });
     }
@@ -9429,7 +9710,9 @@ function timeSeriesModule(app, api, state, save)
       locInput.placeholder = mode[2];
       if (rerender !== false)
         locInput.value = s.location || '';
-      map.setTools(mode[3] ? ['move', mode[3]] : ['move'], mode[3] || 'move');
+      // A WKT geometry is drawn on the map but typed, or converted from another type
+      const tool = mode[3] === 'wkt' ? null : mode[3];
+      map.setTools(tool ? ['move', tool] : ['move'], tool || 'move');
       const sel = selection();
       map.setSelection(sel);
       map.setRegions(p && p.bbox ? [{bbox: p.bbox, label: L`The area of ${p.name}`}] : []);
@@ -9469,7 +9752,9 @@ function timeSeriesModule(app, api, state, save)
       showButton.disabled = !s.location;
       areaNote.textContent = p && sel && !covers(p, sel) ?
           L`The selection is outside the area of ${p.name}` :
-          (s.location && mode[3] && !sel ? L`Not a valid ${mode[1].toLowerCase()}: ${mode[2]}` : '');
+          (s.location && mode[3] && !sel ?
+               L`Not a valid ${mode[0] === 'wkt' ? mode[1] : mode[1].toLowerCase()}: ${mode[2]}` :
+               '');
       if (rerender !== false)
         langInput.value = s.lang || '';
       areaValuesRow.hidden = !isArea();
@@ -9484,6 +9769,7 @@ function timeSeriesModule(app, api, state, save)
           .forEach(
               (b) => b.setAttribute(
                   'aria-checked', b.dataset.areavalues === areaValuesOf() ? 'true' : 'false'));
+      renderAreaFunctions();
       // Request
       const url = currentUrl();
       urlBox.textContent = url;
@@ -10140,21 +10426,21 @@ function edrModule(app, api, state, save)
     {
       const out = [];
       if (!s.collection)
-        out.push('a collection');
+        out.push(L('a collection'));
       if (s.params.length === 0)
-        out.push('a parameter');
+        out.push(L('a parameter'));
       const [q] = query();
       const sel = selection();
       if (q === 'locations' ? !s.location : !sel)
         out.push(
-            q === 'locations' ? 'a location' :
+            q === 'locations' ? L('a location') :
                                 L`a ${
                                     q === 'position'       ? L('point') :
                                         q === 'radius'     ? L('radius') :
                                         q === 'trajectory' ? L('path') :
                                                              L('box')} on the map`);
       else if (q === 'trajectory' && sel.points.length < 2)
-        out.push('a second point of the path');
+        out.push(L('a second point of the path'));
       return out;
     }
 
@@ -11680,9 +11966,9 @@ function coveragesModule(app, api, state, save)
       urlBox.textContent = url;
       const absent = [];
       if (!s.collection)
-        absent.push('a collection');
+        absent.push(L('a collection'));
       if (s.params.length === 0)
-        absent.push('a parameter');
+        absent.push(L('a parameter'));
       missing.textContent = absent.length ? L`Still needed: ${absent.join(', ')}` : '';
       if (absent.length === 0)
       {
@@ -12366,7 +12652,7 @@ async function main()
     return;
   }
 
-  const state = readState();
+  let state = readState();
   // Browsing the data of all the APIs, then each API
   apiSelect.append(el('option', {value: 'browse'}, L('Browse the data of all the APIs')));
   apis.forEach(
@@ -12397,6 +12683,13 @@ async function main()
   browseButton.addEventListener('click', () => open('browse', false));
   apiSelect.addEventListener('change', () =>
     open(apiSelect.value === 'browse' ? 'browse' : Number(apiSelect.value), false));
+  // An address edited by hand, or a link followed within the page, opens the state it gives.
+  // The page writes its own state with replaceState, which does not fire hashchange.
+  window.addEventListener('hashchange', () => {
+    state = readState();
+    open(state.api === 'browse' ? 'browse' : Math.max(0, apis.findIndex((a) => a.root === state.api)),
+         true);
+  });
   open(current, true);
 }
 
@@ -12453,6 +12746,8 @@ root.SmartMetExplorer = {
   formatTime,
   coverageCrs,
   locationModes,
+  parseWkt,
+  selectionWkt,
   timeText,
   parseTimeText,
   dataKind,

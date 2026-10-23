@@ -145,6 +145,9 @@ label.check { flex-direction: row; align-items: center; gap: 6px; }
 .extra-columns summary { cursor: pointer; font-size: 0.85em; color: var(--muted); }
 .extra-groups { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .agg-summary { margin: 0; padding-left: 1.2em; color: var(--muted); }
+.area-functions { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 8px; align-items: center; margin-top: 6px; }
+.area-functions[hidden] { display: none; }
+.area-functions span { overflow-wrap: anywhere; }
 .level-buttons { display: flex; flex-wrap: wrap; gap: 4px; max-height: 9em; overflow-y: auto; }
 .level-buttons button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .model-head { display: flex; gap: 8px; align-items: center; }

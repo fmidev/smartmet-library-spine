@@ -2773,6 +2773,113 @@ async function main()
             browse.back.hash.includes('api=browse') && browse.back.select === 'browse',
         browse);
 
+    // WKT geometries: the types understood, and the other location types as WKT
+    const wkt = await b.evaluate(`(() => {
+      const E = SmartMetExplorer;
+      const kinds = (text) => { const g = E.parseWkt(text); return g ? g.parts.map((p) => p.kind).join(',') : null; };
+      return {
+        point: kinds('POINT(25 60)'),
+        multipoint: kinds('MULTIPOINT(25 60, 25.1 60.1)'),
+        nested: kinds('multipoint ((25 60) ,(25.1 60.1))'),
+        line: kinds('LINESTRING(24 60,25 61)'),
+        lines: kinds('MULTILINESTRING((24 60,25 61),(26 60,27 61))'),
+        polygon: kinds('POLYGON((24 60,26 60,26 61,24 61,24 60),(24.5 60.2,25 60.2,25 60.5,24.5 60.2))'),
+        polygons: kinds('MULTIPOLYGON(((24 60,26 60,26 61,24 60)),((20 60,21 60,21 61,20 60)))'),
+        rings: E.parseWkt('POLYGON((24 60,26 60,26 61,24 61,24 60),(24.5 60.2,25 60.2,25 60.5,24.5 60.2))').parts[0].rings.length,
+        invalid: ['POLYGON((24 60,26 60,26 61', 'LINESTRING(24 60)', 'POLYGON((24 60,26 60,24 60))',
+                  'CIRCLE(1 2)', 'POINT(1 2 3)', 'POINT(1 2) x', ''].map(kinds),
+        path: E.selectionWkt({type: 'path', points: [[24, 60], [25, 61]]}, true),
+        asLine: E.selectionWkt({type: 'path', points: [[24, 60], [25, 61]]}, false),
+        box: E.selectionWkt({type: 'box', bbox: [24, 60, 26, 61]}),
+        circle: E.selectionWkt({type: 'circle', lon: 25, lat: 60, km: 10})
+      };
+    })()`);
+    check('WKT geometries',
+          wkt.point === 'point' && wkt.multipoint === 'point,point' && wkt.nested === 'point,point' &&
+              wkt.line === 'line' && wkt.lines === 'line,line' && wkt.polygon === 'polygon' &&
+              wkt.polygons === 'polygon,polygon' && wkt.rings === 2 &&
+              wkt.invalid.every((x) => x === null) && wkt.path === 'MULTIPOINT(24 60,25 61)' &&
+              wkt.asLine === 'LINESTRING(24 60,25 61)' &&
+              wkt.box === 'POLYGON((24 60,26 60,26 61,24 61,24 60))' &&
+              /^POLYGON\(\(25 60\.0899/.test(wkt.circle),
+          wkt);
+
+    // A path converted to a WKT MULTIPOINT, and one value of it for each parameter: the
+    // function recommended for each, a direction as a circular mean, and a function chosen
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {
+      url: `${base}/api/explorer#api=/timeseries&producer=pal&source=querydata&params=temperature,wavedirection&locmode=path&pathpoints=marked&location=24.3,60.3,24.4,60.3,24.5,60.35`
+    });
+    await waitFor(b, `document.querySelector('[data-mode="wkt"]')`, 'the WKT location type');
+    await setMode(b, 'wkt');
+    const asWkt = await b.evaluate(`document.querySelector('[aria-label="Location"]').value`);
+    await b.evaluate(`document.querySelector('[data-areavalues="aggregate"]').click()`);
+    await sleep(200);
+    const wq = await currentQuery(b);
+    check('a path as WKT, one value of it',
+          asWkt === 'MULTIPOINT(24.3 60.3,24.4 60.3,24.5 60.35)' && wq.get('wkt') === asWkt &&
+              wq.get('param') === 'name,time,nanmean_a(temperature),nancirclemean_a(wavedirection)',
+          {asWkt, query: wq.toString()});
+    await b.evaluate(`(() => {
+      const select = document.querySelector('.area-functions select[data-param="temperature"]');
+      select.value = 'max';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
+    await sleep(200);
+    const chosenQuery = await currentQuery(b);
+    const chosenHash = await b.evaluate(`decodeURIComponent(location.hash)`);
+    check('a function of the area chosen',
+          chosenQuery.get('param') === 'name,time,nanmax_a(temperature),nancirclemean_a(wavedirection)' &&
+              chosenHash.includes('afn=temperature:max'),
+          {param: chosenQuery.get('param'), chosenHash});
+    // The values come back under the names of the parameters, as one location
+    await b.evaluate(`document.querySelector('button.primary').click()`);
+    await waitFor(b, `document.querySelector('.chart[data-param="temperature"]')`, 'the chart of the area');
+    const aggregated = await b.evaluate(`({
+      charts: [...document.querySelectorAll('.chart')].map((c) => c.dataset.param),
+      server: document.querySelectorAll('.chart[data-mode="server"]').length,
+      count: (document.querySelector('.result-count') || document.querySelector('.results')).textContent.slice(0, 80),
+      warning: [...document.querySelectorAll('.agg-summary .warn')].length
+    })`);
+    check('one value of the area drawn as a location',
+          aggregated.charts.includes('temperature') && aggregated.charts.includes('wavedirection') &&
+              aggregated.server === 0 && aggregated.warning === 0,
+          aggregated);
+    // A function that does not suit the parameter is warned of
+    await b.evaluate(`(() => {
+      const select = document.querySelector('.area-functions select[data-param="wavedirection"]');
+      select.value = 'max';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
+    await sleep(200);
+    const directionWarning = await b.evaluate(`document.querySelector('.agg-summary .warn')?.textContent || ''`);
+    check('a direction warned of', directionWarning.startsWith('wavedirection is a direction'), directionWarning);
+    // A polygon is drawn on the map, and a geometry that is not valid stops the request
+    await setLocation(b, 'POLYGON((24 60,26 60,26 61,24 61,24 60))');
+    const polygonDrawn = await b.evaluate(`document.querySelectorAll('path.xmap-selection').length`);
+    await setLocation(b, 'POLYGON((24 60,26 60');
+    const invalidWkt = await b.evaluate(`({ missing: document.querySelector('.missing').textContent,
+      disabled: document.querySelector('button.primary').disabled })`);
+    check('a WKT polygon drawn, an invalid one not run',
+          polygonDrawn === 1 && invalidWkt.disabled && invalidWkt.missing.includes('a valid WKT geometry'),
+          {polygonDrawn, invalidWkt});
+
+    // An address changed within the page opens its state; a producer named in another case or
+    // with a source it does not have is found and corrected
+    await b.evaluate(`location.hash = 'api=/timeseries&producer=PAL&source=grid&params=temperature&locmode=lonlat&location=25,60'`);
+    await waitFor(b, `location.hash.includes('source=querydata')`, 'the corrected producer');
+    const relinked = await b.evaluate(`({ card: document.querySelector('.model-card').textContent,
+      hash: decodeURIComponent(location.hash), url: document.querySelector('code.url').textContent })`);
+    check('a producer found by its name',
+          relinked.card.startsWith('pal') && relinked.hash.includes('producer=pal&') &&
+              relinked.url.includes('producer=pal&') && relinked.url.includes('lonlat=25,60'),
+          relinked);
+    await b.evaluate(`location.hash = 'api=/edr'`);
+    await waitFor(b, `document.querySelector('nav select').selectedOptions[0].textContent.startsWith('EDR')`,
+                  'the EDR opened by the address');
+    check('the API opened by the address', true, null);
+
     // The languages: every text of explorer.js in the translations, and none missing when the
     // views are shown in Finnish and Swedish
     const source = fs.readFileSync(path.join(explorerDir, 'explorer.js'), 'utf8');
