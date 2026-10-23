@@ -180,6 +180,7 @@ make %{_smp_mflags}
 - Data explorer: an address changed within the page opens its state; a producer named in
   another case or with a source it does not have is found and the link corrected
 - Data explorer: the missing parts of a request are translated
+- Data explorer: EDR and Coverages links with levels open again
 
 * Tue Oct 20 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.20-2.fmi
 - Data explorer: the period is kept within the data of the producer, run or collection: the
