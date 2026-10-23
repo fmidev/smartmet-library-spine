@@ -186,6 +186,8 @@ make %{_smp_mflags}
   (-1h, +24h, now, the end of the data, a number of steps), kept as such in the request
 - Data explorer: geoid locations (a place name typed gives its geoid) and the default producer
   of the server
+- Data explorer: parameter expressions written as in a request (functions, grid expressions,
+  aliases), sent as such and shown under their aliases
 
 * Tue Oct 20 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.20-2.fmi
 - Data explorer: the period is kept within the data of the producer, run or collection: the

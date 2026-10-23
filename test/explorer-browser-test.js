@@ -2951,6 +2951,29 @@ async function main()
               !geoidQuery.has('source') && defaultCard.startsWith('default'),
           {query: geoidQuery.toString(), defaultCard});
 
+    // Parameters written as in a request are sent as such, alone too
+    const split = await b.evaluate(`(() => {
+      const E = SmartMetExplorer;
+      return { list: E.splitParameterList('a, mean(b,c) as d,VALID{x;y},, nanpercentage[0.5:](e)'),
+               columns: ['mean(b,c) as d', 'x AS y', 'VALID{x;y}'].map(E.expressionColumn) };
+    })()`);
+    check('parameter expressions split and named',
+          JSON.stringify(split.list) === JSON.stringify(['a', 'mean(b,c) as d', 'VALID{x;y}', 'nanpercentage[0.5:](e)']) &&
+              JSON.stringify(split.columns) === JSON.stringify(['d', 'y', 'VALID{x;y}']),
+          split);
+    await b.evaluate(`location.hash = 'api=/timeseries&producer=pal&source=querydata&locmode=lonlat&location=25,60&expr=' + encodeURIComponent('sum_t(precipitation1h:0:2h) as rain,VALID{a;b}')`);
+    await waitFor(b, `document.querySelector('code.url') && document.querySelector('code.url').textContent.includes('VALID')`,
+                  'the request of expressions');
+    const exprQuery = await currentQuery(b);
+    const exprState = await b.evaluate(`({ missing: document.querySelector('.missing').textContent,
+      disabled: document.querySelector('button.primary').disabled,
+      field: document.querySelector('[aria-label="Parameter expressions"]').value })`);
+    check('parameter expressions in the request',
+          exprQuery.get('param').endsWith(',sum_t(precipitation1h:0:2h) as rain,VALID{a;b}') &&
+              exprState.missing === '' && !exprState.disabled &&
+              exprState.field === 'sum_t(precipitation1h:0:2h) as rain,VALID{a;b}',
+          {param: exprQuery.get('param'), exprState});
+
     // An address changed within the page opens its state; a producer named in another case or
     // with a source it does not have is found and corrected
     await b.evaluate(`location.hash = 'api=/timeseries&producer=PAL&source=grid&params=temperature&locmode=lonlat&location=25,60'`);

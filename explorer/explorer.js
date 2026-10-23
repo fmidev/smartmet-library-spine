@@ -468,6 +468,39 @@ function limitPeriod(s, startInput, endInput, period)
   endInput.setRange(s.start || period.min, period.max);
 }
 
+// A list of TimeSeries parameters split at the commas outside brackets and braces:
+// "a,mean(b,c) as d,VALID{x;y}" -> ["a", "mean(b,c) as d", "VALID{x;y}"]
+function splitParameterList(text)
+{
+  const out = [];
+  let depth = 0;
+  let current = '';
+  for (const ch of String(text || ''))
+  {
+    if ('([{'.includes(ch))
+      depth++;
+    else if (')]}'.includes(ch))
+      depth = Math.max(0, depth - 1);
+    if (ch === ',' && depth === 0)
+    {
+      out.push(current);
+      current = '';
+    }
+    else
+      current += ch;
+  }
+  out.push(current);
+  return out.map((x) => x.trim()).filter(Boolean);
+}
+
+// The column of a parameter expression in the response: its alias ("x as name"), or the
+// expression itself
+function expressionColumn(expr)
+{
+  const m = /\s+as\s+(\S+)\s*$/i.exec(expr);
+  return m ? m[1] : expr;
+}
+
 // An offset from now as the TimeSeries API takes it: -1h, +30m, -7d
 const TIME_OFFSET = /^([+-]?)(\d+)\s*([mhd])$/i;
 
@@ -7594,6 +7627,10 @@ function timeSeriesModule(app, api, state, save)
     const candidatesNote = el('p', {class: 'muted small'});
 
     const dataParams = () => s.params.filter((p) => !META.has(p));
+    // Parameters written as in a request (functions, grid expressions, aliases), sent as such
+    const expressions = () => splitParameterList(s.expr);
+    // The parameters of the views: the chosen ones and the columns of the expressions
+    const shownParams = () => [...dataParams(), ...expressions().map(expressionColumn)];
     const selection = () => parseSelection(s.locmode, s.location);
     // The producers having all the chosen parameters and covering the selection
     const candidates = () => {
@@ -9172,6 +9209,27 @@ function timeSeriesModule(app, api, state, save)
       extraGroups.replaceChildren(...groups);
     }
 
+    // Parameters written as in a request
+    const exprInput = el('textarea', {
+      rows: 2,
+      spellcheck: 'false',
+      'aria-label': L('Parameter expressions'),
+      placeholder: 'nanpercentage[0.5:](PROB-SNOW) as snow, VALID{DD-D:MEPSMTA:1093:6:10;DD-D:ECGMTA:1007:6:10}'
+    });
+    exprInput.addEventListener('input', () => {
+      s.expr = exprInput.value.trim();
+      if (!s.expr)
+        delete s.expr;
+      refreshSoon();
+    });
+    const exprDetails = el(
+        'details',
+        {class: 'extra-columns'},
+        el('summary', null, L('Parameter expressions')),
+        el('p', {class: 'muted small'},
+           L('Parameters as written in a request, separated by commas: functions, grid expressions and aliases (x as name). They are sent as such and shown under their aliases.')),
+        exprInput);
+
     const langInput =
         el('input', {type: 'text', 'aria-label': L('Language'), placeholder: L('fi, sv, en'), size: 6});
     langInput.addEventListener('input', () => {
@@ -9247,7 +9305,7 @@ function timeSeriesModule(app, api, state, save)
         ['producer', s.producer],
         ['source', sourceOption()],
         ['origintime', producer() && producer().source === 'grid' ? s.run || '' : ''],
-        ['param', [...params, ...details.map((d) => d.column)].join(',')],
+        ['param', [...params, ...details.map((d) => d.column), ...expressions()].join(',')],
         ['levels', grid ? '' : chosenLevels().map((v) => v.value).join(',')],
         ['data_quality', qualityOption()],
         ...timeOptions(),
@@ -9290,7 +9348,7 @@ function timeSeriesModule(app, api, state, save)
       const out = [];
       if (!s.producer)
         out.push(L('a producer'));
-      if (dataParams().length === 0)
+      if (dataParams().length === 0 && expressions().length === 0)
         out.push(L('a parameter'));
       if (!s.location)
         out.push(L('a location'));
@@ -9338,7 +9396,7 @@ function timeSeriesModule(app, api, state, save)
       // Statistics of an area are in columns such as nanmedian_a(temperature)
       const valueColumns = serverStatistics() && rows.length ?
           Object.keys(rows[0]).filter((k) => dataParams().some((p) => k.endsWith(`(${p})`))) :
-          dataParams();
+          shownParams();
       if (rows.length === 0 || rowsWithoutValues(rows, valueColumns))
         requestStatus.show('warn', rows.length === 0 ? L('The server returned no data for this request.') :
                                              L('The server returned rows without values of the parameters.'),
@@ -9404,28 +9462,29 @@ function timeSeriesModule(app, api, state, save)
           // One place can be compared with another producer
           const places = new Set(rows.map((r) => locationOf(Object.assign({}, r, {level: null})))).size;
           const levels = new Set(rows.map((r) => r.level).filter((v) => v !== undefined && v !== null)).size;
-          if (!statistics && places === 1 && levels <= 1)
+          // Other producers are not asked for the expressions of this one
+          if (!statistics && places === 1 && levels <= 1 && expressions().length === 0)
             drawComparableCharts(panes.Chart, rows, kind);
           else
-            drawCharts(panes.Chart, shown.rows, dataParams(), statistics ? 'server' : undefined,
+            drawCharts(panes.Chart, shown.rows, shownParams(), statistics ? 'server' : undefined,
                        {levelKind: kind, labels: shown.labels});
         }
         else if (name === 'Meteogram')
           drawMeteogram(panes.Meteogram, rows, kind);
         else if (name === 'Profile')
-          drawProfiles(panes.Profile, rows, dataParams(), kind);
+          drawProfiles(panes.Profile, rows, shownParams(), kind);
         else if (name === 'Section')
-          drawSection(panes.Section, rows, dataParams(), kind, mapSettings(app.element));
+          drawSection(panes.Section, rows, shownParams(), kind, mapSettings(app.element));
         else if (name === 'Cross section')
-          drawCrossSection(panes['Cross section'], rows, dataParams(), kind, mapSettings(app.element),
+          drawCrossSection(panes['Cross section'], rows, shownParams(), kind, mapSettings(app.element),
                            {flight: flightChoice.flight()});
         else if (name === 'Along the path')
-          drawAlongPath(panes['Along the path'], shown.rows, dataParams(), kind,
+          drawAlongPath(panes['Along the path'], shown.rows, shownParams(), kind,
                         {onPosition: (p) => map.setCursor(p), flight: flightChoice.flight(), labels: shown.labels});
         else if (name === 'Sounding')
           drawSounding(panes.Sounding, rows, kind);
         else if (name === 'Map')
-          drawValueMap(panes.Map, shown.rows, dataParams(), mapSettings(app.element), {levelKind: kind, labels: shown.labels});
+          drawValueMap(panes.Map, shown.rows, shownParams(), mapSettings(app.element), {levelKind: kind, labels: shown.labels});
         else if (name === 'Table')
           drawTable(panes.Table, shown.rows, shown.labels);
         else if (!S.renderTree(panes.Tree, text, 'json'))
@@ -9944,7 +10003,12 @@ function timeSeriesModule(app, api, state, save)
                L`Not a valid ${mode[0] === 'wkt' ? mode[1] : mode[1].toLowerCase()}: ${mode[2]}` :
                '');
       if (rerender !== false)
+      {
         langInput.value = s.lang || '';
+        exprInput.value = s.expr || '';
+        if (s.expr)
+          exprDetails.open = true;
+      }
       areaValuesRow.hidden = !isArea();
       pathChooser.element.hidden = s.locmode !== 'path';
       flightChoice.element.hidden = s.locmode !== 'path';
@@ -9986,6 +10050,7 @@ function timeSeriesModule(app, api, state, save)
                el('label', null, L('Parameters')),
                chips,
                paramSearch.element,
+               exprDetails,
                meteogram.element,
                detailsBox),
            section(
@@ -12941,6 +13006,8 @@ root.SmartMetExplorer = {
   coverageCrs,
   locationModes,
   addDefaultProducer,
+  splitParameterList,
+  expressionColumn,
   parseWkt,
   selectionWkt,
   timeText,
