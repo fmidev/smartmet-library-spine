@@ -10039,6 +10039,9 @@ function edrModule(app, api, state, save)
     // Typing stores the value at once and redraws the request a moment later
     const refreshSoon = debounce(() => refresh(false), 300);
     s.params = s.params || [];
+    // The levels are a list here, but a comma separated text in the address of the page
+    if (typeof s.levels === 'string')
+      s.levels = s.levels.split(',').filter(Boolean);
 
     const collection = () => index.producers.get(s.collection);
     // The query types of the chosen collection the explorer can make
@@ -11432,6 +11435,9 @@ function coveragesModule(app, api, state, save)
     // Typing stores the value at once and redraws the request a moment later
     const refreshSoon = debounce(() => refresh(false), 300);
     s.params = s.params || [];
+    // The levels are a list here, but a comma separated text in the address of the page
+    if (typeof s.levels === 'string')
+      s.levels = s.levels.split(',').filter(Boolean);
 
     // The parameters come from the schemas of the collections, four at a time
     const queue = Array.from(index.producers.values());

@@ -2540,6 +2540,12 @@ async function main()
     await waitFor(b, `document.querySelectorAll('.chart canvas').length === 1`, 'the level chart');
     const levelTitle = await b.evaluate(`document.querySelector('.chart-title').textContent`);
     check('a series per level', levelTitle === 'temperature, 2 locations', levelTitle);
+    // The levels are kept in the address as text: the page opened from it has them again
+    await b.send('Page.reload');
+    await waitFor(b, `document.querySelector('code.url') && document.querySelector('code.url').textContent.includes('/position')`,
+                  'the EDR request after a reload');
+    const reloaded = new URL(await b.evaluate(`document.querySelector('code.url').textContent`));
+    check('EDR levels from the address', reloaded.searchParams.get('z') === '850,500', reloaded.href);
 
     // --- The Coverages module --------------------------------------------------
     await b.send('Page.navigate', {url: `${base}/api/explorer#api=/coverages`});
