@@ -2911,6 +2911,15 @@ async function main()
     check('a start now and the end of the data',
           !nowQuery.has('starttime') && nowQuery.get('endtime') === 'data' && !nowQuery.has('timesteps'),
           nowQuery.toString());
+    // An end now is 0 minutes from now: endtime=now would ask observations for the latest values
+    await b.evaluate(`(() => {
+      const end = document.querySelectorAll('.relative-time select')[1];
+      end.value = 'now';
+      end.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
+    await sleep(200);
+    const endNowQuery = await currentQuery(b);
+    check('an end now', endNowQuery.get('endtime') === '0', endNowQuery.toString());
     // A preset gives the times as such again
     await b.evaluate(`document.querySelector('[data-preset="Next 24 h"]').click()`);
     await sleep(200);
@@ -2995,7 +3004,7 @@ async function main()
         `[...document.querySelectorAll('details.extra-columns p.warn')].map((x) => x.textContent).join('')`);
     check('other options in the request',
           optsQuery.get('hour') === '6,18' && optsQuery.get('numberofstations') === '3' &&
-              !optsQuery.has('tz') && optsQuery.get('format') === 'json' &&
+              !optsQuery.has('tz') && optsQuery.get('format') === 'json' && !optsQuery.has('timestep') &&
               optsNote === 'Replaces these options of the page: tz',
           {query: optsQuery.toString(), optsNote});
 

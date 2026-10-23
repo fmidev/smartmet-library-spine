@@ -8630,10 +8630,11 @@ function timeSeriesModule(app, api, state, save)
     }
     const isoTime = (ms) => (ms === null ? '' : new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z'));
     // The time options of the request: relative times as such. A start now is the default of
-    // the server, which older servers do not take as starttime=now.
+    // the server, which older servers do not take as starttime=now. An end now is 0 minutes
+    // from now: endtime=now asks observations for the latest values instead.
     const timeOptions = () => [
       ['starttime', s.startrel === 'now' ? '' : s.startrel || fromInput(s.start)],
-      ['endtime', s.endrel === 'steps' ? '' : s.endrel || fromInput(s.end)],
+      ['endtime', s.endrel === 'steps' ? '' : s.endrel === 'now' ? '0' : s.endrel || fromInput(s.end)],
       ['timesteps', s.endrel === 'steps' ? String(s.timesteps || '') : '']
     ];
     // The period as times, for the requests made for other producers or for metadata
@@ -8659,9 +8660,13 @@ function timeSeriesModule(app, api, state, save)
       const p = producer();
       if (!p || !p.time || !p.time.start || !p.time.end)
         return;
-      // A relative start or end counts as given
-      if (!force && (s.start || s.startrel) && (s.end || s.endrel))
+      // A relative start or end counts as given, and the other one is then left to the server
+      if (!force && (s.startrel || s.endrel || (s.start && s.end)))
+      {
+        if (!s.timestep)
+          s.timestep = p.source === 'observation' ? '60' : 'data';
         return;
+      }
       const first = new Date(p.time.start);
       const last = new Date(p.time.end);
       const now = new Date();
@@ -9405,7 +9410,13 @@ function timeSeriesModule(app, api, state, save)
     // The URL of the request
     function currentUrl()
     {
-      const {params} = mergeOptions(requestParams(), parseOptions(s.opts));
+      const extra = parseOptions(s.opts);
+      // The times of day or a list of times are a time mode of their own, which the time step
+      // of the page would contradict
+      const names = new Set(extra.map(([k]) => k.toLowerCase()));
+      if ((names.has('hour') || names.has('time')) && !names.has('timestep'))
+        extra.push(['timestep', '']);
+      const {params} = mergeOptions(requestParams(), extra);
       return new URL(`${rootPath}?${queryString(params)}`, app.base).href;
     }
 
