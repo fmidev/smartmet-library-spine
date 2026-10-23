@@ -2881,6 +2881,46 @@ async function main()
           polygonDrawn === 1 && invalidWkt.disabled && invalidWkt.missing.includes('a valid WKT geometry'),
           {polygonDrawn, invalidWkt});
 
+    // Times relative to now or to the data are kept in the request, so that the link asks for
+    // the same period later too
+    await b.evaluate(`location.hash = 'api=/timeseries&producer=pal&source=querydata&params=temperature&locmode=lonlat&location=25,60&startrel=-1h&endrel=steps&timesteps=13&timestep=60'`);
+    await waitFor(b, `document.querySelector('code.url') && document.querySelector('code.url').textContent.includes('timesteps=13')`,
+                  'the request of relative times');
+    const relQuery = await currentQuery(b);
+    const relForm = await b.evaluate(`({
+      modes: [...document.querySelectorAll('.relative-time select')].map((x) => x.value),
+      inputs: [...document.querySelectorAll('.relative-time input')].map((x) => x.value),
+      hidden: [...document.querySelectorAll('.time-input')].slice(0, 2).map((x) => x.hidden)
+    })`);
+    check('a start relative to now and a number of steps',
+          relQuery.get('starttime') === '-1h' && relQuery.get('timesteps') === '13' &&
+              !relQuery.has('endtime') && relQuery.get('timestep') === '60' &&
+              JSON.stringify(relForm.modes) === '["offset","steps"]' &&
+              JSON.stringify(relForm.inputs) === '["-1h","13"]' && relForm.hidden.every(Boolean),
+          {query: relQuery.toString(), relForm});
+    await b.evaluate(`(() => {
+      const [start, end] = document.querySelectorAll('.relative-time select');
+      start.value = 'now';
+      start.dispatchEvent(new Event('change', { bubbles: true }));
+      end.value = 'data';
+      end.dispatchEvent(new Event('change', { bubbles: true }));
+    })()`);
+    await sleep(200);
+    const nowQuery = await currentQuery(b);
+    check('a start now and the end of the data',
+          !nowQuery.has('starttime') && nowQuery.get('endtime') === 'data' && !nowQuery.has('timesteps'),
+          nowQuery.toString());
+    // A preset gives the times as such again
+    await b.evaluate(`document.querySelector('[data-preset="Next 24 h"]').click()`);
+    await sleep(200);
+    const presetQuery = await currentQuery(b);
+    const presetHash = await b.evaluate(`decodeURIComponent(location.hash)`);
+    check('a preset gives times',
+          /^\d{4}-\d\d-\d\dT\d\d:00:00Z$/.test(presetQuery.get('starttime') || '') &&
+              /Z$/.test(presetQuery.get('endtime') || '') && !presetHash.includes('startrel') &&
+              !presetHash.includes('endrel'),
+          {query: presetQuery.toString(), presetHash});
+
     // An address changed within the page opens its state; a producer named in another case or
     // with a source it does not have is found and corrected
     await b.evaluate(`location.hash = 'api=/timeseries&producer=PAL&source=grid&params=temperature&locmode=lonlat&location=25,60'`);

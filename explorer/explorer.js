@@ -468,6 +468,72 @@ function limitPeriod(s, startInput, endInput, period)
   endInput.setRange(s.start || period.min, period.max);
 }
 
+// An offset from now as the TimeSeries API takes it: -1h, +30m, -7d
+const TIME_OFFSET = /^([+-]?)(\d+)\s*([mhd])$/i;
+
+// The offset in milliseconds, null for anything else
+function offsetMs(text)
+{
+  const m = TIME_OFFSET.exec(String(text || '').trim());
+  if (!m)
+    return null;
+  const ms = Number(m[2]) * {m: 60e3, h: 3600e3, d: 864e5}[m[3].toLowerCase()];
+  return m[1] === '-' ? -ms : ms;
+}
+
+// The choice of a start or an end relative to now or to the data, kept in s[key]: '' for the
+// time given, 'now', 'data', an offset from now like -1h, or 'steps' for a number of time
+// steps (s.timesteps). The request then keeps the relative time, so that a link asks for the
+// same period later too. choices lists the values offered, offset the example of an offset.
+// Returns {element, update()}; onChange is called after a change.
+function relativeTime(s, key, label, choices, offset, onChange)
+{
+  const labels = {
+    '': L('At the time'),
+    now: L('Now'),
+    data: key === 'startrel' ? L('Start of the data') : L('End of the data'),
+    offset: L('From now'),
+    steps: L('Number of steps')
+  };
+  const select = el('select', {'aria-label': label},
+                    choices.map((v) => el('option', {value: v}, labels[v])));
+  const input = el('input', {type: 'text', size: 6, spellcheck: 'false', 'aria-label': L`${label}: offset or steps`});
+  const mode = () => (TIME_OFFSET.test(s[key] || '') ? 'offset' : s[key] || '');
+  select.addEventListener('change', () => {
+    if (select.value === 'offset')
+      s[key] = TIME_OFFSET.test(input.value) ? input.value.trim() : offset;
+    else
+      s[key] = select.value;
+    if (select.value === 'steps' && !(Number(s.timesteps) > 0))
+      s.timesteps = '24';
+    if (!s[key])
+      delete s[key];
+    onChange();
+  });
+  input.addEventListener('input', () => {
+    const v = input.value.trim();
+    if (mode() === 'steps')
+    {
+      if (Number(v) > 0)
+        s.timesteps = String(Math.round(Number(v)));
+    }
+    else if (TIME_OFFSET.test(v))
+      s[key] = v;
+    else
+      return;
+    onChange(false);
+  });
+  const update = (rerender = true) => {
+    const m = mode();
+    select.value = m;
+    input.hidden = m !== 'offset' && m !== 'steps';
+    input.placeholder = m === 'steps' ? '24' : offset;
+    if (rerender)
+      input.value = m === 'steps' ? s.timesteps || '' : m === 'offset' ? s[key] : '';
+  };
+  return {element: el('span', {class: 'relative-time'}, select, input), update, mode};
+}
+
 // A time field in UTC in the clock chosen, with a button for the date picker of the browser:
 // an element whose value is 'YYYY-MM-DDTHH:MM' like that of a datetime-local input, and which
 // passes on the input and change events of its text
@@ -7194,6 +7260,8 @@ function flightChooser(s, onChange, margin)
       const m = (margin() || 180) * 60000;
       s.start = toInput(new Date(f.departure - m));
       s.end = toInput(new Date(f.arrival + m));
+      delete s.startrel;
+      delete s.endrel;
     }
     onChange();
   };
@@ -7548,8 +7616,8 @@ function timeSeriesModule(app, api, state, save)
     };
     // The stations operating at some time of the chosen period
     const stationsInPeriod = () => {
-      const start = s.start ? new Date(`${s.start}Z`) : null;
-      const end = s.end ? new Date(`${s.end}Z`) : null;
+      const start = periodStart() === null ? null : new Date(periodStart());
+      const end = periodEnd() === null ? null : new Date(periodEnd());
       return stations().filter(
           (l) => (!end || !l.start || new Date(l.start) <= end) &&
               (!start || !l.end || new Date(l.end) >= start));
@@ -8078,8 +8146,7 @@ function timeSeriesModule(app, api, state, save)
         ['source', 'observation'],
         ['fmisid', ids.join(',')],
         ['param', params.join(',')],
-        ['starttime', fromInput(s.start)],
-        ['endtime', fromInput(s.end)]
+        ...absoluteTimeOptions()
       ]);
       const key = `${p.name}?${query}`;
       if (!sensorDetails.has(key))
@@ -8115,7 +8182,7 @@ function timeSeriesModule(app, api, state, save)
         s.sensors = Array.from(chosen).sort((a, b) => a - b).join(',');
         refresh();
       };
-      const end = s.end ? new Date(fromInput(s.end)).getTime() : Date.now();
+      const end = periodEnd() === null ? Date.now() : periodEnd();
       const lines = [];
       for (const param of params)
         for (const id of ids)
@@ -8414,6 +8481,54 @@ function timeSeriesModule(app, api, state, save)
     // --- When ------------------------------------------------------
     const startInput = timeInput({'aria-label': L('Start time (UTC)')});
     const endInput = timeInput({'aria-label': L('End time (UTC)')});
+    // A start or end relative to now or to the data
+    const startRel = relativeTime(s, 'startrel', L('Start'), ['', 'now', 'data', 'offset'], '-1h',
+                                  (rerender) => refresh(rerender));
+    const endRel = relativeTime(s, 'endrel', L('End'), ['', 'now', 'data', 'offset', 'steps'], '+24h',
+                                (rerender) => refresh(rerender));
+    // The step of the period in minutes for counting steps: the chosen step, or that of the data
+    const periodStep = () => Number(s.timestep) > 0 ? Number(s.timestep) : dataStep() || 60;
+    // The period as times (ms), for what depends on it on the page: the times given, or the
+    // relative ones as they are now. null when not known.
+    function periodStart()
+    {
+      const p = producer();
+      const r = s.startrel || '';
+      if (r === 'now')
+        return Date.now();
+      if (r === 'data')
+        return p && p.time && p.time.start ? new Date(p.time.start).getTime() : null;
+      if (offsetMs(r) !== null)
+        return Date.now() + offsetMs(r);
+      return s.start ? new Date(fromInput(s.start)).getTime() : null;
+    }
+    function periodEnd()
+    {
+      const p = producer();
+      const r = s.endrel || '';
+      if (r === 'now')
+        return Date.now();
+      if (r === 'data')
+        return p && p.time && p.time.end ? new Date(p.time.end).getTime() : null;
+      if (offsetMs(r) !== null)
+        return Date.now() + offsetMs(r);
+      if (r === 'steps')
+      {
+        const start = periodStart();
+        return start === null ? null : start + (Number(s.timesteps) - 1) * periodStep() * 60e3;
+      }
+      return s.end ? new Date(fromInput(s.end)).getTime() : null;
+    }
+    const isoTime = (ms) => (ms === null ? '' : new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z'));
+    // The time options of the request: relative times as such. A start now is the default of
+    // the server, which older servers do not take as starttime=now.
+    const timeOptions = () => [
+      ['starttime', s.startrel === 'now' ? '' : s.startrel || fromInput(s.start)],
+      ['endtime', s.endrel === 'steps' ? '' : s.endrel || fromInput(s.end)],
+      ['timesteps', s.endrel === 'steps' ? String(s.timesteps || '') : '']
+    ];
+    // The period as times, for the requests made for other producers or for metadata
+    const absoluteTimeOptions = () => [['starttime', isoTime(periodStart())], ['endtime', isoTime(periodEnd())]];
     const stepSelect = el('select', {'aria-label': L('Time step')}, [
       ['data', L('Times of the data')],
       ['10', L('10 minutes')],
@@ -8432,7 +8547,8 @@ function timeSeriesModule(app, api, state, save)
       const p = producer();
       if (!p || !p.time || !p.time.start || !p.time.end)
         return;
-      if (!force && s.start && s.end)
+      // A relative start or end counts as given
+      if (!force && (s.start || s.startrel) && (s.end || s.endrel))
         return;
       const first = new Date(p.time.start);
       const last = new Date(p.time.end);
@@ -8464,6 +8580,9 @@ function timeSeriesModule(app, api, state, save)
              class: 'small',
              'data-preset': label,
              onclick: () => {
+               // The presets give the times as such
+               delete s.startrel;
+               delete s.endrel;
                fn();
                refresh();
              }
@@ -8502,10 +8621,12 @@ function timeSeriesModule(app, api, state, save)
 
     startInput.addEventListener('change', () => {
       s.start = startInput.value;
+      delete s.startrel;
       refresh();
     });
     endInput.addEventListener('change', () => {
       s.end = endInput.value;
+      delete s.endrel;
       refresh();
     });
     stepSelect.addEventListener('change', () => {
@@ -9091,8 +9212,7 @@ function timeSeriesModule(app, api, state, save)
         ['param', [...params, ...details.map((d) => d.column)].join(',')],
         ['levels', grid ? '' : chosenLevels().map((v) => v.value).join(',')],
         ['data_quality', qualityOption()],
-        ['starttime', fromInput(s.start)],
-        ['endtime', fromInput(s.end)],
+        ...timeOptions(),
         ['timestep', s.timestep],
         // The marked points of a path are asked as points of their own
         [s.locmode === 'path' && s.pathpoints === 'marked' ? 'lonlats' : locationOption(s.locmode),
@@ -9364,8 +9484,8 @@ function timeSeriesModule(app, api, state, save)
       const sel = selection();
       // Forecasts with data in the period; the archives of observations are longer than the
       // period they list
-      const start = s.start ? new Date(fromInput(s.start)).getTime() : -Infinity;
-      const end = s.end ? new Date(fromInput(s.end)).getTime() : Infinity;
+      const start = periodStart() === null ? -Infinity : periodStart();
+      const end = periodEnd() === null ? Infinity : periodEnd();
       const inPeriod = (p) => p.source === 'observation' || !p.time || !p.time.start ||
           (new Date(p.time.start).getTime() <= end && new Date(p.time.end).getTime() >= start);
       const others = Array.from(index.producers.values())
@@ -9394,8 +9514,7 @@ function timeSeriesModule(app, api, state, save)
             ['source', p.ambiguous && p.source === 'querydata' ? 'querydata' : ''],
             ['param', [...(aggregate ? ['name', 'time'] : ['name', 'time', 'lat', 'lon']),
                        ...columns.keys()].join(',')],
-            ['starttime', fromInput(s.start)],
-            ['endtime', fromInput(s.end)],
+            ...absoluteTimeOptions(),
             ['timestep', p.source === 'observation' ? '' : 'data'],
             [locationOption(s.locmode), s.location],
             ['step', pathStep()],
@@ -9473,8 +9592,7 @@ function timeSeriesModule(app, api, state, save)
               ['producer', p.name],
               ['source', p.ambiguous && p.source === 'querydata' ? 'querydata' : ''],
               ['param', ['name', 'time', 'level', ...soundingNames(p)].join(',')],
-              ['starttime', fromInput(s.start)],
-              ['endtime', fromInput(s.end)],
+              ...absoluteTimeOptions(),
               ['timestep', 'data'],
               [locationOption(s.locmode), s.location],
               ['format', 'json'],
@@ -9693,6 +9811,10 @@ function timeSeriesModule(app, api, state, save)
       }
       startInput.value = s.start || '';
       endInput.value = s.end || '';
+      startRel.update(rerender !== false);
+      endRel.update(rerender !== false);
+      startInput.hidden = startRel.mode() !== '';
+      endInput.hidden = endRel.mode() !== '';
       stepSelect.value = s.timestep || 'data';
       Array.from(aggModes.children)
           .forEach(
@@ -9723,7 +9845,7 @@ function timeSeriesModule(app, api, state, save)
           L`Recent data: ${timeRange(p)}, older by station` :
           L`Data: ${
               timeRange(p)}`;  // A long period of observations is a large request: warn about it
-      const days = s.start && s.end ? (new Date(`${s.end}Z`) - new Date(`${s.start}Z`)) / 864e5 : 0;
+      const days = periodStart() !== null && periodEnd() !== null ? (periodEnd() - periodStart()) / 864e5 : 0;
       if (p && p.source === 'observation' && days > 32)
         dataPeriod.textContent +=
             L` · ${Math.round(days)} days of observations is a large request: consider a longer step or values over a period`;
@@ -9832,8 +9954,8 @@ function timeSeriesModule(app, api, state, save)
                L('When'),
                el('div',
                   {class: 'row'},
-                  el('label', null, L('Start (UTC)'), startInput),
-                  el('label', null, L('End (UTC)'), endInput)),
+                  el('label', null, L('Start (UTC)'), el('span', {class: 'row'}, startRel.element, startInput)),
+                  el('label', null, L('End (UTC)'), el('span', {class: 'row'}, endRel.element, endInput))),
                el('div', {class: 'row'}, el('label', null, L('Step'), stepSelect), dataPeriod),
                presets,
                aggRow),

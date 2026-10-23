@@ -182,6 +182,8 @@ make %{_smp_mflags}
   another case or with a source it does not have is found and the link corrected
 - Data explorer: the missing parts of a request are translated
 - Data explorer: EDR and Coverages links with levels open again
+- Data explorer: the start and end of a TimeSeries request relative to now or to the data
+  (-1h, +24h, now, the end of the data, a number of steps), kept as such in the request
 
 * Tue Oct 20 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.20-2.fmi
 - Data explorer: the period is kept within the data of the producer, run or collection: the
