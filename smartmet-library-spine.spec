@@ -188,6 +188,7 @@ make %{_smp_mflags}
   of the server
 - Data explorer: parameter expressions written as in a request (functions, grid expressions,
   aliases), sent as such and shown under their aliases
+- Data explorer: time steps of 1, 5 and 15 minutes, and any step of a link
 
 * Tue Oct 20 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.20-2.fmi
 - Data explorer: the period is kept within the data of the producer, run or collection: the

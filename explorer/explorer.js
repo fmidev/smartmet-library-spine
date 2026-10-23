@@ -8600,7 +8600,10 @@ function timeSeriesModule(app, api, state, save)
     const absoluteTimeOptions = () => [['starttime', isoTime(periodStart())], ['endtime', isoTime(periodEnd())]];
     const stepSelect = el('select', {'aria-label': L('Time step')}, [
       ['data', L('Times of the data')],
+      ['1', L('1 minute')],
+      ['5', L('5 minutes')],
       ['10', L('10 minutes')],
+      ['15', L('15 minutes')],
       ['30', L('30 minutes')],
       ['60', L('1 hour')],
       ['180', L('3 hours')],
@@ -9912,6 +9915,9 @@ function timeSeriesModule(app, api, state, save)
       endRel.update(rerender !== false);
       startInput.hidden = startRel.mode() !== '';
       endInput.hidden = endRel.mode() !== '';
+      // A step of a link not in the menu is offered too
+      if (s.timestep && !Array.from(stepSelect.options).some((o) => o.value === s.timestep))
+        stepSelect.append(el('option', {value: s.timestep}, L`${s.timestep} minutes`));
       stepSelect.value = s.timestep || 'data';
       Array.from(aggModes.children)
           .forEach(
