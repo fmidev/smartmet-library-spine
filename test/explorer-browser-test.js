@@ -2974,6 +2974,31 @@ async function main()
               exprState.field === 'sum_t(precipitation1h:0:2h) as rain,VALID{a;b}',
           {param: exprQuery.get('param'), exprState});
 
+    // Other options are added to the request and replace those of the page
+    const merged = await b.evaluate(`(() => {
+      const E = SmartMetExplorer;
+      const opts = E.parseOptions('hour=6,18 & Format=ascii\\ntz=&maxdistance=50%20km&=x&flag');
+      return { opts, merged: E.mergeOptions([['format', 'json'], ['tz', 'UTC'], ['lang', '']], opts) };
+    })()`);
+    check('other options parsed and merged',
+          JSON.stringify(merged.opts) ===
+                  JSON.stringify([['hour', '6,18'], ['Format', 'ascii'], ['tz', ''], ['maxdistance', '50 km'], ['flag', '']]) &&
+              JSON.stringify(merged.merged.replaced) === JSON.stringify(['Format', 'tz']) &&
+              JSON.stringify(merged.merged.params.map(([k]) => k)) ===
+                  JSON.stringify(['lang', 'hour', 'Format', 'tz', 'maxdistance', 'flag']),
+          merged);
+    await b.evaluate(`location.hash = 'api=/timeseries&producer=pal&source=querydata&params=temperature&locmode=lonlat&location=25,60&opts=' + encodeURIComponent('hour=6,18&numberofstations=3&tz=')`);
+    await waitFor(b, `document.querySelector('code.url') && document.querySelector('code.url').textContent.includes('hour=')`,
+                  'the request of other options');
+    const optsQuery = await currentQuery(b);
+    const optsNote = await b.evaluate(
+        `[...document.querySelectorAll('details.extra-columns p.warn')].map((x) => x.textContent).join('')`);
+    check('other options in the request',
+          optsQuery.get('hour') === '6,18' && optsQuery.get('numberofstations') === '3' &&
+              !optsQuery.has('tz') && optsQuery.get('format') === 'json' &&
+              optsNote === 'Replaces these options of the page: tz',
+          {query: optsQuery.toString(), optsNote});
+
     // An address changed within the page opens its state; a producer named in another case or
     // with a source it does not have is found and corrected
     await b.evaluate(`location.hash = 'api=/timeseries&producer=PAL&source=grid&params=temperature&locmode=lonlat&location=25,60'`);

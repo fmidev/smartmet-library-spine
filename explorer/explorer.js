@@ -493,6 +493,46 @@ function splitParameterList(text)
   return out.map((x) => x.trim()).filter(Boolean);
 }
 
+// Options of a request written as in its query string, "hour=6,18&numberofstations=3", as
+// [name, value] pairs; & or line breaks separate them, and %-escapes are decoded
+function parseOptions(text)
+{
+  const out = [];
+  for (const part of String(text || '').split(/[&\n]/))
+  {
+    const item = part.trim();
+    if (!item)
+      continue;
+    const i = item.indexOf('=');
+    const decode = (x) => {
+      try
+      {
+        return decodeURIComponent(x.replace(/\+/g, ' '));
+      }
+      catch (e)
+      {
+        return x;
+      }
+    };
+    out.push(i < 0 ? [decode(item), ''] : [decode(item.slice(0, i).trim()), decode(item.slice(i + 1).trim())]);
+  }
+  return out.filter(([k]) => k);
+}
+
+// The options of a request with other options added: an option given again replaces the one
+// of the request (names are compared ignoring case, as the server does), an empty value
+// removes it. Returns {params, replaced}.
+function mergeOptions(params, extra)
+{
+  const names = new Set(extra.map(([k]) => k.toLowerCase()));
+  const given = new Set(params.filter(([, v]) => v !== undefined && v !== null && v !== '')
+                            .map(([k]) => k.toLowerCase()));
+  return {
+    params: [...params.filter(([k]) => !names.has(k.toLowerCase())), ...extra],
+    replaced: extra.map(([k]) => k).filter((k) => given.has(k.toLowerCase()))
+  };
+}
+
 // The column of a parameter expression in the response: its alias ("x as name"), or the
 // expression itself
 function expressionColumn(expr)
@@ -9233,6 +9273,29 @@ function timeSeriesModule(app, api, state, save)
            L('Parameters as written in a request, separated by commas: functions, grid expressions and aliases (x as name). They are sent as such and shown under their aliases.')),
         exprInput);
 
+    // Other options of the request, written as in its query string
+    const optsInput = el('input', {
+      type: 'text',
+      spellcheck: 'false',
+      'aria-label': L('Other options'),
+      placeholder: 'hour=6,18&numberofstations=3&maxdistance=50km'
+    });
+    const optsNote = el('p', {class: 'warn small'});
+    optsInput.addEventListener('input', () => {
+      s.opts = optsInput.value.trim();
+      if (!s.opts)
+        delete s.opts;
+      refreshSoon();
+    });
+    const optsDetails = el(
+        'details',
+        {class: 'extra-columns'},
+        el('summary', null, L('Other options')),
+        el('p', {class: 'muted small'},
+           L('Options of the request as name=value, separated by &, for example the times of day (hour), the nearest stations (numberofstations, maxdistance), heights or another format. They are added to the request and replace the options the page sets; an empty value removes one. The views need JSON.')),
+        optsInput,
+        optsNote);
+
     const langInput =
         el('input', {type: 'text', 'aria-label': L('Language'), placeholder: L('fi, sv, en'), size: 6});
     langInput.addEventListener('input', () => {
@@ -9342,7 +9405,8 @@ function timeSeriesModule(app, api, state, save)
     // The URL of the request
     function currentUrl()
     {
-      return new URL(`${rootPath}?${queryString(requestParams())}`, app.base).href;
+      const {params} = mergeOptions(requestParams(), parseOptions(s.opts));
+      return new URL(`${rootPath}?${queryString(params)}`, app.base).href;
     }
 
     // What the request still lacks, for the note under it
@@ -10014,6 +10078,9 @@ function timeSeriesModule(app, api, state, save)
         exprInput.value = s.expr || '';
         if (s.expr)
           exprDetails.open = true;
+        optsInput.value = s.opts || '';
+        if (s.opts)
+          optsDetails.open = true;
       }
       areaValuesRow.hidden = !isArea();
       pathChooser.element.hidden = s.locmode !== 'path';
@@ -10028,6 +10095,9 @@ function timeSeriesModule(app, api, state, save)
               (b) => b.setAttribute(
                   'aria-checked', b.dataset.areavalues === areaValuesOf() ? 'true' : 'false'));
       renderAreaFunctions();
+      // The options of the page replaced by the other options
+      const replaced = mergeOptions(requestParams(), parseOptions(s.opts)).replaced;
+      optsNote.textContent = replaced.length ? L`Replaces these options of the page: ${replaced.join(', ')}` : '';
       // Request
       const url = currentUrl();
       urlBox.textContent = url;
@@ -10082,7 +10152,8 @@ function timeSeriesModule(app, api, state, save)
                L('Output'),
                areaValuesRow,
                el('div', {class: 'row'}, el('label', null, L('Language of the names'), langInput)),
-               extraDetails)),
+               extraDetails,
+               optsDetails)),
         el('div',
            {class: 'request'},
            el('div', {class: 'url-row'}, urlBox, copyUrl),
@@ -13014,6 +13085,8 @@ root.SmartMetExplorer = {
   addDefaultProducer,
   splitParameterList,
   expressionColumn,
+  parseOptions,
+  mergeOptions,
   parseWkt,
   selectionWkt,
   timeText,
