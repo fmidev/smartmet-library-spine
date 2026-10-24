@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.10.23
+Version: 26.10.24
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -172,6 +172,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sat Oct 24 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.24-1.fmi
+- CORS preflight responses allow only the supported request headers and vary by Origin
+- API catalog, documentation and explorer pages are sent with Referrer-Policy: same-origin
+
 * Fri Oct 23 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.23-1.fmi
 - Data explorer: WKT locations (POINT, MULTIPOINT, LINESTRING, POLYGON and their multi forms),
   drawn on the map; a drawn point, path, box or radius is converted to WKT

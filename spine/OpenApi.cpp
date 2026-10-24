@@ -1177,6 +1177,8 @@ window.onload = function () {{
   response.setHeader("Content-Type", "text/html; charset=UTF-8");
   response.setHeader("Content-Security-Policy", docsPolicy(itsSettings));
   response.setHeader("X-Content-Type-Options", "nosniff");
+  // The page URL may contain an API key
+  response.setHeader("Referrer-Policy", "same-origin");
   response.setContent(html);
 }
 
@@ -1906,6 +1908,8 @@ th {{ background: var(--head); font-weight: 600; }}
                      "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; "
                      "form-action 'none'; frame-ancestors 'self'");
   response.setHeader("X-Content-Type-Options", "nosniff");
+  // The page URL may contain an API key
+  response.setHeader("Referrer-Policy", "same-origin");
   response.setContent(html);
 }
 
@@ -1995,6 +1999,8 @@ window.onload = function () {{
   response.setHeader("Content-Type", "text/html; charset=UTF-8");
   response.setHeader("Content-Security-Policy", docsPolicy(itsSettings.openapi));
   response.setHeader("X-Content-Type-Options", "nosniff");
+  // The page URL may contain an API key
+  response.setHeader("Referrer-Policy", "same-origin");
   response.setContent(html);
 }
 
@@ -2101,6 +2107,8 @@ void Catalog::handleExplorer(const HTTP::Request& request, HTTP::Response& respo
     boost::algorithm::replace_first(policy, "img-src 'self'", "img-src 'self' " + origin);
   response.setHeader("Content-Security-Policy", policy);
   response.setHeader("X-Content-Type-Options", "nosniff");
+  // The page URL may contain an API key
+  response.setHeader("Referrer-Policy", "same-origin");
   response.setContent(html);
 }
 

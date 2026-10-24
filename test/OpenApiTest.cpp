@@ -306,6 +306,7 @@ BOOST_AUTO_TEST_CASE(browsers_get_the_documentation_page)
   BOOST_TEST(header(response, "Content-Security-Policy").find("default-src 'none'") !=
              std::string::npos);
   BOOST_TEST(header(response, "X-Content-Type-Options") == "nosniff");
+  BOOST_TEST(header(response, "Referrer-Policy") == "same-origin");
   BOOST_TEST(html.find("https://") == std::string::npos);  // no external resources
 }
 
@@ -492,6 +493,7 @@ BOOST_AUTO_TEST_CASE(explorer_tests)
   BOOST_TEST(page.getStatus() == HTTP::Status::ok);
   BOOST_TEST(header(page, "Content-Security-Policy").find("script-src 'self';") !=
              std::string::npos);
+  BOOST_TEST(header(page, "Referrer-Policy") == "same-origin");
   HTTP::Response plugin;
   BOOST_TEST(catalog.handle(makeRequest("/api/explorer/smartmet-swagger-ui.js"), plugin, entries));
   BOOST_TEST(plugin.getStatus() == HTTP::Status::ok);
@@ -900,6 +902,7 @@ BOOST_AUTO_TEST_CASE(catalog_requests)
   BOOST_TEST(html.find("href=\".well-known/api-catalog\"") != std::string::npos);
   BOOST_TEST(header(page, "Content-Security-Policy").find("default-src 'none'") !=
              std::string::npos);
+  BOOST_TEST(header(page, "Referrer-Policy") == "same-origin");
   BOOST_TEST(get("/api", {}, {{"f", "html"}}).getContent() == html);
   BOOST_TEST(get("/api", {{"Accept", "text/html"}}, {{"f", "json"}}).getContent() ==
              get("/api").getContent());
@@ -916,6 +919,7 @@ BOOST_AUTO_TEST_CASE(catalog_requests)
   BOOST_TEST(docs_html.find("href=\"docs/swagger-ui.css\"") != std::string::npos);
   BOOST_TEST(header(docs, "Content-Security-Policy").find("script-src 'self'") !=
              std::string::npos);
+  BOOST_TEST(header(docs, "Referrer-Policy") == "same-origin");
 
   // The Swagger UI files
   auto css = get("/api/docs/swagger-ui.css");

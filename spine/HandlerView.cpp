@@ -2,12 +2,14 @@
 #include "Convenience.h"
 #include "FmiApiKey.h"
 #include "Reactor.h"
+#include <boost/algorithm/string.hpp>
 #include <algorithm>
 #include <ctime>
 #include <filesystem>
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <set>
 #include <string>
 #include <vector>
 #include <macgyver/DateTime.h>
@@ -37,6 +39,33 @@ SmartMet::Spine::LogListType::iterator firstUnflushed(
   return std::next(marker);
 }
 
+// Request headers a browser may send to the server in addition to the CORS-safelisted ones
+const std::set<std::string> cors_request_headers = {"authorization",
+                                                    "cache-control",
+                                                    "content-type",
+                                                    "fmi-apikey",
+                                                    "if-match",
+                                                    "if-modified-since",
+                                                    "if-none-match",
+                                                    "if-unmodified-since",
+                                                    "range",
+                                                    "x-requested-with"};
+
+// The supported ones of the headers listed in an Access-Control-Request-Headers header
+std::string allowedCorsHeaders(const std::string& theRequestedHeaders)
+{
+  std::vector<std::string> names;
+  boost::algorithm::split(names, theRequestedHeaders, boost::is_any_of(","));
+  std::vector<std::string> allowed;
+  for (auto& name : names)
+  {
+    boost::algorithm::trim(name);
+    if (cors_request_headers.count(Fmi::ascii_tolower_copy(name)) > 0)
+      allowed.push_back(name);
+  }
+  return boost::algorithm::join(allowed, ", ");
+}
+
 // Set the CORS headers of an OPTIONS response if the request is a CORS preflight request
 void setCorsPreflightHeaders(const SmartMet::Spine::HTTP::Request& theRequest,
                              SmartMet::Spine::HTTP::Response& theResponse)
@@ -50,18 +79,20 @@ void setCorsPreflightHeaders(const SmartMet::Spine::HTTP::Request& theRequest,
     assert(bool(h1));  // HTTP::Response::stockOptionsResponse should have set this header
     theResponse.setHeader("Access-Control-Allow-Methods", *h1);
 
+    // Credentials are never allowed, so any origin may read the responses
     auto opt_origin = theRequest.getHeader("Origin");
     if (opt_origin)
     {
       theResponse.setHeader("Access-Control-Allow-Origin", *opt_origin);
+      theResponse.setHeader("Vary", "Origin");
     }
 
     auto opt_req_headers = theRequest.getHeader("Access-Control-Request-Headers");
     if (opt_req_headers)
     {
-      // FIXME: Should be use actually supported headers here.
-      //        Let us copy requested headers to the response for now
-      theResponse.setHeader("Access-Control-Allow-Headers", *opt_req_headers);
+      const auto allowed = allowedCorsHeaders(*opt_req_headers);
+      if (!allowed.empty())
+        theResponse.setHeader("Access-Control-Allow-Headers", allowed);
     }
 
     theResponse.setHeader("Access-Control-Max-Age", "86400");
