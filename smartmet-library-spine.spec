@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.25
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -52,7 +52,7 @@ BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 26.10.16
 BuildRequires: smartmet-library-macgyver-devel >= 26.10.16
-BuildRequires: smartmet-library-newbase-devel >= 26.10.16
+BuildRequires: smartmet-library-newbase-devel >= 26.10.25
 BuildRequires: smartmet-utils-devel >= 26.9.3
 
 # OpenTelemetry C++ SDK — optional; enables SMARTMET_SPINE_OPENTELEMETRY when present.
@@ -102,7 +102,7 @@ Requires: libbacktrace
 Requires: double-conversion
 Requires: smartmet-library-gis >= 26.10.17
 Requires: smartmet-library-macgyver >= 26.10.17
-Requires: smartmet-library-newbase >= 26.10.17
+Requires: smartmet-library-newbase >= 26.10.25
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
 #TestRequires: gcc-c++
@@ -126,7 +126,7 @@ Requires: %{smartmet_boost}-devel
 Requires: dtl
 Requires: smartmet-library-macgyver-devel >= 26.10.16
 Requires: smartmet-library-gis-devel >= 26.10.16
-Requires: smartmet-library-newbase-devel >= 26.10.16
+Requires: smartmet-library-newbase-devel >= 26.10.25
 Requires: libconfig17-devel
 Requires: %{SPECNAME} = %{version}-%{release}
 # Require for compatibility: earlier smartmet-plugin-test was part of smartmet-library-spine-devel
@@ -172,6 +172,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sun Oct 25 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.25-2.fmi
+- RoadWaWa is a data derived parameter (BRAINSTORM-2786)
+
 * Sun Oct 25 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.25-1.fmi
 - Explorer: Combine draws the parameters of a unit in one chart, a second unit on a right axis
 - Explorer: the line under the pointer is not searched for among more than 100 lines, and the chart says so

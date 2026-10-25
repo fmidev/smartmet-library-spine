@@ -108,6 +108,7 @@ bool IsDataDerived(FmiParameterName param)
     case kFmiLatitude:
     case kFmiLonLat:
     case kFmiLongitude:
+    case kFmiRoadWaWa:
     case kFmiRoadWW:
     case kFmiSmartSymbol:
     case kFmiSmartSymbolText:
