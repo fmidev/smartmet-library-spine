@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.25
-Release: 2%{?dist}.fmi
+Release: 3%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,12 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sun Oct 25 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.25-3.fmi
+- The data explorer is private: not announced to frontends, and only for the clients of
+  api_catalog.explorer_ip_filters (default the local and private networks)
+- ABI change: OpenAPI::CatalogSettings has explorer_ip_filter (rebuild the frontend plugin)
+- Data explorer: grid producers link to grid-gui when the server allows it
+
 * Sun Oct 25 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.25-2.fmi
 - RoadWaWa is a data derived parameter (BRAINSTORM-2786)
 

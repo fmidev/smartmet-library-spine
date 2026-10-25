@@ -497,8 +497,10 @@ void Reactor::addApiCatalogHandler()
     addContentHandler(nullptr, "/.well-known/api-catalog", handler);
     if (catalog->settings().openapi.ui)
       addContentHandler(nullptr, "/api/docs", handler, {}, true);
+    // Private: not announced to the frontends, which serve their own explorer, and the
+    // catalog lets only the clients of explorer_ip_filters use it
     if (catalog->settings().explorer)
-      addContentHandler(nullptr, "/api/explorer", handler, {}, true);
+      addPrivateContentHandler(nullptr, "/api/explorer", handler, {}, true);
   }
   catch (...)
   {

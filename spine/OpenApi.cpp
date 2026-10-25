@@ -1,4 +1,5 @@
 #include "OpenApi.h"
+#include "IPFilter.h"
 #include "Convenience.h"
 #include "FmiApiKey.h"
 #include "HTTP.h"
@@ -60,6 +61,11 @@ const std::vector<std::pair<std::string, std::string>> swagger_ui_files{
 // files change only when the package is upgraded.
 const char* const DEFINITION_CACHE_CONTROL = "public, max-age=60";
 const char* const ASSET_CACHE_CONTROL = "public, max-age=86400";
+
+// The explorer and the /api page, whose link to the explorer depends on the client, must not
+// be kept by shared caches: the explorer is only for the clients of explorer_ip_filters
+const char* const PRIVATE_CACHE_CONTROL = "private, max-age=60";
+const char* const PRIVATE_ASSET_CACHE_CONTROL = "private, max-age=86400";
 
 // The documentation page loads only its own files and the definition. 'unsafe-inline' is
 // needed for the initializer script and the styles Swagger UI sets on elements.
@@ -1401,6 +1407,7 @@ CatalogSettings CatalogSettings::parse(const libconfig::Config& config, const st
       group.lookupValue("description", settings.description);
       group.lookupValue("explorer", settings.explorer);
       group.lookupValue("explorer_dir", settings.explorer_dir);
+      settings.explorer_ip_filter = IPFilter::IPFilter::fromConfig(config, path + ".explorer_ip_filters");
       group.lookupValue("uplot_dir", settings.uplot_dir);
       group.lookupValue("palette_dir", settings.palette_dir);
       group.lookupValue("palette_config", settings.palette_config);
@@ -1409,6 +1416,9 @@ CatalogSettings CatalogSettings::parse(const libconfig::Config& config, const st
       settings.basemap = BasemapSources::parse(group, "basemap");
       settings.basemap_detail = BasemapSources::parse(group, "basemap_detail");
     }
+    if (!settings.explorer_ip_filter)
+      settings.explorer_ip_filter =
+          std::make_shared<IPFilter::IPFilter>(IPFilter::IPFilter::privateNetworks());
     return settings;
   }
   catch (...)
@@ -1737,6 +1747,12 @@ Json::Value Catalog::linkset(const HTTP::Request& request, const std::vector<Cat
   }
 }
 
+// The explorer is for the clients of explorer_ip_filters only
+bool Catalog::explorerAllowed(const HTTP::Request& request) const
+{
+  return itsSettings.explorer_ip_filter && itsSettings.explorer_ip_filter->match(request.getClientIP());
+}
+
 bool Catalog::handle(const HTTP::Request& request,
                      HTTP::Response& response,
                      const std::vector<CatalogEntry>& entries) const
@@ -1756,6 +1772,13 @@ bool Catalog::handle(const HTTP::Request& request,
 
     const bool ui = (itsSettings.openapi.ui && itsFiles);
 
+    const bool explorer = (resource == "/api/explorer" || resource == "/api/explorer/" ||
+                           boost::algorithm::starts_with(resource, "/api/explorer/"));
+    if (explorer && !explorerAllowed(request))
+    {
+      problem(response, 403, "Forbidden", "The data explorer is available only for local users");
+      return true;
+    }
     if (resource == "/api/explorer" || resource == "/api/explorer/")
     {
       handleExplorer(request, response);
@@ -1849,7 +1872,7 @@ void Catalog::handlePage(const HTTP::Request& request,
     links = fmt::format("<a href=\"{}\">All APIs in one documentation page</a> · {}",
                         htmlEscape(relativeHref(resource, "/api/docs")),
                         links);
-  if (!itsExplorerFiles.empty() && !entries.empty())
+  if (!itsExplorerFiles.empty() && !entries.empty() && explorerAllowed(request))
     links = fmt::format("<a href=\"{}\">Data explorer</a> · {}",
                         htmlEscape(relativeHref(resource, "/api/explorer")),
                         links);
@@ -1898,7 +1921,7 @@ th {{ background: var(--head); font-weight: 600; }}
 
   response.setHeader("Access-Control-Allow-Origin", "*");
   response.setHeader("Vary", "Accept");
-  response.setHeader("Cache-Control", cacheControl(request));
+  response.setHeader("Cache-Control", PRIVATE_CACHE_CONTROL);
   if (etagOnly(request, response, quotedETag(Fmi::hash_value(html), "cataloghtml")))
     return;
 
@@ -2091,7 +2114,7 @@ void Catalog::handleExplorer(const HTTP::Request& request, HTTP::Response& respo
       map,
       translations);
 
-  response.setHeader("Cache-Control", cacheControl(request));
+  response.setHeader("Cache-Control", PRIVATE_CACHE_CONTROL);
   if (etagOnly(request, response, quotedETag(Fmi::hash_value(html), "explorerhtml")))
     return;
 
@@ -2123,7 +2146,7 @@ void Catalog::handleExplorerFile(const HTTP::Request& request,
     return;
   }
   const auto& file = it->second;
-  response.setHeader("Cache-Control", ASSET_CACHE_CONTROL);
+  response.setHeader("Cache-Control", PRIVATE_ASSET_CACHE_CONTROL);
   if (etagOnly(request, response, file.etag))
     return;
   response.setStatus(HTTP::Status::ok);

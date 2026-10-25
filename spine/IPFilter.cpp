@@ -179,6 +179,13 @@ catch (...)
   throw Fmi::Exception::Trace(BCP, "Failed to read IP filter").addParameter("setting", path);
 }
 
+const std::vector<std::string>& IPFilter::privateNetworks()
+{
+  static const std::vector<std::string> rules = {
+      "127.0.0.0/8", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"};
+  return rules;
+}
+
 bool IPFilter::match(const boost::asio::ip::address& ip) const
 {
   const auto bytes = to_bytes(ip);

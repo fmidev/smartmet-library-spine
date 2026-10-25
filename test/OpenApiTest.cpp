@@ -30,11 +30,14 @@ test_suite* init_unit_test_suite(int argc, char* argv[])
 
 namespace
 {
+// A request of a local client, which may use the explorer
 HTTP::Request makeRequest(const std::string& resource,
                           const HTTP::HeaderMap& headers = {},
                           const HTTP::ParamMap& params = {})
 {
-  return HTTP::Request{headers, {}, "1.1", params, resource, HTTP::RequestMethod::GET, false};
+  HTTP::Request request{headers, {}, "1.1", params, resource, HTTP::RequestMethod::GET, false};
+  request.setClientIP("127.0.0.1");
+  return request;
 }
 
 Json::Value parse(const std::string& text)
@@ -518,6 +521,71 @@ BOOST_AUTO_TEST_CASE(explorer_tests)
   const auto command =
       "node explorer-browser-test.js " + assets.path.string() + " ../explorer " + uplot;
   BOOST_TEST(std::system(command.c_str()) == 0);
+}
+
+BOOST_AUTO_TEST_CASE(explorer_is_private)
+{
+  // The explorer is only for the clients of explorer_ip_filters, by default the local and
+  // private networks; the /api page links to it only for them
+  const char* env = std::getenv("UPLOT_DIR");
+  const std::string uplot = (env ? env : "/usr/share/smartmet/uplot");
+  if (!std::filesystem::exists(uplot + "/uPlot.iife.min.js"))
+  {
+    BOOST_TEST_MESSAGE("smartmet-uplot is not installed, the explorer access tests are not run");
+    return;
+  }
+  AssetDir assets;
+  const std::vector<OpenAPI::CatalogEntry> entries{
+      {"/timeseries", "TimeSeries", "", "timeseries", true}};
+  const std::string settings = "swagger_ui_dir = \"" + assets.path.string() +
+                               "\"; explorer_dir = \"../explorer\"; uplot_dir = \"" + uplot + "\";";
+
+  const auto get = [&](const OpenAPI::Catalog& catalog, const std::string& resource,
+                       const std::string& ip)
+  {
+    auto request = makeRequest(resource, {{"Accept", "text/html"}});
+    request.setClientIP(ip);
+    HTTP::Response response;
+    BOOST_TEST(catalog.handle(request, response, entries));
+    return response;
+  };
+
+  libconfig::Config config;
+  config.readString("api_catalog: { " + settings + " };");
+  OpenAPI::Catalog catalog(OpenAPI::CatalogSettings::parse(config));
+
+  for (const auto* ip : {"127.0.0.1", "10.1.2.3", "192.168.1.1", "172.20.0.1", "::1"})
+  {
+    BOOST_TEST_CONTEXT(ip)
+    {
+      auto page = get(catalog, "/api/explorer", ip);
+      BOOST_TEST(page.getStatus() == HTTP::Status::ok);
+      BOOST_TEST(header(page, "Cache-Control").rfind("private", 0) == 0U);
+      BOOST_TEST(get(catalog, "/api/explorer/explorer.js", ip).getStatus() == HTTP::Status::ok);
+      BOOST_TEST(get(catalog, "/api", ip).getContent().find("Data explorer") != std::string::npos);
+    }
+  }
+  for (const auto* ip : {"203.0.113.5", "8.8.8.8", "2001:db8::1", "unknown", ""})
+  {
+    BOOST_TEST_CONTEXT(ip)
+    {
+      BOOST_TEST(get(catalog, "/api/explorer", ip).getStatus() == HTTP::Status::forbidden);
+      BOOST_TEST(get(catalog, "/api/explorer/", ip).getStatus() == HTTP::Status::forbidden);
+      BOOST_TEST(get(catalog, "/api/explorer/explorer.js", ip).getStatus() ==
+                 HTTP::Status::forbidden);
+      auto page = get(catalog, "/api", ip);
+      BOOST_TEST(page.getStatus() == HTTP::Status::ok);
+      BOOST_TEST(page.getContent().find("Data explorer") == std::string::npos);
+      BOOST_TEST(header(page, "Cache-Control").rfind("private", 0) == 0U);
+    }
+  }
+
+  // explorer_ip_filters replaces the default
+  libconfig::Config custom;
+  custom.readString("api_catalog: { " + settings + " explorer_ip_filters = [\"203.0.113.0/24\"]; };");
+  OpenAPI::Catalog open(OpenAPI::CatalogSettings::parse(custom));
+  BOOST_TEST(get(open, "/api/explorer", "203.0.113.5").getStatus() == HTTP::Status::ok);
+  BOOST_TEST(get(open, "/api/explorer", "127.0.0.1").getStatus() == HTTP::Status::forbidden);
 }
 
 BOOST_AUTO_TEST_CASE(configured_basemap)

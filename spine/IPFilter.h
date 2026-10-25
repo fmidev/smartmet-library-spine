@@ -56,6 +56,10 @@ class IPFilter
   static std::shared_ptr<IPFilter> fromConfig(const libconfig::Config& config,
                                               const std::string& path);
 
+  // The rules of the local and private networks (loopback, RFC 1918), the default of
+  // private handlers and of other pages meant only for the staff of the site
+  static const std::vector<std::string>& privateNetworks();
+
   bool match(const std::string& ip) const;
   bool match(const boost::asio::ip::address& ip) const;
 

@@ -59,6 +59,11 @@ namespace SmartMet
 {
 namespace Spine
 {
+namespace IPFilter
+{
+class IPFilter;
+}  // namespace IPFilter
+
 namespace HTTP
 {
 class Request;
@@ -328,7 +333,10 @@ class Publisher
  *   /api/docs                 Swagger UI with all the APIs in a selector
  *   /api/docs/<file>          Swagger UI files
  *   /api/explorer             the data explorer: queries built from the metadata of
- *                             the APIs, with maps and charts
+ *                             the APIs, with maps and charts. Private: it is not in the
+ *                             URI list of the server, and only the clients allowed by
+ *                             explorer_ip_filters (local and private networks by default)
+ *                             may use it or see the link to it on the /api page
  *   /api/explorer/<file>      the files of the explorer
  *
  * Configuration (the reactor configuration file):
@@ -342,6 +350,7 @@ class Publisher
  *     description    = "...";
  *     explorer       = true;
  *     explorer_dir   = "/usr/share/smartmet/explorer";
+ *     explorer_ip_filters = ["10.0.0.0/8", ...];  // default: local and private networks
  *     uplot_dir      = "/usr/share/smartmet/uplot";
  *     palette_dir    = "/usr/share/smartmet/qdless/palettes";
  *     palette_config = "/usr/share/smartmet/qdless/qdless.conf";
@@ -418,6 +427,9 @@ struct CatalogSettings
   std::string description;
   bool explorer = true;  // serve /api/explorer
   std::string explorer_dir = "/usr/share/smartmet/explorer";
+  // The clients that may use the explorer: explorer_ip_filters, or the local and private
+  // networks. Its requests can be arbitrarily large, so it is for the staff of the site only.
+  std::shared_ptr<IPFilter::IPFilter> explorer_ip_filter;
   std::string uplot_dir = "/usr/share/smartmet/uplot";
   // The isoband colours of the production products (as converted by qdless from wms-conf)
   // and the parameter to palette map, used for the values on the maps of the explorer
@@ -478,6 +490,7 @@ class Catalog
                   HTTP::Response& response,
                   const std::vector<CatalogEntry>& entries) const;
   void handleExplorer(const HTTP::Request& request, HTTP::Response& response) const;
+  bool explorerAllowed(const HTTP::Request& request) const;
   void handleExplorerFile(const HTTP::Request& request,
                           HTTP::Response& response,
                           const std::string& name) const;

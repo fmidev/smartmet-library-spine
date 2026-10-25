@@ -382,7 +382,8 @@ Most plugins produce tables of values:
   otherwise (the frontend asks the backends without one). Settings are read from the
   `api_catalog` group of the server configuration (the `openapi` settings above, such as
   `enabled`, `ui`, `swagger_ui_dir` and `map_tiles`, and `title`, `description`, `explorer`,
-  `explorer_dir`, `uplot_dir`, `palette_dir`, `palette_config` and `explorer_defaults`, see
+  `explorer_dir`, `explorer_ip_filters`, `uplot_dir`, `palette_dir`, `palette_config` and
+  `explorer_defaults`, see
   `OpenApi.h`). An API added with a
   `kind` (`edr`, `timeseries`, `coverages`, `tiles`, `wmts`) carries it as
   `x-smartmet-kind` in the catalog.
@@ -392,6 +393,11 @@ Most plugins produce tables of values:
   `explorer-<code>.js` are installed to `/usr/share/smartmet/explorer`, uPlot comes from the
   `smartmet-uplot` package (`/usr/share/smartmet/uplot`), and the snippets, the tree and the
   map are those of `OpenApiPlugin.cpp`. The page loads no inline scripts and uses no cookies.
+  It is for the staff of the site only: `Reactor` registers it as a private handler (not in
+  the URI list, so the frontends do not route it to the backends; a frontend serves its own),
+  and `Catalog::handle()` answers 403 to clients outside `explorer_ip_filters` (default
+  `IPFilter::privateNetworks()`), whose `/api` page also leaves out the link. The explorer
+  responses and the `/api` page are `Cache-Control: private` for the same reason.
   `test/explorer-browser-test.js` checks it in a headless browser against a mock server
   (`UPLOT_DIR` overrides the uPlot location). The user guide is
   [docs/data-explorer.md](https://github.com/fmidev/smartmet-server/blob/master/docs/data-explorer.md)

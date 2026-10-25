@@ -267,9 +267,7 @@ try
     // addresses.
     if (isPrivate && !filter)
     {
-      static const std::vector<std::string> privateNetworks = {
-          "127.0.0.0/8", "::1", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"};
-      filter = std::make_shared<IPFilter::IPFilter>(privateNetworks);
+      filter = std::make_shared<IPFilter::IPFilter>(IPFilter::IPFilter::privateNetworks());
       std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_BLUE << " Private URI "
                 << theUri << " of plugin " << pluginName
                 << " accepts only local and private network addresses (set plugins."

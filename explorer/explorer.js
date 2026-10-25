@@ -7942,6 +7942,11 @@ function timeSeriesModule(app, api, state, save)
     // The parameters of the views: the chosen ones and the columns of the expressions
     const shownParams = () => [...dataParams(), ...expressions().map(expressionColumn)];
     const selection = () => parseSelection(s.locmode, s.location);
+    // The point of the request for grid-gui, when the request is for one point
+    const gridGuiPoint = () => {
+      const sel = selection();
+      return sel && sel.type === 'point' ? {lat: sel.lat, lon: sel.lon} : null;
+    };
     // The producers having all the chosen parameters and covering the selection
     const candidates = () => {
       const wanted = dataParams();
@@ -10231,7 +10236,11 @@ function timeSeriesModule(app, api, state, save)
                       refresh();
                     }
                   },
-                  L('Change'))),
+                  L('Change')),
+               p.source === 'grid' ?
+                   gridGuiLink(app, p.name, s.run || (p.time && p.time.origintime) || '',
+                               dataParams()[0] || '', gridGuiPoint()) :
+                   ''),
             p.title && p.title !== p.name ? el('div', null, p.title) : '',
             el('div',
                {class: 'muted small'},
@@ -13055,6 +13064,43 @@ function browseModule(app, apis, state, save, openApi)
 // The application
 // ------------------------------------------------------------------
 
+// The grid-gui page of the server (<base>gui/) as a promise of its URL, or of null when the server
+// has none or does not let this browser use it (the page is private by default)
+function findGridGui(base)
+{
+  const url = `${base}gui/`;
+  return fetch(`${url}api/meta`)
+      .then((response) => (response.ok ? url : null))
+      .catch(() => null);
+}
+
+// A link that opens a grid producer in grid-gui: the run, the first parameter and the point of
+// the request are chosen there too. The link appears only when the server has grid-gui.
+function gridGuiLink(app, producer, run, parameter, point)
+{
+  const link = el('a', {class: 'small', target: '_blank', rel: 'noopener', hidden: true,
+                        title: L('The fields of this producer in grid-gui')},
+                  L('Open in grid-gui'));
+  app.gridGui.then((url) => {
+    if (!url)
+      return;
+    const q = new URLSearchParams({producer});
+    // grid-gui names the runs by their compact times: 2026-10-24T12:00:00Z is 20261024T120000
+    if (run)
+      q.set('generation', run.replace(/[-:]/g, '').replace(/Z$/, '').replace(/\.\d+$/, ''));
+    if (parameter)
+      q.set('parameter', parameter);
+    if (point)
+    {
+      q.set('lat', point.lat.toFixed(4));
+      q.set('lon', point.lon.toFixed(4));
+    }
+    link.href = `${url}?${q.toString()}`;
+    link.hidden = false;
+  });
+  return link;
+}
+
 const MODULES = {
   timeseries: timeSeriesModule,
   edr: edrModule,
@@ -13244,6 +13290,7 @@ async function main()
   const base = new URL(element.dataset.catalog || '../api', location.href);
   // The base URL of the server: the catalog is at <base>api
   const app = {element: element, base: new URL('./', base).href};
+  app.gridGui = findGridGui(app.base);
 
   const header =
       el('header', null, el('h1', null, L('Data explorer')), el('span', {class: 'muted'}, title));
