@@ -254,6 +254,30 @@ void escaping()
   TEST_PASSED();
 }
 
+// A digits-only commit hash must stay a string in a text column
+
+void text_columns()
+{
+  SmartMet::Spine::Table tab;
+  SmartMet::Spine::TableFormatter::Names names{"Commit", "Count"};
+  tab.setTextColumns({0});
+
+  tab.set(0, 0, "827911185398");
+  tab.set(1, 0, "12");
+
+  const char* res = R"([{"Commit":"827911185398","Count":12}])";
+
+  SmartMet::Spine::HTTP::Request req;
+
+  SmartMet::Spine::JsonFormatter fmt;
+  auto out = fmt.format(tab, names, req, config);
+
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "\nexpected:\n" + res);
+
+  TEST_PASSED();
+}
+
 void no_names_1()
 {
   SmartMet::Spine::Table tab;
@@ -378,6 +402,7 @@ class tests : public tframe::tests
     TEST(twoattributes);
     TEST(empty);
     TEST(escaping);
+    TEST(text_columns);
     TEST(no_names_1);
     TEST(no_names_2);
     TEST(not_enough_names_1);

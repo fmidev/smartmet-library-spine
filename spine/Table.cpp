@@ -370,6 +370,22 @@ std::string Table::getDefaultFormat() const
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Mark columns whose values must be formatted as text
+ */
+// ----------------------------------------------------------------------
+
+void Table::setTextColumns(const std::set<std::size_t>& columns)
+{
+  getMutableMetadata().text_columns = columns;
+}
+
+bool Table::isTextColumn(std::size_t column) const
+{
+  return itsMetadata && itsMetadata->text_columns.count(column) > 0;
+}
+
+// ----------------------------------------------------------------------
+/*!
  * \brief Get mutable metadata (create on first use)
  */
 // ----------------------------------------------------------------------

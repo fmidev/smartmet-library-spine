@@ -167,6 +167,36 @@ void empty()
 
 // ----------------------------------------------------------------------
 /*!
+ * \brief Test that text columns are quoted even if they look like numbers
+ */
+// ----------------------------------------------------------------------
+
+void text_columns()
+{
+  SmartMet::Spine::Table tab;
+  SmartMet::Spine::TableFormatter::Names names{"Commit", "Count"};
+  tab.setTextColumns({0});
+
+  tab.set(0, 0, "827911185398");
+  tab.set(1, 0, "12");
+
+  SmartMet::Spine::HTTP::Request req;
+
+  const char* res = R"("Commit","Count"
+"827911185398",12
+)";
+
+  SmartMet::Spine::CsvFormatter fmt;
+  auto out = fmt.format(tab, names, req, config);
+
+  if (out != res)
+    TEST_FAILED("Incorrect result:\n" + out + "Expected result:\n" + res);
+
+  TEST_PASSED();
+}
+
+// ----------------------------------------------------------------------
+/*!
  * The actual test suite
  */
 // ----------------------------------------------------------------------
@@ -181,6 +211,7 @@ class tests : public tframe::tests
     TEST(format_partial_names_from_table);
     TEST(missingtext);
     TEST(empty);
+    TEST(text_columns);
   }
 };
 

@@ -127,14 +127,14 @@ std::list<std::string> parse_attributes(const std::string& theStr)
 }
 
 // Append a table value as a JSON value
-void append_json_value(std::string& out, const std::string& value)
+void append_json_value(std::string& out, const std::string& value, bool text)
 {
   const std::string miss = "null";
   if (value.empty())
     out += miss;
   else if (value == "nan" || value == "NaN")  // nan is not allowed in JSON
     out += "null";
-  else if (looks_number(value))
+  else if (!text && looks_number(value))
     out += value;
   else
     out += escape_json(value);
@@ -169,7 +169,7 @@ std::string format_rows(const Table& theTable,
 
       out += ':';
 
-      append_json_value(out, theTable.get(i, j));
+      append_json_value(out, theTable.get(i, j), theTable.isTextColumn(i));
     }
     out += '}';
   }

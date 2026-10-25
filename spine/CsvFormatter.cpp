@@ -133,7 +133,7 @@ std::string CsvFormatter::format(const Table& theTable,
         const auto& value = theTable.get(i, j);
         if (value.empty())
           out += escape_csv(miss);
-        else if (looks_number(value))
+        else if (!theTable.isTextColumn(i) && looks_number(value))
           out += value;
         else
           out += escape_csv(value);

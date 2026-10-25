@@ -696,6 +696,8 @@ std::unique_ptr<Table> requestPackages(const HTTP::Request& theRequest)
     table->setTitle("Loaded packages");
     table->setNames(
         {"Package", "Version", "Installed", "Commit", "Status", "Origin", "Build-id", "File"});
+    // A commit or build-id may consist of digits only
+    table->setTextColumns({0, 1, 2, 3, 4, 5, 6, 7});
 
     std::size_t row = 0;
     for (const auto& obj : objects)
@@ -863,6 +865,7 @@ std::unique_ptr<Table> requestChangelog(const HTTP::Request& theRequest)
     auto table = std::make_unique<Table>();
     table->setTitle("Changelog");
     table->setNames({"Date", "Package", "Version", "Author", "Text"});
+    table->setTextColumns({0, 1, 2, 3, 4});
 
     std::size_t row = 0;
     for (const auto& entry : shown)

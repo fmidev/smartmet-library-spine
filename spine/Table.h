@@ -58,6 +58,10 @@ class Table
 
   void setDefaultFormat(const std::string& format);
 
+  // Columns whose values are always text, even if they look like numbers
+  void setTextColumns(const std::set<std::size_t>& columns);
+  bool isTextColumn(std::size_t column) const;
+
   std::string getDefaultFormat() const;
 
  private:
@@ -86,6 +90,13 @@ class Table
      *  of Table::getDefaultFormat() to choose the format.
      */
     std::optional<std::string> format;
+
+    /**
+     *  @brief Columns formatted as text even if the values look like numbers
+     *
+     *  For example a commit hash may consist of digits only.
+     */
+    std::set<std::size_t> text_columns;
   };
 
   Metadata& getMutableMetadata();

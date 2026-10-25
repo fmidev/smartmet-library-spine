@@ -100,7 +100,7 @@ void append_params_200(std::string& out,
     out += "\"";
     if (!value.empty())
     {
-      if (looks_number(value))
+      if (!theTable.isTextColumn(i) && looks_number(value))
         out += " value=\"";
       else
         out += " text=\"";
@@ -226,7 +226,7 @@ std::string WxmlFormatter::format_100(const Table& theTable,
         out += "\"";
         if (!value.empty())
         {
-          if (looks_number(value))
+          if (!theTable.isTextColumn(i) && looks_number(value))
             out += " value=\"";
           else
             out += " text=\"";

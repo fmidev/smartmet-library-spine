@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.10.25
-Release: 3%{?dist}.fmi
+Release: 4%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,10 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Sun Oct 25 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.25-4.fmi
+- Admin packages and changelog tables format all values as text, a commit hash such as
+  827911185398 is no longer output as a number (Table::setTextColumns)
+
 * Sun Oct 25 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.25-3.fmi
 - The data explorer is private: not announced to frontends, and only for the clients of
   api_catalog.explorer_ip_filters (default the local and private networks)
