@@ -223,6 +223,9 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .chart-modes { margin-bottom: 8px; }
 .chart-choices { align-items: center; gap: 12px; margin-bottom: 8px; }
 .chart-choices .chart-modes { margin-bottom: 0; }
+.chart-choices .chart-combine[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.chart-choices .chart-combine:disabled { opacity: 0.5; cursor: default; }
+.hover-note { margin: 2px 0 4px; }
 .swarm-hover { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
 .swarm-line { fill: none; stroke: var(--accent); stroke-width: 2; }
 .swarm-label { position: absolute; pointer-events: none; white-space: nowrap; background: var(--bg); border: 1px solid var(--line); border-radius: 3px; padding: 1px 4px; }

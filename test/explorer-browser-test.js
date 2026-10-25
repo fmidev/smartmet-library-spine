@@ -1896,6 +1896,85 @@ async function main()
         mixed.charts === 1 && mixed.note === 'No values in the result: b',
         mixed);
 
+    // Combined charts: the parameters of a unit on one axis, a second unit on the right, an
+    // unknown unit in a chart of its own, and never more than 20 lines in a chart
+    const combined = await b.evaluate(`(async () => {
+      const series = (places, params) => {
+        const rows = [];
+        for (let h = 0; h < 24; h++)
+          for (let s = 0; s < places; s++) {
+            const row = { name: 'station ' + s, time: new Date(Date.UTC(2013, 7, 5, h)).toISOString() };
+            params.forEach((p, i) => { row[p] = i + s + h / 10; });
+            rows.push(row);
+          }
+        return rows;
+      };
+      const unit = (name) => ({ rr: 'mm', rh: '%', foo: '' })[name] || '';
+      const draw = async (rows, params, mode, combine) => {
+        const box = document.createElement('div');
+        // In view, so that the charts are drawn
+        box.style.cssText = 'position: fixed; top: 0; left: 0; width: 800px; z-index: 1000';
+        document.body.append(box);
+        SmartMetExplorer.drawCharts(box, rows, params, mode, { combine, unit });
+        for (let i = 0; i < 50 && box.querySelectorAll('.chart').length !==
+                                    box.querySelectorAll('.chart .uplot').length; i++)
+          await new Promise((r) => setTimeout(r, 50));
+        const button = box.querySelector('.chart-combine');
+        const out = {
+          charts: [...box.querySelectorAll('.chart')].map((c) => c.dataset.param),
+          titles: [...box.querySelectorAll('.chart-title')].map((t) => t.textContent),
+          axes: [...box.querySelectorAll('.chart')].map((c) => c.querySelectorAll('.u-axis').length),
+          series: [...box.querySelectorAll('.chart')].map((c) => c.querySelectorAll('.u-series').length),
+          button: button ? { pressed: button.getAttribute('aria-pressed'), disabled: button.disabled,
+                             text: button.textContent } : null,
+          notes: [...box.querySelectorAll('.hover-note')].map((n) => n.textContent)
+        };
+        box.remove();
+        return out;
+      };
+      const one = series(1, ['t2m', 'td', 'rr', 'foo']);
+      return {
+        separate: await draw(one, ['t2m', 'td', 'rr', 'foo'], undefined, false),
+        lines: await draw(one, ['t2m', 'td', 'rr', 'foo'], undefined, true),
+        percentiles: await draw(series(6, ['t2m', 'td', 'rh']), ['t2m', 'td', 'rh'], 'percentiles', true),
+        limit: await draw(series(4, ['t2m', 'td', 't-k', 'tmax', 'tmin', 'td-k']),
+                          ['t2m', 'td', 't-k', 'tmax', 'tmin', 'td-k'], 'lines', true),
+        dashes: await draw(series(5, ['t2m', 'td']), ['t2m', 'td'], 'lines', true),
+        unknown: await draw(one, ['foo', 'rr'], undefined, true),
+        swarm: await draw(series(150, ['t2m']), ['t2m'], 'lines', false),
+        fan: await draw(series(30, ['t2m']), ['t2m'], 'lines', false)
+      };
+    })()`);
+    check('separate charts by default',
+          combined.separate.charts.length === 4 && combined.separate.button.pressed === 'false' &&
+              combined.separate.button.text === 'Combine' && !combined.separate.button.disabled,
+          combined.separate);
+    check('combined lines: a unit on each side, an unknown unit alone',
+          JSON.stringify(combined.lines.charts) === '["t2m,td,rr","foo"]' &&
+              /^t2m, td \((°C|F)\) · rr \(mm\)$/.test(combined.lines.titles[0]) &&
+              combined.lines.axes[0] === 3 && combined.lines.axes[1] === 2 &&
+              combined.lines.series[0] === 4 && combined.lines.button.pressed === 'true' &&
+              combined.lines.button.text === 'Separate',
+          combined.lines);
+    check('combined percentiles: the bands of each parameter',
+          JSON.stringify(combined.percentiles.charts) === '["t2m,td,rh"]' &&
+              combined.percentiles.series[0] === 16 && combined.percentiles.axes[0] === 3 &&
+              /median and percentiles of 6 locations$/.test(combined.percentiles.titles[0]),
+          combined.percentiles);
+    check('combined charts have at most 20 lines',
+          JSON.stringify(combined.limit.charts) === '["t2m,td,t-k,tmax,tmin","td-k"]',
+          combined.limit);
+    check('more locations than dashes are not combined',
+          combined.dashes.charts.length === 2 && combined.dashes.button.disabled,
+          combined.dashes);
+    check('unknown units are not combined',
+          combined.unknown.charts.length === 2 && combined.unknown.button.disabled,
+          combined.unknown);
+    check('hovering is disabled over many lines',
+          JSON.stringify(combined.swarm.notes) === '["Hovering is disabled: 150 lines are drawn"]' &&
+              combined.fan.notes.length === 0,
+          {swarm: combined.swarm.notes, fan: combined.fan.notes});
+
     // The pressure and height of model levels are requested with the parameters
     await b.send('Page.navigate', {url: `${base}/api`});
     await sleep(200);

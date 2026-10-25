@@ -2532,6 +2532,121 @@ function displayUnit(param, values)
   return {convert: from ? (v) => convert(from(v)) : convert, label};
 }
 
+// The spellings of a unit in the catalogues (lower case, without spaces) and the unit they are
+const UNIT_SPELLINGS = {
+  'c': '°C',
+  '°c': '°C',
+  'degc': '°C',
+  'celsius': '°C',
+  'f': 'F',
+  '°f': 'F',
+  'k': 'K',
+  'kelvin': 'K',
+  'm/s': 'm/s',
+  'ms-1': 'm/s',
+  'ms**-1': 'm/s',
+  'kt': 'kt',
+  'km/h': 'km/h',
+  'mph': 'mph',
+  'hpa': 'hPa',
+  'pa': 'Pa',
+  'inhg': 'inHg',
+  'm': 'm',
+  'ft': 'ft',
+  'mm': 'mm',
+  'kgm-2': 'mm',
+  'kgm**-2': 'mm',
+  'kg/m2': 'mm',
+  'kgm2': 'mm',
+  '%': '%',
+  'percent': '%',
+  '°': '°',
+  'deg': '°',
+  'degree': '°',
+  'degrees': '°'
+};
+
+// The units of the parameters of a catalogue, by name ignoring case: name => unit, '' if none
+function catalogueUnits(parameters)
+{
+  const units = new Map();
+  for (const [key, entry] of parameters || [])
+    if (entry && entry.unit)
+      units.set(String(key).toLowerCase(), entry.unit);
+  return (name) => units.get(String(name).toLowerCase()) || '';
+}
+
+// The unit of the axis of a parameter in a combined chart: {key, label, kind}, or null when the
+// unit is not known, so that the parameter is not combined with others. The quantities recognised
+// by name are in the units chosen, other parameters need a unit in the catalogue (unit(name)).
+// Symbols and classes are not combined. kind: 'amount' (drawn as bars from zero), 'percent'
+// (0-100), 'direction' (points on 0-360) or 'state'.
+function axisUnit(param, unit)
+{
+  const name = String(param).replace(/^.*\(([^()]+)\)$/, '$1');
+  const quantity = quantityOf(param);
+  const written = String(quantity ? unitOf(quantity)[1] : (unit ? unit(name) : '') || '').trim();
+  const compact = written.replace(/\s+/g, '').toLowerCase();
+  if (['', '1', '-', 'none', 'n/a', 'dimensionless'].includes(compact))
+    return null;
+  const kind = parameterKind(name, {unit: written});
+  if (kind === 'category')
+    return null;
+  const label = UNIT_SPELLINGS[compact] || written;
+  const key = UNIT_SPELLINGS[compact] || compact;
+  if (key === '°')
+    return {key, label, kind: 'direction'};
+  if (key === '%')
+    return {key, label, kind: 'percent'};
+  return {key, label, kind: kind === 'amount' ? 'amount' : 'state'};
+}
+
+// The charts of the parameters combined: [{axes: [{key, label, kind, params}]}] in the order of
+// the parameters. The parameters of a unit share an axis, a chart has at most two axes (the
+// second on the right) and at most MAX_LINES lines, each parameter drawing 'lines' of them.
+// Amounts, percentages and directions are preferably on the right. A parameter of an unknown
+// unit has a chart of its own.
+function combinedCharts(params, unitOfParam, lines)
+{
+  const most = Math.max(1, Math.floor(MAX_LINES / Math.max(1, lines)));
+  const groups = [];
+  const open = new Map();
+  for (const p of params)
+  {
+    const unit = unitOfParam(p);
+    let group = unit ? open.get(unit.key) : null;
+    if (!group || group.params.length >= most)
+    {
+      group = unit ? Object.assign({params: []}, unit) : {key: null, label: '', kind: 'state', params: []};
+      groups.push(group);
+      if (unit)
+        open.set(unit.key, group);
+    }
+    group.params.push(p);
+  }
+  const rank = (g) => ({amount: 0, percent: 1, direction: 2}[g.kind] ?? 3);
+  const charts = [];
+  const left = groups.filter((g) => g.key !== null);
+  while (left.length > 0)
+  {
+    const first = left.find((g) => rank(g) === 3) || left[0];
+    left.splice(left.indexOf(first), 1);
+    let second = null;
+    for (const g of left)
+      if (g.key !== first.key && g.params.length + first.params.length <= most &&
+          (!second || rank(g) < rank(second)))
+        second = g;
+    if (second)
+      left.splice(left.indexOf(second), 1);
+    charts.push({axes: second ? [first, second] : [first]});
+  }
+  for (const g of groups)
+    if (g.key === null)
+      charts.push({axes: [g]});
+  const order = (c) => Math.min(...c.axes.flatMap((a) => a.params.map((p) => params.indexOf(p))));
+  return charts.sort((a, b) => order(a) - order(b));
+}
+
 // The choices of the units: the results are drawn again when they change
 function unitsChooser(onChange)
 {
@@ -2899,6 +3014,11 @@ function drawVerticalDiagram(panel, title, axis, valueLabel, series)
   tip.append(tipBox, tipText);
   const hover = svg('rect', {class: 'vhover', x: 0, y: 0, width: w, height: h});
   g.append(marker, hover, tip);
+  if (series.length > MAX_HOVER_LINES)
+  {
+    panel.append(root, hoverNote(series.length));
+    return;
+  }
   hover.addEventListener('mousemove', (e) => {
     const r = hover.getBoundingClientRect();
     const mx = ((e.clientX - r.left) / r.width) * w;
@@ -5728,10 +5848,18 @@ function drawMeteogram(container, rows, levelKind)
 // series are drawn with those of the request, and the mean and the mean absolute difference at
 // the times both have are listed. options: params, kind (of the levels), ownName, others
 // ([{key, name, label, stations}], stations when the rows of the other are named by stations),
-// chosen (the key chosen before), onChoose(key), fetchRows(other) resolving to its rows.
+// chosen (the key chosen before), onChoose(key), fetchRows(other) resolving to its rows, and
+// combine, onCombine and unit of the charts (drawCharts).
 function drawComparison(pane, rows, options)
 {
   const {params, kind, ownName, others} = options;
+  // Combined charts stay combined when another producer is chosen
+  let combine = !!options.combine;
+  const onCombine = (value) => {
+    combine = value;
+    if (options.onCombine)
+      options.onCombine(value);
+  };
   const select = el('select', {class: 'compare-select', 'aria-label': L('Compare with')}, [
     el('option', {value: ''}, L('No comparison')),
     ...others.map((o) => el('option', {value: o.key}, o.label))
@@ -5751,8 +5879,14 @@ function drawComparison(pane, rows, options)
                                            level: undefined
                                          }));
     const both = displayRows([...mine, ...theirs]);
-    drawCharts(charts, both.rows, params, 'lines',
-               {levelKind: kind, labels: both.labels, seriesWord: theirs.length ? 'producers' : undefined});
+    drawCharts(charts, both.rows, params, 'lines', {
+      levelKind: kind,
+      labels: both.labels,
+      seriesWord: theirs.length ? 'producers' : undefined,
+      combine,
+      onCombine,
+      unit: options.unit
+    });
     stats.replaceChildren();
     if (!other || theirs.length === 0)
       return;
@@ -5808,6 +5942,23 @@ function drawComparison(pane, rows, options)
 // More locations than this are drawn as percentiles by default, and as a swarm of thin lines
 // without a legend when lines are chosen
 const MAX_LINES = 20;
+// The lines of a swarm or of vertical profiles beyond which the line under the pointer is not
+// looked for: the search on each move of the pointer would make the browser slow
+const MAX_HOVER_LINES = 100;
+// The dashes of the lines of the locations in a combined chart, whose colours are those of the
+// parameters
+const DASHES = [undefined, [6, 4], [2, 3], [10, 3, 2, 3]];
+
+// The note of a chart whose lines are not highlighted under the pointer
+const hoverNote = (n) =>
+    el('div', {class: 'small warn hover-note'}, L`Hovering is disabled: ${n} lines are drawn`);
+
+// A colour #rrggbb with an opacity
+function withOpacity(colour, opacity)
+{
+  const n = parseInt(colour.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${opacity})`;
+}
 
 // The colours of a swarm: a narrow gradient, from south to north when the latitudes are known
 function swarmColour(i, n)
@@ -5946,7 +6097,8 @@ function utcTimeLabels(u, splits)
 // The lines of a swarm, drawn by the chart directly on its canvas: thousands of locations would
 // be too slow as series of their own (each has its own paths, cursor point and legend value).
 // lines: [{label, values (one per x, null if none), colour, breaks (k: whether the line breaks
-// before x[k])}]. Returns the uPlot hooks and the y range of the lines.
+// before x[k])}]. Returns the uPlot hooks, the y range of the lines, and whether the line under
+// the pointer is highlighted (not when there are more than MAX_HOVER_LINES).
 function swarmLayer(xs, lines)
 {
   let lo = Infinity;
@@ -6059,9 +6211,11 @@ function swarmLayer(xs, lines)
     label.style.left = `${Math.min(x + 8, Math.max(0, u.over.clientWidth - 220))}px`;
     label.style.top = `${Math.max(0, u.valToPos(best.values[k], 'y') - 24)}px`;
   };
+  const hover = lines.length <= MAX_HOVER_LINES;
   return {
-    hooks: {drawAxes: [draw], ready: [ready], setCursor: [setCursor]},
-    range: lo <= hi ? [lo, hi] : null
+    hooks: hover ? {drawAxes: [draw], ready: [ready], setCursor: [setCursor]} : {drawAxes: [draw]},
+    range: lo <= hi ? [lo, hi] : null,
+    hover
   };
 }
 
@@ -6103,13 +6257,38 @@ function chartLevels(rows, levelKind)
   return {levels, fallback: places > 1 ? String(lowest) : ''};
 }
 
-// The charts of the numeric parameters of the rows, one chart per parameter. 'mode' is "lines",
-// "percentiles" or "probability" (of exceeding a threshold); the default depends on the number
-// of series. "server" draws the percentiles the server computed over an area
-// (AREA_STATISTICS). options: labels (the units of the columns), levelKind (the kind of the
-// levels of the rows), level (the level
-// drawn, '' for every level as a series of its own), thresholds and below (of the probability
-// of each parameter), seriesWord (what the series are, e.g. 'producers').
+// The drawing of the lines of a parameter in a combined chart by the kind of its axis: amounts of
+// one location as bars, directions as points
+function combinedStyle(kind, colour, locations)
+{
+  if (kind === 'amount' && locations === 1)
+    return {paths: root.uPlot.paths.bars({size: [0.6, 40]}), fill: withOpacity(colour, 0.5), points: {show: false}};
+  if (kind === 'direction')
+    return {paths: () => null, points: {show: true, size: 5, fill: colour}};
+  return {};
+}
+
+// The scale of an axis of a combined chart by its kind
+function combinedScale(kind)
+{
+  if (kind === 'amount')
+    return {range: (u, lo, hi) => [0, Math.max(1, hi * 1.1)]};
+  if (kind === 'percent')
+    return {range: () => [0, 100]};
+  if (kind === 'direction')
+    return {range: () => [0, 360]};
+  return {auto: true};
+}
+
+// The charts of the numeric parameters of the rows, one chart per parameter, or when combined
+// the parameters of a unit in one chart. 'mode' is "lines", "percentiles" or "probability" (of
+// exceeding a threshold); the default depends on the number of series. "server" draws the
+// percentiles the server computed over an area (AREA_STATISTICS). options: labels (the units of
+// the columns), levelKind (the kind of the levels of the rows), level (the level drawn, '' for
+// every level as a series of its own), thresholds and below (of the probability of each
+// parameter), seriesWord (what the series are, e.g. 'producers'), combine (whether the
+// parameters of the same unit share charts), onCombine(combine) (called when it is chosen) and
+// unit (the unit of a parameter in the catalogue by its name, for combining).
 function drawCharts(container, rows, parameters, mode, options = {})
 {
   if (mode === 'server')
@@ -6202,6 +6381,17 @@ function drawCharts(container, rows, parameters, mode, options = {})
   const what = options.seriesWord || (members && places === 1 ? 'members' : 'locations');
   const chosen = mode || (many ? 'percentiles' : 'lines');
 
+  // The parameters combined in charts by their units: only lines and percentiles, and only lines
+  // the dashes of the locations tell apart, never more than MAX_LINES in a chart
+  const plan = combinedCharts(numeric, (p) => axisUnit(p, options.unit), chosen === 'lines' ? names.length : 5);
+  const merges = plan.some((c) => c.axes.length > 1 || c.axes[0].params.length > 1);
+  const cannot = chosen === 'probability' ? L('Probabilities cannot be combined') :
+      chosen === 'lines' && names.length > DASHES.length ? L`More than ${DASHES.length} ${L(what)} cannot be combined` :
+      !merges ? L('No parameters of known units can be combined') :
+                '';
+  const combine = !!options.combine && !cannot;
+  const charts = combine ? plan : numeric.map((p) => ({axes: [{key: null, label: '', kind: 'state', params: [p]}]}));
+
   // The choice of the drawing for several locations, and of the level
   const choices = el('div', {class: 'row chart-choices'});
   if (names.length > 2)
@@ -6225,6 +6415,20 @@ function drawCharts(container, rows, parameters, mode, options = {})
   }
   if (levelChooser)
     choices.append(levelChooser);
+  if (numeric.length > 1)
+    choices.append(el('button', {
+      type: 'button',
+      class: 'small chart-combine',
+      'aria-pressed': combine ? 'true' : 'false',
+      disabled: !!cannot,
+      title: cannot || (combine ? L('Draw each parameter in a chart of its own') :
+                                  L('Draw the parameters of the same unit in one chart, a second unit on the right')),
+      onclick: () => {
+        if (options.onCombine)
+          options.onCombine(!combine);
+        drawCharts(container, allRows, parameters, chosen, Object.assign({}, options, {level, combine: !combine}));
+      }
+    }, combine ? L('Separate') : L('Combine')));
   if (choices.children.length > 0)
     container.append(choices);
 
@@ -6253,26 +6457,32 @@ function drawCharts(container, rows, parameters, mode, options = {})
   // The legend shows the time under the cursor in UTC
   const timeSeries = {value: (u, x) => (x === null ? '--' : formatTime(new Date(x * 1000)))};
 
-  for (const param of numeric)
+  for (const chart of charts)
   {
-    // The name of the parameter with its unit when not the default
-    const pname = (options.labels || {})[param] ? `${param} (${options.labels[param]})` : param;
-    // The value of the parameter at time x of a location, null if none
-    const valueOf = (map, x) => {
+    const params = chart.axes.flatMap((a) => a.params);
+    const param = params[0];
+    // The name of the parameter with its unit when not the default, or of the parameters
+    // combined with their units
+    const pname = params.length > 1 ?
+        chart.axes.map((a) => `${a.params.join(', ')}${a.label ? ` (${a.label})` : ''}`).join(' · ') :
+        (options.labels || {})[param] ? `${param} (${options.labels[param]})` :
+                                         param;
+    // The value of a parameter at time x of a location, null if none
+    const valueOf = (map, x, p = param) => {
       const row = map.get(x);
-      const v = row ? row[param] : null;
+      const v = row ? row[p] : null;
       return typeof v === 'number' && isFinite(v) ? v : null;
     };
-    // The times of the parameter: those at which some location has a value
-    const xs = allTimes.filter(
-        (x) => Array.from(locations.values()).some((map) => valueOf(map, x) !== null));
+    // The times of the parameters: those at which some location has a value
+    const xs = allTimes.filter((x) => params.some(
+        (p) => Array.from(locations.values()).some((map) => valueOf(map, x, p) !== null)));
 
     // The percentiles over the locations at each time. Locations may report at different
     // intervals (every minute, every 10 minutes, hourly): a time at which only a few of them
     // report would make a comb of the percentiles, so it is left out.
-    const percentiles = (qs) => {
+    const percentiles = (qs, p = param) => {
       const counts = xs.map(
-          (x) => Array.from(locations.values()).filter((map) => valueOf(map, x) !== null).length);
+          (x) => Array.from(locations.values()).filter((map) => valueOf(map, x, p) !== null).length);
       // Most times may have only a few locations (a station reporting every minute among ones
       // reporting every 10 minutes), so the measure is the most locations at a time
       const typical = Math.max(1, ...counts);
@@ -6286,7 +6496,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
         const values = [];
         for (const map of locations.values())
         {
-          const v = valueOf(map, x);
+          const v = valueOf(map, x, p);
           if (v !== null)
             values.push(v);
         }
@@ -6321,7 +6531,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
       });
     };
 
-    const panel = el('div', {class: 'chart', 'data-param': param, 'data-mode': chosen});
+    const panel = el('div', {class: 'chart', 'data-param': params.join(','), 'data-mode': chosen});
     container.append(panel);
     let data;
     let series;
@@ -6331,7 +6541,52 @@ function drawCharts(container, rows, parameters, mode, options = {})
     let swarm = null;
     let probability = null;
 
-    if (chosen === 'lines' && !many)
+    if (params.length > 1)
+    {
+      // The parameters in the colours of their own, the locations dashed differently; the
+      // percentiles of each parameter as bands of its colour
+      data = [xs];
+      series = [timeSeries];
+      chart.axes.forEach((axis, side) => {
+        const scale = side === 0 ? 'y' : 'y2';
+        for (const p of axis.params)
+        {
+          const colour = palette[params.indexOf(p) % palette.length];
+          if (chosen === 'lines')
+            names.forEach((n, i) => {
+              const values = xs.map((x) => valueOf(locations.get(n), x, p));
+              data.push(values);
+              series.push(Object.assign({
+                label: names.length > 1 && n ? `${p} · ${n}` : p,
+                stroke: colour,
+                width: 1.5,
+                dash: DASHES[i],
+                scale,
+                spanGaps: false,
+                gaps: gapsOf(values)
+              }, combinedStyle(axis.kind, colour, names.length)));
+            });
+          else
+          {
+            const first = data.length;
+            data.push(...percentiles([0.1, 0.25, 0.5, 0.75, 0.9], p));
+            const gaps = gapsOf(data[first + 2]);
+            // Only the medians have points, the ranges of several parameters would be a clutter
+            const faint = {stroke: withOpacity(colour, 0.5), width: 1, scale, gaps, points: {show: false}};
+            series.push(Object.assign({label: `${p} 10 %`}, faint),
+                        Object.assign({label: `${p} 25 %`}, faint),
+                        {label: L`${p} median`, stroke: colour, width: 2, scale, gaps},
+                        Object.assign({label: `${p} 75 %`}, faint),
+                        Object.assign({label: `${p} 90 %`}, faint));
+            bands.push({series: [first + 4, first], fill: withOpacity(colour, 0.1)},
+                       {series: [first + 3, first + 1], fill: withOpacity(colour, 0.18)});
+          }
+        }
+      });
+      caption = chosen === 'lines' ? (names.length > 1 ? `${pname}, ${names.length} ${what}` : pname) :
+                                     L`${pname}: median and percentiles of ${names.length} ${L(what)}`;
+    }
+    else if (chosen === 'lines' && !many)
     {
       data = [xs, ...names.map((n) => xs.map((x) => valueOf(locations.get(n), x)))];
       series = [
@@ -6462,9 +6717,24 @@ function drawCharts(container, rows, parameters, mode, options = {})
       value.addEventListener('change', redraw);
       panel.append(el('div', {class: 'row'}, side, value));
     }
+    if (swarm && !swarm.hover)
+      panel.append(hoverNote(names.length));
     const plot = el('div', {class: 'chart-plot', style: 'min-height: 260px'});
     panel.append(plot);
     const scales = {x: {time: true}};
+    let chartAxes = axes;
+    if (params.length > 1)
+    {
+      // An axis of each unit, the second on the right without a grid of its own
+      chartAxes = [axes[0]];
+      chart.axes.forEach((axis, side) => {
+        const scale = side === 0 ? 'y' : 'y2';
+        scales[scale] = combinedScale(axis.kind);
+        chartAxes.push(Object.assign({}, axes[1], {scale, label: axis.label, labelSize: 16},
+                                     axis.kind === 'direction' ? {splits: () => [0, 90, 180, 270, 360]} : {},
+                                     side === 1 ? {side: 1, grid: {show: false}} : {}));
+      });
+    }
     if (probability)
       scales.y = {range: () => [0, 100]};
     if (swarm && swarm.range)
@@ -6479,7 +6749,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
       height: 260,
       series: series,
       bands: bands,
-      axes: axes,
+      axes: chartAxes,
       scales: scales,
       legend: legend,
       hooks: swarm ? swarm.hooks : {},
@@ -9545,7 +9815,7 @@ function timeSeriesModule(app, api, state, save)
             drawComparableCharts(panes.Chart, rows, kind);
           else
             drawCharts(panes.Chart, shown.rows, shownParams(), statistics ? 'server' : undefined,
-                       {levelKind: kind, labels: shown.labels});
+                       Object.assign({levelKind: kind, labels: shown.labels}, combineOptions()));
         }
         else if (name === 'Meteogram')
           drawMeteogram(panes.Meteogram, rows, kind);
@@ -9648,8 +9918,20 @@ function timeSeriesModule(app, api, state, save)
                L`Add ${wanted.join(', ')} and run`));
     }
 
-    // The options of the sounding diagram: its type, and the soundings of another producer to
-    // compare with, fetched for the same location and times
+    // Whether the charts combine the parameters of the same unit, remembered with the view, and
+    // the units of the parameters in the catalogue
+    function combineOptions()
+    {
+      return {
+        combine: s.combine === '1',
+        onCombine: (value) => {
+          s.combine = value ? '1' : undefined;
+          save();
+        },
+        unit: catalogueUnits(index.parameters)
+      };
+    }
+
     // The charts of one place, compared with another producer when one is chosen. Observations
     // are matched to the nearest station.
     function drawComparableCharts(pane, rows, kind)
@@ -9678,6 +9960,7 @@ function timeSeriesModule(app, api, state, save)
           s.compare = key || undefined;
           save();
         },
+        ...combineOptions(),
         fetchRows: async (other) => {
           const p = index.producers.get(other.key);
           // One value of an area is compared with the same function of the other producer
@@ -9709,6 +9992,8 @@ function timeSeriesModule(app, api, state, save)
       });
     }
 
+    // The options of the sounding diagram: its type, and the soundings of another producer to
+    // compare with, fetched for the same location and times
     function soundingOptions()
     {
       const own = producer();
@@ -10902,7 +11187,8 @@ function edrModule(app, api, state, save)
           if (places === 1 && levels <= 1)
             drawComparableCharts(panes.Chart, rows, kind, params);
           else
-            drawCharts(panes.Chart, shown.rows, params, undefined, {levelKind: kind, labels: shown.labels});
+            drawCharts(panes.Chart, shown.rows, params, undefined,
+                       Object.assign({levelKind: kind, labels: shown.labels}, combineOptions()));
         }
         else if (name === 'Meteogram')
           drawMeteogram(panes.Meteogram, rows, kind);
@@ -10973,6 +11259,20 @@ function edrModule(app, api, state, save)
                                      'Chart');
     }
 
+    // Whether the charts combine the parameters of the same unit, remembered with the view, and
+    // the units of the parameters in the catalogue
+    function combineOptions()
+    {
+      return {
+        combine: s.combine === '1',
+        onCombine: (value) => {
+          s.combine = value ? '1' : undefined;
+          save();
+        },
+        unit: catalogueUnits(index.parameters)
+      };
+    }
+
     // The charts of one place, compared with another collection when one is chosen: the same
     // query of the other collection, without the levels of this one
     function drawComparableCharts(pane, rows, kind, params)
@@ -10998,6 +11298,7 @@ function edrModule(app, api, state, save)
           s.compare = key || undefined;
           save();
         },
+        ...combineOptions(),
         fetchRows: async (other) => {
           const url = new URL(currentUrl().replace(`/collections/${encodeURIComponent(s.collection)}/`,
                                                    `/collections/${encodeURIComponent(other.key)}/`));
