@@ -1293,102 +1293,126 @@ const std::map<std::string, std::set<std::string>> explorerUnits = {
     {"pressure", {"hPa", "Pa", "inHg"}},
     {"height", {"m", "ft"}}};
 
+void parseCenter(const libconfig::Setting& item, const std::string& path, Json::Value& out)
+{
+  if (!item.isArray() || item.getLength() != 2)
+    throw Fmi::Exception(BCP, "center must be [longitude, latitude]").addParameter("path", path);
+  const double lon = item[0];
+  const double lat = item[1];
+  if (lon < -180 || lon > 180 || lat < -85 || lat > 85)
+    throw Fmi::Exception(BCP, "center is out of range").addParameter("path", path);
+  out["center"].append(lon);
+  out["center"].append(lat);
+}
+
+void parseZoom(const libconfig::Setting& item, const std::string& path, Json::Value& out)
+{
+  const int zoom = item;
+  if (zoom < 0 || zoom > 18)
+    throw Fmi::Exception(BCP, "zoom must be 0-18").addParameter("path", path);
+  out["zoom"] = zoom;
+}
+
+void parseLanguage(const libconfig::Setting& item, const std::string& path, Json::Value& out)
+{
+  const std::string value = static_cast<const char*>(item);
+  if (value.size() != 2 || !std::islower(static_cast<unsigned char>(value[0])) ||
+      !std::islower(static_cast<unsigned char>(value[1])))
+    throw Fmi::Exception(BCP, "language must be a two letter code such as fi")
+        .addParameter("path", path);
+  out["language"] = value;
+}
+
+void parseClock(const libconfig::Setting& item, const std::string& path, Json::Value& out)
+{
+  const std::string value = static_cast<const char*>(item);
+  if (value != "24" && value != "12")
+    throw Fmi::Exception(BCP, "clock must be \"24\" or \"12\"").addParameter("path", path);
+  out["clock"] = value;
+}
+
+void parseExamples(const libconfig::Setting& item, const std::string& path, Json::Value& out)
+{
+  static const std::set<std::string> modes{"place", "fmisid", "wmo", "keyword", "area"};
+  if (!item.isGroup())
+    throw Fmi::Exception(BCP, "examples must be a group").addParameter("path", path);
+  for (const auto& example : item)
+  {
+    const std::string mode = example.getName();
+    if (modes.count(mode) == 0)
+      throw Fmi::Exception(BCP, "Unknown example of explorer_defaults")
+          .addParameter("path", path + "." + mode);
+    out["examples"][mode] = static_cast<const char*>(example);
+  }
+}
+
+// A "code label" string as [code, label], the label defaulting to the code
+Json::Value parseProjection(const std::string& text)
+{
+  const auto space = text.find(' ');
+  const auto code = text.substr(0, space);
+  if (code.empty() || code.find_first_of("\"'<>&") != std::string::npos)
+    throw Fmi::Exception(BCP, "Invalid projection").addParameter("projection", text);
+  Json::Value entry(Json::arrayValue);
+  entry.append(code);
+  entry.append(space == std::string::npos ? code : boost::algorithm::trim_copy(text.substr(space)));
+  return entry;
+}
+
+void parseProjections(const libconfig::Setting& item, const std::string& path, Json::Value& out)
+{
+  if (!item.isArray() && !item.isList())
+    throw Fmi::Exception(BCP, "projections must be a list of \"code label\" strings")
+        .addParameter("path", path);
+  out["projections"] = Json::Value(Json::arrayValue);
+  for (const auto& p : item)
+    out["projections"].append(parseProjection(static_cast<const char*>(p)));
+}
+
+void parseUnits(const libconfig::Setting& item, const std::string& path, Json::Value& out)
+{
+  if (!item.isGroup())
+    throw Fmi::Exception(BCP, "units must be a group").addParameter("path", path);
+  for (const auto& unit : item)
+  {
+    const std::string quantity = unit.getName();
+    const std::string value = static_cast<const char*>(unit);
+    const auto known = explorerUnits.find(quantity);
+    if (known == explorerUnits.end() || known->second.count(value) == 0)
+      throw Fmi::Exception(BCP, "Unknown unit of the explorer")
+          .addParameter("quantity", quantity)
+          .addParameter("unit", value);
+    out["units"][quantity] = value;
+  }
+}
+
+using ExplorerSettingParser = void (*)(const libconfig::Setting& item,
+                                       const std::string& path,
+                                       Json::Value& out);
+
+const std::map<std::string, ExplorerSettingParser> explorerSettingParsers = {
+    {"center", parseCenter},
+    {"zoom", parseZoom},
+    {"language", parseLanguage},
+    {"clock", parseClock},
+    {"examples", parseExamples},
+    {"projections", parseProjections},
+    {"units", parseUnits}};
+
 // The explorer_defaults group as JSON, validated so that the page can trust it
 Json::Value parseExplorerDefaults(const libconfig::Setting& group)
 {
-  const auto where = [&group](const std::string& name)
-  { return std::string(group.getPath()) + "." + name; };
   if (!group.isGroup())
     throw Fmi::Exception(BCP, "explorer_defaults must be a group").addParameter("path", group.getPath());
   Json::Value out(Json::objectValue);
   for (const auto& item : group)
   {
     const std::string name = item.getName();
-    if (name == "center")
-    {
-      if (!item.isArray() || item.getLength() != 2)
-        throw Fmi::Exception(BCP, "center must be [longitude, latitude]").addParameter("path", where(name));
-      const double lon = item[0];
-      const double lat = item[1];
-      if (lon < -180 || lon > 180 || lat < -85 || lat > 85)
-        throw Fmi::Exception(BCP, "center is out of range").addParameter("path", where(name));
-      out["center"].append(lon);
-      out["center"].append(lat);
-    }
-    else if (name == "zoom")
-    {
-      const int zoom = item;
-      if (zoom < 0 || zoom > 18)
-        throw Fmi::Exception(BCP, "zoom must be 0-18").addParameter("path", where(name));
-      out["zoom"] = zoom;
-    }
-    else if (name == "language")
-    {
-      const std::string value = static_cast<const char*>(item);
-      if (value.size() != 2 || !std::islower(static_cast<unsigned char>(value[0])) ||
-          !std::islower(static_cast<unsigned char>(value[1])))
-        throw Fmi::Exception(BCP, "language must be a two letter code such as fi")
-            .addParameter("path", where(name));
-      out["language"] = value;
-    }
-    else if (name == "clock")
-    {
-      const std::string value = static_cast<const char*>(item);
-      if (value != "24" && value != "12")
-        throw Fmi::Exception(BCP, "clock must be \"24\" or \"12\"").addParameter("path", where(name));
-      out["clock"] = value;
-    }
-    else if (name == "examples")
-    {
-      if (!item.isGroup())
-        throw Fmi::Exception(BCP, "examples must be a group").addParameter("path", where(name));
-      for (const auto& example : item)
-      {
-        const std::string mode = example.getName();
-        if (mode != "place" && mode != "fmisid" && mode != "wmo" && mode != "keyword" &&
-            mode != "area")
-          throw Fmi::Exception(BCP, "Unknown example of explorer_defaults")
-              .addParameter("path", where(name + "." + mode));
-        out["examples"][mode] = static_cast<const char*>(example);
-      }
-    }
-    else if (name == "projections")
-    {
-      if (!item.isArray() && !item.isList())
-        throw Fmi::Exception(BCP, "projections must be a list of \"code label\" strings")
-            .addParameter("path", where(name));
-      out["projections"] = Json::Value(Json::arrayValue);
-      for (const auto& p : item)
-      {
-        const std::string text = static_cast<const char*>(p);
-        const auto space = text.find(' ');
-        const auto code = text.substr(0, space);
-        if (code.empty() || code.find_first_of("\"'<>&") != std::string::npos)
-          throw Fmi::Exception(BCP, "Invalid projection").addParameter("projection", text);
-        Json::Value entry(Json::arrayValue);
-        entry.append(code);
-        entry.append(space == std::string::npos ? code : boost::algorithm::trim_copy(text.substr(space)));
-        out["projections"].append(entry);
-      }
-    }
-    else if (name == "units")
-    {
-      if (!item.isGroup())
-        throw Fmi::Exception(BCP, "units must be a group").addParameter("path", where(name));
-      for (const auto& unit : item)
-      {
-        const std::string quantity = unit.getName();
-        const std::string value = static_cast<const char*>(unit);
-        const auto known = explorerUnits.find(quantity);
-        if (known == explorerUnits.end() || known->second.count(value) == 0)
-          throw Fmi::Exception(BCP, "Unknown unit of the explorer")
-              .addParameter("quantity", quantity)
-              .addParameter("unit", value);
-        out["units"][quantity] = value;
-      }
-    }
-    else
-      throw Fmi::Exception(BCP, "Unknown setting of explorer_defaults").addParameter("path", where(name));
+    const auto path = std::string(group.getPath()) + "." + name;
+    auto parser = explorerSettingParsers.find(name);
+    if (parser == explorerSettingParsers.end())
+      throw Fmi::Exception(BCP, "Unknown setting of explorer_defaults").addParameter("path", path);
+    parser->second(item, path, out);
   }
   return out;
 }
@@ -1463,6 +1487,43 @@ std::vector<CatalogEntry> localCatalogEntries()
   }
 }
 
+namespace
+{
+// The APIs with documentation pages
+std::set<std::string> documentedRoots(const Json::Value& contexts)
+{
+  std::set<std::string> documented;
+  for (const auto& context : contexts)
+  {
+    if (!context.isObject() || !context["anchor"].isString() || !context["service-doc"].isArray())
+      continue;
+    const auto root = catalogPath(context["anchor"].asString());
+    if (!root.empty())
+      documented.insert(root);
+  }
+  return documented;
+}
+
+// The entry of an item of the linkset, none if it is invalid
+std::optional<CatalogEntry> catalogEntry(const Json::Value& item,
+                                         const std::set<std::string>& documented)
+{
+  if (!item.isObject() || !item["href"].isString())
+    return {};
+  CatalogEntry entry;
+  entry.root = catalogPath(item["href"].asString());
+  if (entry.root.empty())
+    return {};
+  entry.title = (item["title"].isString() ? item["title"].asString() : entry.root);
+  if (item["description"].isString())
+    entry.description = item["description"].asString();
+  if (item["x-smartmet-kind"].isString())
+    entry.kind = item["x-smartmet-kind"].asString();
+  entry.docs = (documented.count(entry.root) > 0);
+  return entry;
+}
+}  // namespace
+
 std::vector<CatalogEntry> parseCatalog(const Json::Value& linkset)
 {
   try
@@ -1474,16 +1535,7 @@ std::vector<CatalogEntry> parseCatalog(const Json::Value& linkset)
     if (!contexts.isArray())
       return ret;
 
-    // The APIs with documentation pages
-    std::set<std::string> documented;
-    for (const auto& context : contexts)
-    {
-      if (!context.isObject() || !context["anchor"].isString() || !context["service-doc"].isArray())
-        continue;
-      const auto root = catalogPath(context["anchor"].asString());
-      if (!root.empty())
-        documented.insert(root);
-    }
+    const auto documented = documentedRoots(contexts);
 
     std::set<std::string> seen;
     for (const auto& context : contexts)
@@ -1492,19 +1544,9 @@ std::vector<CatalogEntry> parseCatalog(const Json::Value& linkset)
         continue;
       for (const auto& item : context["item"])
       {
-        if (!item.isObject() || !item["href"].isString())
-          continue;
-        CatalogEntry entry;
-        entry.root = catalogPath(item["href"].asString());
-        if (entry.root.empty() || !seen.insert(entry.root).second)
-          continue;
-        entry.title = (item["title"].isString() ? item["title"].asString() : entry.root);
-        if (item["description"].isString())
-          entry.description = item["description"].asString();
-        if (item["x-smartmet-kind"].isString())
-          entry.kind = item["x-smartmet-kind"].asString();
-        entry.docs = (documented.count(entry.root) > 0);
-        ret.push_back(std::move(entry));
+        auto entry = catalogEntry(item, documented);
+        if (entry && seen.insert(entry->root).second)
+          ret.push_back(std::move(*entry));
       }
     }
     std::sort(ret.begin(),
@@ -1518,6 +1560,83 @@ std::vector<CatalogEntry> parseCatalog(const Json::Value& linkset)
   }
 }
 
+namespace
+{
+bool readJson(const std::string& path, Json::Value& value)
+{
+  Json::CharReaderBuilder reader;
+  reader["allowComments"] = true;
+  std::ifstream in(path);
+  std::string errors;
+  return in && Json::parseFromStream(reader, in, &value, &errors);
+}
+
+// The isobands of a production palette as [[lo, hi, r, g, b], ...]
+Json::Value paletteBands(const Json::Value& palette)
+{
+  Json::Value bands(Json::arrayValue);
+  for (const auto& band : palette["isobands"])
+  {
+    const auto& rgb = band["rgb"];
+    if (!band["lo"].isNumeric() || !band["hi"].isNumeric() || !rgb.isArray() || rgb.size() < 3)
+      continue;
+    Json::Value b(Json::arrayValue);
+    b.append(band["lo"]);
+    b.append(band["hi"]);
+    for (Json::ArrayIndex i = 0; i < 3; i++)
+      b.append(rgb[i]);
+    bands.append(b);
+  }
+  return bands;
+}
+
+// The palettes of a directory by name
+Json::Value readPalettes(const std::string& dir)
+{
+  Json::Value palettes;
+  std::error_code ec;
+  if (!std::filesystem::is_directory(dir, ec))
+    return palettes;
+  for (const auto& file : std::filesystem::directory_iterator(dir, ec))
+  {
+    if (file.path().extension() != ".json")
+      continue;
+    Json::Value palette;
+    if (!readJson(file.path().string(), palette) || !palette["isobands"].isArray())
+      continue;
+    auto bands = paletteBands(palette);
+    if (bands.size() > 0)
+      palettes[file.path().stem().string()] = bands;
+  }
+  return palettes;
+}
+
+// A translation of the explorer page: explorer-<language>.js, e.g. explorer-fi.js
+bool isExplorerTranslation(const std::string& name)
+{
+  return name.size() == 14 && name.compare(0, 9, "explorer-") == 0 &&
+         name.compare(11, 3, ".js") == 0 && std::islower(static_cast<unsigned char>(name[9])) &&
+         std::islower(static_cast<unsigned char>(name[10]));
+}
+
+std::optional<std::string> readFile(const std::string& path)
+{
+  std::ifstream in(path, std::ios::binary);
+  if (!in)
+    return {};
+  return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+}
+}  // namespace
+
+Catalog::ExplorerFile Catalog::explorerFile(std::string content, const std::string& contentType)
+{
+  ExplorerFile f;
+  f.content = std::move(content);
+  f.contentType = contentType;
+  f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
+  return f;
+}
+
 Catalog::Catalog(CatalogSettings settings) : itsSettings(std::move(settings))
 {
   if (itsSettings.openapi.enabled && itsSettings.openapi.ui)
@@ -1526,30 +1645,8 @@ Catalog::Catalog(CatalogSettings settings) : itsSettings(std::move(settings))
   if (!itsSettings.openapi.enabled || !itsSettings.explorer)
     return;
 
-  // The explorer, uPlot, and the SmartMet Swagger UI plugin for the snippets and the viewer
-  const std::vector<std::pair<std::string, std::string>> files{
-      {itsSettings.explorer_dir + "/explorer.js", "text/javascript; charset=UTF-8"},
-      {itsSettings.explorer_dir + "/explorer.css", "text/css; charset=UTF-8"},
-      {itsSettings.uplot_dir + "/uPlot.iife.min.js", "text/javascript; charset=UTF-8"},
-      {itsSettings.uplot_dir + "/uPlot.min.css", "text/css; charset=UTF-8"}};
-
-  std::string missing;
   std::map<std::string, ExplorerFile> loaded;
-  for (const auto& file : files)
-  {
-    std::ifstream in(file.first, std::ios::binary);
-    if (!in)
-    {
-      missing += (missing.empty() ? "" : ", ") + file.first;
-      continue;
-    }
-    ExplorerFile f;
-    f.content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
-    f.contentType = file.second;
-    f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
-    loaded.emplace(file.first.substr(file.first.rfind('/') + 1), std::move(f));
-  }
-
+  const auto missing = loadRequiredExplorerFiles(loaded);
   if (!missing.empty())
   {
     std::cerr << fmt::format(
@@ -1562,77 +1659,71 @@ Catalog::Catalog(CatalogSettings settings) : itsSettings(std::move(settings))
     return;
   }
 
-  // The production palettes are optional: {palettes: {name: [[lo, hi, r, g, b], ...]},
-  // parameters: {lower case parameter name: palette name}}
-  {
-    Json::Value doc;
-    Json::CharReaderBuilder reader;
-    reader["allowComments"] = true;
-    const auto readJson = [&reader](const std::string& path, Json::Value& value)
-    {
-      std::ifstream in(path);
-      std::string errors;
-      return in && Json::parseFromStream(reader, in, &value, &errors);
-    };
-    std::error_code ec;
-    if (std::filesystem::is_directory(itsSettings.palette_dir, ec))
-    {
-      for (const auto& file : std::filesystem::directory_iterator(itsSettings.palette_dir, ec))
-      {
-        if (file.path().extension() != ".json")
-          continue;
-        Json::Value palette;
-        if (!readJson(file.path().string(), palette) || !palette["isobands"].isArray())
-          continue;
-        Json::Value bands(Json::arrayValue);
-        for (const auto& band : palette["isobands"])
-        {
-          const auto& rgb = band["rgb"];
-          if (!band["lo"].isNumeric() || !band["hi"].isNumeric() || !rgb.isArray() ||
-              rgb.size() < 3)
-            continue;
-          Json::Value b(Json::arrayValue);
-          b.append(band["lo"]);
-          b.append(band["hi"]);
-          for (Json::ArrayIndex i = 0; i < 3; i++)
-            b.append(rgb[i]);
-          bands.append(b);
-        }
-        if (bands.size() > 0)
-          doc["palettes"][file.path().stem().string()] = bands;
-      }
-    }
-    Json::Value config;
-    if (doc.isMember("palettes") && readJson(itsSettings.palette_config, config) &&
-        config["palettes"].isObject())
-      for (const auto& name : config["palettes"].getMemberNames())
-        if (config["palettes"][name].isString() &&
-            doc["palettes"].isMember(config["palettes"][name].asString()))
-          doc["parameters"][boost::algorithm::to_lower_copy(name)] = config["palettes"][name];
-    if (doc.isMember("palettes"))
-    {
-      ExplorerFile f;
-      f.content = toJsonText(doc);
-      f.contentType = "application/json";
-      f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
-      loaded.emplace("palettes.json", std::move(f));
-    }
-  }
+  loadPalettes(loaded);
+  loadBasemaps(loaded);
+  loadTranslations(loaded);
 
-  // The background map is optional, and so is its more detailed version for enlarged and
-  // zoomed in maps. Configured OGR data sources replace the files.
+  loaded.emplace(PLUGIN_FILE, explorerFile(SWAGGER_UI_PLUGIN_JS, "text/javascript; charset=UTF-8"));
+  itsExplorerFiles = std::move(loaded);
+}
+
+// The explorer, uPlot, and the SmartMet Swagger UI plugin for the snippets and the viewer.
+// Returns the files which are missing.
+std::string Catalog::loadRequiredExplorerFiles(std::map<std::string, ExplorerFile>& loaded) const
+{
+  const std::vector<std::pair<std::string, std::string>> files{
+      {itsSettings.explorer_dir + "/explorer.js", "text/javascript; charset=UTF-8"},
+      {itsSettings.explorer_dir + "/explorer.css", "text/css; charset=UTF-8"},
+      {itsSettings.uplot_dir + "/uPlot.iife.min.js", "text/javascript; charset=UTF-8"},
+      {itsSettings.uplot_dir + "/uPlot.min.css", "text/css; charset=UTF-8"}};
+
+  std::string missing;
+  for (const auto& file : files)
+  {
+    auto content = readFile(file.first);
+    if (!content)
+      missing += (missing.empty() ? "" : ", ") + file.first;
+    else
+      loaded.emplace(file.first.substr(file.first.rfind('/') + 1),
+                     explorerFile(std::move(*content), file.second));
+  }
+  return missing;
+}
+
+// The production palettes are optional: {palettes: {name: [[lo, hi, r, g, b], ...]},
+// parameters: {lower case parameter name: palette name}}
+void Catalog::loadPalettes(std::map<std::string, ExplorerFile>& loaded) const
+{
+  Json::Value doc;
+  auto palettes = readPalettes(itsSettings.palette_dir);
+  if (palettes.isNull())
+    return;
+  doc["palettes"] = palettes;
+
+  Json::Value config;
+  if (readJson(itsSettings.palette_config, config) && config["palettes"].isObject())
+    for (const auto& name : config["palettes"].getMemberNames())
+      if (config["palettes"][name].isString() &&
+          doc["palettes"].isMember(config["palettes"][name].asString()))
+        doc["parameters"][boost::algorithm::to_lower_copy(name)] = config["palettes"][name];
+
+  loaded.emplace("palettes.json", explorerFile(toJsonText(doc), "application/json"));
+}
+
+// The background map is optional, and so is its more detailed version for enlarged and
+// zoomed in maps. Configured OGR data sources replace the files.
+void Catalog::loadBasemaps(std::map<std::string, ExplorerFile>& loaded) const
+{
   for (const auto& [name, sources, scale, title] :
        {std::make_tuple("basemap.json", &itsSettings.basemap, 100, "1:50m"),
         std::make_tuple("basemap-10m.json", &itsSettings.basemap_detail, 500, "1:10m")})
   {
-    ExplorerFile f;
-    bool read = false;
+    std::optional<std::string> content;
     if (sources->configured())
     {
       try
       {
-        f.content = basemapJson(*sources, scale, fmt::format("{} (configured)", title));
-        read = true;
+        content = basemapJson(*sources, scale, fmt::format("{} (configured)", title));
       }
       catch (...)
       {
@@ -1641,45 +1732,26 @@ Catalog::Catalog(CatalogSettings settings) : itsSettings(std::move(settings))
         e.printError();
       }
     }
-    if (!read)
-    {
-      std::ifstream in(itsSettings.explorer_dir + "/" + name, std::ios::binary);
-      if (!in)
-        continue;
-      f.content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
-    }
-    f.contentType = "application/json";
-    f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
-    loaded.emplace(name, std::move(f));
+    if (!content)
+      content = readFile(itsSettings.explorer_dir + "/" + name);
+    if (content)
+      loaded.emplace(name, explorerFile(std::move(*content), "application/json"));
   }
+}
 
-  // The translations of the page: explorer-<language>.js, e.g. explorer-fi.js
+// The translations of the page: explorer-<language>.js, e.g. explorer-fi.js
+void Catalog::loadTranslations(std::map<std::string, ExplorerFile>& loaded) const
+{
+  std::error_code ec;
+  for (const auto& entry : std::filesystem::directory_iterator(itsSettings.explorer_dir, ec))
   {
-    std::error_code ec;
-    for (const auto& entry : std::filesystem::directory_iterator(itsSettings.explorer_dir, ec))
-    {
-      const auto name = entry.path().filename().string();
-      if (name.size() != 14 || name.compare(0, 9, "explorer-") != 0 ||
-          name.compare(11, 3, ".js") != 0 || !std::islower(static_cast<unsigned char>(name[9])) ||
-          !std::islower(static_cast<unsigned char>(name[10])))
-        continue;
-      std::ifstream in(entry.path(), std::ios::binary);
-      if (!in)
-        continue;
-      ExplorerFile f;
-      f.content.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
-      f.contentType = "text/javascript; charset=UTF-8";
-      f.etag = quotedETag(Fmi::hash_value(f.content), "explorer");
-      loaded.emplace(name, std::move(f));
-    }
+    const auto name = entry.path().filename().string();
+    if (!isExplorerTranslation(name))
+      continue;
+    auto content = readFile(entry.path().string());
+    if (content)
+      loaded.emplace(name, explorerFile(std::move(*content), "text/javascript; charset=UTF-8"));
   }
-
-  ExplorerFile plugin;
-  plugin.content = SWAGGER_UI_PLUGIN_JS;
-  plugin.contentType = "text/javascript; charset=UTF-8";
-  plugin.etag = quotedETag(Fmi::hash_value(plugin.content), "explorer");
-  loaded.emplace(PLUGIN_FILE, std::move(plugin));
-  itsExplorerFiles = std::move(loaded);
 }
 
 Catalog::~Catalog() = default;

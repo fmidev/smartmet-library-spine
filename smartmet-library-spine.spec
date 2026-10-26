@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.10.25
-Release: 4%{?dist}.fmi
+Version: 26.10.26
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Mon Oct 26 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.26-1.fmi
+- API catalog: the explorer defaults, catalog parsing and explorer file loading split into smaller functions
+
 * Sun Oct 25 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.25-4.fmi
 - Admin packages and changelog tables format all values as text, a commit hash such as
   827911185398 is no longer output as a number (Table::setTextColumns)

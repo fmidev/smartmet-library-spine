@@ -506,6 +506,12 @@ class Catalog
     std::string etag;
   };
   std::map<std::string, ExplorerFile> itsExplorerFiles;
+
+  static ExplorerFile explorerFile(std::string content, const std::string& contentType);
+  std::string loadRequiredExplorerFiles(std::map<std::string, ExplorerFile>& loaded) const;
+  void loadPalettes(std::map<std::string, ExplorerFile>& loaded) const;
+  void loadBasemaps(std::map<std::string, ExplorerFile>& loaded) const;
+  void loadTranslations(std::map<std::string, ExplorerFile>& loaded) const;
 };
 
 // ----------------------------------------------------------------------
