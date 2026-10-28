@@ -1232,6 +1232,10 @@ const META_GROUPS = [
 
 const META_PARAMETERS = META_GROUPS.flatMap((g) => g.params);
 
+// The forecast types of the perturbations and of the control forecast of an ensemble
+const EPS_PERTURBATION = 3;
+const EPS_CONTROL = 4;
+
 // The details of the grid data of a column N, requested as @code-N
 const GRID_DETAILS = [
   ['AT', 'model run', L('Analysis time of the model run')],
@@ -7985,6 +7989,15 @@ function timeSeriesModule(app, api, state, save)
       const p = producer();
       return p && p.source === 'grid' ? details.get(detailsKey(p)) || null : null;
     };
+    // The details of a grid parameter of the chosen producer, also when it is named by a name
+    // the parameter mappings give to it (air_pressure for P-PA); null if unknown
+    const gridParameter = (name) => {
+      const d = gridDetails();
+      if (!d || !d.parameters)
+        return null;
+      const key = String(name).toLowerCase();
+      return d.parameters[key] || d.parameters[(d.aliases || {})[key]] || null;
+    };
     // The stations of an observation producer or point querydata (by WMO number), [] until
     // loaded
     const stationType = () => {
@@ -8064,13 +8077,10 @@ function timeSeriesModule(app, api, state, save)
                    unit: l.unit || '',
                    values: l.values.map((v) => ({value: String(v), key: String(v)}))
                  }));
-      const d = gridDetails();
-      if (!d || !d.parameters)
-        return [];
       const types = new Map();
       for (const name of dataParams())
       {
-        const info = d.parameters[name];
+        const info = gridParameter(name);
         for (const l of (info && info.levels) || [])
         {
           const id = String(l.levelId);
@@ -8097,16 +8107,15 @@ function timeSeriesModule(app, api, state, save)
       return type ? type.values.filter((v) => wanted.has(v.value)) : [];
     };
 
-    // The forecast types of the chosen grid parameters: [{type, name, description, members}]
+    // The forecast types of the chosen grid parameters: [{id, types, name, description, members}].
+    // The control forecast and the perturbations of an ensemble are one more choice, the members
+    // of both.
     function forecastTypes()
     {
-      const d = gridDetails();
-      if (!d || !d.parameters)
-        return [];
       const types = new Map();
       for (const name of dataParams())
       {
-        const info = d.parameters[name];
+        const info = gridParameter(name);
         for (const f of (info && info.forecasts) || [])
         {
           if (!types.has(f.type))
@@ -8114,9 +8123,25 @@ function timeSeriesModule(app, api, state, save)
           f.members.forEach((m) => types.get(f.type).members.add(m));
         }
       }
-      return Array.from(types.values())
-          .map((f) => Object.assign(f, {members: Array.from(f.members).sort((a, b) => a - b)}))
-          .sort((a, b) => a.type - b.type);
+      const out = Array.from(types.values())
+                      .map((f) => Object.assign(f, {
+                             id: String(f.type),
+                             types: [f.type],
+                             members: Array.from(f.members).sort((a, b) => a - b)
+                           }))
+                      .sort((a, b) => a.type - b.type);
+      const control = types.get(EPS_CONTROL);
+      const perturbed = types.get(EPS_PERTURBATION);
+      if (control && perturbed)
+        out.unshift({
+          id: `${EPS_CONTROL},${EPS_PERTURBATION}`,
+          types: [EPS_CONTROL, EPS_PERTURBATION],
+          name: 'EPS',
+          description: L('Ensemble forecast, control and perturbations'),
+          members: Array.from(new Set([...control.members, ...perturbed.members]))
+                       .sort((a, b) => a - b)
+        });
+      return out;
     }
     // Ensemble choices are offered when there is more than one forecast to choose from
     const hasEnsemble = () => {
@@ -8128,7 +8153,7 @@ function timeSeriesModule(app, api, state, save)
       if (!hasEnsemble())
         return null;
       const types = forecastTypes();
-      return types.find((f) => String(f.type) === s.forecast) ||
+      return types.find((f) => f.id === s.forecast) ||
           types.reduce((a, b) => (b.members.length > a.members.length ? b : a));
     };
     // The chosen members of the forecast, all of them by default
@@ -8180,12 +8205,15 @@ function timeSeriesModule(app, api, state, save)
       const out = [];
       for (const name of dataParams())
       {
-        const info = d.parameters[name];
+        const info = gridParameter(name);
         if (!info)
         {
           out.push({key: name, name, variant: ''});
           continue;
         }
+        // A mapping name stays in the key, for the values are converted as the mapping says
+        // (Temperature in C, T-K in K)
+        const keyName = d.parameters[String(name).toLowerCase()] ? info.name : name;
         // The chosen levels the parameter has, or its only level
         const own = type ? (info.levels || []).find((l) => String(l.levelId) === type.id) : null;
         let lv = [{levelId: '', key: '', label: ''}];
@@ -8199,21 +8227,26 @@ function timeSeriesModule(app, api, state, save)
                         }));
         else if ((info.levels || []).length === 1 && info.levels[0].keys.length === 1)
           lv = [{levelId: info.levels[0].levelId, key: String(info.levels[0].keys[0]), label: ''}];
-        // The chosen members the parameter has
+        // The chosen members the parameter has, each with its forecast type
         let mv = [{type: '', number: '', label: ''}];
-        const own_forecast =
-            forecast ? (info.forecasts || []).find((f) => f.type === forecast.type) : null;
-        if (own_forecast)
-          mv = members.filter((m) => own_forecast.members.includes(m))
+        const ownForecasts =
+            forecast ? (info.forecasts || []).filter((f) => forecast.types.includes(f.type)) : [];
+        if (ownForecasts.length > 0)
+        {
+          const typeOf = new Map();
+          for (const f of ownForecasts)
+            f.members.forEach((m) => typeOf.has(m) || typeOf.set(m, f.type));
+          mv = members.filter((m) => typeOf.has(m))
                    .map((m) => ({
-                          type: own_forecast.type,
+                          type: typeOf.get(m),
                           number: m,
-                          label: own_forecast.members.length > 1 ? L`member ${m}` : ''
+                          label: typeOf.size > 1 ? L`member ${m}` : ''
                         }));
+        }
         for (const l of lv)
           for (const m of mv)
             out.push({
-              key: [info.name, d.producer, s.geometry || '', l.levelId, l.key, m.type, m.number]
+              key: [keyName, d.producer, s.geometry || '', l.levelId, l.key, m.type, m.number]
                        .join(':')
                        .replace(/:+$/, ''),
               name,
@@ -8791,10 +8824,10 @@ function timeSeriesModule(app, api, state, save)
             forecastSelect,
             forecasts.map(
                 (f) =>
-                    [String(f.type),
-                     `${f.description || f.name || `type ${f.type}`}${
+                    [f.id,
+                     `${f.description || f.name || `type ${f.id}`}${
                          f.members.length > 1 ? ` (${f.members.length} members)` : ''}`]),
-            String(forecast.type));
+            forecast.id);
       membersRow.hidden = !forecast || forecast.members.length < 2;
       if (!membersRow.hidden)
       {
@@ -8806,6 +8839,10 @@ function timeSeriesModule(app, api, state, save)
         membersNote.textContent = list === null ?
             L('Not a list of members: numbers and ranges separated by commas') :
             L`${counted(list.length, L('member'), L('members'))}, a series each`;
+        // Every point of every member would be a series of its own
+        if (list && list.length > 1 && isArea() && areaValuesOf() === 'points')
+          membersNote.textContent += L(
+              ' · every point of the area is a series of each member: choose one value of the area to compare the members');
       }
       // Observations
       const obs = isObservation();
@@ -8837,7 +8874,7 @@ function timeSeriesModule(app, api, state, save)
         notes.push(L`The model details could not be loaded: ${d.error}`);
       for (const name of dataParams())
       {
-        const info = d && d.parameters && d.parameters[name];
+        const info = gridParameter(name);
         if (info && info.aggregation)
           notes.push(`${name}: ${info.aggregation.description || info.aggregation.name}${
               info.aggregation.period ? ` (${info.aggregation.period} min)` : ''}`);
@@ -9119,8 +9156,7 @@ function timeSeriesModule(app, api, state, save)
       const period = Number(s.period || 60);
       const step = dataStep();
       const entry = index.parameters.get(name);
-      const d = gridDetails();
-      const kind = parameterKind(name, entry, d && d.parameters ? d.parameters[name] : null);
+      const kind = parameterKind(name, entry, gridParameter(name));
       const choice = !s.fn || s.fn === 'auto' ? RECOMMENDED_FUNCTION[kind] : s.fn;
       const def = TIME_FUNCTIONS.find((f) => f[0] === choice) || TIME_FUNCTIONS[0];
       const fn = kind === 'direction' && def[3] ? def[3] : def[2];
@@ -9397,9 +9433,7 @@ function timeSeriesModule(app, api, state, save)
     function areaFunction(name)
     {
       const entry = index.parameters.get(name);
-      const d = gridDetails();
-      const kind = AREA_META_KINDS[name] ||
-          parameterKind(name, entry, d && d.parameters ? d.parameters[name] : null);
+      const kind = AREA_META_KINDS[name] || parameterKind(name, entry, gridParameter(name));
       const chosen = chosenAreaFunctions().get(name);
       const choice = AREA_FUNCTIONS.some((f) => f[0] === chosen) ? chosen : RECOMMENDED_AREA_FUNCTION[kind];
       const def = AREA_FUNCTIONS.find((f) => f[0] === choice) || AREA_FUNCTIONS[0];

@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.10.26
+Version: 26.10.28
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -172,6 +172,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Oct 28 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.28-1.fmi
+- Data explorer: the levels and ensemble members of parameters named by mapping names (air_pressure for P-PA), mapping names kept in the parameter keys, the control forecast and the perturbations of an ensemble as one choice, and a hint when every point of an area would be a series of each member
+
 * Mon Oct 26 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.26-1.fmi
 - API catalog: the explorer defaults, catalog parsing and explorer file loading split into smaller functions
 

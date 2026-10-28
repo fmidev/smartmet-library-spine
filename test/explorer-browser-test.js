@@ -82,7 +82,7 @@ const producers = {
       // An ensemble with levels of two types
       name: 'ens',
       source: 'grid',
-      parameters: ['t-k'],
+      parameters: ['t-k', 'air_temperature'],
       time: {start: iso(now - 6 * hour), end: iso(now.getTime() + 48 * hour), step: 60}
     },
     {
@@ -145,7 +145,8 @@ function ensDetails(query)
         aggregation: {name: 'mean', description: 'Mean over time period', period: 60},
         times: 6
       }
-    }
+    },
+    aliases: {air_temperature: 't-k'}
   };
 }
 
@@ -2292,15 +2293,16 @@ async function main()
     })()`);
     check(
         'grid choices shown',
-        shown.run && shown.geometry && shown.type && shown.members && shown.forecast === '3' &&
-            shown.text.includes('5 members, a series each') &&
+        shown.run && shown.geometry && shown.type && shown.members && shown.forecast === '4,3' &&
+            shown.text.includes('6 members, a series each') &&
             shown.text.includes('Mean over time period (60 min)'),
         shown);
     lq = await currentQuery(b);
+    // The control forecast and the perturbations are one ensemble, each member of its own type
     check(
         'all members by default',
-        lq.get('param') ===
-            'name,time,lat,lon,level,' + [1, 2, 3, 4, 5].map((m) => `T-K:ENS::::3:${m}`).join(','),
+        lq.get('param') === 'name,time,lat,lon,level,T-K:ENS::::4:0,' +
+                [1, 2, 3, 4, 5].map((m) => `T-K:ENS::::3:${m}`).join(','),
         lq.get('param'));
     await b.evaluate(`document.querySelector('[data-level="850"]').click()`);
     await sleep(100);
@@ -2418,6 +2420,31 @@ async function main()
               {time: 't', name: 'n', a: 2, _variant: 'two'}
             ]),
         helpers);
+
+    // A parameter named by a mapping name has the members of the parameter it stands for, and
+    // keeps its own name in the keys, for its values are converted as the mapping says. Every
+    // point of an area of every member would be a series of its own.
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {
+      url: `${base}/api/explorer#api=/timeseries&producer=ens&source=grid&params=air_temperature` +
+          '&locmode=radius&location=24.94,60.17:10&areavalues=points'
+    });
+    await waitFor(b, `!!document.querySelector('[data-level="850"]')`, 'the details of an alias');
+    await b.evaluate(`(() => {
+      const input = document.querySelector('[aria-label="Members"]');
+      input.value = "0-1";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    })()`);
+    await sleep(500);
+    lq = await currentQuery(b);
+    const aliasNote = await b.evaluate(`document.querySelector('.model-details').innerText`);
+    check(
+        'members of a mapping name',
+        /air_temperature:ENS::::4:0,air_temperature:ENS::::3:1$/.test(lq.get('param')) &&
+            aliasNote.includes('2 members, a series each · every point of the area is a series of each member'),
+        {param: lq.get('param'), aliasNote});
+
 
     // --- The EDR module -------------------------------------------------------
     await b.send('Page.navigate', {url: `${base}/api/explorer#api=/edr`});
