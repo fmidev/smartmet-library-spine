@@ -421,7 +421,11 @@ Most plugins produce tables of values:
     (picked on the map or by name), WMO ids or an area; areas, radii, boxes and grouped
     station lists give either every point or the median and percentiles computed by the
     server (`nanpercentile_a[p]`, `nanmedian_a`). Values over a period use the TimeSeries
-    `_t` functions recommended for each kind of parameter.
+    `_t` functions recommended for each kind of parameter. The `precisions` of the listing
+    give the Precision choice; the views draw the same request asked in `auto` (or `full`)
+    precision, while the table, the tree and the values under the pointer (`tableDecimals`,
+    applied by `makePlot` to series with a `param`) stay in the precision of the request. The
+    EDR module reads the precisions from the TimeSeries listing of the same server.
   * **EDR** (kind `edr`) reads `<root>/collections`: the query types of a collection
     (position, radius, area, cube, trajectory and locations), the times and levels of its
     extents, and CoverageJSON and GeoJSON responses turned into rows for the same views.

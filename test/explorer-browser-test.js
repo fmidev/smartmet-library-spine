@@ -241,7 +241,9 @@ function timeseries(query)
         else if (/:qc\)$|^qc_/.test(p))
           row[responseColumn(p)] = 1;
         else
-          row[responseColumn(p)] = 10 + l * 0.1 + i + (p.includes('(:11)') ? 0.5 : 0);
+          row[responseColumn(p)] = 10 + l * 0.1 + i + (p.includes('(:11)') ? 0.5 : 0) +
+              // The values as stored in the data have more decimals than those of the default
+              (query.get('precision') === 'auto' ? 0.01234 : 0);
       }
       list.push(row);
     }
@@ -755,6 +757,61 @@ async function main()
             JSON.stringify(table.head) ===
                 JSON.stringify(['name', 'time', 'lat', 'lon', 'temperature', 'humidity']),
         table);
+
+    // A server listing its precisions: the views draw the values in the precision of the data,
+    // the table and the values under the pointer are those of the request
+    const single = await b.evaluate(`location.hash`);
+    producers.precisions = {default: 'normal', names: ['auto', 'double', 'full', 'normal']};
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {url: `${base}/api/explorer${single}`});
+    await waitFor(b, `document.querySelector('[aria-label="Precision of the values"]')`, 'the precision choice');
+    const choices = await b.evaluate(
+        `[...document.querySelector('[aria-label="Precision of the values"]').options].map((o) => o.textContent)`);
+    check(
+        'precision choices',
+        JSON.stringify(choices) === JSON.stringify(['Server default (normal)', 'auto', 'double', 'full', 'normal']),
+        choices);
+    const sentBefore = requested.length;
+    await b.evaluate(`document.querySelector('button.primary').click()`);
+    await waitFor(b, `document.querySelectorAll('.chart canvas').length >= 2`, 'the charts of the precise values');
+    const precisionsSent = requested.slice(sentBefore)
+                               .filter((u) => u.startsWith('/timeseries?'))
+                               .map((u) => new URL(u, base).searchParams.get('precision'));
+    check(
+        'the table and the drawn values requested',
+        precisionsSent.length === 2 && precisionsSent.includes(null) && precisionsSent.includes('auto'),
+        precisionsSent);
+    const over = await b.evaluate(`(() => {
+      const o = document.querySelector('.chart .u-over');
+      o.scrollIntoView({ block: "center" });
+      const r = o.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    })()`);
+    await mouse(b, 'mouseMoved', over.x, over.y, 0);
+    await sleep(200);
+    const hovered = await b.evaluate(
+        `[...document.querySelector('.chart .u-legend').querySelectorAll('.u-value')].map((v) => v.textContent)`);
+    check('the value under the pointer in the precision of the table', /^\d+$/.test(hovered[1] || ''), hovered);
+    const cells = await b.evaluate(`(() => {
+      [...document.querySelectorAll('.results-head .tabs button')].find((x) => x.textContent === "Table").click();
+      return [...document.querySelectorAll('table.data tbody tr')].map((tr) => tr.children[4].textContent);
+    })()`);
+    check('the table in the precision of the request', cells.length === 6 && cells.every((c) => /^\d+$/.test(c)), cells);
+    // A chosen precision is that of the request shown and of the table
+    await b.evaluate(`(() => {
+      const select = document.querySelector('[aria-label="Precision of the values"]');
+      select.value = "double";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    })()`);
+    await sleep(300);
+    const chosenPrecision = (await currentQuery(b)).get('precision');
+    check('chosen precision in the request', chosenPrecision === 'double', chosenPrecision);
+    delete producers.precisions;
+    await b.send('Page.navigate', {url: `${base}/api`});
+    await sleep(200);
+    await b.send('Page.navigate', {url: `${base}/api/explorer${single}`});
+    await waitFor(b, `document.querySelectorAll('.chip').length === 2`, 'the state without precisions');
 
     // Many locations are drawn as percentiles
     await b.evaluate(`(() => {

@@ -384,11 +384,82 @@ function clockTemplate(template)
   return t.replace(/\{(aa|AA|a|A)\}/g, '').trim();
 }
 
-// A chart: uPlot with the times of the clock chosen
+// The decimals of the numeric columns of the rows shown in the table, {column: decimals}. The
+// views draw the values of a finer precision (graphPrecision), the values under the pointer of
+// a chart are shown with the decimals of the table.
+let tableDecimals = {};
+
+// The decimals of the numeric columns of rows, at most 16
+function decimalsOf(rows)
+{
+  const out = {};
+  for (const row of rows.slice(0, 5000))
+    for (const [k, v] of Object.entries(row))
+    {
+      if (typeof v !== 'number' || !isFinite(v) || k.startsWith('_'))
+        continue;
+      const text = String(v);
+      const exponent = /e-(\d+)$/.exec(text);
+      const fraction = text.replace(/e.*$/, '').split('.')[1] || '';
+      const n = Math.min(16, fraction.length + (exponent ? Number(exponent[1]) : 0));
+      out[k] = Math.max(out[k] || 0, n);
+    }
+  return out;
+}
+
+// The precision of the values drawn: 'auto' (as stored in the data) or 'full' when the server has
+// them, '' when it does not tell which it has. precisions is the 'precisions' member of
+// /api/producers: {default, names}.
+function graphPrecision(precisions)
+{
+  const names = (precisions && precisions.names) || [];
+  return ['auto', 'full'].find((n) => names.includes(n)) || '';
+}
+
+// The precisions of the server, {default, names}, from the producers of its TimeSeries API,
+// which the EDR API shares; null when the server does not list them. The default is that of
+// the TimeSeries API.
+function serverPrecisions(app)
+{
+  if (!app.precisions)
+  {
+    const api = (app.apis || []).find((a) => a.kind === 'timeseries');
+    app.precisions = api ?
+        fetchJson(`${app.base}${api.root.replace(/^\//, '')}/api/producers`).then((doc) => doc.precisions || null, () => null) :
+        Promise.resolve(null);
+  }
+  return app.precisions;
+}
+
+// A select of the precision of the table, the server default first
+function precisionSelect(precisions, value, onChange)
+{
+  const select = el('select', {'aria-label': L('Precision of the values')});
+  const names = (precisions && precisions.names) || [];
+  select.append(el('option', {value: ''},
+                   precisions && precisions.default ? L`Server default (${precisions.default})` :
+                                                      L('Server default')));
+  for (const n of names)
+    select.append(el('option', {value: n}, n));
+  select.value = names.includes(value) ? value : '';
+  select.addEventListener('change', () => onChange(select.value));
+  return select;
+}
+
+// A chart: uPlot with the times of the clock chosen. The values of a series with a param are
+// shown under the pointer with the decimals of that column in the table.
 function makePlot(root, opts, data, target)
 {
   const timed = !(opts.scales && opts.scales.x && opts.scales.x.time === false);
-  const options = timed ? Object.assign({fmtDate: (t) => root.uPlot.fmtDate(clockTemplate(t))}, opts) : opts;
+  const series = (opts.series || []).map((sr, i) => {
+    const decimals = i > 0 && sr.param !== undefined && !sr.value ? tableDecimals[sr.param] : undefined;
+    return decimals === undefined ? sr :
+                                    Object.assign({}, sr, {
+                                      value: (u, v) => (v === null || v === undefined ? '--' : String(round(v, decimals)))
+                                    });
+  });
+  const options = Object.assign(timed ? {fmtDate: (t) => root.uPlot.fmtDate(clockTemplate(t))} : {},
+                                opts, opts.series ? {series} : {});
   return new root.uPlot(options, data, target);
 }
 
@@ -5724,15 +5795,16 @@ function drawMeteogram(container, rows, levelKind)
         tzDate: (ts) => root.uPlot.tzDate(new Date(ts * 1000), 'Etc/UTC')
       }, options.extra || {}), data, plot);
     };
-    const band = (lists, colour, label) => {
+    // param is the column of the values, for their decimals under the pointer
+    const band = (lists, colour, label, param) => {
       // The median, and for an ensemble the 10-90 % range as a band
       if (!ensemble)
-        return {series: [{label, stroke: colour, width: 2}], data: [stat(lists, 0.5)], bands: []};
+        return {series: [{label, stroke: colour, width: 2, param}], data: [stat(lists, 0.5)], bands: []};
       return {
         series: [
-          {label: `${label} 10 %`, stroke: 'transparent', points: {show: false}},
-          {label: `${label} 90 %`, stroke: 'transparent', points: {show: false}},
-          {label: L`${label} median`, stroke: colour, width: 2}
+          {label: `${label} 10 %`, stroke: 'transparent', points: {show: false}, param},
+          {label: `${label} 90 %`, stroke: 'transparent', points: {show: false}, param},
+          {label: L`${label} median`, stroke: colour, width: 2, param}
         ],
         data: [stat(lists, 0.1), stat(lists, 0.9), stat(lists, 0.5)],
         bands: [{series: [2, 1], fill: `${colour}33`}]
@@ -5743,10 +5815,12 @@ function drawMeteogram(container, rows, levelKind)
     // Temperature and dewpoint
     if (columns.temperature)
     {
-      const tb = band(inUnit(scaled('temperature', values('temperature')), toT), '#e03131', L('temperature'));
+      const tb = band(inUnit(scaled('temperature', values('temperature')), toT), '#e03131', L('temperature'),
+                      columns.temperature);
       const parts = [tb];
       if (columns.dewpoint)
-        parts.push(band(inUnit(scaled('dewpoint', values('dewpoint')), toT), '#2f9e44', L('dewpoint')));
+        parts.push(band(inUnit(scaled('dewpoint', values('dewpoint')), toT), '#2f9e44', L('dewpoint'),
+                        columns.dewpoint));
       let n = 0;
       const bands = [];
       for (const part of parts)
@@ -5762,11 +5836,13 @@ function drawMeteogram(container, rows, levelKind)
     {
       const lists = values('precipitation');
       const bars = root.uPlot.paths.bars({size: [0.6, 40]});
-      const series = [{label: ensemble ? L('median') : L('precipitation'), stroke: '#1971c2', fill: '#1971c288', paths: bars, points: {show: false}}];
+      const series = [{label: ensemble ? L('median') : L('precipitation'), stroke: '#1971c2', fill: '#1971c288', paths: bars,
+                       points: {show: false}, param: columns.precipitation}];
       const data = [stat(lists, 0.5)];
       if (ensemble)
       {
-        series.push({label: '90 %', stroke: '#1971c2', width: 1, dash: [4, 3], points: {show: false}});
+        series.push({label: '90 %', stroke: '#1971c2', width: 1, dash: [4, 3], points: {show: false},
+                     param: columns.precipitation});
         data.push(stat(lists, 0.9));
       }
       panel(L`Precipitation (mm)${ensemble ? L(', the median and 90 % of the members') : ''}`, series, [xs, ...data],
@@ -5775,7 +5851,7 @@ function drawMeteogram(container, rows, levelKind)
     // Cloud cover
     if (columns.cloud)
     {
-      const cb = band(scaled('cloud', values('cloud')), '#495057', L('cloud cover'));
+      const cb = band(scaled('cloud', values('cloud')), '#495057', L('cloud cover'), columns.cloud);
       cb.series[cb.series.length - 1].fill = ensemble ? undefined : '#49505733';
       panel(L`Cloud cover (%)${ensemble ? L(', median and 10-90 % of the members') : ''}`, cb.series, [xs, ...cb.data],
             {unit: '%', scales: {y: {range: () => [0, 100]}}, extra: {bands: cb.bands}});
@@ -5792,12 +5868,13 @@ function drawMeteogram(container, rows, levelKind)
     }
     if (speeds)
     {
-      const wb = band(inUnit(speeds, toS), '#7048e8', L('wind speed'));
+      const wb = band(inUnit(speeds, toS), '#7048e8', L('wind speed'), columns.speed);
       const series = [...wb.series];
       const data = [...wb.data];
       if (columns.gust)
       {
-        series.push({label: ensemble ? L('gust median') : L('gust'), stroke: '#f08c00', width: 1.5, dash: [5, 3]});
+        series.push({label: ensemble ? L('gust median') : L('gust'), stroke: '#f08c00', width: 1.5, dash: [5, 3],
+                     param: columns.gust});
         data.push(stat(inUnit(values('gust'), toS), 0.5));
       }
       // The mean direction of the members: the direction of the mean unit vector
@@ -6031,6 +6108,8 @@ function drawServerStatisticsGroup(container, series, parameters, label)
     }));
     if (columns.every((c) => c.every((v) => v === null)))
       continue;
+    // The columns of the statistics, for the decimals of the values under the pointer
+    const keys = AREA_STATISTICS.map(([, , fn]) => statisticParameter(fn, param));
     const panel = el('div', {class: 'chart', 'data-param': param, 'data-mode': 'server'});
     container.append(panel);
     panel.append(
@@ -6046,11 +6125,11 @@ function drawServerStatisticsGroup(container, series, parameters, label)
           height: 260,
           series: [
             {value: (u, x) => (x === null ? '--' : formatTime(new Date(x * 1000)))},
-            {label: '10 %', stroke: fill(0.5), width: 1},
-            {label: '25 %', stroke: fill(0.7), width: 1},
-            {label: L('median'), stroke: palette[0], width: 2},
-            {label: '75 %', stroke: fill(0.7), width: 1},
-            {label: '90 %', stroke: fill(0.5), width: 1}
+            {label: '10 %', stroke: fill(0.5), width: 1, param: keys[0]},
+            {label: '25 %', stroke: fill(0.7), width: 1, param: keys[1]},
+            {label: L('median'), stroke: palette[0], width: 2, param: keys[2]},
+            {label: '75 %', stroke: fill(0.7), width: 1, param: keys[3]},
+            {label: '90 %', stroke: fill(0.5), width: 1, param: keys[4]}
           ],
           bands: [{series: [5, 1], fill: fill(0.12)}, {series: [4, 2], fill: fill(0.22)}],
           axes: [
@@ -6562,6 +6641,7 @@ function drawCharts(container, rows, parameters, mode, options = {})
               data.push(values);
               series.push(Object.assign({
                 label: names.length > 1 && n ? `${p} · ${n}` : p,
+                param: p,
                 stroke: colour,
                 width: 1.5,
                 dash: DASHES[i],
@@ -6576,10 +6656,10 @@ function drawCharts(container, rows, parameters, mode, options = {})
             data.push(...percentiles([0.1, 0.25, 0.5, 0.75, 0.9], p));
             const gaps = gapsOf(data[first + 2]);
             // Only the medians have points, the ranges of several parameters would be a clutter
-            const faint = {stroke: withOpacity(colour, 0.5), width: 1, scale, gaps, points: {show: false}};
+            const faint = {stroke: withOpacity(colour, 0.5), width: 1, scale, gaps, param: p, points: {show: false}};
             series.push(Object.assign({label: `${p} 10 %`}, faint),
                         Object.assign({label: `${p} 25 %`}, faint),
-                        {label: L`${p} median`, stroke: colour, width: 2, scale, gaps},
+                        {label: L`${p} median`, stroke: colour, width: 2, scale, gaps, param: p},
                         Object.assign({label: `${p} 75 %`}, faint),
                         Object.assign({label: `${p} 90 %`}, faint));
             bands.push({series: [first + 4, first], fill: withOpacity(colour, 0.1)},
@@ -6748,6 +6828,10 @@ function drawCharts(container, rows, parameters, mode, options = {})
       const pad = (hi - lo || Math.abs(hi) || 1) * 0.05;
       scales.y = {range: () => [lo - pad, hi + pad]};
     }
+    // The values under the pointer have the decimals of the parameter in the table, the shares
+    // of a probability are percentages
+    if (!probability)
+      series = series.map((sr, i) => (i === 0 || sr.param !== undefined ? sr : Object.assign({param}, sr)));
     const opts = {
       width: width,
       height: 260,
@@ -7920,14 +8004,16 @@ function timeSeriesModule(app, api, state, save)
   const status = el('p', {class: 'muted'}, L('Loading the producers…'));
   view.append(status);
 
-  fetchJson(`${app.base}${rootPath.replace(/^\//, '')}/api/producers`)
-      .then((doc) => build(addDefaultProducer(buildIndex(doc))))
+  const producers = fetchJson(`${app.base}${rootPath.replace(/^\//, '')}/api/producers`);
+  // The EDR module of the same server asks the precisions from the same listing
+  app.precisions = producers.then((doc) => doc.precisions || null, () => null);
+  producers.then((doc) => build(addDefaultProducer(buildIndex(doc)), doc.precisions || null))
       .catch((e) => {
         status.textContent = L`The producers could not be loaded: ${e.message}`;
       });
 
   // Builds the module once the producer listing has been loaded
-  function build(index)
+  function build(index, precisions)
   {
     view.replaceChildren();
     const s = state;
@@ -9617,6 +9703,19 @@ function timeSeriesModule(app, api, state, save)
       refreshSoon();
     });
 
+    // The precision of the table and of the request shown; the views draw the values in the
+    // precision of the data (graphPrecision) when the server has one
+    const drawPrecision = graphPrecision(precisions);
+    // A precision of an address the server does not have is left out
+    if (precisions && s.precision && !(precisions.names || []).includes(s.precision))
+      delete s.precision;
+    const precisionInput = precisionSelect(precisions, s.precision, (value) => {
+      s.precision = value;
+      if (!s.precision)
+        delete s.precision;
+      refresh();
+    });
+
     // --- Request and results ----------------------------------------
     const urlBox = el('code', {class: 'url'});
     const missing = el('p', {class: 'missing'});
@@ -9696,6 +9795,7 @@ function timeSeriesModule(app, api, state, save)
         ['step', pathStep()],
         ['grouplocations', groupLocations() ? '1' : ''],
         ['lang', s.lang],
+        ['precision', s.precision],
         ['format', 'json'],
         ['tz', 'UTC'],
         ['timeformat', 'xml']
@@ -9716,8 +9816,8 @@ function timeSeriesModule(app, api, state, save)
                                                                                        '';
     }
 
-    // The URL of the request
-    function currentUrl()
+    // The URL of the request, or with a precision the same request in that precision
+    function currentUrl(precision)
     {
       const extra = parseOptions(s.opts);
       // The times of day or a list of times are a time mode of their own, which the time step
@@ -9725,8 +9825,18 @@ function timeSeriesModule(app, api, state, save)
       const names = new Set(extra.map(([k]) => k.toLowerCase()));
       if ((names.has('hour') || names.has('time')) && !names.has('timestep'))
         extra.push(['timestep', '']);
-      const {params} = mergeOptions(requestParams(), extra);
+      let {params} = mergeOptions(requestParams(), extra);
+      if (precision)
+        params = [...params.filter(([k]) => k.toLowerCase() !== 'precision'), ['precision', precision]];
       return new URL(`${rootPath}?${queryString(params)}`, app.base).href;
+    }
+
+    // The URL of the values drawn, null when it is that of the table
+    function graphUrl()
+    {
+      const url = currentUrl();
+      const precision = new URL(url).searchParams.get('precision');
+      return drawPrecision && drawPrecision !== precision ? currentUrl(drawPrecision) : null;
     }
 
     // What the request still lacks, for the note under it
@@ -9753,6 +9863,13 @@ function timeSeriesModule(app, api, state, save)
       requestStatus.clear();
       map.setCursor(null);
       const url = currentUrl();
+      // The values drawn are asked at the same time, the views draw those of the table if they fail
+      const drawn = graphUrl();
+      const graphData = drawn ?
+          fetch(drawn, {headers: apiHeaders({accept: 'application/json'})})
+              .then((response) => (response.ok ? response.json() : null))
+              .catch(() => null) :
+          Promise.resolve(null);
       let text;
       try
       {
@@ -9778,6 +9895,8 @@ function timeSeriesModule(app, api, state, save)
         return;
       }
       const rows = splitVariants(flattenRows(data), variantColumns());
+      const precise = await graphData;
+      const graphRows = precise ? splitVariants(flattenRows(precise), variantColumns()) : rows;
       // An empty result is explained below the request
       const observed = isObservation();
       // Statistics of an area are in columns such as nanmedian_a(temperature)
@@ -9794,18 +9913,22 @@ function timeSeriesModule(app, api, state, save)
       if (!serverStatistics() && !areaAggregate() &&
           !(stations().length > 0 && s.locmode === stationMode()))
         map.setPoints(mapPoints(rows));
-      showResults(rows, text);
+      showResults(rows, text, graphRows);
     }
 
     // The results as tabs of views: the vertical views and the path views when the rows have them,
-    // then charts, maps, tables and the response itself
-    function showResults(rows, text)
+    // then charts, maps, tables and the response itself. The table, the tree and the values under
+    // the pointer are those of the request, the views draw graphRows, the same request in the
+    // precision of the data.
+    function showResults(rows, text, graphRows = rows)
     {
       // Drawn again in the units and the clock chosen
-      onSettingsChange('timeseries', () => results.isConnected && showResults(rows, text));
+      onSettingsChange('timeseries', () => results.isConnected && showResults(rows, text, graphRows));
       // The rows in the chosen units for the views of values; the vertical views convert their
       // heights themselves and draw temperatures in C
-      const shown = displayRows(rows);
+      const table = displayRows(rows);
+      const shown = graphRows === rows ? table : displayRows(graphRows);
+      tableDecimals = decimalsOf(rows);
       const statistics = serverStatistics();
       // Several levels at each location and time are drawn as profiles first
       const kind = levelKind();
@@ -9851,29 +9974,29 @@ function timeSeriesModule(app, api, state, save)
           const levels = new Set(rows.map((r) => r.level).filter((v) => v !== undefined && v !== null)).size;
           // Other producers are not asked for the expressions of this one
           if (!statistics && places === 1 && levels <= 1 && expressions().length === 0)
-            drawComparableCharts(panes.Chart, rows, kind);
+            drawComparableCharts(panes.Chart, graphRows, kind);
           else
             drawCharts(panes.Chart, shown.rows, shownParams(), statistics ? 'server' : undefined,
                        Object.assign({levelKind: kind, labels: shown.labels}, combineOptions()));
         }
         else if (name === 'Meteogram')
-          drawMeteogram(panes.Meteogram, rows, kind);
+          drawMeteogram(panes.Meteogram, graphRows, kind);
         else if (name === 'Profile')
-          drawProfiles(panes.Profile, rows, shownParams(), kind);
+          drawProfiles(panes.Profile, graphRows, shownParams(), kind);
         else if (name === 'Section')
-          drawSection(panes.Section, rows, shownParams(), kind, mapSettings(app.element));
+          drawSection(panes.Section, graphRows, shownParams(), kind, mapSettings(app.element));
         else if (name === 'Cross section')
-          drawCrossSection(panes['Cross section'], rows, shownParams(), kind, mapSettings(app.element),
+          drawCrossSection(panes['Cross section'], graphRows, shownParams(), kind, mapSettings(app.element),
                            {flight: flightChoice.flight()});
         else if (name === 'Along the path')
           drawAlongPath(panes['Along the path'], shown.rows, shownParams(), kind,
                         {onPosition: (p) => map.setCursor(p), flight: flightChoice.flight(), labels: shown.labels});
         else if (name === 'Sounding')
-          drawSounding(panes.Sounding, rows, kind);
+          drawSounding(panes.Sounding, graphRows, kind);
         else if (name === 'Map')
-          drawValueMap(panes.Map, shown.rows, shownParams(), mapSettings(app.element), {levelKind: kind, labels: shown.labels});
+          drawValueMap(panes.Map, table.rows, shownParams(), mapSettings(app.element), {levelKind: kind, labels: table.labels});
         else if (name === 'Table')
-          drawTable(panes.Table, shown.rows, shown.labels);
+          drawTable(panes.Table, table.rows, table.labels);
         else if (!S.renderTree(panes.Tree, text, 'json'))
           panes.Tree.textContent = text;
       };
@@ -9911,8 +10034,8 @@ function timeSeriesModule(app, api, state, save)
                     levelCount > 1 ? `, ${levelCount} ${kind === 'member' ? L('members') : L('levels')}` : ''}${
                     memberCount > 1 ? `, ${memberCount} ${L('members')}` : ''}`),
              unitsChooser(settingsChanged),
-             exportButtons(() => Object.values(panes).find((p) => !p.hidden), shown.rows,
-                           `${s.producer || 'timeseries'}`, shown.labels)),
+             exportButtons(() => Object.values(panes).find((p) => !p.hidden), table.rows,
+                           `${s.producer || 'timeseries'}`, table.labels)),
           ...Object.values(panes));
       show(s.tab && panes[s.tab] ? s.tab :
                crossSection        ? 'Cross section' :
@@ -10017,6 +10140,7 @@ function timeSeriesModule(app, api, state, save)
             ['step', pathStep()],
             ['grouplocations', groupLocations() ? '1' : ''],
             ['maxdistance', p.source === 'observation' ? '50' : ''],
+            ['precision', drawPrecision],
             ['format', 'json'],
             ['tz', 'UTC'],
             ['timeformat', 'xml']
@@ -10094,6 +10218,7 @@ function timeSeriesModule(app, api, state, save)
               ...absoluteTimeOptions(),
               ['timestep', 'data'],
               [locationOption(s.locmode), s.location],
+              ['precision', drawPrecision],
               ['format', 'json'],
               ['tz', 'UTC']
             ];
@@ -10491,6 +10616,7 @@ function timeSeriesModule(app, api, state, save)
                L('Output'),
                areaValuesRow,
                el('div', {class: 'row'}, el('label', null, L('Language of the names'), langInput)),
+               el('div', {class: 'row'}, el('label', null, L('Precision'), precisionInput)),
                extraDetails,
                optsDetails)),
         el('div',
@@ -10694,14 +10820,14 @@ function edrModule(app, api, state, save)
   const status = el('p', {class: 'muted'}, L('Loading the collections…'));
   view.append(status);
 
-  fetchJson(`${app.base}${rootPath.replace(/^\//, '')}/collections?f=json`)
-      .then((doc) => build(buildEdrIndex(doc)))
+  Promise.all([fetchJson(`${app.base}${rootPath.replace(/^\//, '')}/collections?f=json`), serverPrecisions(app)])
+      .then(([doc, precisions]) => build(buildEdrIndex(doc), precisions))
       .catch((e) => {
         status.textContent = L`The collections could not be loaded: ${e.message}`;
       });
 
   // Builds the module once the collections have been loaded
-  function build(index)
+  function build(index, precisions)
   {
     view.replaceChildren();
     const s = state;
@@ -10973,6 +11099,20 @@ function edrModule(app, api, state, save)
       s.format = formatSelect.value;
       refresh();
     });
+    // The precision of the table and of the request shown; the views draw the values in the
+    // precision of the data (graphPrecision) when the server has one. The default of the EDR API
+    // may differ from that of the TimeSeries API, so it is not named.
+    const drawPrecision = graphPrecision(precisions);
+    // A precision of an address the server does not have is left out
+    if (precisions && s.precision && !(precisions.names || []).includes(s.precision))
+      delete s.precision;
+    const precisionInput =
+        precisionSelect(precisions && Object.assign({}, precisions, {default: ''}), s.precision, (value) => {
+          s.precision = value;
+          if (!s.precision)
+            delete s.precision;
+          refresh();
+        });
     const urlBox = el('code', {class: 'url'});
     const missing = el('p', {class: 'missing'});
     const runButton = el('button', {type: 'button', class: 'primary'}, L('Run'));
@@ -11013,8 +11153,8 @@ function edrModule(app, api, state, save)
       return [['coords', `POLYGON((${a} ${b},${c} ${b},${c} ${d},${a} ${d},${a} ${b}))`]];
     }
 
-    // The URL of the request
-    function currentUrl()
+    // The URL of the request, or with a precision the same request in that precision
+    function currentUrl(precision)
     {
       const c = collection();
       const [q] = query();
@@ -11036,9 +11176,16 @@ function edrModule(app, api, state, save)
         ['parameter-name', names.join(',')],
         ['datetime', s.start && s.end ? `${fromInput(s.start)}/${fromInput(s.end)}` : ''],
         ['z', (s.levels || []).join(',')],
+        ['precision', precision || s.precision],
         ['f', s.format || (c && c.formats[0]) || 'CoverageJSON']
       ];
       return new URL(`${path}?${queryString(params)}`, app.base).href;
+    }
+
+    // The URL of the values drawn, null when it is that of the table
+    function graphUrl()
+    {
+      return drawPrecision && drawPrecision !== s.precision ? currentUrl(drawPrecision) : null;
     }
 
     // Whether a collection has soundings: a temperature, and levels with pressures
@@ -11122,6 +11269,13 @@ function edrModule(app, api, state, save)
       results.replaceChildren(el('p', {class: 'muted'}, L('Running…')));
       requestStatus.clear();
       map.setCursor(null);
+      // The values drawn are asked at the same time, the views draw those of the table if they fail
+      const drawn = graphUrl();
+      const graphData = drawn ?
+          fetch(drawn, {headers: apiHeaders()})
+              .then((response) => (response.ok && response.status !== 204 ? response.json() : null))
+              .catch(() => null) :
+          Promise.resolve(null);
       let text;
       try
       {
@@ -11149,6 +11303,8 @@ function edrModule(app, api, state, save)
         return;
       }
       const rows = nameRows(coverageRows(doc));
+      const precise = await graphData;
+      const graphRows = precise ? nameRows(coverageRows(precise)) : rows;
       if (rows.length === 0 || rowsWithoutValues(rows, s.params || []))
         requestStatus.show('warn', rows.length === 0 ? L('The server returned no data for this request.') :
                                              L('The server returned rows without values of the parameters.'),
@@ -11163,18 +11319,22 @@ function edrModule(app, api, state, save)
                      label: String(r.name || ''),
                      info: {lat: r.lat, lon: r.lon}
                    })));
-      showResults(rows, text);
+      showResults(rows, text, graphRows);
     }
 
     // The results as tabs of views: the vertical views and the path views when the rows have
-    // them, then charts, maps, tables and the response itself
-    function showResults(rows, text)
+    // them, then charts, maps, tables and the response itself. The table, the tree and the
+    // values under the pointer are those of the request, the views draw graphRows, the same
+    // request in the precision of the data.
+    function showResults(rows, text, graphRows = rows)
     {
       // Drawn again in the units and the clock chosen
-      onSettingsChange('edr', () => results.isConnected && showResults(rows, text));
+      onSettingsChange('edr', () => results.isConnected && showResults(rows, text, graphRows));
       // The rows in the chosen units for the views of values; the vertical views convert their
       // heights themselves and draw temperatures in C
-      const shown = displayRows(rows);
+      const table = displayRows(rows);
+      const shown = graphRows === rows ? table : displayRows(graphRows);
+      tableDecimals = decimalsOf(rows);
       // Several levels at each location and time are drawn as profiles first
       const c = collection();
       const kind = edrLevelKind(c);
@@ -11228,25 +11388,25 @@ function edrModule(app, api, state, save)
           const places = new Set(rows.map((r) => locationOf(Object.assign({}, r, {level: null})))).size;
           const levels = new Set(rows.map((r) => r.level).filter((v) => v !== undefined && v !== null)).size;
           if (places === 1 && levels <= 1)
-            drawComparableCharts(panes.Chart, rows, kind, params);
+            drawComparableCharts(panes.Chart, graphRows, kind, params);
           else
             drawCharts(panes.Chart, shown.rows, params, undefined,
                        Object.assign({levelKind: kind, labels: shown.labels}, combineOptions()));
         }
         else if (name === 'Meteogram')
-          drawMeteogram(panes.Meteogram, rows, kind);
+          drawMeteogram(panes.Meteogram, graphRows, kind);
         else if (name === 'Profile')
-          drawProfiles(panes.Profile, rows, params, kind);
+          drawProfiles(panes.Profile, graphRows, params, kind);
         else if (name === 'Section')
-          drawSection(panes.Section, rows, params, kind, mapSettings(app.element));
+          drawSection(panes.Section, graphRows, params, kind, mapSettings(app.element));
         else if (name === 'Cross section')
-          drawCrossSection(panes['Cross section'], rows, params, kind, mapSettings(app.element),
+          drawCrossSection(panes['Cross section'], graphRows, params, kind, mapSettings(app.element),
                            {flight: flightChoice.flight()});
         else if (name === 'Along the path')
           drawAlongPath(panes['Along the path'], shown.rows, params, kind,
                         {onPosition: (p) => map.setCursor(p), flight: flightChoice.flight(), labels: shown.labels});
         else if (name === 'Sounding')
-          drawSkewT(panes.Sounding, rows, kind, {
+          drawSkewT(panes.Sounding, graphRows, kind, {
             type: s.diagram || 'skewt',
             onType: (type) => {
               s.diagram = type;
@@ -11254,9 +11414,9 @@ function edrModule(app, api, state, save)
             }
           });
         else if (name === 'Map')
-          drawValueMap(panes.Map, shown.rows, params, mapSettings(app.element), {levelKind: kind, labels: shown.labels});
+          drawValueMap(panes.Map, table.rows, params, mapSettings(app.element), {levelKind: kind, labels: table.labels});
         else if (name === 'Table')
-          drawTable(panes.Table, shown.rows, shown.labels);
+          drawTable(panes.Table, table.rows, table.labels);
         else if (!S.renderTree(panes.Tree, text, 'json'))
           panes.Tree.textContent = text;
       };
@@ -11292,8 +11452,8 @@ function edrModule(app, api, state, save)
                 L`${rows.length} rows${count > 1 ? L`, ${count} locations` : ''}${
                     levelCount > 1 ? `, ${levelCount} ${kind === 'member' ? L('members') : L('levels')}` : ''}`),
              unitsChooser(settingsChanged),
-             exportButtons(() => Object.values(panes).find((p) => !p.hidden), shown.rows,
-                           `${s.collection || 'edr'}`, shown.labels)),
+             exportButtons(() => Object.values(panes).find((p) => !p.hidden), table.rows,
+                           `${s.collection || 'edr'}`, table.labels)),
           ...Object.values(panes));
       show(s.tab && panes[s.tab] ? s.tab :
                crossSection        ? 'Cross section' :
@@ -11343,7 +11503,7 @@ function edrModule(app, api, state, save)
         },
         ...combineOptions(),
         fetchRows: async (other) => {
-          const url = new URL(currentUrl().replace(`/collections/${encodeURIComponent(s.collection)}/`,
+          const url = new URL(currentUrl(drawPrecision).replace(`/collections/${encodeURIComponent(s.collection)}/`,
                                                    `/collections/${encodeURIComponent(other.key)}/`));
           url.searchParams.delete('z');
           const response = await fetch(url.href, {headers: apiHeaders({accept: 'application/json'})});
@@ -11560,7 +11720,9 @@ function edrModule(app, api, state, save)
                locationSearch.element,
                areaNote,
                map.element),
-           section(L('Output'), el('div', {class: 'row'}, el('label', null, L('Format'), formatSelect)))),
+           section(L('Output'),
+                   el('div', {class: 'row'}, el('label', null, L('Format'), formatSelect),
+                      el('label', null, L('Precision'), precisionInput)))),
         el('div',
            {class: 'request'},
            el('div', {class: 'url-row'}, urlBox, copyUrl),
@@ -13380,6 +13542,7 @@ async function main()
         el('p', {class: 'muted'}, L('None of the APIs of this server can be explored yet.')));
     return;
   }
+  app.apis = apis;
 
   let state = readState();
   // Browsing the data of all the APIs, then each API
