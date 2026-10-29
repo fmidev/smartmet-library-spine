@@ -1,7 +1,7 @@
 
 REQUIRES = gdal configpp libpqxx
 
-include $(shell smartbuildcfg --prefix)/share/smartmet/devel/makefile.inc
+include $(or $(PREFIX),$(shell smartbuildcfg --prefix))/share/smartmet/devel/makefile.inc
 
 # ISO C++ forbids casting between pointer-to-function and pointer-to-object
 CFLAGS += -Wno-pedantic
