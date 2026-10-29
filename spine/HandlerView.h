@@ -101,6 +101,9 @@ class HandlerView
   const std::string& getResource() const;
 
  private:
+  void callHandler(Reactor& theReactor,
+                   const HTTP::Request& theRequest,
+                   HTTP::Response& theResponse) const;
   bool answerMethod(const HTTP::Request& theRequest, HTTP::Response& theResponse) const;
   bool rejectPostContentType(const HTTP::Request& theRequest, HTTP::Response& theResponse) const;
   void handleWithLogging(Reactor& theReactor,

@@ -12,6 +12,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <macgyver/Cancellation.h>
 #include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
 #include <macgyver/Join.h>
@@ -236,7 +237,7 @@ bool HandlerView::handle(Reactor& theReactor,
       auto key = theReactor.insertActiveRequest(theRequest);
       try
       {
-        itsHandler(theReactor, theRequest, theResponse);
+        callHandler(theReactor, theRequest, theResponse);
         theReactor.removeActiveRequest(key, theResponse.getStatus());
       }
       catch (...)
@@ -257,6 +258,35 @@ bool HandlerView::handle(Reactor& theReactor,
     std::cerr << Fmi::Exception::Trace(BCP, "Operation failed! HandlerView::handle aborted") << std::endl;
     return true;
   }
+}
+
+// Call the handler. The response of a request cancelled while being handled (see
+// Fmi::CancellationToken) is replaced, whatever the handler made of the cancellation: the
+// handler may have answered with an error of its own or with partial results.
+void HandlerView::callHandler(Reactor& theReactor,
+                              const HTTP::Request& theRequest,
+                              HTTP::Response& theResponse) const
+{
+  try
+  {
+    itsHandler(theReactor, theRequest, theResponse);
+  }
+  catch (...)
+  {
+    const auto token = Fmi::current_cancellation_token();
+    if (!token || !token->interrupted())
+      throw;
+  }
+
+  const auto token = Fmi::current_cancellation_token();
+  if (!token || !token->interrupted())
+    return;
+
+  theResponse = HTTP::Response();
+  theResponse.setStatus(HTTP::Status::service_unavailable);
+  theResponse.setHeader("Content-Type", "text/plain; charset=UTF-8");
+  theResponse.setHeader("Cache-Control", "no-cache, must-revalidate");
+  theResponse.setContent(std::string(Fmi::to_string(token->reason())) + "\n");
 }
 
 // Answer OPTIONS requests, POST requests with an unsupported content type and requests with an
@@ -346,7 +376,7 @@ void HandlerView::handleWithLogging(Reactor& theReactor,
   std::exception_ptr error;
   try
   {
-    itsHandler(theReactor, theRequest, theResponse);
+    callHandler(theReactor, theRequest, theResponse);
   }
   catch (boost::thread_interrupted&)
   {
