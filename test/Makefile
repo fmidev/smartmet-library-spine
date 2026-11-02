@@ -27,7 +27,7 @@ LIBS += ../libsmartmet-spine.so \
 	-lboost_program_options \
 	-lboost_chrono \
 	$(PREFIX_LDFLAGS) \
-	-lbz2 -lz -lpthread -ldl
+	-lfmt -lbz2 -lz -lpthread -ldl
 
 all: all-reactor-tests $(PROG)
 

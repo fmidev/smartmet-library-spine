@@ -2,9 +2,11 @@
 #include "Convenience.h"
 #include "FmiApiKey.h"
 #include "Reactor.h"
+#include "RequestWatcher.h"
 #include <boost/algorithm/string.hpp>
 #include <algorithm>
 #include <ctime>
+#include <exception>
 #include <filesystem>
 #include <functional>
 #include <iostream>
@@ -267,20 +269,41 @@ void HandlerView::callHandler(Reactor& theReactor,
                               const HTTP::Request& theRequest,
                               HTTP::Response& theResponse) const
 {
+  const auto token = Fmi::current_cancellation_token();
+
+  // Interrupts the handler at a boost interruption point once the request is cancelled
+  auto watch = theReactor.getRequestWatcher().watch(token);
+
+  std::exception_ptr error;
   try
   {
     itsHandler(theReactor, theRequest, theResponse);
   }
   catch (...)
   {
-    const auto token = Fmi::current_cancellation_token();
-    if (!token || !token->interrupted())
-      throw;
+    error = std::current_exception();
   }
 
-  const auto token = Fmi::current_cancellation_token();
+  if (watch.stop())
+  {
+    // Interrupted, also if the handler caught the interruption. The cancelled token
+    // throws, which marks the request interrupted.
+    try
+    {
+      token->check();
+    }
+    catch (...)
+    {
+    }
+  }
+
+  // Other interruptions, for example by the shutdown of the thread pool, pass through
   if (!token || !token->interrupted())
+  {
+    if (error)
+      std::rethrow_exception(error);
     return;
+  }
 
   theResponse = HTTP::Response();
   theResponse.setStatus(HTTP::Status::service_unavailable);

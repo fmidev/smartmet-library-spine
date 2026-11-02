@@ -16,6 +16,7 @@
 #include "Names.h"
 #include "OpenApi.h"
 #include "Options.h"
+#include "RequestWatcher.h"
 #include "SmartMet.h"
 #include "SmartMetEngine.h"
 
@@ -169,7 +170,10 @@ Reactor::~Reactor()
 // ----------------------------------------------------------------------
 
 Reactor::Reactor(const Options& options)
-    : ContentHandlerMap(options), itsOptions(options), itsInitTasks(new Fmi::AsyncTaskGroup)
+    : ContentHandlerMap(options),
+      itsOptions(options),
+      itsInitTasks(new Fmi::AsyncTaskGroup),
+      itsRequestWatcher(std::make_unique<RequestWatcher>())
 {
   if (instance.exchange(this))
   {
@@ -703,6 +707,17 @@ void Reactor::removeActiveRequest(std::size_t theKey, HTTP::Status theStatusCode
                   << "/" << itsOptions.throttle.limit << '\n';
     }
   }
+}
+
+// ----------------------------------------------------------------------
+/*!
+ * \brief The watcher interrupting the threads handling cancelled requests
+ */
+// ----------------------------------------------------------------------
+
+RequestWatcher& Reactor::getRequestWatcher()
+{
+  return *itsRequestWatcher;
 }
 
 // ----------------------------------------------------------------------
