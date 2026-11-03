@@ -868,20 +868,15 @@ void setAdminResponseHeaders(HTTP::Response& theResponse)
 
   // Adding response headers
 
-  const int expires_seconds = 60;
   Fmi::DateTime t_now = Fmi::SecondClock::universal_time();
-  Fmi::DateTime t_expires = t_now + Fmi::Seconds(expires_seconds);
   std::shared_ptr<Fmi::TimeFormatter> tformat(Fmi::TimeFormatter::create("http"));
-  std::string cachecontrol = "public, max-age=" + std::to_string(expires_seconds);
-  std::string expiration = tformat->format(t_expires);
   std::string modification = tformat->format(t_now);
 
-  theResponse.setHeader("Cache-Control", cachecontrol);
-  theResponse.setHeader("Expires", expiration);
+  // Admin responses can contain operator-only data (e.g. the active requests
+  // listing includes other clients' API keys). They must never be stored by a
+  // shared cache, so use private/no-store instead of the former "public".
+  theResponse.setHeader("Cache-Control", "private, no-store");
   theResponse.setHeader("Last-Modified", modification);
-
-  // We allow JSON requests, hence we should enable CORS
-  theResponse.setHeader("Access-Control-Allow-Origin", "*");
 }
 }  // namespace
 
@@ -1526,6 +1521,19 @@ try
 
       std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_BLUE
                 << " Admin request IP filter defaults to localhost only"
+                << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+    }
+    else if (filterTokens.empty())
+    {
+      // A password protects only the RequiresAuthentication requests. Private
+      // requests (not advertised, no authentication) would otherwise be reachable
+      // from anywhere, exposing e.g. the active-requests API-key listing. Default
+      // the IP filter to private networks so those requests are not public; set
+      // admin.ip_filters explicitly to allow authenticated admin from elsewhere.
+      filterTokens = IPFilter::IPFilter::privateNetworks();
+
+      std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_BLUE
+                << " Admin request IP filter defaults to private networks"
                 << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
     }
 

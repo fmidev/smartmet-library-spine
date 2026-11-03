@@ -219,15 +219,24 @@ try
   std::vector<std::string> hops;
   boost::algorithm::split(hops, *forwardedFor, boost::is_any_of(","));
 
+  // A loopback origin may only be vouched for by a loopback peer. Otherwise any
+  // trusted (e.g. RFC1918) peer could assert X-Forwarded-For: 127.0.0.1 and be
+  // treated as localhost, defeating a localhost-only admin/IP-filter default.
+  auto peerAddr = parseAddress(peerIP);
+  bool reporterIsLoopback = peerAddr && peerAddr->is_loopback();
+
   std::string client = peerIP;
   for (auto it = hops.rbegin(); it != hops.rend(); ++it)
   {
     auto addr = parseAddress(*it);
     if (!addr)
       return "unknown";
+    if (addr->is_loopback() && !reporterIsLoopback)
+      break;  // non-loopback reporter cannot claim a loopback client
     client = addr->to_string();
     if (!trustedProxies.match(*addr))
       break;
+    reporterIsLoopback = addr->is_loopback();
   }
   return client;
 }

@@ -1915,7 +1915,18 @@ RequestParseResult parseOneRequest(const std::string& buffer)
 
     HeaderMap headerMap;
     for (const auto& pair : target.headers)
-      headerMap.insert(std::make_pair(pair.first, trim_ows(pair.second)));
+    {
+      // Repeated field lines are combined into one comma-separated value (RFC 9110
+      // 5.3). Keeping only the first line let a client place its own
+      // X-Forwarded-For ahead of the one a proxy appends and win the client-IP
+      // resolution; combining makes the proxy-appended (right-most) hop decisive.
+      auto value = trim_ows(pair.second);
+      auto pos = headerMap.find(pair.first);
+      if (pos == headerMap.end())
+        headerMap.insert(std::make_pair(pair.first, value));
+      else if (!value.empty())
+        pos->second += pos->second.empty() ? value : (", " + value);
+    }
 
     bool hasParsedPostData = false;
     if (isFormUrlEncodedContent(headerMap))

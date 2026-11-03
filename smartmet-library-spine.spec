@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.11.4
+Version: 26.11.5
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -172,6 +172,13 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Thu Nov 5 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.11.5-1.fmi
+- resolveClientIP trusts a loopback-reported hop only when the reporting peer is itself loopback
+- Repeated request header lines are combined into one field value (RFC 9110 5.3)
+- Reject header field names that contain whitespace before the colon
+- Admin responses use Cache-Control: private, no-store
+- The admin IP filter defaults to the private networks when a password is set without ip_filters
+
 * Wed Nov  4 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.11.4-1.fmi
 - Initial request cancelation support
 

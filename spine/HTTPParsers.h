@@ -198,8 +198,13 @@ struct RequestHeadParser : qi::grammar<Iterator, RawRequestHead()>
     // accepted here. A continuation line (obsolete line folding, RFC 9112 5.2)
     // still fails to parse: it carries no colon, so neither this rule nor the
     // blank line that follows can match it.
-    headers = *(+(qi::print - ':') >> ':' >> qi::omit[*spirit::ascii::blank] >>
-                *(qi::char_ - qi::eol) >> "\r\n");
+    // The field-name is a token (RFC 9110 5.1): no whitespace is allowed before
+    // the colon. Excluding blanks here makes "Transfer-Encoding : chunked" fail to
+    // parse (400) instead of being stored under a name with a trailing space and
+    // then ignored by the framing check, which a lenient front proxy could exploit
+    // for request smuggling.
+    headers = *(+(qi::print - ':' - spirit::ascii::blank) >> ':' >>
+                qi::omit[*spirit::ascii::blank] >> *(qi::char_ - qi::eol) >> "\r\n");
 
     request = type >> resource >> -qi::lit("?") >> params >> version >> headers >> "\r\n";
   }
