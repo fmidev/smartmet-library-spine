@@ -3,8 +3,8 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.10.28
-Release: 2%{?dist}.fmi
+Version: 26.11.4
+Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Nov  4 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.11.4-1.fmi
+- Initial request cancelation support
+
 * Wed Oct 28 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.10.28-2.fmi
 - Data explorer: a Precision choice of the output; the charts and other drawn views draw the request in the precision of the data (auto or full) while the table, the response and the values under the pointer keep the precision of the request
 
