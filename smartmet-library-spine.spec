@@ -51,7 +51,7 @@ BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 26.10.16
-BuildRequires: smartmet-library-macgyver-devel >= 26.10.16
+BuildRequires: smartmet-library-macgyver-devel >= 26.11.3
 BuildRequires: smartmet-library-newbase-devel >= 26.10.25
 BuildRequires: smartmet-utils-devel >= 26.9.3
 
@@ -101,7 +101,7 @@ Requires: smartmet-uplot
 Requires: libbacktrace
 Requires: double-conversion
 Requires: smartmet-library-gis >= 26.10.17
-Requires: smartmet-library-macgyver >= 26.10.17
+Requires: smartmet-library-macgyver >= 26.11.3
 Requires: smartmet-library-newbase >= 26.10.25
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
@@ -112,7 +112,7 @@ Requires: smartmet-timezones >= 24.5.27
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 26.10.16
+#TestRequires: smartmet-library-macgyver-devel >= 26.11.3
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -124,7 +124,7 @@ Summary: SmartMet Spine development files
 Group: SmartMet/Development
 Requires: %{smartmet_boost}-devel
 Requires: dtl
-Requires: smartmet-library-macgyver-devel >= 26.10.16
+Requires: smartmet-library-macgyver-devel >= 26.11.3
 Requires: smartmet-library-gis-devel >= 26.10.16
 Requires: smartmet-library-newbase-devel >= 26.10.25
 Requires: libconfig17-devel
