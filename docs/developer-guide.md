@@ -89,7 +89,7 @@ make format              # clang-format (unlike the grid repositories, spine is 
 
 | Area | Files |
 |------|-------|
-| Core | `Reactor`, `ContentHandlerMap`, `HandlerView`, `DynamicPlugin`, `SmartMetEngine`, `SmartMetPlugin`, `SmartMet.h` (API version), `Options`, `Names`, `Thread` |
+| Core | `Reactor`, `ContentHandlerMap`, `HandlerView`, `RequestWatcher`, `DynamicPlugin`, `SmartMetEngine`, `SmartMetPlugin`, `SmartMet.h` (API version), `Options`, `Names`, `Thread` |
 | HTTP | `HTTP`, `HTTPParsers`, `HTTPAuthentication`, `IPFilter`, `FmiApiKey`, `ActiveRequests`, `ActiveBackends`, `LoggedRequest`, `AccessLogger`, `LogRange` |
 | Output | `Table`, `TableFormatter` and its subclasses, `TableFormatterFactory`, `TableFormatterOptions`, `TableVisitor`, `Value`, `None` |
 | Configuration | `ConfigBase`, `ConfigTools`, `Convenience` |
@@ -225,6 +225,18 @@ resource must match a registered URI exactly. Anything else goes to the "no matc
 handler (the frontend plugin installs one) or gets a 404. A
 The `HandlerView` wraps the plugin's handler with the plugin's IP filter (a non-matching
 client is refused), the access log for the URI, and last-request bookkeeping.
+
+**Cancelled requests.** When the server has given the request an
+`Fmi::CancellationToken` with a deadline or a probe (see the server guide), the
+`HandlerView` has the reactor's `RequestWatcher` watch it. Once the token is cancelled,
+the watcher's thread interrupts the pool worker handling the request with
+`boost::thread::interrupt()` (`Fmi::ThreadPool::current_worker_thread()`). The handler
+then stops at the next boost interruption point (`boost::this_thread::interruption_point()`,
+boost sleeps, waits on boost condition variables and on `Fmi::AsyncTask`s), also where it
+does not call `Fmi::check_cancelled()`. The `HandlerView` catches the interruption so
+that the worker survives, clears an interruption the handler did not reach, and replaces
+the response with a 503. Blocking calls which are not interruption points, such as
+database queries and `std::` waits, are not cut short.
 
 The server (`AsyncConnection`) then chooses a pool:
 

@@ -2,9 +2,11 @@
 #include "Convenience.h"
 #include "FmiApiKey.h"
 #include "Reactor.h"
+#include "RequestWatcher.h"
 #include <boost/algorithm/string.hpp>
 #include <algorithm>
 #include <ctime>
+#include <exception>
 #include <filesystem>
 #include <functional>
 #include <iostream>
@@ -12,6 +14,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <macgyver/Cancellation.h>
 #include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
 #include <macgyver/Join.h>
@@ -236,7 +239,7 @@ bool HandlerView::handle(Reactor& theReactor,
       auto key = theReactor.insertActiveRequest(theRequest);
       try
       {
-        itsHandler(theReactor, theRequest, theResponse);
+        callHandler(theReactor, theRequest, theResponse);
         theReactor.removeActiveRequest(key, theResponse.getStatus());
       }
       catch (...)
@@ -257,6 +260,56 @@ bool HandlerView::handle(Reactor& theReactor,
     std::cerr << Fmi::Exception::Trace(BCP, "Operation failed! HandlerView::handle aborted") << std::endl;
     return true;
   }
+}
+
+// Call the handler. The response of a request cancelled while being handled (see
+// Fmi::CancellationToken) is replaced, whatever the handler made of the cancellation: the
+// handler may have answered with an error of its own or with partial results.
+void HandlerView::callHandler(Reactor& theReactor,
+                              const HTTP::Request& theRequest,
+                              HTTP::Response& theResponse) const
+{
+  const auto token = Fmi::current_cancellation_token();
+
+  // Interrupts the handler at a boost interruption point once the request is cancelled
+  auto watch = theReactor.getRequestWatcher().watch(token);
+
+  std::exception_ptr error;
+  try
+  {
+    itsHandler(theReactor, theRequest, theResponse);
+  }
+  catch (...)
+  {
+    error = std::current_exception();
+  }
+
+  if (watch.stop())
+  {
+    // Interrupted, also if the handler caught the interruption. The cancelled token
+    // throws, which marks the request interrupted.
+    try
+    {
+      token->check();
+    }
+    catch (...)
+    {
+    }
+  }
+
+  // Other interruptions, for example by the shutdown of the thread pool, pass through
+  if (!token || !token->interrupted())
+  {
+    if (error)
+      std::rethrow_exception(error);
+    return;
+  }
+
+  theResponse = HTTP::Response();
+  theResponse.setStatus(HTTP::Status::service_unavailable);
+  theResponse.setHeader("Content-Type", "text/plain; charset=UTF-8");
+  theResponse.setHeader("Cache-Control", "no-cache, must-revalidate");
+  theResponse.setContent(std::string(Fmi::to_string(token->reason())) + "\n");
 }
 
 // Answer OPTIONS requests, POST requests with an unsupported content type and requests with an
@@ -346,7 +399,7 @@ void HandlerView::handleWithLogging(Reactor& theReactor,
   std::exception_ptr error;
   try
   {
-    itsHandler(theReactor, theRequest, theResponse);
+    callHandler(theReactor, theRequest, theResponse);
   }
   catch (boost::thread_interrupted&)
   {

@@ -47,6 +47,7 @@ namespace SmartMet
 namespace Spine
 {
 class DynamicPlugin;
+class RequestWatcher;
 
 using URIMap = std::map<std::string, std::string>;
 
@@ -83,6 +84,9 @@ class Reactor final : public ContentHandlerMap
   ActiveRequests::Requests getActiveRequests() const;
   std::size_t insertActiveRequest(const HTTP::Request& theRequest);
   void removeActiveRequest(std::size_t theKey, HTTP::Status theStatusCode);
+
+  // Interrupts the threads handling cancelled requests
+  RequestWatcher& getRequestWatcher();
 
   // Monitoring active requests to backends
   void startBackendRequest(const std::string& theHost, int thePort);
@@ -335,6 +339,8 @@ class Reactor final : public ContentHandlerMap
   mutable std::atomic_uint itsActiveRequestsCounter{0};  // requests since above was reset
 
   ActiveRequests itsActiveRequests;
+
+  std::unique_ptr<RequestWatcher> itsRequestWatcher;
 
   ActiveBackends itsActiveBackends;
 
