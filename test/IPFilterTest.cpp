@@ -222,8 +222,14 @@ BOOST_AUTO_TEST_CASE(resolve_client_ip)
 
   // Backward compatible default: everything IPv4 trusted means the left-most entry
   const ip::IPFilter any({"*.*.*.*"});
+  BOOST_CHECK_EQUAL(ip::resolveClientIP("1.2.3.4", std::string("9.9.9.9, 5.6.7.8"), any),
+                    "9.9.9.9");
+
+  // ...except that only a loopback peer may report a loopback client
   BOOST_CHECK_EQUAL(ip::resolveClientIP("1.2.3.4", std::string("127.0.0.1, 5.6.7.8"), any),
-                    "127.0.0.1");
+                    "5.6.7.8");
+  BOOST_CHECK_EQUAL(ip::resolveClientIP("1.2.3.4", std::string("127.0.0.1"), any), "1.2.3.4");
+  BOOST_CHECK_EQUAL(ip::resolveClientIP("127.0.0.1", std::string("127.0.0.1"), any), "127.0.0.1");
 }
 
 BOOST_AUTO_TEST_CASE(frontend_backend_chain)

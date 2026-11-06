@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.11.5
+Version: 26.11.6
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -172,6 +172,11 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Fri Nov 6 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.11.6-1.fmi
+- smartmet-plugin-test: the waitforready admin request comes from 127.0.0.1 like the
+  test requests, the admin IP filter now accepts only local and private networks by default
+- IPFilterTest: expectations follow the loopback rule of resolveClientIP
+
 * Thu Nov 5 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.11.5-1.fmi
 - resolveClientIP trusts a loopback-reported hop only when the reporting peer is itself loopback
 - Repeated request header lines are combined into one field value (RFC 9110 5.3)

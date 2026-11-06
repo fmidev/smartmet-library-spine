@@ -52,6 +52,9 @@ void prelude(
       {
         throw Fmi::Exception::Trace(BCP, "Failed to parse request: " + request);
       }
+      // A local admin request, like the test requests (see PluginTest::run): the
+      // admin IP filter accepts only local and private networks by default
+      req->setClientIP("127.0.0.1");
       std::cout << "Wait for Reactor initialization to be done"
       //  << " by sending request " << request
         << std::endl;
