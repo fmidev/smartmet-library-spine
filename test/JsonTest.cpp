@@ -7,6 +7,7 @@
 
 #include "HTTP.h"
 #include "Json.h"
+#include <boost/algorithm/string.hpp>
 #include <dtl/dtl.hpp>
 #include <regression/tframe.h>
 

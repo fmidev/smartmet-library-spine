@@ -10,7 +10,8 @@
 
 #pragma once
 
-#include <boost/thread.hpp>
+#include <boost/thread/condition_variable.hpp>
+#include <boost/thread/mutex.hpp>
 #include <macgyver/CacheStats.h>
 #include <atomic>
 #include <string>

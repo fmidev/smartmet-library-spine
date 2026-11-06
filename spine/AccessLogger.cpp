@@ -1,5 +1,6 @@
 #include "AccessLogger.h"
 #include "Convenience.h"
+#include <boost/algorithm/string.hpp>
 #include <iostream>
 #include <filesystem>
 #include <fmt/format.h>

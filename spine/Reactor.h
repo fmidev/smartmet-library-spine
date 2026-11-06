@@ -14,29 +14,27 @@
 
 #include "ActiveBackends.h"
 #include "ActiveRequests.h"
-#include "ConfigBase.h"
 #include "HTTP.h"
 #include "HandlerView.h"
-#include "IPFilter.h"
-#include "LoggedRequest.h"
 #include "Options.h"
-#include "OTelMetricsExporter.h"
 #include "SmartMet.h"
 #include "SmartMetEngine.h"
-#include "SmartMetPlugin.h"
 #include "ContentHandlerMap.h"
 #include "Thread.h"
 
 #include <boost/function.hpp>
+#include <boost/system/error_code.hpp>
+#include <boost/thread/mutex.hpp>
 #include <optional>
 #include <memory>
 #include <macgyver/AsyncTaskGroup.h>
 #include <macgyver/CacheStats.h>
 
 #include <atomic>
-#include <libconfig.h++>
 #include <list>
 #include <map>
+#include <set>
+#include <vector>
 #include <set>
 #include <string>
 #include <type_traits>
@@ -47,6 +45,7 @@ namespace SmartMet
 namespace Spine
 {
 class DynamicPlugin;
+class OTelMetricsExporter;
 class RequestWatcher;
 
 using URIMap = std::map<std::string, std::string>;

@@ -1,6 +1,7 @@
 #include "Json.h"
 #include "HTTP.h"
 #include "JsonCache.h"
+#include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/filesystem/operations.hpp>

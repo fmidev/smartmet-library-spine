@@ -6,11 +6,14 @@
 // ----------------------------------------------------------------------
 #pragma once
 
-#include <boost/algorithm/string.hpp>
-#include <boost/logic/tribool.hpp>
+#include <boost/smart_ptr/shared_array.hpp>
+#include <algorithm>
+#include <cstddef>
+#include <iosfwd>
 #include <optional>
-#include <boost/range.hpp>
-#include <boost/shared_array.hpp>
+#include <string_view>
+#include <tuple>
+#include <utility>
 #include <memory>
 
 // For asio buffer types

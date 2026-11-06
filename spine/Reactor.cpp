@@ -5,6 +5,7 @@
 // ======================================================================
 
 #include "Reactor.h"
+#include "OTelMetricsExporter.h"
 #include "Backtrace.h"
 #include "ConfigTools.h"
 #include "Convenience.h"
