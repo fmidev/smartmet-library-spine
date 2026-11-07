@@ -550,7 +550,7 @@ class Request : public Message
 
   ParamMap itsParameters;
 
-  RequestMethod itsMethod;
+  RequestMethod itsMethod = RequestMethod::GET;
 
   std::string itsResource;
 
