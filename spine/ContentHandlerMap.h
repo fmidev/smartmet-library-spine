@@ -101,6 +101,95 @@ public:
         RequiresAuthentication // Authentication required, not visible through /info
     };
 
+    /**
+     * @brief Options for setting up and configuring a content handler
+     */
+    struct HandlerOptions
+    {
+        /**
+         *  @brief URI that this handler is responsible for.
+         */
+        const std::string uri;
+
+        /**
+         *  @brief Indicates if the handler should handle all URIs starting with the specified URI
+         *
+         *  Example: EDR plugin may handle all URIs starting with "/edr" (/edr - landingpage,
+         *           /edr/collections - collection of EDR items, etc"). As result @c true
+         *           must pe specified.
+         */
+        bool handlesUriPrefix = false;
+
+        /**
+         *  @brief Indicates if the handler is private (not visible through /info) and reported to frontend
+         */
+        bool isPrivate = false;
+
+        /**
+         *  @brief Set of supported Content-Types for POST requests.
+         *         Note that x-www-form-urlencoded is always supported and there is no
+         *         need to include it in the set (one can however specify it if desired)
+         */
+        std::set<std::string> supportedPostContentTypes;
+
+        HandlerOptions(const std::string& theUri)
+            : uri(theUri)
+        {
+        }
+
+        HandlerOptions(const HandlerOptions&) = default;
+        HandlerOptions& operator=(const HandlerOptions&) = default;
+        ~HandlerOptions() = default;
+
+        HandlerOptions& setPrivate()
+        {
+            isPrivate = true;
+            return *this;
+        }
+
+        HandlerOptions& setHandlesUriPrefix()
+        {
+            handlesUriPrefix = true;
+            return *this;
+        }
+
+        HandlerOptions& addSupportedPostContentType(const std::string& contentType)
+        {
+            supportedPostContentTypes.insert(contentType);
+            return *this;
+        }
+
+        /**
+         *  @brief Template method for adding supported POST content types from iterator range
+         *
+         *  Restriction: iterator values must be convertible to std::string
+         */
+        template <typename Iterator>
+        typename std::enable_if
+        <
+            std::is_convertible<typename std::iterator_traits<Iterator>::value_type, std::string>::value
+            || std::is_same<typename std::iterator_traits<Iterator>::value_type, std::string>::value,
+            HandlerOptions&
+        >::type
+        addSupportedPostContentTypes(Iterator begin, Iterator end)
+        {
+            for (Iterator it = begin; it != end; ++it)
+            {
+                supportedPostContentTypes.insert(std::string(*it));
+            }
+            return *this;
+        }
+
+        template <typename... Args>
+        HandlerOptions&
+        addSupportedPostContentTypes(Args&&... args)
+        {
+            (addSupportedPostContentType(std::forward<Args>(args)), ...);
+            return *this;
+        }
+    };
+
+
     ContentHandlerMap(const Options& options);
 
     virtual ~ContentHandlerMap();
@@ -198,6 +287,10 @@ public:
                            const std::set<std::string>& supportedPostContentTypes,
                            bool handlesUriPrefix,
                            bool isPrivate);
+
+    bool addContentHandler(SmartMetPlugin* thePlugin,
+                           const HandlerOptions& options,
+                           const ContentHandler& theHandler);
 
     /**
      * @brief Remove all handlers provided by the plugin

@@ -237,14 +237,30 @@ bool ContentHandlerMap::addContentHandlerImpl(SmartMetPlugin* thePlugin,
                                               bool isPrivate)
 try
 {
+  HandlerOptions options(theUri);
+  options.isPrivate = isPrivate;
+  options.supportedPostContentTypes = supportedPostContentTypes;
+  options.handlesUriPrefix = handlesUriPrefix;
+  return addContentHandler(thePlugin, options, theHandler);
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
+bool ContentHandlerMap::addContentHandler(SmartMetPlugin* thePlugin,
+                                          const HandlerOptions& options,
+                                          const ContentHandler& theHandler)
+try
+{
   WriteLock lock(itsContentMutex);
   WriteLock lock2(itsLoggingMutex);
 
   if (!theHandler)
-    throw Fmi::Exception(BCP, "Cannot add null content handler for URI " + theUri);
+    throw Fmi::Exception(BCP, "Cannot add null content handler for URI " + options.uri);
 
   if (Reactor::isShuttingDown())
-    throw Fmi::Exception(BCP, "Cannot add content handler for URI " + theUri +
+    throw Fmi::Exception(BCP, "Cannot add content handler for URI " + options.uri +
                                    " - shutdown in progress");
 
   const std::string pluginName = plugin_name(thePlugin);
@@ -258,18 +274,18 @@ try
       filter = itsFilterIterator->second;
 
     std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
-          << (isPrivate ? "private " : "") << "URI " << theUri << " for plugin "
+          << (options.isPrivate ? "private " : "") << "URI " << options.uri << " for plugin "
           << pluginName << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
 
     // Private handlers are only left out of the service lists; without a filter
     // any client reaching this server directly could use them. Unless the
     // plugin has its own ip_filters, accept only local and private network
     // addresses.
-    if (isPrivate && !filter)
+    if (options.isPrivate && !filter)
     {
       filter = std::make_shared<IPFilter::IPFilter>(IPFilter::IPFilter::privateNetworks());
       std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_BLUE << " Private URI "
-                << theUri << " of plugin " << pluginName
+                << options.uri << " of plugin " << pluginName
                 << " accepts only local and private network addresses (set plugins."
                 << pluginName << ".ip_filters to change this)" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
                 << std::endl;
@@ -278,10 +294,10 @@ try
   else
   {
     std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
-          << (isPrivate ? "private " : "") << " request handler for URI "
-          << theUri << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+          << (options.isPrivate ? "private " : "") << " request handler for URI "
+          << options.uri << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
     // We have built in admin request handler (no plugin). Use its IP filter if available.
-    if (theUri == *itsAdminHandlerInfo->itsAdminUri)
+    if (options.uri == *itsAdminHandlerInfo->itsAdminUri)
       filter = itsAdminHandlerInfo->itsIPFilter;
   }
 
@@ -289,24 +305,24 @@ try
   std::unique_ptr<HandlerView> handler(new HandlerView(theHandler,
                                                        filter,
                                                        thePlugin,
-                                                       theUri,
+                                                       options.uri,
                                                        itsLoggingEnabled,
-                                                       isPrivate,
-                                                       supportedPostContentTypes,
+                                                       options.isPrivate,
+                                                       options.supportedPostContentTypes,
                                                        itsOptions.accesslogdir,
                                                        itsOptions.otel));
 
-  if (handlesUriPrefix)
+  if (options.handlesUriPrefix)
   {
-    itsUriPrefixes.insert(theUri);
+    itsUriPrefixes.insert(options.uri);
   }
 
-  const auto result = itsHandlers.emplace(theUri, std::move(handler));
+  const auto result = itsHandlers.emplace(options.uri, std::move(handler));
   if (not result.second)
   {
     const std::string name = result.first->second->getPluginName();
     std::ostringstream msg;
-    msg << "Attempt to register URI " << theUri << " for plugin " << pluginName
+    msg << "Attempt to register URI " << options.uri << " for plugin " << pluginName
         << " failed: URI already registered for plugin " << name;
     throw Fmi::Exception(BCP, msg.str());
   }

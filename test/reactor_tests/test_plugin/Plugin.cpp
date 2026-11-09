@@ -44,8 +44,8 @@ void Plugin::init()
         throw std::runtime_error("Engine test function call result is incorrect");
     }
 
-    if (!itsReactor->addPrivateContentHandler(this,
-            "/test",
+    if (!itsReactor->addContentHandler(this,
+            Reactor::HandlerOptions("/test").setPrivate(),
             [this](Reactor& theReactor,
                 const HTTP::Request& theRequest,
                 HTTP::Response& theResponse)
@@ -61,21 +61,19 @@ void Plugin::init()
         "nomatch");
 
     if (!itsReactor->addContentHandler(this,
-            "/test_prefix",
+            Reactor::HandlerOptions("/test_prefix").setHandlesUriPrefix(),
             [this](Reactor& theReactor,
                 const HTTP::Request& theRequest,
                 HTTP::Response& theResponse)
             {
                 requestHandler(theReactor, theRequest, theResponse);
-            },
-            {},  // No special content types except the default application/x-www-form-urlencoded
-            true))
+            }))
     {
         throw Fmi::Exception(BCP, "Failed to register test content handler (exact match)");
     }
 
-    if (!itsReactor->addPrivateContentHandler(this,
-            "/uri-map",
+    if (!itsReactor->addContentHandler(this,
+            Reactor::HandlerOptions("/uri-map").setPrivate(),
             [this](Reactor& theReactor,
                 const HTTP::Request& theRequest,
                 HTTP::Response& theResponse)

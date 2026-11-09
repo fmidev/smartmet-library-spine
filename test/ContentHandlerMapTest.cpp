@@ -71,3 +71,27 @@ BOOST_AUTO_TEST_CASE(has_handler_view)
   BOOST_CHECK(!map->hasHandlerView("/wmtsx"));
   BOOST_CHECK(!map->hasHandlerView("/nosuch"));
 }
+
+BOOST_AUTO_TEST_CASE(handler_options_1)
+{
+  std::vector<std::string> contentTypes = {"application/json", "application/xml"};
+  ContentHandlerMap::HandlerOptions options("/test");
+  options.setPrivate();
+  options.setHandlesUriPrefix();
+  BOOST_CHECK(options.isPrivate);
+  BOOST_CHECK(options.handlesUriPrefix);
+  options.addSupportedPostContentTypes(contentTypes.begin(), contentTypes.end());
+  BOOST_CHECK(options.supportedPostContentTypes.count("application/json") == 1);
+  BOOST_CHECK(options.supportedPostContentTypes.count("application/xml") == 1);
+}
+
+BOOST_AUTO_TEST_CASE(handler_options_2)
+{
+  ContentHandlerMap::HandlerOptions options("/test");
+  BOOST_CHECK(!options.isPrivate);
+  BOOST_CHECK(!options.handlesUriPrefix);
+  options.addSupportedPostContentTypes("application/json", "application/xml", "text/plain");
+  BOOST_CHECK(options.supportedPostContentTypes.count("application/json") == 1);
+  BOOST_CHECK(options.supportedPostContentTypes.count("application/xml") == 1);
+  BOOST_CHECK(options.supportedPostContentTypes.count("text/plain") == 1);
+}

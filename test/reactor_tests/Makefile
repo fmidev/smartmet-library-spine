@@ -15,7 +15,7 @@ run-test:	all $(SMARTMET_PLUGIN_TEST) input/.ignore
 	LD_LIBRARY_PATH=../../ $(TEST_RUNNER) $(SMARTMET_PLUGIN_TEST) -c reactor.conf --ignore input/.ignore
 
 test:	run-test
-	@if [ -f log/nomatch-access-log ] ; then \
+	@set -x; if [ -f log/nomatch-access-log ] ; then \
 		if [ "$$(wc -l <log/nomatch-access-log)" -eq 1 ] ; then \
 			true; \
 		else \
