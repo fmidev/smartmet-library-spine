@@ -498,10 +498,10 @@ void Reactor::addApiCatalogHandler()
     };
 
     // Public, so that the backends tell the frontend they have a catalog
-    addContentHandler(nullptr, "/api", handler);
-    addContentHandler(nullptr, "/.well-known/api-catalog", handler);
+    addContentHandler(nullptr, HandlerOptions("/api"), handler);
+    addContentHandler(nullptr, HandlerOptions("/.well-known/api-catalog"), handler);
     if (catalog->settings().openapi.ui)
-      addContentHandler(nullptr, "/api/docs", handler, {}, true);
+      addContentHandler(nullptr, HandlerOptions("/api/docs").IsPrefix(true), handler);
     // Private: not announced to the frontends, which serve their own explorer, and the
     // catalog lets only the clients of explorer_ip_filters use it
     if (catalog->settings().explorer)

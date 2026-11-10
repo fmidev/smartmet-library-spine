@@ -7,6 +7,7 @@
 #include <boost/test/included/unit_test.hpp>
 
 using namespace SmartMet::Spine;
+using HandlerOptions = ContentHandlerMap::HandlerOptions;
 
 namespace
 {
@@ -17,10 +18,10 @@ std::unique_ptr<ContentHandlerMap> make_map()
   Options options;
   options.quiet = true;
   auto map = std::make_unique<ContentHandlerMap>(options);
-  map->addContentHandler(nullptr, "/timeseries", dummy);
-  map->addContentHandler(nullptr, "/edr", dummy, {}, true);
-  map->addContentHandler(nullptr, "/edr/collections", dummy, {}, true);
-  map->addContentHandler(nullptr, "/wmts", dummy, {}, true);
+  map->addContentHandler(nullptr, HandlerOptions("/timeseries"), dummy);
+  map->addContentHandler(nullptr, HandlerOptions("/edr").IsPrefix(true), dummy);
+  map->addContentHandler(nullptr, HandlerOptions("/edr/collections").IsPrefix(true), dummy);
+  map->addContentHandler(nullptr, HandlerOptions("/wmts").IsPrefix(true), dummy);
   return map;
 }
 

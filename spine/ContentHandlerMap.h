@@ -213,6 +213,7 @@ public:
     void setNoMatchHandler(const ContentHandler& theHandler,
         const std::optional<std::string>& accessLogName = std::nullopt);
 
+#ifndef SPINE_REMOVE_DEPRECATED
     /**
      * @brief Add a new public handler to the map
      *
@@ -294,6 +295,7 @@ public:
                            const std::set<std::string>& supportedPostContentTypes,
                            bool handlesUriPrefix,
                            bool isPrivate);
+#endif // SPINE_REMOVE_DEPRECATED
 
     bool addContentHandler(SmartMetPlugin* thePlugin,
                            const HandlerOptions& options,

@@ -98,9 +98,9 @@ try
   // FIXME: setup IP access rules for admin requests from configuration
   if (itsAdminHandlerInfo->itsAdminUri)
   {
-    addPrivateContentHandler(
+    addContentHandler(
       nullptr,
-      *itsAdminHandlerInfo->itsAdminUri,
+      HandlerOptions(*itsAdminHandlerInfo->itsAdminUri).Private(true),
       std::bind(&ContentHandlerMap::handleAdminRequest, this, p::_2, p::_3)
     );
   }
@@ -109,7 +109,7 @@ try
   {
     addContentHandler(
       nullptr,
-      *itsAdminHandlerInfo->itsInfoUri,
+      HandlerOptions(*itsAdminHandlerInfo->itsInfoUri),
       std::bind(&ContentHandlerMap::handleAdminRequest, this, p::_2, p::_3)
     );
   }
@@ -229,6 +229,7 @@ void ContentHandlerMap::setAdminUri(const std::string& theUri)
   itsAdminHandlerInfo->itsAdminUri = theUri;
 }
 
+#ifndef SPINE_REMOVE_DEPRECATED
 bool ContentHandlerMap::addContentHandlerImpl(SmartMetPlugin* thePlugin,
                                               const std::string& theUri,
                                               const ContentHandler& theHandler,
@@ -247,6 +248,7 @@ catch (...)
 {
   throw Fmi::Exception::Trace(BCP, "Operation failed!");
 }
+#endif // SPINE_REMOVE_DEPRECATED
 
 bool ContentHandlerMap::addContentHandler(SmartMetPlugin* thePlugin,
                                           const HandlerOptions& options,
