@@ -45,7 +45,7 @@ void Plugin::init()
     }
 
     if (!itsReactor->addContentHandler(this,
-            Reactor::HandlerOptions("/test").setPrivate(),
+            Reactor::HandlerOptions("/test").Private(),
             [this](Reactor& theReactor,
                 const HTTP::Request& theRequest,
                 HTTP::Response& theResponse)
@@ -61,7 +61,7 @@ void Plugin::init()
         "nomatch");
 
     if (!itsReactor->addContentHandler(this,
-            Reactor::HandlerOptions("/test_prefix").setHandlesUriPrefix(),
+            Reactor::HandlerOptions("/test_prefix").IsPrefix(true),
             [this](Reactor& theReactor,
                 const HTTP::Request& theRequest,
                 HTTP::Response& theResponse)
@@ -73,7 +73,7 @@ void Plugin::init()
     }
 
     if (!itsReactor->addContentHandler(this,
-            Reactor::HandlerOptions("/uri-map").setPrivate(),
+            Reactor::HandlerOptions("/uri-map").Private(true),
             [this](Reactor& theReactor,
                 const HTTP::Request& theRequest,
                 HTTP::Response& theResponse)

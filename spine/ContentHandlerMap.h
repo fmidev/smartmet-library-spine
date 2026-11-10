@@ -17,6 +17,7 @@
 #include "SmartMetPlugin.h"
 #include "Table.h"
 #include <macgyver/DateTime.h>
+#include <macgyver/TypeTraits.h>
 
 namespace SmartMet
 {
@@ -141,21 +142,15 @@ public:
         HandlerOptions& operator=(const HandlerOptions&) = default;
         ~HandlerOptions() = default;
 
-        HandlerOptions& setPrivate()
+        HandlerOptions& Private(bool b = true)
         {
-            isPrivate = true;
+            isPrivate = b;
             return *this;
         }
 
-        HandlerOptions& setHandlesUriPrefix()
+        HandlerOptions& IsPrefix(bool b = true)
         {
-            handlesUriPrefix = true;
-            return *this;
-        }
-
-        HandlerOptions& addSupportedPostContentType(const std::string& contentType)
-        {
-            supportedPostContentTypes.insert(contentType);
+            handlesUriPrefix = b;
             return *this;
         }
 
@@ -184,7 +179,13 @@ public:
         HandlerOptions&
         addSupportedPostContentTypes(Args&&... args)
         {
-            (addSupportedPostContentType(std::forward<Args>(args)), ...);
+            ([&]() {
+                if constexpr (std::is_convertible<Args, std::string>::value || std::is_same<Args, std::string>::value)
+                    supportedPostContentTypes.insert(std::forward<Args>(args));
+                else
+                    static_assert(Fmi::are_convertible_to<std::string, Args...>(),
+                                  "All arguments must be std::string or convertible to std::string");
+            }(), ...);
             return *this;
         }
     };
