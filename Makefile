@@ -14,31 +14,26 @@ DEFINES = -DUNIX -D_REENTRANT
 
 # ── OpenTelemetry C++ (optional) ─────────────────────────────────────────────
 # Detection order:
-#   1. System pkg-config  (e.g. opentelemetry-cpp-devel RPM if ever packaged)
-#   2. Local build in third_party/opentelemetry-cpp/install
-#      (see docs/build-opentelemetry.md for instructions)
+#   1. System pkg-config modules from the opentelemetry-cpp-devel RPM
+#      (https://github.com/fmidev/opentelemetry-cpp). The modules also pull
+#      in the SDK, protobuf and the HTTP client, and their cflags define the
+#      feature macros the exporter headers were built with.
+#   2. Local build in third_party/opentelemetry-cpp/install, which installs
+#      the same pkg-config modules (see docs/build-opentelemetry.md)
 #
-OTEL_PC := opentelemetry-cpp
+OTEL_PC := opentelemetry_exporter_otlp_http opentelemetry_exporter_otlp_http_metric
 OTEL_LOCAL := $(CURDIR)/third_party/opentelemetry-cpp/install
+OTEL_LOCAL_LIBDIR := $(firstword $(wildcard $(OTEL_LOCAL)/lib64 $(OTEL_LOCAL)/lib))
 
 ifeq ($(shell pkg-config --exists $(OTEL_PC) 2>/dev/null && echo yes),yes)
   DEFINES  += -DSMARTMET_SPINE_OPENTELEMETRY
   CFLAGS   += $(shell pkg-config --cflags $(OTEL_PC))
   LIBS     += $(shell pkg-config --libs   $(OTEL_PC))
-else ifneq ($(wildcard $(OTEL_LOCAL)/include/opentelemetry/trace/provider.h),)
+else ifneq ($(and $(OTEL_LOCAL_LIBDIR),$(wildcard $(OTEL_LOCAL_LIBDIR)/pkgconfig/opentelemetry_exporter_otlp_http.pc)),)
+  OTEL_LOCAL_PKG := PKG_CONFIG_PATH=$(OTEL_LOCAL_LIBDIR)/pkgconfig pkg-config
   DEFINES  += -DSMARTMET_SPINE_OPENTELEMETRY
-  CFLAGS   += -I$(OTEL_LOCAL)/include
-  LIBS     += -L$(OTEL_LOCAL)/lib64 -L$(OTEL_LOCAL)/lib \
-              -lopentelemetry_trace \
-              -lopentelemetry_exporter_otlp_http \
-              -lopentelemetry_otlp_recordable \
-              -lopentelemetry_resources \
-              -lopentelemetry_common \
-              -lopentelemetry_proto \
-              -lprotobuf \
-              -lcurl \
-              -Wl,-rpath,$(OTEL_LOCAL)/lib64 \
-              -Wl,-rpath,$(OTEL_LOCAL)/lib
+  CFLAGS   += $(shell $(OTEL_LOCAL_PKG) --cflags $(OTEL_PC))
+  LIBS     += $(shell $(OTEL_LOCAL_PKG) --libs   $(OTEL_PC)) -Wl,-rpath,$(OTEL_LOCAL_LIBDIR)
 endif
 # ─────────────────────────────────────────────────────────────────────────────
 

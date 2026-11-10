@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.11.10
-Release: 1%{?dist}.fmi
+Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -55,11 +55,11 @@ BuildRequires: smartmet-library-macgyver-devel >= 26.11.10
 BuildRequires: smartmet-library-newbase-devel >= 26.10.25
 BuildRequires: smartmet-utils-devel >= 26.9.3
 
-# OpenTelemetry C++ SDK — optional; enables SMARTMET_SPINE_OPENTELEMETRY when present.
-# Not yet packaged for RHEL/Rocky; see docs/build-opentelemetry.md for a local build.
-# Uncomment once opentelemetry-cpp-devel is available:
-#BuildRequires: opentelemetry-cpp-devel
-#Requires:      opentelemetry-cpp
+# OpenTelemetry C++ SDK (https://github.com/fmidev/opentelemetry-cpp); the Makefile
+# enables SMARTMET_SPINE_OPENTELEMETRY when it is installed. The SONAME is major.minor,
+# so spine must be rebuilt after a minor upgrade of opentelemetry-cpp.
+BuildRequires: opentelemetry-cpp-devel >= 1.29.0
+Requires: opentelemetry-cpp >= 1.29.0
 
 %if 0%{?rhel} && 0%{rhel} == 8
 Requires: libpqxx >= 1:7.7.0, libpqxx < 1:7.8.0
@@ -172,6 +172,12 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Nov 10 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> 26.11.10-2.fmi
+- Build with OpenTelemetry using the opentelemetry-cpp RPM and its pkg-config modules
+- Fixed the OpenTelemetry code to compile against the SDK (versioned namespace, nostd::shared_ptr,
+  observer result variant, moved headers, steady-clock span end time, Fmi::DateTime conversion)
+- Fixed OTelMetricsExporter::stop() destroying the metric callbacks' context before the final collection
+
 * Tue Nov 10 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.11.10-1.fmi
 - ContentHandlerMap: add new API for adding context handlers (not yet ABI change)
 

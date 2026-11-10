@@ -11,10 +11,10 @@
 #include <opentelemetry/sdk/metrics/meter_provider.h>
 #include <opentelemetry/sdk/metrics/meter_provider_factory.h>
 #include <opentelemetry/sdk/metrics/metric_reader.h>
-#include <opentelemetry/sdk/metrics/periodic_exporting_metric_reader_factory.h>
-#include <opentelemetry/sdk/metrics/periodic_exporting_metric_reader_options.h>
+#include <opentelemetry/sdk/metrics/export/periodic_exporting_metric_reader_factory.h>
+#include <opentelemetry/sdk/metrics/export/periodic_exporting_metric_reader_options.h>
 #include <opentelemetry/sdk/resource/resource.h>
-#include <opentelemetry/sdk/resource/semantic_conventions.h>
+#include <opentelemetry/semconv/service_attributes.h>
 
 // OTLP HTTP metrics exporter
 #include <opentelemetry/exporters/otlp/otlp_http_metric_exporter_factory.h>
@@ -23,45 +23,49 @@
 namespace
 {
 // ── Per-metric Observable callbacks ──────────────────────────────────────────
-// Each callback receives a void* pointing to the shared ObserveContext.
+// Each callback receives a void* pointing to the cache statistics callback.
 
-using Context = SmartMet::Spine::OTelMetricsExporter::ObserveContext;
-using Attrs   = std::initializer_list<std::pair<opentelemetry::nostd::string_view,
-                                                 opentelemetry::common::AttributeValue>>;
+using StatsCallback = SmartMet::Spine::OTelMetricsExporter::CacheStatsCallback;
+using Int64Result = opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObserverResultT<int64_t>>;
 
-static void observeSize(opentelemetry::metrics::ObserverResult result, void* state)
+// Report one value per cache, selected from its statistics by the given getter
+template <typename Getter>
+void observe(opentelemetry::metrics::ObserverResult result, void* state, Getter getter)
 {
-  const auto& stats = static_cast<Context*>(state)->callback();
+  // The instruments are int64 gauges, so the result always holds the int64 alternative
+  if (!opentelemetry::nostd::holds_alternative<Int64Result>(result))
+    return;
+  auto& observer = opentelemetry::nostd::get<Int64Result>(result);
+
+  const auto stats = (*static_cast<const StatsCallback*>(state))();
   for (const auto& [name, s] : stats)
-    result.Observe(static_cast<int64_t>(s.size), Attrs{{"cache.name", name}});
+    observer->Observe(static_cast<int64_t>(getter(s)),
+                      {{"cache.name", opentelemetry::nostd::string_view(name)}});
 }
 
-static void observeMaxSize(opentelemetry::metrics::ObserverResult result, void* state)
+void observeSize(opentelemetry::metrics::ObserverResult result, void* state)
 {
-  const auto& stats = static_cast<Context*>(state)->callback();
-  for (const auto& [name, s] : stats)
-    result.Observe(static_cast<int64_t>(s.maxsize), Attrs{{"cache.name", name}});
+  observe(result, state, [](const auto& s) { return s.size; });
 }
 
-static void observeHits(opentelemetry::metrics::ObserverResult result, void* state)
+void observeMaxSize(opentelemetry::metrics::ObserverResult result, void* state)
 {
-  const auto& stats = static_cast<Context*>(state)->callback();
-  for (const auto& [name, s] : stats)
-    result.Observe(static_cast<int64_t>(s.hits), Attrs{{"cache.name", name}});
+  observe(result, state, [](const auto& s) { return s.maxsize; });
 }
 
-static void observeMisses(opentelemetry::metrics::ObserverResult result, void* state)
+void observeHits(opentelemetry::metrics::ObserverResult result, void* state)
 {
-  const auto& stats = static_cast<Context*>(state)->callback();
-  for (const auto& [name, s] : stats)
-    result.Observe(static_cast<int64_t>(s.misses), Attrs{{"cache.name", name}});
+  observe(result, state, [](const auto& s) { return s.hits; });
 }
 
-static void observeInserts(opentelemetry::metrics::ObserverResult result, void* state)
+void observeMisses(opentelemetry::metrics::ObserverResult result, void* state)
 {
-  const auto& stats = static_cast<Context*>(state)->callback();
-  for (const auto& [name, s] : stats)
-    result.Observe(static_cast<int64_t>(s.inserts), Attrs{{"cache.name", name}});
+  observe(result, state, [](const auto& s) { return s.misses; });
+}
+
+void observeInserts(opentelemetry::metrics::ObserverResult result, void* state)
+{
+  observe(result, state, [](const auto& s) { return s.inserts; });
 }
 
 }  // namespace
@@ -123,8 +127,8 @@ void OTelMetricsExporter::start()
 
     // ── Resource ──────────────────────────────────────────────────────────────
     res::ResourceAttributes res_attrs = {
-        {res::SemanticConventions::kServiceName,    itsOptions.service_name},
-        {res::SemanticConventions::kServiceVersion, itsOptions.service_version},
+        {opentelemetry::semconv::service::kServiceName, itsOptions.service_name},
+        {opentelemetry::semconv::service::kServiceVersion, itsOptions.service_version},
     };
     auto resource = res::Resource::Create(res_attrs);
 
@@ -149,7 +153,7 @@ void OTelMetricsExporter::start()
     itsInsertsGauge = meter->CreateInt64ObservableGauge(
         "smartmet.cache.inserts",  "Cumulative cache inserts since server start");
 
-    auto* ctx_raw = itsContext.get();
+    auto* ctx_raw = &itsContext->callback;
     itsSizeGauge->AddCallback(observeSize,     ctx_raw);
     itsMaxSizeGauge->AddCallback(observeMaxSize, ctx_raw);
     itsHitsGauge->AddCallback(observeHits,     ctx_raw);
@@ -172,17 +176,18 @@ void OTelMetricsExporter::stop()
 #ifdef SMARTMET_SPINE_OPENTELEMETRY
     if (itsProvider)
     {
-      // Drop observable instruments first so callbacks are unregistered
-      itsSizeGauge.reset();
-      itsMaxSizeGauge.reset();
-      itsHitsGauge.reset();
-      itsMissesGauge.reset();
-      itsInsertsGauge.reset();
-      itsContext.reset();
-
+      // Flushing and shutting down collect the metrics one last time, which
+      // calls the callbacks. Their context must stay alive until both are done.
       itsProvider->ForceFlush(std::chrono::milliseconds(itsOptions.timeout_ms));
       itsProvider->Shutdown();
+
+      itsSizeGauge = nullptr;
+      itsMaxSizeGauge = nullptr;
+      itsHitsGauge = nullptr;
+      itsMissesGauge = nullptr;
+      itsInsertsGauge = nullptr;
       itsProvider.reset();
+      itsContext.reset();
     }
 #endif
     itsIsRunning = false;

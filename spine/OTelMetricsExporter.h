@@ -2,11 +2,19 @@
 
 #include "OTelOptions.h"
 #include <functional>
+#include <memory>
 #include <macgyver/CacheStats.h>
 
 #ifdef SMARTMET_SPINE_OPENTELEMETRY
-namespace opentelemetry { namespace sdk { namespace metrics { class MeterProvider; } } }
-namespace opentelemetry { namespace metrics { class ObservableInstrument; } }
+// The SDK types live in a versioned inline namespace (opentelemetry::v1), so
+// they must be forward-declared through its namespace macros.
+#include <opentelemetry/nostd/shared_ptr.h>
+#include <opentelemetry/version.h>
+
+OPENTELEMETRY_BEGIN_NAMESPACE
+namespace sdk { namespace metrics { class MeterProvider; } }
+namespace metrics { class ObservableInstrument; }
+OPENTELEMETRY_END_NAMESPACE
 #endif
 
 namespace SmartMet
@@ -66,11 +74,11 @@ class OTelMetricsExporter
   std::shared_ptr<opentelemetry::sdk::metrics::MeterProvider> itsProvider;
 
   // Observable instruments must be kept alive; destruction removes the callback.
-  std::shared_ptr<opentelemetry::metrics::ObservableInstrument> itsSizeGauge;
-  std::shared_ptr<opentelemetry::metrics::ObservableInstrument> itsMaxSizeGauge;
-  std::shared_ptr<opentelemetry::metrics::ObservableInstrument> itsHitsGauge;
-  std::shared_ptr<opentelemetry::metrics::ObservableInstrument> itsMissesGauge;
-  std::shared_ptr<opentelemetry::metrics::ObservableInstrument> itsInsertsGauge;
+  opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObservableInstrument> itsSizeGauge;
+  opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObservableInstrument> itsMaxSizeGauge;
+  opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObservableInstrument> itsHitsGauge;
+  opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObservableInstrument> itsMissesGauge;
+  opentelemetry::nostd::shared_ptr<opentelemetry::metrics::ObservableInstrument> itsInsertsGauge;
 #endif
 };
 

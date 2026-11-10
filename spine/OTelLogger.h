@@ -2,14 +2,22 @@
 
 #include "LoggedRequest.h"
 #include "OTelOptions.h"
+#include <memory>
 #include <string>
 
 #ifdef SMARTMET_SPINE_OPENTELEMETRY
 
 // Forward-declare the SDK types we hold by shared_ptr to avoid leaking
 // heavy opentelemetry headers into every translation unit that includes this.
-namespace opentelemetry { namespace trace { class Tracer; } }
-namespace opentelemetry { namespace sdk { namespace trace { class TracerProvider; } } }
+// The SDK types live in a versioned inline namespace (opentelemetry::v1), so
+// they must be declared through its namespace macros.
+#include <opentelemetry/nostd/shared_ptr.h>
+#include <opentelemetry/version.h>
+
+OPENTELEMETRY_BEGIN_NAMESPACE
+namespace trace { class Tracer; }
+namespace sdk { namespace trace { class TracerProvider; } }
+OPENTELEMETRY_END_NAMESPACE
 
 #endif
 
@@ -54,7 +62,7 @@ class OTelLogger
   bool itsIsRunning = false;
 
 #ifdef SMARTMET_SPINE_OPENTELEMETRY
-  std::shared_ptr<opentelemetry::trace::Tracer> itsTracer;
+  opentelemetry::nostd::shared_ptr<opentelemetry::trace::Tracer> itsTracer;
   std::shared_ptr<opentelemetry::sdk::trace::TracerProvider> itsProvider;
 #endif
 };

@@ -16,24 +16,32 @@
 #include <opentelemetry/sdk/trace/batch_span_processor_factory.h>
 #include <opentelemetry/sdk/trace/batch_span_processor_options.h>
 #include <opentelemetry/sdk/resource/resource.h>
-#include <opentelemetry/sdk/resource/semantic_conventions.h>
+#include <opentelemetry/semconv/service_attributes.h>
 
 // OTLP HTTP exporter
 #include <opentelemetry/exporters/otlp/otlp_http_exporter_factory.h>
 #include <opentelemetry/exporters/otlp/otlp_http_exporter_options.h>
 
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <chrono>
 
 namespace
 {
-// Convert Fmi::DateTime (= boost::posix_time::ptime, UTC) to a system_clock
-// time_point so that we can hand an absolute wall-clock timestamp to OTel.
+// Convert a UTC Fmi::DateTime to a system_clock time_point so that we can hand
+// an absolute wall-clock timestamp to OTel.
 std::chrono::system_clock::time_point fmiToTimePoint(const Fmi::DateTime& dt)
 {
-  static const Fmi::DateTime kEpoch(boost::gregorian::date(1970, 1, 1));
-  const auto us = (dt - kEpoch).total_microseconds();
+  const auto us = (dt - Fmi::DateTime::epoch).total_microseconds();
   return std::chrono::system_clock::time_point(std::chrono::microseconds(us));
+}
+
+// OTel measures span durations on the steady clock, and the end time of a
+// span can only be given as a steady timestamp. Map a past wall-clock time
+// to the steady clock by its distance from the current time.
+std::chrono::steady_clock::time_point toSteady(std::chrono::system_clock::time_point tp)
+{
+  const auto age = std::chrono::system_clock::now() - tp;
+  return std::chrono::steady_clock::now() -
+         std::chrono::duration_cast<std::chrono::steady_clock::duration>(age);
 }
 }  // namespace
 
@@ -100,8 +108,8 @@ void OTelLogger::start()
 
     // ── Resource (service + handler identity) ────────────────────────────────
     res::ResourceAttributes res_attrs = {
-        {res::SemanticConventions::kServiceName,    itsOptions.service_name},
-        {res::SemanticConventions::kServiceVersion, itsOptions.service_version},
+        {opentelemetry::semconv::service::kServiceName, itsOptions.service_name},
+        {opentelemetry::semconv::service::kServiceVersion, itsOptions.service_version},
         {"http.route",                               itsResource},
     };
     auto resource = res::Resource::Create(res_attrs);
@@ -130,7 +138,7 @@ void OTelLogger::stop()
       itsProvider->Shutdown();
       itsProvider.reset();
     }
-    itsTracer.reset();
+    itsTracer = nullptr;
 #endif
     itsIsRunning = false;
   }
@@ -151,9 +159,12 @@ void OTelLogger::log(const LoggedRequest& request)
     namespace trace = opentelemetry::trace;
 
     // ── Start time ───────────────────────────────────────────────────────────
+    const auto start_time = fmiToTimePoint(request.getRequestStartTime());
+    const auto end_time = fmiToTimePoint(request.getRequestEndTime());
+
     trace::StartSpanOptions start_opts;
-    start_opts.start_system_time = opentelemetry::common::SystemTimestamp(
-        fmiToTimePoint(request.getRequestStartTime()));
+    start_opts.start_system_time = opentelemetry::common::SystemTimestamp(start_time);
+    start_opts.start_steady_time = opentelemetry::common::SteadyTimestamp(toSteady(start_time));
 
     // ── Create span ──────────────────────────────────────────────────────────
     // Name follows OTel HTTP semantic conventions: "METHOD /route"
@@ -188,8 +199,7 @@ void OTelLogger::log(const LoggedRequest& request)
 
     // ── End time ─────────────────────────────────────────────────────────────
     trace::EndSpanOptions end_opts;
-    end_opts.end_system_time = opentelemetry::common::SystemTimestamp(
-        fmiToTimePoint(request.getRequestEndTime()));
+    end_opts.end_steady_time = opentelemetry::common::SteadyTimestamp(toSteady(end_time));
     span->End(end_opts);
 #else
     (void)request;

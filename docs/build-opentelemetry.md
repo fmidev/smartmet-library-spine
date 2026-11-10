@@ -229,15 +229,35 @@ a `rate()` or `increase()` function over the scraped values.
 
 ## Building the SDK
 
-No official `opentelemetry-cpp-devel` RPM exists for Rocky/RHEL 10 yet.
+The SDK is packaged as `opentelemetry-cpp` and `opentelemetry-cpp-devel` RPMs for
+RHEL 8, 9 and 10 from [fmidev/opentelemetry-cpp](https://github.com/fmidev/opentelemetry-cpp)
+(API, SDK and OTLP/HTTP exporter only). `smartmet-library-spine.spec` build-requires
+`opentelemetry-cpp-devel`, so the RPM builds of spine always include OpenTelemetry.
 The installed `opentelemetry-collector` RPM is the *Collector daemon*, not the
 C++ instrumentation library.
 
 The Makefile detects the SDK in two places, in order:
-1. System-wide via `pkg-config opentelemetry-cpp` (future RPM).
-2. A local build in `third_party/opentelemetry-cpp/install/` inside this repo.
+1. System-wide via the pkg-config modules `opentelemetry_exporter_otlp_http` and
+   `opentelemetry_exporter_otlp_http_metric` from `opentelemetry-cpp-devel`.
+2. A local build in `third_party/opentelemetry-cpp/install/` inside this repo,
+   through the same pkg-config modules installed under its `lib64/pkgconfig`
+   (or `lib/pkgconfig`).
+
+If neither is found, spine builds without OpenTelemetry and the `opentelemetry`
+settings have no effect.
+
+The pkg-config cflags also define the feature macros (such as
+`ENABLE_OTLP_RETRY_PREVIEW`) that the SDK was built with. They change the layout
+of the exporter option structs, so always compile with the pkg-config flags
+instead of listing the libraries by hand.
+
+The SONAME of the RPM libraries is `major.minor`, because the SDK ABI can change
+in any minor release. Rebuild spine after upgrading `opentelemetry-cpp` to a new
+minor version.
 
 ### Prerequisites for a local build
+
+A local build is only needed to try another SDK version.
 
 ```bash
 sudo dnf install -y \
@@ -255,7 +275,7 @@ sudo dnf install -y \
 cd /path/to/spine          # this repository root
 
 mkdir -p third_party
-git clone --depth 1 --branch v1.17.0 \
+git clone --depth 1 --branch v1.29.0 \
     https://github.com/open-telemetry/opentelemetry-cpp.git \
     third_party/opentelemetry-cpp
 
@@ -264,13 +284,14 @@ git submodule update --init --recursive
 
 cmake -S . -B build \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_INSTALL_PREFIX=install \
-    -DWITH_OTLP=ON \
-    -DWITH_OTLP_HTTP=ON \
-    -DWITH_OTLP_GRPC=OFF \
-    -DBUILD_TESTING=OFF \
-    -DWITH_EXAMPLES=OFF \
-    -DWITH_BENCHMARK=OFF \
+    -DCMAKE_INSTALL_PREFIX=$PWD/install \
+    -DBUILD_SHARED_LIBS=ON \
+    -DOTELCPP_WITH_OTLP_HTTP=ON \
+    -DOTELCPP_WITH_OTLP_HTTP_COMPRESSION=ON \
+    -DOTELCPP_WITH_OTLP_GRPC=OFF \
+    -DOTELCPP_BUILD_TESTING=OFF \
+    -DOTELCPP_WITH_EXAMPLES=OFF \
+    -DOTELCPP_WITH_BENCHMARK=OFF \
     -GNinja
 
 cmake --build build -j$(nproc)
@@ -288,18 +309,6 @@ make clean && make
 
 The compiler lines should contain `-DSMARTMET_SPINE_OPENTELEMETRY` and the
 link step should produce no unresolved symbol errors.
-
-### Packaging as an RPM (future)
-
-When `opentelemetry-cpp-devel` becomes available in Fedora / EPEL, add to
-`smartmet-library-spine.spec`:
-
-```spec
-BuildRequires: opentelemetry-cpp-devel
-Requires:      opentelemetry-cpp
-```
-
-and remove or keep the local-build fallback in the Makefile as desired.
 
 ---
 
