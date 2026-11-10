@@ -200,6 +200,8 @@ public:
     /**
      * @brief Set handler fir cases when provided URI does not match any of available handlers
      *
+     * @deprecated Use Options structure instead
+     *
      * Empty handler (default) means, that there is no special handler for no match cases.
      *
      * @param theHandler Handler function
@@ -243,6 +245,8 @@ public:
     /**
      * @brief Add a new private handler to the map
      *
+     * @deprecated Use Options structure instead
+     *
      * @param thePlugin Pointer to the plugin that provides the handler
      * @param theUri URI to be handled
      * @param theHandler Handler function
@@ -272,6 +276,8 @@ public:
 
     /**
      * @brief Add a new handler to the map
+     *
+     * @deprecated Use Options structure instead
      *
      * @param thePlugin Pointer to the plugin that provides the handler
      * @param theUri URI to be handled

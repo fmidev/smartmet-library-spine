@@ -446,8 +446,8 @@ void Reactor::addRobotsHandler()
     if (hasHandlerView(uri))
       throw Fmi::Exception(BCP, "robots_txt is set but a plugin already serves " + uri);
 
-    addPrivateContentHandler(nullptr,
-                             uri,
+    addContentHandler(nullptr,
+                             HandlerOptions(uri).Private(true),
                              [content](Reactor& /* theReactor */,
                                        const HTTP::Request& /* theRequest */,
                                        HTTP::Response& theResponse)
@@ -505,7 +505,7 @@ void Reactor::addApiCatalogHandler()
     // Private: not announced to the frontends, which serve their own explorer, and the
     // catalog lets only the clients of explorer_ip_filters use it
     if (catalog->settings().explorer)
-      addPrivateContentHandler(nullptr, "/api/explorer", handler, {}, true);
+      addContentHandler(nullptr, HandlerOptions("/api/explorer").Private(true), handler);
   }
   catch (...)
   {
