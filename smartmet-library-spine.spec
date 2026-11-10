@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.11.7
+Version: 26.11.10
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -172,6 +172,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Tue Nov 10 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.11.10-1.fmi
+- ContentHandlerMap: add new API for adding context handlers (not yet ABI change)
+
 * Sat Nov 7 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.11.7-1.fmi
 - Initialize member variables that some constructors left uninitialized
 
