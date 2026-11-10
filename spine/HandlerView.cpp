@@ -147,8 +147,9 @@ HandlerView::HandlerView(ContentHandler theHandler,
       isLogging(loggingStatus),
       itsLastFlushedRequest(itsRequestLog.begin()),
       itsAccessLog(new AccessLogger(theResource, accessLogDir)),
-      itsOTelLog(otelOptions.enabled ? std::make_unique<OTelLogger>(theResource, otelOptions)
-                                     : nullptr),
+      itsOTelLog(otelOptions.enabled && otelOptions.traces
+                     ? std::make_unique<OTelLogger>(theResource, otelOptions)
+                     : nullptr),
       checkPostContentType(true)
 {
   try
@@ -182,9 +183,9 @@ HandlerView::HandlerView(
       itsIsCatchNoMatch(true),
       isLogging(name.has_value()),
       itsLastFlushedRequest(itsRequestLog.begin()),
-      itsOTelLog(otelOptions.enabled ? std::make_unique<OTelLogger>(
-                                           name.value_or("default-handler"), otelOptions)
-                                     : nullptr),
+      itsOTelLog(otelOptions.enabled && otelOptions.traces
+                     ? std::make_unique<OTelLogger>(name.value_or("default-handler"), otelOptions)
+                     : nullptr),
       checkPostContentType(false)
 {
   if (name)

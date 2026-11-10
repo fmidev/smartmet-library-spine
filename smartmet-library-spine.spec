@@ -177,6 +177,9 @@ make %{_smp_mflags}
 - Fixed the OpenTelemetry code to compile against the SDK (versioned namespace, nostd::shared_ptr,
   observer result variant, moved headers, steady-clock span end time, Fmi::DateTime conversion)
 - Fixed OTelMetricsExporter::stop() destroying the metric callbacks' context before the final collection
+- All URI handlers share one OpenTelemetry tracer provider, so the server has one span exporter
+  and batch thread instead of one per handler
+- New setting opentelemetry.traces (default true); false exports only metrics, e.g. to Prometheus
 
 * Tue Nov 10 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.11.10-1.fmi
 - ContentHandlerMap: add new API for adding context handlers (not yet ABI change)

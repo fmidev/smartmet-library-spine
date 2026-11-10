@@ -23,6 +23,8 @@
 #include <opentelemetry/exporters/otlp/otlp_http_exporter_options.h>
 
 #include <chrono>
+#include <memory>
+#include <mutex>
 
 namespace
 {
@@ -42,6 +44,79 @@ std::chrono::steady_clock::time_point toSteady(std::chrono::system_clock::time_p
   const auto age = std::chrono::system_clock::now() - tp;
   return std::chrono::steady_clock::now() -
          std::chrono::duration_cast<std::chrono::steady_clock::duration>(age);
+}
+
+// All handlers share one tracer provider, so the server has a single span
+// exporter and batch thread instead of one per handler. The provider lives as
+// long as some OTelLogger holds it, and the last one to stop flushes it.
+std::mutex gProviderMutex;
+std::weak_ptr<opentelemetry::sdk::trace::TracerProvider> gProvider;
+
+std::shared_ptr<opentelemetry::sdk::trace::TracerProvider> createProvider(
+    const SmartMet::Spine::OTelOptions& options)
+{
+  namespace otlp = opentelemetry::exporter::otlp;
+  namespace sdktrace = opentelemetry::sdk::trace;
+  namespace res = opentelemetry::sdk::resource;
+
+  // ── Exporter ─────────────────────────────────────────────────────────────
+  otlp::OtlpHttpExporterOptions exp_opts;
+  exp_opts.url = options.endpoint + "/v1/traces";
+  exp_opts.timeout = std::chrono::milliseconds(options.timeout_ms);
+  for (const auto& [k, v] : options.headers)
+    exp_opts.http_headers.insert({k, v});
+
+  auto exporter = otlp::OtlpHttpExporterFactory::Create(exp_opts);
+
+  // ── Span processor ───────────────────────────────────────────────────────
+  std::unique_ptr<sdktrace::SpanProcessor> processor;
+  if (options.batch)
+  {
+    sdktrace::BatchSpanProcessorOptions batch_opts;
+    batch_opts.max_queue_size = options.batch_max_queue_size;
+    batch_opts.schedule_delay_millis = std::chrono::milliseconds(options.batch_schedule_delay_ms);
+    processor = sdktrace::BatchSpanProcessorFactory::Create(std::move(exporter), batch_opts);
+  }
+  else
+  {
+    processor = sdktrace::SimpleSpanProcessorFactory::Create(std::move(exporter));
+  }
+
+  // ── Resource (service identity; the handler is the http.route span attribute) ──
+  res::ResourceAttributes res_attrs = {
+      {opentelemetry::semconv::service::kServiceName, options.service_name},
+      {opentelemetry::semconv::service::kServiceVersion, options.service_version},
+  };
+  auto resource = res::Resource::Create(res_attrs);
+
+  return sdktrace::TracerProviderFactory::Create(std::move(processor), resource);
+}
+
+std::shared_ptr<opentelemetry::sdk::trace::TracerProvider> acquireProvider(
+    const SmartMet::Spine::OTelOptions& options)
+{
+  std::lock_guard<std::mutex> lock(gProviderMutex);
+  auto provider = gProvider.lock();
+  if (!provider)
+  {
+    provider = createProvider(options);
+    gProvider = provider;
+  }
+  return provider;
+}
+
+// Drop one reference to the shared provider. The last holder flushes the
+// pending spans and shuts the exporter down.
+void releaseProvider(std::shared_ptr<opentelemetry::sdk::trace::TracerProvider>& provider,
+                     int timeout_ms)
+{
+  std::lock_guard<std::mutex> lock(gProviderMutex);
+  if (provider.use_count() == 1)
+  {
+    provider->ForceFlush(std::chrono::milliseconds(timeout_ms));
+    provider->Shutdown();
+  }
+  provider.reset();
 }
 }  // namespace
 
@@ -74,50 +149,11 @@ void OTelLogger::start()
   try
   {
 #ifdef SMARTMET_SPINE_OPENTELEMETRY
-    if (!itsOptions.enabled)
+    if (!itsOptions.enabled || !itsOptions.traces)
       return;
 
-    namespace otlp    = opentelemetry::exporter::otlp;
-    namespace sdktrace = opentelemetry::sdk::trace;
-    namespace res      = opentelemetry::sdk::resource;
-
-    // ── Exporter ─────────────────────────────────────────────────────────────
-    otlp::OtlpHttpExporterOptions exp_opts;
-    exp_opts.url     = itsOptions.endpoint + "/v1/traces";
-    exp_opts.timeout = std::chrono::milliseconds(itsOptions.timeout_ms);
-    for (const auto& [k, v] : itsOptions.headers)
-      exp_opts.http_headers.insert({k, v});
-
-    auto exporter = otlp::OtlpHttpExporterFactory::Create(exp_opts);
-
-    // ── Span processor ───────────────────────────────────────────────────────
-    std::unique_ptr<sdktrace::SpanProcessor> processor;
-    if (itsOptions.batch)
-    {
-      sdktrace::BatchSpanProcessorOptions batch_opts;
-      batch_opts.max_queue_size      = itsOptions.batch_max_queue_size;
-      batch_opts.schedule_delay_millis =
-          std::chrono::milliseconds(itsOptions.batch_schedule_delay_ms);
-      processor =
-          sdktrace::BatchSpanProcessorFactory::Create(std::move(exporter), batch_opts);
-    }
-    else
-    {
-      processor = sdktrace::SimpleSpanProcessorFactory::Create(std::move(exporter));
-    }
-
-    // ── Resource (service + handler identity) ────────────────────────────────
-    res::ResourceAttributes res_attrs = {
-        {opentelemetry::semconv::service::kServiceName, itsOptions.service_name},
-        {opentelemetry::semconv::service::kServiceVersion, itsOptions.service_version},
-        {"http.route",                               itsResource},
-    };
-    auto resource = res::Resource::Create(res_attrs);
-
-    // ── Provider + tracer ────────────────────────────────────────────────────
-    itsProvider = sdktrace::TracerProviderFactory::Create(std::move(processor), resource);
-    itsTracer   = itsProvider->GetTracer(itsOptions.service_name,
-                                         itsOptions.service_version);
+    itsProvider = acquireProvider(itsOptions);
+    itsTracer = itsProvider->GetTracer(itsOptions.service_name, itsOptions.service_version);
     itsIsRunning = true;
 #endif
   }
@@ -132,13 +168,9 @@ void OTelLogger::stop()
   try
   {
 #ifdef SMARTMET_SPINE_OPENTELEMETRY
-    if (itsProvider)
-    {
-      itsProvider->ForceFlush(std::chrono::milliseconds(itsOptions.timeout_ms));
-      itsProvider->Shutdown();
-      itsProvider.reset();
-    }
     itsTracer = nullptr;
+    if (itsProvider)
+      releaseProvider(itsProvider, itsOptions.timeout_ms);
 #endif
     itsIsRunning = false;
   }
@@ -213,17 +245,10 @@ void OTelLogger::log(const LoggedRequest& request)
 
 void OTelLogger::flush()
 {
-  try
-  {
-#ifdef SMARTMET_SPINE_OPENTELEMETRY
-    if (itsProvider)
-      itsProvider->ForceFlush(std::chrono::milliseconds(itsOptions.timeout_ms));
-#endif
-  }
-  catch (...)
-  {
-    throw Fmi::Exception::Trace(BCP, "OTelLogger::flush failed");
-  }
+  // Nothing to do: the batch processor exports on its own schedule, the simple
+  // processor exports each span when it ends, and the last logger to stop
+  // flushes the shared provider. Forcing an export here would make every
+  // handler's access log flush export the spans of all handlers.
 }
 
 }  // namespace Spine

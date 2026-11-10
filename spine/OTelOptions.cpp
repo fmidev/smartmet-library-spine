@@ -24,6 +24,7 @@ OTelOptions OTelOptions::fromConfig(const libconfig::Config& config)
     cfg.lookupValue("service_version", opts.service_version);
     cfg.lookupValue("timeout_ms", opts.timeout_ms);
     cfg.lookupValue("batch", opts.batch);
+    cfg.lookupValue("traces", opts.traces);
 
     int tmp = 0;
     if (cfg.lookupValue("batch_max_queue_size", tmp))

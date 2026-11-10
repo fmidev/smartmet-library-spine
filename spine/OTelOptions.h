@@ -23,6 +23,7 @@ namespace Spine
  *     service_name   = "smartmet-server";
  *     service_version = "1.0";
  *     timeout_ms     = 10000;
+ *     traces         = true;                      # false = metrics only
  *     batch          = true;                      # batch vs simple processor
  *     batch_max_queue_size    = 2048;
  *     batch_schedule_delay_ms = 5000;
@@ -46,6 +47,11 @@ struct OTelOptions
 
   // Use BatchSpanProcessor (true) or SimpleSpanProcessor (false)
   bool batch = true;
+
+  // Export a trace span for each request. Off when the endpoint accepts only
+  // metrics, such as the OTLP receiver of Prometheus. Placed in the padding
+  // after 'batch' so that the layout of OTelOptions (and Options) is unchanged.
+  bool traces = true;
   std::size_t batch_max_queue_size = 2048;
   int batch_schedule_delay_ms = 5000;
 

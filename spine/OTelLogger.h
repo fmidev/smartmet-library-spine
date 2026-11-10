@@ -38,7 +38,12 @@ namespace Spine
  *   http.request.method, url.path, http.response.status_code,
  *   client.address, http.response.body.size, http.route
  *
- * The class is a no-op when compiled without SMARTMET_SPINE_OPENTELEMETRY.
+ * All loggers share one tracer provider, so the server has a single span
+ * exporter and batch thread however many handlers it has. The last logger to
+ * stop flushes the pending spans and shuts the exporter down.
+ *
+ * The class is a no-op when compiled without SMARTMET_SPINE_OPENTELEMETRY,
+ * or when the "traces" setting is off.
  */
 class OTelLogger
 {

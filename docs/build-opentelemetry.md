@@ -57,6 +57,7 @@ opentelemetry:
   service_name        = "smartmet-server";
   service_version     = "";
   timeout_ms          = 10000;
+  traces              = true;
   batch               = true;
   batch_max_queue_size    = 2048;
   batch_schedule_delay_ms = 5000;
@@ -70,6 +71,23 @@ opentelemetry:
 Master switch.  When `false` the entire OpenTelemetry subsystem is inactive:
 no spans are created, no metrics are collected, and no network connections are
 made.  All other settings are ignored.
+
+### `traces` (bool, default `true`)
+
+Export a trace span for each HTTP request.  Set to `false` to export only the
+metrics, for example when `endpoint` is the OTLP receiver of Prometheus, which
+accepts metrics but no traces:
+
+```
+opentelemetry:
+{
+  enabled  = true;
+  endpoint = "http://prometheus1.fmi.fi:9090/api/v1/otlp";
+  traces   = false;
+};
+```
+
+Prometheus must be started with `--web.enable-otlp-receiver`.
 
 ### `endpoint` (string, default `"http://localhost:4318"`)
 
@@ -174,8 +192,10 @@ configuration.
 
 ### HTTP request spans (traces)
 
-Each registered URI handler has its own `Tracer`.  Every completed HTTP
-request produces one finished span exported to `{endpoint}/v1/traces`.
+Unless `traces = false`, every completed HTTP request produces one finished
+span exported to `{endpoint}/v1/traces`.  All URI handlers share one tracer
+provider, so the server has a single span exporter and, with `batch = true`,
+a single background export thread.
 
 The span name is `METHOD /route`, e.g. `GET /wfs`.
 
