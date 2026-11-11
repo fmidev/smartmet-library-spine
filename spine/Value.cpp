@@ -141,7 +141,7 @@ bool Value::inside_limits(const std::optional<Value>& lower_limit,
         if (lower_limit or upper_limit)
         {
           std::ostringstream msg;
-          msg << "Usupported type '" << demangle_cpp_type_name(type().name()) << "'";
+          msg << "Unsupported type '" << demangle_cpp_type_name(type().name()) << "'";
           throw Fmi::Exception(BCP, msg.str());
         }
 

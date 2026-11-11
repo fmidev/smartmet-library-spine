@@ -177,7 +177,7 @@ void DynamicPlugin::pluginOpen()
 
     plugin_destroy_func = reinterpret_cast<plugin_destroy_t*>(dlsym(itsHandle, "destroy"));
 
-    // Check that pointers to function were loaded succesfully
+    // Check that pointers to function were loaded successfully
     if (plugin_create_func == nullptr || plugin_destroy_func == nullptr)
     {
       throw Fmi::Exception(

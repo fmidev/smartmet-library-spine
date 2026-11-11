@@ -94,7 +94,7 @@ int duration_string_to_minutes(const std::string& interval);
 std::string log_time_str();
 
 /**
- *  @brief Case insensitive string comparisson (less)
+ *  @brief Case insensitive string comparison (less)
  *
  *  FIXME: the comparison is still case sensitive for UTF-8 non-ASCII symbols
  */
@@ -103,7 +103,7 @@ bool str_iless(const std::string& a,
                const std::locale& locale = std::locale());
 
 /**
- *  @brief Case insensitive string comparisson (equal)
+ *  @brief Case insensitive string comparison (equal)
  *
  *  FIXME: the comparison is still case sensitive for UTF-8 non-ASCII symbols
  */

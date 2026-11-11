@@ -61,7 +61,7 @@ class QCConverter
   virtual bool convert(std::string& newCode, const std::string& oldCode);
 
  private:
-  // Key of an elemet in the container express
+  // Key of an element in the container express
   // the first character of an old key. The value
   // is the new key.
   using Entry = std::map<int, std::string>;

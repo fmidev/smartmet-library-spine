@@ -9,7 +9,7 @@ using SmartMet::Spine::MultiLanguageStringArray;
 
 @page SPINE_CFG_MULTI_LANGUAGE_STRING_ARRAY cfgMultiLanguageStringArray
 
-This configuration object contains values of string array in several langugaes.
+This configuration object contains values of string array in several languages.
 
 The default language is specified when reading multilanguage string array rom
 libconfig type configuration file. A translation to the default language

@@ -555,7 +555,7 @@ BOOST_AUTO_TEST_CASE(test_parse_xml_time)
   BOOST_CHECK_NO_THROW(t1 = parse_xml_time("2013-05-15T12:59:12-03:01"));
   BOOST_CHECK_EQUAL(t1, Fmi::date_time::time_from_string("2013-05-15 16:00:12"));
 
-  // We suuport leaving leaving seconds out (in the real format they are mandatory)
+  // We support leaving leaving seconds out (in the real format they are mandatory)
   BOOST_CHECK_NO_THROW(t1 = parse_xml_time("2013-05-15T13:05Z"));
   BOOST_CHECK_EQUAL(t1, Fmi::date_time::time_from_string("2013-05-15 13:05:00"));
 

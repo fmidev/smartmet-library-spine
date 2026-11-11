@@ -6,7 +6,7 @@ have_rpm=$(command -v rpm)
 
 if [ "$have_rpm" ] ; then
     # makefile.inc ís assumed to be present as part of the smartmet development environment
-    # Therefor do not check its persence here explicitly
+    # Therefore do not check its presence here explicitly
     makefile_inc=$(smartbuildcfg --prefix)/share/smartmet/devel/makefile.inc
     # Check if the makefile.inc belongs to the smartmet-utils-devel package
     case $(rpm -qf "$makefile_inc" 2>/dev/null) in

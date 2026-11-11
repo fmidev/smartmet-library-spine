@@ -122,7 +122,7 @@ void conversionResult()
   oldCode = "xx";
   newCode = "";
   if (tab.convert(newCode, oldCode))
-    TEST_FAILED("QCConverter did conversion insted of it shouldn't for code 'xx'.");
+    TEST_FAILED("QCConverter did conversion instead of it shouldn't for code 'xx'.");
 
   TEST_PASSED();
 }

@@ -136,7 +136,7 @@ bool Options::parse(int argc, char* argv[])
 
     // This second pass makes sure command line options
     // override configuration file options. Command line
-    // options may detemine where the configuration file is,
+    // options may determine where the configuration file is,
     // hence multiple passes are needed since we cannot
     // change how the boost program_options parser works.
 

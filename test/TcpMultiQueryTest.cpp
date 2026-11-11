@@ -60,7 +60,7 @@ class server
     if (not sessions.empty())
     {
       // Clean leaked sessions to avoid analyzing address sanitizer or valgrind error messages
-      // Sessions leaks if io_context is stoped before sessions are finished.
+      // Sessions leaks if io_context is stopped before sessions are finished.
       for (const auto* s : sessions)
       {
         delete s;
@@ -209,11 +209,11 @@ int single_request()
   const auto ids = test.get_ids();
   if (ids.size() != 1)
   {
-    TEST_FAILED("Excactly 1 ID expected");
+    TEST_FAILED("Exactly 1 ID expected");
   }
   if (*ids.begin() != "foo")
   {
-    TEST_FAILED("ID not as excpected");
+    TEST_FAILED("ID not as expected");
   }
 
   const auto result = test["foo"];
@@ -292,11 +292,11 @@ int slow_server_read()
   const auto ids = test.get_ids();
   if (ids.size() != 1)
   {
-    TEST_FAILED("Excactly 1 ID expected");
+    TEST_FAILED("Exactly 1 ID expected");
   }
   if (*ids.begin() != "foo")
   {
-    TEST_FAILED("ID not as excpected");
+    TEST_FAILED("ID not as expected");
   }
 
   const auto result = test["foo"];
@@ -317,7 +317,7 @@ int two_requests_one_times_out()
   const auto ids = test.get_ids();
   if (ids.size() != 2)
   {
-    TEST_FAILED("Excactly 2 ID expected");
+    TEST_FAILED("Exactly 2 ID expected");
   }
 
   const auto result = test["foo"];

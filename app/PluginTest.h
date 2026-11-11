@@ -39,7 +39,7 @@ class PluginTest
   // Run tests in parallel?
   void setNumberOfThreads(int num_threads) { mNumThreads = num_threads; }
 
-  // Input, expected output, and errorneous output directories
+  // Input, expected output, and erroneous output directories
   void setInputDir(const std::string& dir) { mInputDir = dir; }
   void setOutputDir(const std::string& dir) { mOutputDir = dir; }
   void setFailDir(const std::string& dir) { mFailDir = dir; }

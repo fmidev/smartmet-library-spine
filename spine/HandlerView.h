@@ -86,7 +86,7 @@ class HandlerView
   // Get logged requests
   LogRange getLoggedRequests();
 
-  // Relase a log range
+  // Release a log range
   void releaseLogRange();
 
   // Lock a log range

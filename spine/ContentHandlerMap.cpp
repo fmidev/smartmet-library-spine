@@ -556,7 +556,7 @@ try
     }
 
     // No specific match found, decide what we should do
-    // Return with true, as this was catched by external handler (or nullptr if not provided)
+    // Return with true, as this was caught by external handler (or nullptr if not provided)
     return &*itsCatchNoMatchHandler;
   }
 
@@ -1682,7 +1682,7 @@ void ContentHandlerMap::AdminHandlerInfo::maybe_setup_info_handler(const Options
 try
 {
   (void) options;
-  // FIXME: get the URI from the configuration and possibly other settings from configiration
+  // FIXME: get the URI from the configuration and possibly other settings from configuration
 }
 catch (...)
 {

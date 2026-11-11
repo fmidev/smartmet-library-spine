@@ -4,7 +4,7 @@
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
 Version: 26.11.11
-Release: 2%{?dist}.fmi
+Release: 3%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
 URL: https://github.com/fmidev/smartmet-library-spine
@@ -172,6 +172,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Nov 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.11.11-3.fmi
+- Fixed typos in messages and comments
+
 * Wed Nov 11 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.11.10-3.fmi
 - Bug fix for face condition in destructor of SmartMetCache
 - Update ContentHandlerMap::HandlerOptions to decrease need for plugin repackaging

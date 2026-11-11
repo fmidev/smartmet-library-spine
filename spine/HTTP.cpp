@@ -801,7 +801,7 @@ std::string Request::toString() const
         case RequestMethod::GET:
         {
           if (!itsContent.empty())
-            // Body is not meaningfull in GET-Requests. Reject it also for OPTIONS request
+            // Body is not meaningful in GET-Requests. Reject it also for OPTIONS request
             throw Fmi::Exception(
                 BCP, "HTTP::Request: Attempting to serialize GET Request with body content");
         }
@@ -1577,7 +1577,7 @@ std::pair<ParsingStatus, std::unique_ptr<Request>> parseRequest(const std::strin
 
     bool success = qi::parse(startIt, stopIt, parser, target);
 
-    if (success && (startIt == stopIt))  // Parse was succesfull and entire input was consumed
+    if (success && (startIt == stopIt))  // Parse was successful and entire input was consumed
     {
       // Build header and param maps
       theParameters = decodeQueryParameters(target.params);
@@ -1976,7 +1976,7 @@ std::tuple<ParsingStatus, std::unique_ptr<Response>, std::string::const_iterator
 
     bool success = qi::parse(startIt, stopIt, parser, target);
 
-    if (success)  // Parse was succesfull
+    if (success)  // Parse was successful
     {
       // Build header map
       for (const auto& pair : target.headers)

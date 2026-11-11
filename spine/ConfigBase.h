@@ -212,7 +212,7 @@ class ConfigBase
 
   /**
    *   @brief Reads an array from configuration file (path is provided relative to specified
-   * cnfiguration root.
+   * configuration root.
    *
    *   Providing scalar instead of an array is supported. In this
    *   case the  returned vector will contain 1 element.
@@ -222,7 +222,7 @@ class ConfigBase
    *   @param result vector where to store the result (vector is emptied at the start)
    *   @param min_size lower allowed size of the array (default 0)
    *   @param max_size upper allowed size of the array
-   *   @retval true Array value is found and is sucessfully stored into provided std::vector
+   *   @retval true Array value is found and is successfully stored into provided std::vector
    *   @retval false Array value is not found
    *
    *   std::runtime_error is being thrown if the value is found at provided path but its format is
@@ -260,7 +260,7 @@ class ConfigBase
    *   @param result vector where to store the result (vector is emptied at the start)
    *   @param min_size lower allowed size of the array (default 0)
    *   @param max_size upper allowed size of the array
-   *   @retval true Array value is found and is sucessfully stored into provided std::vector
+   *   @retval true Array value is found and is successfully stored into provided std::vector
    *   @retval false Array value is not found
    *
    *   std::runtime_error is being thrown if the value is found at provided path but its format is

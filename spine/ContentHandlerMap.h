@@ -85,7 +85,7 @@ public:
      *  @brief Handler for authentication
      *
      *  @param theRequest Request to be authenticated
-     *  @param theResponse Response must be unchanged when authetication succeeds.
+     *  @param theResponse Response must be unchanged when authentication succeeds.
      *               Callback is expected to fill in response when authentication
      *               fails or some other error occurs. Method executeAdminRequest
      *               will however take care of setting the correct status code if
@@ -251,7 +251,7 @@ public:
      * @retval true Handler added successfully
      *
      * Handlers added by this method are not included in the response of URIMap and as result
-     * not advertized to the frontend
+     * not advertised to the frontend
      */
     bool addPrivateContentHandler(SmartMetPlugin* thePlugin,
                                   const std::string& theUri,
@@ -315,7 +315,7 @@ public:
     void addIPFilters(const std::string& pluginName, const std::vector<std::string>& filterTokens);
 
     /**
-     * @brief Get registred URIs (except private ones)
+     * @brief Get registered URIs (except private ones)
      */
     URIMap getURIMap() const;
 
@@ -373,7 +373,7 @@ public:
      *
      * There could be more than one handler of the same type for the same request
      * and all will be executed (order is not guaranteed to be the same as
-     * registrated). Error code is 500 if at least one handler returns false.
+     * registered). Error code is 500 if at least one handler returns false.
      *
      * All formatting is done by the caller
      */
@@ -387,7 +387,7 @@ public:
     /**
      * @brief Add admin table request handler
      *
-     * Returns table with data (one should set also column names and optinally
+     * Returns table with data (one should set also column names and optionally
      * the title for the table). Formatting is done by the caller
      *
      * This request type is requires to be unique (only one handler per request name)
@@ -603,7 +603,7 @@ private:
     /**
      * @brief Information about top level admin request handler
      *
-     * This handler is registrated by addPrivateContentHandler method when
+     * This handler is registered by addPrivateContentHandler method when
      * present (konfiguration settings) and is used to handle admin requests
      *
      * An alternative is to leave it empty and handle admin requests in the
@@ -630,7 +630,7 @@ private:
         /**
          * @brief Admin request authentication callback
          *
-         * Admin requests thet require authentication is blocked if not set
+         * Admin requests that require authentication is blocked if not set
          * (returns 403 Forbidden) or if the callback returns false
          */
         AuthenticationCallback itsAdminAuthenticationCallback;
@@ -657,7 +657,7 @@ private:
     const Options& itsOptions;
 
     /**
-     * @brief Logging status (enabled/diasabled)
+     * @brief Logging status (enabled/disabled)
      *
      * Can be changed by setLogging method
      */

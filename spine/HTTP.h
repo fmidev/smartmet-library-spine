@@ -276,7 +276,7 @@ class Message
 
   // ----------------------------------------------------------------------
   /*!
-   * \brief Set HTTP header (overwrites if necesssary)
+   * \brief Set HTTP header (overwrites if necessary)
    */
   // ----------------------------------------------------------------------
   void setHeader(const std::string& headerName, const std::string& headerValue);

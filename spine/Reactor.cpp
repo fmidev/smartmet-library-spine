@@ -157,7 +157,7 @@ Reactor::~Reactor()
   catch (...)
   {
     std::cout << Fmi::Exception::Trace(BCP,
-                                       "Exception catched in SmartMet::Spine::Raector destructor");
+                                       "Exception caught in SmartMet::Spine::Reactor destructor");
   }
 
   // Debug output
@@ -1042,7 +1042,7 @@ bool Reactor::loadEngine(const std::string& sectionName,
     auto itsCreatorPointer =
         reinterpret_cast<EngineInstanceCreator>(dlsym(itsHandle, "engine_class_creator"));
 
-    // Check that pointers to function were loaded succesfully
+    // Check that pointers to function were loaded successfully
     if (itsNamePointer == nullptr || itsCreatorPointer == nullptr)
     {
       throw Fmi::Exception(BCP,
@@ -2523,7 +2523,7 @@ bool Reactor::installTerminateHandler()
     // Save the original terminate handler
     original_terminate_handler = std::set_terminate(handleTerminate);
 
-    // Set the reactor pointer for use in termiante handler
+    // Set the reactor pointer for use in terminate handler
     g_reactor = this;
 
     std::cout << log_time_str() << " Installing our terminate handler" << std::endl;

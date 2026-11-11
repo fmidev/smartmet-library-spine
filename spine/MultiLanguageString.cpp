@@ -10,7 +10,7 @@
 
 @page SPINE_CFG_MULTI_LANGUAGE_STRING cfgMultiLanguageString
 
-This configuration object contains string value in several langugaes.
+This configuration object contains string value in several languages.
 
 The default language is specified when reading multilanguage string from
 libconfig type configuration file. A translation to the default language
