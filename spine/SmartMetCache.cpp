@@ -126,14 +126,16 @@ void SmartMetCache::operateFileCache()
 {
   try
   {
-    while (!itsShutdownRequested)
+    std::unique_lock<std::mutex> theLock(itsMutex);
+
+    while (true)
     {
-      std::unique_lock<std::mutex> theLock(itsMutex);
-      if (itsPendingWrites.empty())
-      {
-        // Wait for something to write
-        itsCondition.wait(theLock);
-      }
+      // Wait for something to write. The shutdown flag must be tested with the mutex held:
+      // it is set and notified with the mutex held, hence a test made before locking the
+      // mutex could miss the notification and leave this thread waiting forever. The
+      // predicate also covers spurious wakeups.
+      itsCondition.wait(theLock,
+                        [this]() { return itsShutdownRequested || !itsPendingWrites.empty(); });
 
       if (itsShutdownRequested)
         return;
@@ -148,6 +150,8 @@ void SmartMetCache::operateFileCache()
       itsFileCache->insert(back.first, *back.second);
 
       // Above might fail, but so what. Show must go on.
+
+      theLock.lock();
     }
   }
   catch (...)
