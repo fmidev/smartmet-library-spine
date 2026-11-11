@@ -79,18 +79,20 @@ BOOST_AUTO_TEST_CASE(handler_options_1)
   ContentHandlerMap::HandlerOptions options("/test");
   options.Private(true);
   options.IsPrefix(true);
-  BOOST_CHECK(options.isPrivate);
-  BOOST_CHECK(options.handlesUriPrefix);
+  BOOST_CHECK(options.getPrivate());
+  BOOST_CHECK(options.getIsPrefix());
   options.addSupportedPostContentTypes(contentTypes.begin(), contentTypes.end());
-  BOOST_CHECK(options.supportedPostContentTypes.count("application/json") == 1);
-  BOOST_CHECK(options.supportedPostContentTypes.count("application/xml") == 1);
+  const auto& supported = options.supportedPostContentTypes();
+  BOOST_CHECK(supported.count("application/json") == 1);
+  BOOST_CHECK(supported.count("application/xml") == 1);
 }
 
 BOOST_AUTO_TEST_CASE(handler_options_2)
 {
   ContentHandlerMap::HandlerOptions options("/test");
   options.addSupportedPostContentTypes("application/json", "application/xml", "text/plain");
-  BOOST_CHECK(options.supportedPostContentTypes.count("application/json") == 1);
-  BOOST_CHECK(options.supportedPostContentTypes.count("application/xml") == 1);
-  BOOST_CHECK(options.supportedPostContentTypes.count("text/plain") == 1);
+  const auto& supported = options.supportedPostContentTypes();
+  BOOST_CHECK(supported.count("application/json") == 1);
+  BOOST_CHECK(supported.count("application/xml") == 1);
+  BOOST_CHECK(supported.count("text/plain") == 1);
 }

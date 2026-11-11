@@ -87,6 +87,114 @@ namespace
 }
 
 
+struct ContentHandlerMap::HandlerOptions::Impl
+{
+        /**
+         *  @brief URI that this handler is responsible for.
+         */
+        const std::string uri;
+
+        /**
+         *  @brief Indicates if the handler should handle all URIs starting with the specified URI
+         *
+         *  Example: EDR plugin may handle all URIs starting with "/edr" (/edr - landingpage,
+         *           /edr/collections - collection of EDR items, etc"). As result @c true
+         *           must pe specified.
+         */
+        bool handlesUriPrefix = false;
+
+        /**
+         *  @brief Indicates if the handler is private (not visible through /info) and reported to frontend
+         */
+        bool isPrivate = false;
+
+        /**
+         *  @brief Set of supported Content-Types for POST requests.
+         *         Note that x-www-form-urlencoded is always supported and there is no
+         *         need to include it in the set (one can however specify it if desired)
+         */
+        std::set<std::string> supportedPostContentTypes;
+
+        Impl(const std::string& theUri)
+            : uri(theUri)
+        {
+          if (theUri.empty())
+            throw Fmi::Exception(BCP, "Handler URI cannot be empty");
+        }
+
+        Impl(const Impl& other)
+            : uri(other.uri),
+              handlesUriPrefix(other.handlesUriPrefix),
+              isPrivate(other.isPrivate),
+              supportedPostContentTypes(other.supportedPostContentTypes)
+        {
+        }
+
+        Impl(Impl&&) = default;
+        Impl& operator=(Impl&&) = default;
+        Impl& operator=(const Impl& other) = delete;
+};
+
+
+ContentHandlerMap::HandlerOptions::HandlerOptions(const std::string& theUri)
+  : itsImpl(std::make_unique<Impl>(theUri))
+{
+}
+
+ContentHandlerMap::HandlerOptions::HandlerOptions(const HandlerOptions& other)
+  : itsImpl(std::make_unique<Impl>(*other.itsImpl))
+{
+}
+
+ContentHandlerMap::HandlerOptions::~HandlerOptions() = default;
+
+ContentHandlerMap::HandlerOptions& ContentHandlerMap::HandlerOptions::operator=(const HandlerOptions& other)
+{
+    if (this != &other)
+    {
+        itsImpl = std::make_unique<Impl>(*other.itsImpl);
+    }
+    return *this;
+}
+
+ContentHandlerMap::HandlerOptions& ContentHandlerMap::HandlerOptions::Private(bool b)
+{
+    itsImpl->isPrivate = b;
+    return *this;
+}
+
+ContentHandlerMap::HandlerOptions& ContentHandlerMap::HandlerOptions::IsPrefix(bool b)
+{
+    itsImpl->handlesUriPrefix = b;
+    return *this;
+}
+
+ContentHandlerMap::HandlerOptions& ContentHandlerMap::HandlerOptions::addSupportedPostContentType(const std::string& type)
+{
+    itsImpl->supportedPostContentTypes.insert(type);
+    return *this;
+}
+
+const std::string& ContentHandlerMap::HandlerOptions::uri() const
+{
+    return itsImpl->uri;
+}
+
+bool ContentHandlerMap::HandlerOptions::getPrivate() const
+{
+    return itsImpl->isPrivate;
+}
+
+bool ContentHandlerMap::HandlerOptions::getIsPrefix() const
+{
+    return itsImpl->handlesUriPrefix;
+}
+
+const std::set<std::string>& ContentHandlerMap::HandlerOptions::supportedPostContentTypes() const
+{
+    return itsImpl->supportedPostContentTypes;
+}
+
 ContentHandlerMap::ContentHandlerMap(const Options& options)
 try
     : itsOptions(options)
@@ -239,9 +347,9 @@ bool ContentHandlerMap::addContentHandlerImpl(SmartMetPlugin* thePlugin,
 try
 {
   HandlerOptions options(theUri);
-  options.isPrivate = isPrivate;
-  options.supportedPostContentTypes = supportedPostContentTypes;
-  options.handlesUriPrefix = handlesUriPrefix;
+  options.Private(isPrivate);
+  options.addSupportedPostContentTypes(supportedPostContentTypes.begin(), supportedPostContentTypes.end());
+  options.IsPrefix(handlesUriPrefix);
   return addContentHandler(thePlugin, options, theHandler);
 }
 catch (...)
@@ -259,10 +367,10 @@ try
   WriteLock lock2(itsLoggingMutex);
 
   if (!theHandler)
-    throw Fmi::Exception(BCP, "Cannot add null content handler for URI " + options.uri);
+    throw Fmi::Exception(BCP, "Cannot add null content handler for URI " + options.uri());
 
   if (Reactor::isShuttingDown())
-    throw Fmi::Exception(BCP, "Cannot add content handler for URI " + options.uri +
+    throw Fmi::Exception(BCP, "Cannot add content handler for URI " + options.uri() +
                                    " - shutdown in progress");
 
   const std::string pluginName = plugin_name(thePlugin);
@@ -276,18 +384,18 @@ try
       filter = itsFilterIterator->second;
 
     std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
-          << (options.isPrivate ? "private " : "") << "URI " << options.uri << " for plugin "
+          << (options.getPrivate() ? "private " : "") << "URI " << options.uri() << " for plugin "
           << pluginName << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
 
     // Private handlers are only left out of the service lists; without a filter
     // any client reaching this server directly could use them. Unless the
     // plugin has its own ip_filters, accept only local and private network
     // addresses.
-    if (options.isPrivate && !filter)
+    if (options.getPrivate() && !filter)
     {
       filter = std::make_shared<IPFilter::IPFilter>(IPFilter::IPFilter::privateNetworks());
       std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_BLUE << " Private URI "
-                << options.uri << " of plugin " << pluginName
+                << options.uri() << " of plugin " << pluginName
                 << " accepts only local and private network addresses (set plugins."
                 << pluginName << ".ip_filters to change this)" << ANSI_BOLD_OFF << ANSI_FG_DEFAULT
                 << std::endl;
@@ -296,10 +404,10 @@ try
   else
   {
     std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Registered "
-          << (options.isPrivate ? "private " : "") << " request handler for URI "
-          << options.uri << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
+          << (options.getPrivate() ? "private " : "") << " request handler for URI "
+          << options.uri() << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
     // We have built in admin request handler (no plugin). Use its IP filter if available.
-    if (options.uri == *itsAdminHandlerInfo->itsAdminUri)
+    if (options.uri() == *itsAdminHandlerInfo->itsAdminUri)
       filter = itsAdminHandlerInfo->itsIPFilter;
   }
 
@@ -307,24 +415,24 @@ try
   std::unique_ptr<HandlerView> handler(new HandlerView(theHandler,
                                                        filter,
                                                        thePlugin,
-                                                       options.uri,
+                                                       options.uri(),
                                                        itsLoggingEnabled,
-                                                       options.isPrivate,
-                                                       options.supportedPostContentTypes,
+                                                       options.getPrivate(),
+                                                       options.supportedPostContentTypes(),
                                                        itsOptions.accesslogdir,
                                                        itsOptions.otel));
 
-  if (options.handlesUriPrefix)
+  if (options.getIsPrefix())
   {
-    itsUriPrefixes.insert(options.uri);
+    itsUriPrefixes.insert(options.uri());
   }
 
-  const auto result = itsHandlers.emplace(options.uri, std::move(handler));
+  const auto result = itsHandlers.emplace(options.uri(), std::move(handler));
   if (not result.second)
   {
     const std::string name = result.first->second->getPluginName();
     std::ostringstream msg;
-    msg << "Attempt to register URI " << options.uri << " for plugin " << pluginName
+    msg << "Attempt to register URI " << options.uri() << " for plugin " << pluginName
         << " failed: URI already registered for plugin " << name;
     throw Fmi::Exception(BCP, msg.str());
   }
@@ -365,7 +473,7 @@ std::size_t ContentHandlerMap::removeUriHandlers(HandlerTarget currentTarget)
       count++;
       std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_GREEN << " Removed "
           << (no_target ? "builtin " : "") << (is_private ? "private " : "")
-          << "URI " << uri << (no_target ? ""s : " provided by " + name)
+          << "URI " << uri << (no_target ? "" : " provided by " + name)
           << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
     }
   }

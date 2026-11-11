@@ -104,60 +104,47 @@ public:
 
     /**
      * @brief Options for setting up and configuring a content handler
-     */
-    struct HandlerOptions
+     *
+     * Data members are intentionally stored in the Impl struct to hide implementation details
+     * and avoid need to rebuild plugins when new data members are added and the deafult
+     * values of these data members are acceptable for plugins
+     *
+     * Efficiency is not significant here as these options are typically set up once during
+     * handler registration and not frequently accessed.
+     **/
+    class HandlerOptions final
     {
-        /**
-         *  @brief URI that this handler is responsible for.
-         */
-        const std::string uri;
+        struct Impl;
 
-        /**
-         *  @brief Indicates if the handler should handle all URIs starting with the specified URI
-         *
-         *  Example: EDR plugin may handle all URIs starting with "/edr" (/edr - landingpage,
-         *           /edr/collections - collection of EDR items, etc"). As result @c true
-         *           must pe specified.
-         */
-        bool handlesUriPrefix = false;
+        std::unique_ptr<Impl> itsImpl;
 
-        /**
-         *  @brief Indicates if the handler is private (not visible through /info) and reported to frontend
-         */
-        bool isPrivate = false;
+    public:
+        HandlerOptions(const std::string& theUri);
+        HandlerOptions(const HandlerOptions& other);
+        HandlerOptions& operator=(const HandlerOptions& other);
+        HandlerOptions(HandlerOptions&&) = default;
+        HandlerOptions& operator=(HandlerOptions&&) = default;
+        ~HandlerOptions();
 
-        /**
-         *  @brief Set of supported Content-Types for POST requests.
-         *         Note that x-www-form-urlencoded is always supported and there is no
-         *         need to include it in the set (one can however specify it if desired)
-         */
-        std::set<std::string> supportedPostContentTypes;
+        HandlerOptions& Private(bool b = true);
+        HandlerOptions& IsPrefix(bool b = true);
+        HandlerOptions& addSupportedPostContentType(const std::string& type);
 
-        HandlerOptions(const std::string& theUri)
-            : uri(theUri)
-        {
-        }
-
-        HandlerOptions(const HandlerOptions&) = default;
-        HandlerOptions& operator=(const HandlerOptions&) = default;
-        ~HandlerOptions() = default;
-
-        HandlerOptions& Private(bool b = true)
-        {
-            isPrivate = b;
-            return *this;
-        }
-
-        HandlerOptions& IsPrefix(bool b = true)
-        {
-            handlesUriPrefix = b;
-            return *this;
-        }
+        const std::string& uri() const;
+        bool getPrivate() const;
+        bool getIsPrefix() const;
+        const std::set<std::string>& supportedPostContentTypes() const;
 
         /**
          *  @brief Template method for adding supported POST content types from iterator range
          *
          *  Restriction: iterator values must be convertible to std::string
+         *
+         *  Example usage:
+         *  @code
+         *  std::vector<std::string> contentTypes = {"application/json", "application/xml"};
+         *  options.addSupportedPostContentTypes(contentTypes.begin(), contentTypes.end());
+         *  @endcode
          */
         template <typename Iterator>
         typename std::enable_if
@@ -170,21 +157,27 @@ public:
         {
             for (Iterator it = begin; it != end; ++it)
             {
-                supportedPostContentTypes.insert(std::string(*it));
+                addSupportedPostContentType(std::string(*it));
             }
             return *this;
         }
 
+        /**
+         *  @brief Add multiple supported POST content types
+         *
+         *  Restriction: all arguments must be convertible to std::string
+         *
+         *  Example usage:
+         *  @code
+         *  options.addSupportedPostContentTypes("application/json", "application/xml", "text/plain");
+         *  @endcode
+         */
         template <typename... Args>
-        HandlerOptions&
+        typename std::enable_if<Fmi::are_convertible_to<std::string, std::decay_t<Args>...>(), HandlerOptions&>::type
         addSupportedPostContentTypes(Args&&... args)
         {
             ([&]() {
-                if constexpr (std::is_convertible<Args, std::string>::value || std::is_same<Args, std::string>::value)
-                    supportedPostContentTypes.insert(std::forward<Args>(args));
-                else
-                    static_assert(Fmi::are_convertible_to<std::string, Args...>(),
-                                  "All arguments must be std::string or convertible to std::string");
+                addSupportedPostContentType(std::forward<Args>(args));
             }(), ...);
             return *this;
         }
