@@ -173,7 +173,7 @@ make %{_smp_mflags}
 
 %changelog
 * Wed Nov 11 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.11.11-3.fmi
-- Fixed typos in messages and comments
+- Fixed typos in messages, comments and identifiers
 
 * Wed Nov 11 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.11.10-3.fmi
 - Bug fix for face condition in destructor of SmartMetCache

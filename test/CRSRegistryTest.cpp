@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE(test_coordinate_transformation_2)
   BOOST_CHECK_SMALL(6655201.5978 - p2.Y(), 0.001);
 }
 
-BOOST_AUTO_TEST_CASE(test_finding_ccordinates_using_regex)
+BOOST_AUTO_TEST_CASE(test_finding_coordinates_using_regex)
 {
   BOOST_TEST_MESSAGE("+ [Finding CRS using REGEX]");
 

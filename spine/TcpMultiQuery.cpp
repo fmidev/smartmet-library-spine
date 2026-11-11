@@ -37,11 +37,11 @@ struct TcpMultiQuery::Query
 
   void on_connected(boost::system::error_code /*error*/);
 
-  void on_request_sent(boost::system::error_code /*error*/, std::size_t bytes_transfered);
+  void on_request_sent(boost::system::error_code /*error*/, std::size_t bytes_transferred);
 
   void request_input();
 
-  void on_data_received(boost::system::error_code error, std::size_t bytes_transfered);
+  void on_data_received(boost::system::error_code error, std::size_t bytes_transferred);
 
   void report_error(std::string desc, boost::system::error_code error);
 };
@@ -188,9 +188,9 @@ void TcpMultiQuery::Query::on_connected(boost::system::error_code error)
 }
 
 void TcpMultiQuery::Query::on_request_sent(boost::system::error_code error,
-                                           std::size_t bytes_transfered)
+                                           std::size_t bytes_transferred)
 {
-  (void)bytes_transfered;  // We requested to send all bytes, so no need to check
+  (void)bytes_transferred;  // We requested to send all bytes, so no need to check
   if (error)
     report_error("Failed to send request to socket", error);
   else
@@ -202,7 +202,7 @@ void TcpMultiQuery::Query::on_request_sent(boost::system::error_code error,
 }
 
 void TcpMultiQuery::Query::on_data_received(boost::system::error_code error,
-                                            std::size_t bytes_transfered)
+                                            std::size_t bytes_transferred)
 {
   if (error == boost::asio::error::eof)
   {
@@ -218,7 +218,7 @@ void TcpMultiQuery::Query::on_data_received(boost::system::error_code error,
   }
   else
   {
-    std::string data(current_input, current_input + bytes_transfered);
+    std::string data(current_input, current_input + bytes_transferred);
     result.append(data);
     request_input();
   }
