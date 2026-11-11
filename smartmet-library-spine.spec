@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.11.10
+Version: 26.11.11
 Release: 2%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -172,6 +172,12 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Wed Nov 11 2026 Andris Pavēnis <andris.pavenis@fmi.fi> 26.11.10-3.fmi
+- Bug fix for face condition in destructor of SmartMetCache
+- Update ContentHandlerMap::HandlerOptions to decrease need for plugin repackaging
+  when adding new data fields
+- Added Doxygen example for addSupportedPostContentTypes
+
 * Tue Nov 10 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> 26.11.10-2.fmi
 - Build with OpenTelemetry using the opentelemetry-cpp RPM and its pkg-config modules
 - Fixed the OpenTelemetry code to compile against the SDK (versioned namespace, nostd::shared_ptr,
