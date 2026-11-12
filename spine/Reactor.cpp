@@ -26,7 +26,6 @@
 
 // sleep?t=n queries only in debug mode
 #ifndef NDEBUG
-#include "Convenience.h"
 #endif
 
 #include <boost/algorithm/string.hpp>
