@@ -6,22 +6,21 @@
 // ----------------------------------------------------------------------
 #pragma once
 
+// For asio buffer types
+#include <boost/asio/buffer.hpp>
 #include <boost/smart_ptr/shared_array.hpp>
 #include <algorithm>
 #include <cstddef>
+#include <functional>
 #include <iosfwd>
+#include <iterator>
+#include <map>
+#include <memory>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <tuple>
 #include <utility>
-#include <memory>
-
-// For asio buffer types
-#include <boost/asio/buffer.hpp>
-
-#include <functional>
-#include <map>
-#include <string>
 #include <vector>
 
 namespace SmartMet

@@ -6,11 +6,13 @@
 
 #pragma once
 
+#include <cstddef>
 #include <list>
 #include <memory>
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace SmartMet

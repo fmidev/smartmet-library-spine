@@ -29,9 +29,11 @@
 
 #include "Thread.h"
 #include <chrono>
+#include <ctime>
 #include <filesystem>
 #include <map>
 #include <string>
+#include <utility>
 
 namespace SmartMet
 {

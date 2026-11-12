@@ -1,5 +1,4 @@
 #include "Station.h"
-#include <macgyver/Exception.h>
 
 namespace SmartMet
 {

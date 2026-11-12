@@ -8,10 +8,12 @@
 #include "DebugFormatter.h"
 #include "HTTP.h"
 #include "Table.h"
+#include "TableFormatter.h"
 #include "TableFormatterOptions.h"
 #include <regression/tframe.h>
-#include <cmath>
+#include <iostream>
 #include <sstream>
+#include <string>
 
 template <typename T>
 std::string tostr(const T& theValue)

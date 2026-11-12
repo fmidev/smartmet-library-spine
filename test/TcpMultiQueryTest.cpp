@@ -8,10 +8,15 @@
 #include "TcpMultiQuery.h"
 #include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
-#include <boost/chrono.hpp>
-#include <boost/thread.hpp>
 #include <regression/tframe.h>
-#include <memory>
+#include <chrono>
+#include <cstddef>
+#include <exception>
+#include <map>
+#include <set>
+#include <string>
+#include <thread>
+#include <utility>
 
 namespace a = boost::asio;
 using boost::asio::ip::tcp;

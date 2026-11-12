@@ -1,12 +1,12 @@
 // ======================================================================
 
 #include "JsonCache.h"
-#include <boost/filesystem/operations.hpp>
-#include <boost/functional/hash.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/FileSystem.h>
 #include <fstream>
-#include <stdexcept>
+#include <iterator>
+#include <string>
+#include <utility>
 
 namespace SmartMet
 {

@@ -1,5 +1,8 @@
 #include "SmartMetCache.h"
 #include <macgyver/Exception.h>
+#include <iostream>
+#include <list>
+#include <optional>
 #include <vector>
 
 namespace SmartMet

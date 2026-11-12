@@ -1,10 +1,11 @@
 #include "ConfigTools.h"
-#include <filesystem>
 #include <macgyver/Base64.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <openssl/sha.h>
 #include <cstdlib>
+#include <cstring>
+#include <filesystem>
 #include <limits>
 
 namespace

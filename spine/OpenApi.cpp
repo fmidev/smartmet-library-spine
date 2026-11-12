@@ -1,8 +1,8 @@
 #include "OpenApi.h"
-#include "IPFilter.h"
 #include "Convenience.h"
 #include "FmiApiKey.h"
 #include "HTTP.h"
+#include "IPFilter.h"
 #include <boost/algorithm/string.hpp>
 #include <fmt/format.h>
 #include <macgyver/AnsiEscapeCodes.h>
@@ -10,19 +10,22 @@
 #include <macgyver/Hash.h>
 #include <macgyver/StringConversion.h>
 #include <algorithm>
-#include <atomic>
 #include <cctype>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <initializer_list>
 #include <iostream>
 #include <iterator>
 #include <libconfig.h++>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <set>
-#include <sstream>
+#include <system_error>
 #include <tuple>
+#include <utility>
 
 namespace SmartMet
 {

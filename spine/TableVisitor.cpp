@@ -1,6 +1,16 @@
 #include "TableVisitor.h"
+#include "Table.h"
+#include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
+#include <macgyver/LocalDateTime.h>
+#include <macgyver/TimeFormatter.h>
 #include <newbase/NFmiGlobals.h>
+#include <sstream>
+
+namespace SmartMet::Spine
+{
+struct None;
+}  // namespace SmartMet::Spine
 
 namespace SmartMet
 {

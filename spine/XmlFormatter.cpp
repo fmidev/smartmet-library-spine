@@ -5,15 +5,14 @@
 // ======================================================================
 
 #include "XmlFormatter.h"
-#include "Convenience.h"
 #include "HTTP.h"
 #include "Table.h"
 #include "TableFormatterOptions.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/classification.hpp>
 #include <macgyver/Exception.h>
-#include <iostream>
-#include <stdexcept>
+#include <cstddef>
+#include <optional>
+#include <set>
 
 namespace SmartMet
 {

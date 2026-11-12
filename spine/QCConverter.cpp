@@ -6,6 +6,8 @@
 
 #include "QCConverter.h"
 #include <macgyver/Exception.h>
+#include <cctype>
+#include <cstddef>
 #include <string>
 
 namespace SmartMet

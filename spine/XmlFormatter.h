@@ -7,12 +7,21 @@
 #pragma once
 
 #include "TableFormatter.h"
+#include <string>
+
+namespace SmartMet::Spine::HTTP
+{
+class Request;
+}  // namespace SmartMet::Spine::HTTP
+namespace SmartMet::Spine
+{
+class Table;
+}  // namespace SmartMet::Spine
 
 namespace SmartMet
 {
 namespace Spine
 {
-class TableFormatterOptions;
 
 class XmlFormatter : public TableFormatter
 {

@@ -7,8 +7,8 @@
 #pragma once
 
 #include <newbase/NFmiParameterName.h>
-#include <array>
-#include <limits>
+#include <cstddef>
+#include <iosfwd>
 #include <optional>
 #include <string>
 

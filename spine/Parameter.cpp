@@ -8,7 +8,7 @@
 #include <macgyver/Exception.h>
 #include <macgyver/Hash.h>
 #include <sstream>
-#include <stdexcept>
+#include <utility>
 
 namespace SmartMet
 {

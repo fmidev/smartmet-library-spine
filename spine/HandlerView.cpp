@@ -1,24 +1,30 @@
 #include "HandlerView.h"
-#include "Convenience.h"
+#include "AccessLogger.h"
 #include "FmiApiKey.h"
+#include "IPFilter.h"
+#include "OTelLogger.h"
+#include "OTelOptions.h"
 #include "Reactor.h"
 #include "RequestWatcher.h"
+#include "SmartMetPlugin.h"
 #include <boost/algorithm/string.hpp>
-#include <algorithm>
-#include <ctime>
-#include <exception>
-#include <filesystem>
-#include <functional>
-#include <iostream>
-#include <iterator>
-#include <set>
-#include <string>
-#include <vector>
+#include <boost/thread.hpp>
 #include <macgyver/Cancellation.h>
 #include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
 #include <macgyver/Join.h>
 #include <macgyver/StringConversion.h>
+#include <algorithm>
+#include <cassert>
+#include <ctime>
+#include <exception>
+#include <functional>
+#include <iostream>
+#include <iterator>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace std::literals;
 

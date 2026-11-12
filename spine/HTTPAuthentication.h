@@ -5,9 +5,16 @@
 // ----------------------------------------------------------------------
 #pragma once
 
-#include "HTTP.h"
+#include <iterator>
 #include <map>
 #include <string>
+#include <utility>
+
+namespace SmartMet::Spine::HTTP
+{
+class Request;
+class Response;
+}  // namespace SmartMet::Spine::HTTP
 
 namespace SmartMet
 {

@@ -8,12 +8,15 @@
 #include <dlfcn.h>
 #include <elf.h>
 #include <filesystem>
-#include <link.h>
+#include <initializer_list>
+#include <iostream>
+#include <memory>
 #include <optional>
 #include <set>
 #include <stdexcept>
 #include <string>
 #include <unistd.h>
+#include <utility>
 #include <vector>
 
 //! Protection against conflicts with global functions

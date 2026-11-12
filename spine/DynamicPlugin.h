@@ -11,8 +11,6 @@
 #include "SmartMetPlugin.h"
 #include <string>
 
-#include <boost/thread.hpp>
-
 namespace SmartMet
 {
 namespace Spine

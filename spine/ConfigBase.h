@@ -1,14 +1,14 @@
 #pragma once
 
-#include <boost/current_function.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/TypeName.h>
+#include <cstddef>
 #include <libconfig.h++>
 #include <limits>
 #include <memory>
 #include <sstream>
-#include <stdexcept>
 #include <string>
+#include <typeinfo>
 #include <utility>
 #include <vector>
 

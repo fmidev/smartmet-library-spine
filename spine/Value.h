@@ -2,12 +2,14 @@
 
 #include "Convenience.h"
 #include <macgyver/DateTime.h>
-#include <optional>
-#include <variant>
-
+#include <cstdint>
 #include <libconfig.h++>
+#include <optional>
 #include <ostream>
+#include <string>
 #include <typeinfo>
+#include <utility>
+#include <variant>
 
 namespace SmartMet
 {

@@ -5,7 +5,7 @@
 // ======================================================================
 
 #pragma once
-#include <iosfwd>
+#include <cstddef>
 #include <string>
 #include <vector>
 

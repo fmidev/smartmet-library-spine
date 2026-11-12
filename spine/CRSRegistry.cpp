@@ -1,16 +1,18 @@
 
 #include "CRSRegistry.h"
+#include "ConfigBase.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <fmt/printf.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/TypeName.h>
+#include <cctype>
+#include <iostream>
+#include <libconfig.h++>
 #include <memory>
 #include <ogr_geometry.h>
-#include <ogr_spatialref.h>
-#include <ogr_srs_api.h>
-#include <stdexcept>
+#include <sstream>
 
 namespace ba = boost::algorithm;
 namespace qi = boost::spirit::qi;

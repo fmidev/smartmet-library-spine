@@ -1,18 +1,29 @@
 #pragma once
 
-#include "AccessLogger.h"
 #include "HTTP.h"
-#include "IPFilter.h"
 #include "LogRange.h"
-#include "OTelLogger.h"
-#include "OTelOptions.h"
-#include "SmartMetPlugin.h"
+#include "LoggedRequest.h"
 #include "Thread.h"
+#include <macgyver/DateTime.h>
+#include <atomic>
+#include <cstddef>
 #include <functional>
+#include <list>
 #include <memory>
 #include <optional>
 #include <set>
 #include <string>
+
+class SmartMetPlugin;
+namespace SmartMet::Spine::IPFilter
+{
+class IPFilter;
+}  // namespace SmartMet::Spine::IPFilter
+namespace SmartMet::Spine
+{
+class OTelLogger;
+struct OTelOptions;
+}  // namespace SmartMet::Spine
 
 namespace SmartMet
 {
@@ -20,8 +31,8 @@ namespace Spine
 {
 // Content handling typedefs
 
-class Reactor;
 class AccessLogger;
+class Reactor;
 
 using ContentHandler = std::function<void(Reactor&, const HTTP::Request&, HTTP::Response&)>;
 

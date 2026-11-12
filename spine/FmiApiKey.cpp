@@ -1,4 +1,5 @@
 #include "FmiApiKey.h"
+#include "HTTP.h"
 #include <macgyver/Exception.h>
 
 namespace SmartMet

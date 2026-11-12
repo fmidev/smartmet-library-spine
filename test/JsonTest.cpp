@@ -9,7 +9,12 @@
 #include "Json.h"
 #include <boost/algorithm/string.hpp>
 #include <dtl/dtl.hpp>
+#include <json/json.h>
 #include <regression/tframe.h>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
 
 //! Protection against conflicts with global functions
 namespace JsonTest

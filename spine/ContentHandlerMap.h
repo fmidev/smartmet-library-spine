@@ -1,23 +1,42 @@
 #pragma once
 
+#include "HTTP.h"
+#include "HTTPAuthentication.h"
+#include "HandlerView.h"
+#include "LogRange.h"
+#include "SmartMetEngine.h"
+#include "SmartMetPlugin.h"
+#include "Table.h"
+#include "Thread.h"
+#include <macgyver/DateTime.h>
+#include <macgyver/TypeTraits.h>
 #include <atomic>
+#include <cstddef>
+#include <functional>
+#include <iosfwd>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <optional>
 #include <set>
 #include <string>
 #include <type_traits>
+#include <utility>
 #include <variant>
-#include <boost/thread.hpp>
-#include "LoggedRequest.h"
-#include "IPFilter.h"
-#include "HandlerView.h"
-#include "Options.h"
-#include "SmartMetEngine.h"
-#include "SmartMetPlugin.h"
-#include "Table.h"
-#include <macgyver/DateTime.h>
-#include <macgyver/TypeTraits.h>
+#include <vector>
+
+namespace SmartMet::Spine::IPFilter
+{
+class IPFilter;
+}  // namespace SmartMet::Spine::IPFilter
+namespace SmartMet::Spine
+{
+struct Options;
+}  // namespace SmartMet::Spine
+namespace boost
+{
+class thread;
+}  // namespace boost
 
 namespace SmartMet
 {
@@ -25,11 +44,6 @@ namespace Spine
 {
 
 class Reactor;
-
-namespace HTTP
-{
-    class Authentication;
-}
 
 using URIMap = std::map<std::string, std::string>;
 

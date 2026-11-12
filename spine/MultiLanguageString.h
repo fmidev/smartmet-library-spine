@@ -1,9 +1,13 @@
 #pragma once
 
-#include <libconfig.h++>
 #include <map>
 #include <memory>
 #include <string>
+
+namespace libconfig
+{
+class Setting;
+}  // namespace libconfig
 
 namespace SmartMet
 {

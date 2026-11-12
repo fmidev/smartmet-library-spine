@@ -3,8 +3,10 @@
 #include "HTTP.h"
 #include "Thread.h"
 #include <macgyver/DateTime.h>
+#include <atomic>
+#include <cstddef>
+#include <iosfwd>
 #include <map>
-#include <string>
 
 namespace SmartMet
 {

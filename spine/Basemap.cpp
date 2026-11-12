@@ -1,13 +1,12 @@
 #include "Basemap.h"
 #include <fmt/format.h>
-#include <gdal_priv.h>
 #include <macgyver/Exception.h>
-#include <libconfig.h++>
-#include <ogr_geometry.h>
-#include <ogr_spatialref.h>
-#include <ogrsf_frmts.h>
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <libconfig.h++>
 #include <memory>
+#include <ogrsf_frmts.h>
 #include <vector>
 
 namespace SmartMet

@@ -2,10 +2,14 @@
 
 #include "ParameterTranslations.h"
 #include "StringTranslations.h"
-#include <libconfig.h++>
 #include <optional>
-#include <map>
 #include <string>
+#include <vector>
+
+namespace libconfig
+{
+class Config;
+}  // namespace libconfig
 
 namespace SmartMet
 {

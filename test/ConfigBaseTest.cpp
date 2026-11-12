@@ -1,9 +1,19 @@
 #include "ConfigBase.h"
 #include <boost/test/included/unit_test.hpp>
+#include <macgyver/Exception.h>
+#include <sys/stat.h>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <exception>
 #include <fstream>
 #include <iostream>
+#include <libconfig.h++>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <unistd.h>
+#include <vector>
 
 using namespace boost::unit_test;
 

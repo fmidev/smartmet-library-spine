@@ -26,7 +26,6 @@
 
 #pragma once
 
-#include <cstddef>
 #include <ctime>
 #include <memory>
 #include <string>

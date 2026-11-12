@@ -7,8 +7,9 @@
 
 #include "Table.h"
 #include <regression/tframe.h>
-#include <cmath>
+#include <iostream>
 #include <sstream>
+#include <string>
 
 template <typename T>
 std::string tostr(const T& theValue)

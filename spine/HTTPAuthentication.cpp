@@ -1,14 +1,15 @@
 #include "HTTPAuthentication.h"
+#include "HTTP.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/case_conv.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <macgyver/Base64.h>
 #include <macgyver/Exception.h>
 #include <macgyver/TypeName.h>
-
 #include <algorithm>
 #include <cstddef>
+#include <cstdio>
+#include <optional>
+#include <vector>
 
 namespace ba = boost::algorithm;
 

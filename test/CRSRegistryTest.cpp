@@ -1,9 +1,16 @@
 // FIXME: move to smartmet-engine-gis
 #include "CRSRegistry.h"
 #include <boost/test/included/unit_test.hpp>
+#include <macgyver/Exception.h>
 #include <newbase/NFmiPoint.h>
-#include <gdal_version.h>
+#include <array>
+#include <cstring>
+#include <filesystem>
 #include <iostream>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 using namespace boost::unit_test;
 using namespace SmartMet::Spine;

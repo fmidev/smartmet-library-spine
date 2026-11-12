@@ -1,5 +1,9 @@
 #include "Translations.h"
-#include <iostream>
+
+namespace libconfig
+{
+class Config;
+}  // namespace libconfig
 
 namespace SmartMet
 {

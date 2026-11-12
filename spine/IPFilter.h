@@ -15,11 +15,16 @@
 #include <boost/asio/ip/address.hpp>
 #include <array>
 #include <cstdint>
-#include <libconfig.h++>
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
+
+namespace libconfig
+{
+class Config;
+}  // namespace libconfig
 
 namespace SmartMet
 {

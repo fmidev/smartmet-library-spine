@@ -1,24 +1,32 @@
 #pragma once
 
-#include "ConfigBase.h"
 #include "Thread.h"
 #include "Value.h"
+#include <boost/regex.hpp>
+#include <newbase/NFmiPoint.h>
 #include <any>
 #include <array>
+#include <cstddef>
 #include <filesystem>
-#include <optional>
-#include <boost/regex.hpp>
-#include <memory>
-#include <macgyver/TypeName.h>
-#include <newbase/NFmiPoint.h>
 #include <map>
-#include <ogr_geometry.h>
-#include <ogr_spatialref.h>
+#include <memory>
+#include <optional>
 #include <ostream>
+#include <string>
 #include <typeinfo>
+#include <utility>
+#include <vector>
 
-class OGRSpatialReference;
 class OGRGeometry;
+class OGRSpatialReference;
+namespace SmartMet::Spine
+{
+class ConfigBase;
+}  // namespace SmartMet::Spine
+namespace libconfig
+{
+class Setting;
+}  // namespace libconfig
 
 namespace SmartMet
 {

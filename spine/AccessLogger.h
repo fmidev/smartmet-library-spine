@@ -1,8 +1,12 @@
 #pragma once
-#include "LoggedRequest.h"
 #include <fstream>
-#include <list>
+#include <memory>
 #include <string>
+
+namespace SmartMet::Spine
+{
+class LoggedRequest;
+}  // namespace SmartMet::Spine
 
 namespace SmartMet
 {

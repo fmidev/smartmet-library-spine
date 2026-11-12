@@ -1,8 +1,15 @@
 #include "Value.h"
 #include <boost/test/included/unit_test.hpp>
+#include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
-#include <iostream>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <libconfig.h++>
+#include <optional>
+#include <string>
+#include <typeinfo>
 
 using namespace boost::unit_test;
 using SmartMet::Spine::Value;

@@ -9,10 +9,15 @@
 // ======================================================================
 
 #pragma once
-#include "HTTP.h"
 #include <macgyver/CacheStats.h>
 #include <atomic>
 #include <string>
+
+namespace SmartMet::Spine::HTTP
+{
+class Request;
+class Response;
+}  // namespace SmartMet::Spine::HTTP
 
 // The type definitions of the class factories
 // *** Do not touch these unless you know exactly what you are doing ***

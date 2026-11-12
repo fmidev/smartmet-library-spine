@@ -3,7 +3,13 @@
 #include <boost/algorithm/string.hpp>
 #include <macgyver/Exception.h>
 #include <algorithm>
+#include <cstddef>
 #include <vector>
+
+namespace libconfig
+{
+class Config;
+}  // namespace libconfig
 
 namespace SmartMet
 {

@@ -8,12 +8,9 @@
 #include "Convenience.h"
 #include "HTTP.h"
 #include "Table.h"
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/split.hpp>
 #include <macgyver/Exception.h>
-#include <iostream>
-#include <set>
-#include <stdexcept>
+#include <optional>
+#include <vector>
 
 namespace SmartMet
 {

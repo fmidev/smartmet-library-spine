@@ -5,13 +5,7 @@
 // ======================================================================
 
 #include "ImageFormatter.h"
-#include "Convenience.h"
-#include "HTTP.h"
-#include "Table.h"
 #include <macgyver/Exception.h>
-#include <iostream>
-#include <set>
-#include <stdexcept>
 
 namespace SmartMet
 {

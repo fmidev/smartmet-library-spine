@@ -1,27 +1,21 @@
 #include "OTelLogger.h"
+#include "LoggedRequest.h"
+#include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
-#include <macgyver/StringConversion.h>
+#include <cstdint>
+#include <map>
+#include <utility>
 
 #ifdef SMARTMET_SPINE_OPENTELEMETRY
 
-// OTel API
-#include <opentelemetry/trace/provider.h>
-#include <opentelemetry/trace/span_startoptions.h>
-#include <opentelemetry/common/timestamp.h>
-
+// OTLP HTTP exporter
+#include <opentelemetry/exporters/otlp/otlp_http_exporter_factory.h>
+#include <opentelemetry/sdk/trace/batch_span_processor_factory.h>
+#include <opentelemetry/sdk/trace/simple_processor_factory.h>
 // OTel SDK — tracer provider + processors
 #include <opentelemetry/sdk/trace/tracer_provider.h>
 #include <opentelemetry/sdk/trace/tracer_provider_factory.h>
-#include <opentelemetry/sdk/trace/simple_processor_factory.h>
-#include <opentelemetry/sdk/trace/batch_span_processor_factory.h>
-#include <opentelemetry/sdk/trace/batch_span_processor_options.h>
-#include <opentelemetry/sdk/resource/resource.h>
 #include <opentelemetry/semconv/service_attributes.h>
-
-// OTLP HTTP exporter
-#include <opentelemetry/exporters/otlp/otlp_http_exporter_factory.h>
-#include <opentelemetry/exporters/otlp/otlp_http_exporter_options.h>
-
 #include <chrono>
 #include <memory>
 #include <mutex>

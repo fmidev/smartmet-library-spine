@@ -1,3 +1,4 @@
+#include "HTTP.h"
 #include "HTTPAuthentication.h"
 #include <macgyver/Base64.h>
 #include <regression/tframe.h>

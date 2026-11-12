@@ -2,8 +2,9 @@
 
 #include "FileCache.h"
 #include <macgyver/Exception.h>
-#include <fstream>
 #include <sys/stat.h>
+#include <fstream>
+#include <iterator>
 
 namespace SmartMet
 {

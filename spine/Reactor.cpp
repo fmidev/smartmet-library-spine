@@ -5,7 +5,6 @@
 // ======================================================================
 
 #include "Reactor.h"
-#include "OTelMetricsExporter.h"
 #include "Backtrace.h"
 #include "ConfigTools.h"
 #include "Convenience.h"
@@ -13,29 +12,33 @@
 #include "FmiApiKey.h"
 #include "HostInfo.h"
 #include "LoadedPackages.h"
+#include "LogRange.h"
+#include "LoggedRequest.h"
 #include "MallocStats.h"
 #include "Names.h"
+#include "OTelMetricsExporter.h"
+#include "OTelOptions.h"
 #include "OpenApi.h"
 #include "Options.h"
 #include "RequestWatcher.h"
-#include "SmartMet.h"
 #include "SmartMetEngine.h"
+#include "SmartMetPlugin.h"
 
 // sleep?t=n queries only in debug mode
 #ifndef NDEBUG
 #include "Convenience.h"
 #endif
 
+#include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/bind/bind.hpp>
-#include <boost/core/demangle.hpp>
 #include <boost/locale.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/thread/mutex.hpp>
-#include <boost/thread/condition_variable.hpp>
 #include <boost/regex.hpp>
-#include <boost/stacktrace.hpp>
+#include <boost/thread.hpp>
+#include <boost/thread/condition_variable.hpp>
+#include <boost/thread/mutex.hpp>
 #include <boost/timer/timer.hpp>
+#include <fmt/format.h>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/DateTime.h>
 #include <macgyver/DebugTools.h>
@@ -45,19 +48,30 @@
 #include <macgyver/StringConversion.h>
 #include <macgyver/ThreadName.h>
 #include <macgyver/TimeFormatter.h>
+#include <macgyver/TypeName.h>
+#include <algorithm>
+#include <cerrno>
+#include <chrono>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+#include <dlfcn.h>
+#include <exception>
+#include <fcntl.h>
 #include <filesystem>
 #include <fstream>
-
-#include <algorithm>
-#include <condition_variable>
-#include <dlfcn.h>
 #include <functional>
+#include <iomanip>
 #include <iostream>
+#include <libconfig.h++>
+#include <locale>
 #include <mutex>
 #include <mysql.h>
-#include <stdexcept>
+#include <optional>
+#include <sstream>
 #include <string>
-#include <fmt/format.h>
+#include <tuple>
+#include <typeinfo>
 
 extern "C"
 {

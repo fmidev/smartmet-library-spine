@@ -1,9 +1,14 @@
 #pragma once
 
-#include "LoggedRequest.h"
 #include "OTelOptions.h"
+#include <opentelemetry/sdk/trace/tracer_provider.h>
 #include <memory>
 #include <string>
+
+namespace SmartMet::Spine
+{
+class LoggedRequest;
+}  // namespace SmartMet::Spine
 
 #ifdef SMARTMET_SPINE_OPENTELEMETRY
 
@@ -15,8 +20,6 @@
 #include <opentelemetry/version.h>
 
 OPENTELEMETRY_BEGIN_NAMESPACE
-namespace trace { class Tracer; }
-namespace sdk { namespace trace { class TracerProvider; } }
 OPENTELEMETRY_END_NAMESPACE
 
 #endif

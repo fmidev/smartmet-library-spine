@@ -5,17 +5,12 @@
 #include <boost/spirit/include/phoenix.hpp>
 #endif
 
+#include <boost/fusion/include/adapt_struct.hpp>  // IWYU pragma: keep
+#include <boost/fusion/include/std_pair.hpp>      // IWYU pragma: keep
+#include <boost/spirit/include/qi.hpp>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <boost/fusion/include/adapt_struct.hpp>
-#include <boost/fusion/include/std_pair.hpp>
-
-#include <boost/config/warning_disable.hpp>
-
-#include <boost/spirit/include/qi.hpp>
-#include <boost/spirit/include/qi_char_class.hpp>
 
 namespace SmartMet
 {

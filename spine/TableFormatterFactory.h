@@ -6,9 +6,12 @@
 
 #pragma once
 
-#include "TableFormatter.h"
-#include <memory>
 #include <string>
+
+namespace SmartMet::Spine
+{
+class TableFormatter;
+}  // namespace SmartMet::Spine
 
 namespace SmartMet
 {

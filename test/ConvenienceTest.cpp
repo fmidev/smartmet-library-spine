@@ -8,7 +8,11 @@
 #include "Convenience.h"
 #include <boost/test/included/unit_test.hpp>
 #include <macgyver/Exception.h>
+#include <cstring>
+#include <locale>
+#include <map>
 #include <sstream>
+#include <string>
 
 using namespace boost::unit_test;
 
@@ -86,9 +90,6 @@ BOOST_AUTO_TEST_CASE(test_str_iless)
   // FIXME: jostain syistä seuraava testi ei toimi oikein
   // BOOST_CHECK(not str_iless("Äö", "äö", locale));
 }
-
-#include <boost/algorithm/string.hpp>
-#include <boost/locale.hpp>
 
 BOOST_AUTO_TEST_CASE(test_str_iequal)
 {

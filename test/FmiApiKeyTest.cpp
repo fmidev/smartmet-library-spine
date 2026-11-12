@@ -6,7 +6,11 @@
 // ======================================================================
 
 #include "FmiApiKey.h"
+#include "HTTP.h"
 #include <boost/test/included/unit_test.hpp>
+#include <cstring>
+#include <optional>
+#include <string>
 
 using namespace boost::unit_test;
 using namespace SmartMet::Spine;

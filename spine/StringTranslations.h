@@ -2,10 +2,15 @@
 
 #include "MultiLanguageString.h"
 #include "MultiLanguageStringArray.h"
-#include <libconfig.h++>
-#include <optional>
 #include <map>
+#include <optional>
 #include <string>
+#include <vector>
+
+namespace libconfig
+{
+class Config;
+}  // namespace libconfig
 
 namespace SmartMet
 {

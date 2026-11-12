@@ -1,13 +1,13 @@
 #include "HTTP.h"
 #include <boost/algorithm/string/join.hpp>
+#include <regression/tframe.h>
+#include <initializer_list>
 #include <iostream>
 #include <memory>
 #include <optional>
-#include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
-
-#include <regression/tframe.h>
 
 using SmartMet::Spine::HTTP::baseETag;
 using SmartMet::Spine::HTTP::contentCodedETag;

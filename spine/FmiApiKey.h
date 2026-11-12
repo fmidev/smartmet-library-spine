@@ -5,9 +5,13 @@
 //======================================================================
 
 #pragma once
-#include "HTTP.h"
 #include <optional>
 #include <string>
+
+namespace SmartMet::Spine::HTTP
+{
+class Request;
+}  // namespace SmartMet::Spine::HTTP
 
 namespace SmartMet
 {

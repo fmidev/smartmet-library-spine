@@ -5,6 +5,15 @@
 #include "HandlerView.h"
 #include "Options.h"
 #include <boost/test/included/unit_test.hpp>
+#include <memory>
+#include <set>
+#include <string>
+#include <vector>
+
+namespace SmartMet::Spine
+{
+class Reactor;
+}  // namespace SmartMet::Spine
 
 using namespace SmartMet::Spine;
 using HandlerOptions = ContentHandlerMap::HandlerOptions;

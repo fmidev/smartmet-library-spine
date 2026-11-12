@@ -2,6 +2,9 @@
 #include "ConfigBase.h"
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
+#include <libconfig.h++>
+#include <sstream>
+#include <utility>
 
 using SmartMet::Spine::MultiLanguageStringArray;
 

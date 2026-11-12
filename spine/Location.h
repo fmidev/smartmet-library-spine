@@ -6,15 +6,11 @@
 
 #pragma once
 
-#include <optional>
-#include <memory>
 #include <gis/LandCover.h>
-
-#include <iostream>
 #include <limits>
 #include <list>
-#include <map>
-#include <stdexcept>
+#include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 

@@ -7,9 +7,7 @@
 #pragma once
 
 #include "OTelOptions.h"
-#include <macgyver/Optional.h>
 #include <libconfig.h++>
-#include <memory>
 #include <string>
 #include <thread>
 #include <vector>

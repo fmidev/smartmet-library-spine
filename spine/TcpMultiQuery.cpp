@@ -2,6 +2,7 @@
 #include <boost/asio.hpp>
 #include <boost/bind/bind.hpp>
 #include <macgyver/Exception.h>
+#include <chrono>
 #include <functional>
 
 using SmartMet::Spine::TcpMultiQuery;

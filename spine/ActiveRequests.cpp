@@ -1,6 +1,10 @@
 #include "ActiveRequests.h"
 #include "FmiApiKey.h"
 #include <macgyver/StringConversion.h>
+#include <optional>
+#include <ostream>
+#include <string>
+#include <utility>
 
 namespace SmartMet
 {

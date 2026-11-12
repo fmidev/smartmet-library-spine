@@ -6,15 +6,22 @@
 // ======================================================================
 
 #include "SmartMetCache.h"
-#include <algorithm>
-#include <chrono>
 #include <macgyver/AsyncTask.h>
 #include <regression/tframe.h>
 #include <sys/types.h>
+#include <algorithm>
+#include <chrono>
+#include <cstddef>
+#include <filesystem>
+#include <functional>
+#include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <unistd.h>
+#include <utility>
+#include <vector>
 
 template <typename T>
 std::string tostr(const T& theValue)

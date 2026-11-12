@@ -2,6 +2,13 @@
 #include <boost/test/included/unit_test.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/TypeName.h>
+#include <cstring>
+#include <exception>
+#include <iostream>
+#include <libconfig.h++>
+#include <memory>
+#include <string>
+#include <vector>
 
 using namespace boost::unit_test;
 using libconfig::Setting;

@@ -4,15 +4,18 @@
  */
 // ======================================================================
 
-#include <limits>
 #include "Convenience.h"
 #include <boost/algorithm/string.hpp>
 #include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
+#include <macgyver/TimeParser.h>
 #include <macgyver/ValueFormatter.h>
-#include <stdexcept>
+#include <cctype>
+#include <limits>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace ba = boost::algorithm;
 

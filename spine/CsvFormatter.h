@@ -6,12 +6,12 @@
 
 #pragma once
 #include "TableFormatter.h"
+#include <string>
 
 namespace SmartMet
 {
 namespace Spine
 {
-class TableFormatterOptions;
 
 class CsvFormatter : public TableFormatter
 {

@@ -6,9 +6,9 @@
  */
 
 #include <macgyver/DateTime.h>
+#include <cstddef>
+#include <list>
 #include <string>
-
-#include "HTTP.h"
 
 namespace SmartMet
 {

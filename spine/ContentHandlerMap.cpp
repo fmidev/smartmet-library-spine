@@ -4,18 +4,27 @@
 #include "HTTP.h"
 #include "HTTPAuthentication.h"
 #include "HostInfo.h"
+#include "IPFilter.h"
+#include "Options.h"
 #include "Reactor.h"
+#include "TableFormatter.h"
 #include "TableFormatterFactory.h"
 #include "TableFormatterOptions.h"
+#include <boost/algorithm/string/replace.hpp>
+#include <boost/thread.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <macgyver/ThreadName.h>
 #include <macgyver/TimeFormatter.h>
+#include <algorithm>
 #include <cctype>
+#include <exception>
 #include <iostream>
+#include <libconfig.h++>
 #include <memory>
 #include <sstream>
+#include <tuple>
 
 using SmartMet::Spine::ContentHandler;
 using SmartMet::Spine::ContentHandlerMap;

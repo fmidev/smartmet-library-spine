@@ -1,14 +1,17 @@
 #pragma once
+#include <macgyver/Cache.h>
+#include <macgyver/CacheStats.h>
 #include <atomic>
 #include <condition_variable>
+#include <cstddef>
 #include <deque>
 #include <filesystem>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
-
-#include <macgyver/Cache.h>
+#include <utility>
+#include <vector>
 
 namespace SmartMet
 {

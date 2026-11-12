@@ -6,7 +6,7 @@
 
 #include "TableFormatterOptions.h"
 #include <macgyver/Exception.h>
-#include <stdexcept>
+#include <libconfig.h++>
 
 namespace
 {

@@ -1,7 +1,6 @@
 #include "Value.h"
 #include "ConfigBase.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/current_function.hpp>
 #include <boost/lambda/lambda.hpp>
 #include <boost/spirit/include/qi.hpp>
 #include <fmt/format.h>
@@ -10,7 +9,10 @@
 #include <macgyver/TimeParser.h>
 #include <macgyver/TypeName.h>
 #include <algorithm>
-#include <stdexcept>
+#include <exception>
+#include <limits>
+#include <sstream>
+#include <vector>
 
 using Fmi::demangle_cpp_type_name;
 

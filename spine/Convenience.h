@@ -6,16 +6,12 @@
 #pragma once
 
 #include <macgyver/DateTime.h>
-#include <macgyver/StringConversion.h>
-#include <macgyver/TimeParser.h>
 #include <any>
-#include <functional>
+#include <cstddef>
 #include <locale>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <typeinfo>
-#include <variant>
 
 namespace Fmi
 {

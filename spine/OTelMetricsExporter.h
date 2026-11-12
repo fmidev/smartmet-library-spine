@@ -1,9 +1,10 @@
 #pragma once
 
 #include "OTelOptions.h"
+#include <macgyver/CacheStats.h>
+#include <opentelemetry/sdk/metrics/meter_provider.h>
 #include <functional>
 #include <memory>
-#include <macgyver/CacheStats.h>
 
 #ifdef SMARTMET_SPINE_OPENTELEMETRY
 // The SDK types live in a versioned inline namespace (opentelemetry::v1), so
@@ -12,8 +13,6 @@
 #include <opentelemetry/version.h>
 
 OPENTELEMETRY_BEGIN_NAMESPACE
-namespace sdk { namespace metrics { class MeterProvider; } }
-namespace metrics { class ObservableInstrument; }
 OPENTELEMETRY_END_NAMESPACE
 #endif
 

@@ -7,8 +7,8 @@
 
 #include "QCConverter.h"
 #include <regression/tframe.h>
-#include <cmath>
-#include <sstream>
+#include <iostream>
+#include <string>
 
 //! Protection against conflicts with global functions
 namespace QCConverterTest

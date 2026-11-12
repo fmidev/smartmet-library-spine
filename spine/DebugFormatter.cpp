@@ -9,9 +9,8 @@
 #include "HTTP.h"
 #include "Table.h"
 #include <macgyver/Exception.h>
-#include <iostream>
-#include <set>
-#include <stdexcept>
+#include <optional>
+#include <vector>
 
 namespace SmartMet
 {

@@ -1,10 +1,8 @@
 #include "StringTranslations.h"
+#include <json/reader.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
-#include <filesystem>
-#include <json/reader.h>
-#include <iostream>
-
+#include <libconfig.h++>
 
 namespace SmartMet
 {

@@ -14,31 +14,31 @@
 
 #include "ActiveBackends.h"
 #include "ActiveRequests.h"
+#include "ContentHandlerMap.h"
 #include "HTTP.h"
 #include "HandlerView.h"
 #include "Options.h"
 #include "SmartMet.h"
 #include "SmartMetEngine.h"
-#include "ContentHandlerMap.h"
+#include "Table.h"
 #include "Thread.h"
-
 #include <boost/function.hpp>
-#include <boost/system/error_code.hpp>
 #include <boost/thread/mutex.hpp>
-#include <optional>
-#include <memory>
 #include <macgyver/AsyncTaskGroup.h>
 #include <macgyver/CacheStats.h>
-
+#include <macgyver/Exception.h>
 #include <atomic>
+#include <cstddef>
+#include <functional>
+#include <iterator>
 #include <list>
 #include <map>
-#include <set>
-#include <vector>
-#include <set>
+#include <memory>
 #include <string>
+#include <thread>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace SmartMet
 {

@@ -5,15 +5,15 @@
 // ======================================================================
 
 #include "SerialFormatter.h"
-#include "Convenience.h"
 #include "HTTP.h"
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <fmt/format.h>
 #include <macgyver/Exception.h>
-#include <algorithm>
-#include <iostream>
 #include <list>
+#include <optional>
+#include <set>
+#include <vector>
 
 namespace SmartMet
 {

@@ -41,12 +41,10 @@
 #pragma once
 
 #include "Basemap.h"
-
 #include <json/json.h>
 #include <cstddef>
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 

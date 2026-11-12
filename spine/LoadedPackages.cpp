@@ -5,6 +5,7 @@
 #include <fmt/format.h>
 #include <json/json.h>
 #include <macgyver/Exception.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <algorithm>
 #include <array>
@@ -12,9 +13,11 @@
 #include <cerrno>
 #include <cinttypes>
 #include <csignal>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <elf.h>
 #include <fcntl.h>
 #include <fstream>
 #include <link.h>
@@ -24,6 +27,8 @@
 #include <spawn.h>
 #include <tuple>
 #include <unistd.h>
+#include <utility>
+#include <variant>
 
 namespace SmartMet
 {

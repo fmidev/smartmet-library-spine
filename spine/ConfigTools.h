@@ -3,7 +3,9 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <macgyver/Exception.h>
+#include <cstddef>
 #include <libconfig.h++>
+#include <string>
 
 namespace SmartMet
 {

@@ -1,24 +1,20 @@
 #include "OTelMetricsExporter.h"
 #include <macgyver/Exception.h>
+#include <chrono>
+#include <cstdint>
+#include <map>
+#include <string>
+#include <utility>
 
 #ifdef SMARTMET_SPINE_OPENTELEMETRY
 
-// OTel Metrics API
-#include <opentelemetry/metrics/provider.h>
-#include <opentelemetry/metrics/observer_result.h>
-
+// OTLP HTTP metrics exporter
+#include <opentelemetry/exporters/otlp/otlp_http_metric_exporter_factory.h>
+#include <opentelemetry/sdk/metrics/export/periodic_exporting_metric_reader_factory.h>
 // OTel Metrics SDK
 #include <opentelemetry/sdk/metrics/meter_provider.h>
 #include <opentelemetry/sdk/metrics/meter_provider_factory.h>
-#include <opentelemetry/sdk/metrics/metric_reader.h>
-#include <opentelemetry/sdk/metrics/export/periodic_exporting_metric_reader_factory.h>
-#include <opentelemetry/sdk/metrics/export/periodic_exporting_metric_reader_options.h>
-#include <opentelemetry/sdk/resource/resource.h>
 #include <opentelemetry/semconv/service_attributes.h>
-
-// OTLP HTTP metrics exporter
-#include <opentelemetry/exporters/otlp/otlp_http_metric_exporter_factory.h>
-#include <opentelemetry/exporters/otlp/otlp_http_metric_exporter_options.h>
 
 namespace
 {

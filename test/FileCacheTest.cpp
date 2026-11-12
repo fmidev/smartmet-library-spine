@@ -7,10 +7,10 @@
 
 #include "FileCache.h"
 #include <regression/tframe.h>
-#include <sys/types.h>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <string>
 #include <thread>
 #include <unistd.h>

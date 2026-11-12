@@ -1,10 +1,11 @@
 #include "Backtrace.h"
-#include <backtrace.h>
-
-#include <iostream>
-#include <sstream>
-#include <cxxabi.h>
 #include <fmt/format.h>
+#include <backtrace.h>
+#include <cstdlib>
+#include <cxxabi.h>
+#include <sstream>
+
+struct backtrace_state;
 
 using SmartMet::Spine::Backtrace;
 

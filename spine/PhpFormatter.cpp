@@ -5,15 +5,15 @@
 // ======================================================================
 
 #include "PhpFormatter.h"
-#include "Convenience.h"
 #include "HTTP.h"
 #include "Table.h"
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <macgyver/Exception.h>
-#include <algorithm>
-#include <iostream>
+#include <cstddef>
 #include <list>
+#include <optional>
+#include <set>
 
 namespace SmartMet
 {

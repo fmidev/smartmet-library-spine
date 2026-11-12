@@ -4,10 +4,12 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/filesystem/operations.hpp>
 #include <boost/regex.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
+#include <filesystem>
+#include <utility>
+#include <vector>
 
 namespace SmartMet
 {

@@ -1,4 +1,5 @@
 #include "LoggedRequest.h"
+#include <utility>
 
 namespace SmartMet
 {

@@ -1,13 +1,23 @@
 #pragma once
 
 #include "LonLat.h"
-#include "None.h"
-#include "Table.h"
-#include <optional>
-#include <variant>
 #include "macgyver/LocalDateTime.h"
-#include <macgyver/TimeFormatter.h>
 #include <macgyver/ValueFormatter.h>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
+
+namespace Fmi
+{
+class TimeFormatter;
+}  // namespace Fmi
+namespace SmartMet::Spine
+{
+class Table;
+struct None;
+}  // namespace SmartMet::Spine
 
 namespace SmartMet
 {

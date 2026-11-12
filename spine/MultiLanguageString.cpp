@@ -1,10 +1,10 @@
 #include "MultiLanguageString.h"
 #include "ConfigBase.h"
-#include <boost/algorithm/string.hpp>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
-#include <macgyver/TypeName.h>
+#include <libconfig.h++>
 #include <sstream>
+#include <utility>
 
 /**
 

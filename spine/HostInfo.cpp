@@ -20,14 +20,10 @@
 // ======================================================================
 
 #include "HostInfo.h"
-
-#include <macgyver/Cache.h>
-
 #include <arpa/inet.h>
+#include <macgyver/Cache.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <netdb.h>
-
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -36,10 +32,12 @@
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <netdb.h>
 #include <optional>
 #include <string>
 #include <thread>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace SmartMet

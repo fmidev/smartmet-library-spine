@@ -8,12 +8,19 @@
 
 #include "Table.h"
 #include "TableFormatter.h"
+#include <cstddef>
+#include <list>
+#include <string>
+
+namespace SmartMet::Spine::HTTP
+{
+class Request;
+}  // namespace SmartMet::Spine::HTTP
 
 namespace SmartMet
 {
 namespace Spine
 {
-class TableFormatterOptions;
 
 class SerialFormatter : public TableFormatter
 {

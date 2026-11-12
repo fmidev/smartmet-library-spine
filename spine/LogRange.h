@@ -1,8 +1,11 @@
 #pragma once
 
 #include "LoggedRequest.h"
+#include <macgyver/DateTime.h>
+#include <list>
 #include <map>
 #include <string>
+#include <tuple>
 
 namespace SmartMet
 {

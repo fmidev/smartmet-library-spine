@@ -5,19 +5,22 @@
 // ======================================================================
 
 #include "WxmlFormatter.h"
-#include "Convenience.h"
 #include "HTTP.h"
 #include "Table.h"
 #include "TableFormatterOptions.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/math/special_functions/fpclassify.hpp>
 #include <boost/spirit/include/qi.hpp>
+#include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
-#include <macgyver/StringConversion.h>
 #include <macgyver/TimeParser.h>
-#include <iostream>
+#include <algorithm>
 #include <cmath>
-#include <stdexcept>
+#include <cstddef>
+#include <iterator>
+#include <map>
+#include <optional>
+#include <vector>
 
 namespace SmartMet
 {

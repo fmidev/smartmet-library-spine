@@ -1,11 +1,17 @@
 #include "AccessLogger.h"
 #include "Convenience.h"
+#include "LoggedRequest.h"
 #include <boost/algorithm/string.hpp>
-#include <iostream>
-#include <filesystem>
 #include <fmt/format.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
+#include <cerrno>
+#include <cstring>
+#include <filesystem>
+#include <iostream>
+#include <stdexcept>
+#include <system_error>
+#include <utility>
 
 namespace
 {

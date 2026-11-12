@@ -7,7 +7,12 @@
 
 #include "Translations.h"
 #include <regression/tframe.h>
+#include <iostream>
+#include <libconfig.h++>
 #include <numeric>
+#include <optional>
+#include <string>
+#include <vector>
 
 //! Protection against conflicts with global functions
 namespace TranslationTest

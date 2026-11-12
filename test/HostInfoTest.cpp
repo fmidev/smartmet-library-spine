@@ -1,6 +1,9 @@
 #include "HostInfo.h"
+#include <macgyver/CacheStats.h>
 #include <regression/tframe.h>
 #include <chrono>
+#include <initializer_list>
+#include <iostream>
 #include <string>
 #include <thread>
 

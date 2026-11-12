@@ -1,9 +1,12 @@
 #pragma once
 
 #include <boost/archive/xml_iarchive.hpp>
-#include <boost/archive/xml_oarchive.hpp>
 #include <macgyver/DateTime.h>
+#include <cstddef>
 #include <list>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace SmartMet
 {

@@ -1,10 +1,12 @@
 #pragma once
 
 #include <boost/system/error_code.hpp>
+#include <cstddef>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 
 namespace SmartMet
 {
@@ -69,8 +71,8 @@ class TcpMultiQuery
  private:
   void report_request_complete();
 
-  struct Query;
   struct Impl;
+  struct Query;
 
   std::unique_ptr<Impl> impl;
 

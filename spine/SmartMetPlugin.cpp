@@ -1,11 +1,11 @@
 #include "SmartMetPlugin.h"
-#include "Convenience.h"
 #include "HTTP.h"
 #include "Reactor.h"
-#include <iostream>
 #include <boost/thread.hpp>
-#include <boost/timer/timer.hpp>
+#include <macgyver/DateTime.h>
 #include <macgyver/Exception.h>
+#include <macgyver/StringConversion.h>
+#include <iostream>
 
 SmartMetPlugin::SmartMetPlugin() = default;
 

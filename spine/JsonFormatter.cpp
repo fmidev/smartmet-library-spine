@@ -5,7 +5,6 @@
 // ======================================================================
 
 #include "JsonFormatter.h"
-#include "Convenience.h"
 #include "HTTP.h"
 #include "Table.h"
 #include <boost/algorithm/string/classification.hpp>
@@ -13,11 +12,10 @@
 #include <boost/spirit/include/qi.hpp>
 #include <fmt/format.h>
 #include <macgyver/Exception.h>
-#include <algorithm>
-#include <iomanip>
-#include <iostream>
-#include <list>
 #include <cmath>
+#include <cstddef>
+#include <list>
+#include <optional>
 #include <set>
 
 namespace SmartMet

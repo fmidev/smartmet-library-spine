@@ -1,6 +1,12 @@
 #include "MultiLanguageString.h"
 #include <boost/test/included/unit_test.hpp>
 #include <macgyver/Exception.h>
+#include <cstring>
+#include <iostream>
+#include <libconfig.h++>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 using namespace boost::unit_test;
 

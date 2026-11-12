@@ -8,9 +8,8 @@
 #include "HTTP.h"
 #include <json/json.h>
 #include <macgyver/Exception.h>
-#include <macgyver/TimeParser.h>
+#include <map>
 #include <set>
-#include <stdexcept>
 #include <string>
 
 namespace SmartMet

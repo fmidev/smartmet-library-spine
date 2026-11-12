@@ -5,14 +5,26 @@
  */
 // ======================================================================
 
+#include "Basemap.h"
 #include "HTTP.h"
 #include "OpenApi.h"
 #include <boost/test/included/unit_test.hpp>
+#include <json/json.h>
 #include <macgyver/Exception.h>
 #include <cstdlib>
+#include <cstring>
+#include <exception>
 #include <filesystem>
 #include <fstream>
+#include <initializer_list>
 #include <libconfig.h++>
+#include <memory>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <unistd.h>
+#include <vector>
 
 using namespace boost::unit_test;
 using namespace SmartMet::Spine;

@@ -6,7 +6,7 @@
 
 #include "Table.h"
 #include <macgyver/Exception.h>
-#include <macgyver/TypeName.h>
+#include <algorithm>
 #include <sstream>
 #include <stdexcept>
 

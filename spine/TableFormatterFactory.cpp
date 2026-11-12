@@ -15,7 +15,11 @@
 #include "WxmlFormatter.h"
 #include "XmlFormatter.h"
 #include <macgyver/Exception.h>
-#include <stdexcept>
+
+namespace SmartMet::Spine
+{
+class TableFormatter;
+}  // namespace SmartMet::Spine
 
 namespace SmartMet
 {

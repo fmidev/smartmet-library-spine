@@ -8,15 +8,12 @@
 #include "ConfigTools.h"
 #include "HTTP.h"
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem/operations.hpp>
-#include <boost/optional.hpp>
 #include <boost/program_options.hpp>
 #include <macgyver/AnsiEscapeCodes.h>
 #include <macgyver/Exception.h>
 #include <macgyver/StringConversion.h>
 #include <algorithm>
 #include <filesystem>
-#include <fstream>
 #include <iostream>
 #include <optional>
 

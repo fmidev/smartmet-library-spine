@@ -5,19 +5,15 @@
 // ======================================================================
 
 #include "DynamicPlugin.h"
-#include "Convenience.h"
 #include "Reactor.h"
 #include <boost/bind/bind.hpp>
 #include <boost/core/demangle.hpp>
 #include <boost/regex.hpp>
-#include <boost/timer/timer.hpp>
-#include <macgyver/AnsiEscapeCodes.h>
+#include <boost/thread.hpp>
 #include <macgyver/Exception.h>
-#include <sys/types.h>
-#include <csignal>
 #include <iostream>
-#include <stdexcept>
 #include <string>
+#include <utility>
 
 extern "C"
 {

@@ -1,10 +1,14 @@
 #pragma once
 
+#include <cstddef>
 #include <map>
 #include <string>
 
 // Forward declaration to avoid pulling in <libconfig.h++> here
-namespace libconfig { class Config; }
+namespace libconfig
+{
+class Config;
+}  // namespace libconfig
 
 namespace SmartMet
 {
