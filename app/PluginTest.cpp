@@ -1,5 +1,6 @@
 #include "PluginTest.h"
 #include "HTTP.h"
+#include "JsonCompare.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/bind/bind.hpp>
 #include <boost/range/iterator_range.hpp>
@@ -62,11 +63,11 @@ void printRequest(const SmartMet::Spine::HTTP::Request& request)
 
 // ---------------------------------------------------------------------
 
-std::vector<std::string> read_file(const std::string& fn)
+std::vector<std::string> split_lines(const std::string& text)
 {
   try
   {
-    std::ifstream input(fn.c_str());
+    std::istringstream input(text);
     std::vector<std::string> result;
     std::string line;
     while (std::getline(input, line))
@@ -81,12 +82,13 @@ std::vector<std::string> read_file(const std::string& fn)
   }
 }
 
-std::string get_diff(const std::string& src, const std::string& dest)
+// Unified diff of the expected and the actual result
+std::string get_diff(const std::string& expected, const std::string& result)
 {
   try
   {
-    const auto f1 = read_file(src);
-    const auto f2 = read_file(dest);
+    const auto f1 = split_lines(expected);
+    const auto f2 = split_lines(result);
     dtl::Diff<std::string> d(f1, f2);
     d.compose();
     d.composeUnifiedHunks();
@@ -368,6 +370,16 @@ std::string test_headers_prefix(const std::string& test_headers,
   return prefix;
 }
 
+// Is the response JSON (application/json, application/geo+json etc)?
+bool is_json_response(const SmartMet::Spine::HTTP::Response& response)
+{
+  const auto content_type = response.getHeader("Content-Type");
+  if (!content_type)
+    return false;
+  const auto media_type = content_type->substr(0, content_type->find(';'));
+  return ba::icontains(media_type, "json");
+}
+
 } // anonymous namespace
 
 namespace SmartMet
@@ -605,15 +617,27 @@ bool PluginTest::run_query(const fs::path& fn,
   // "X-Test-Headers: Content-Type,Link" prepends the response status and the listed
   // response headers to the result. An empty list prepends the status only.
   //
+  std::size_t body_pos = 0;
   if (const auto test_headers = request.getHeader("X-Test-Headers"))
-    result = test_headers_prefix(*test_headers, response) + "\n" + result;
+  {
+    const auto prefix = test_headers_prefix(*test_headers, response) + "\n";
+    result = prefix + result;
+    body_pos = prefix.size();
+  }
 
-  return validate_result(fn, result, time_str, out, colors);
+  // JSON responses are compared as JSON, see validate_with_output
+  std::optional<std::size_t> json_pos;
+  if (request.getMethod() != SmartMet::Spine::HTTP::RequestMethod::OPTIONS &&
+      is_json_response(response))
+    json_pos = body_pos;
+
+  return validate_result(fn, result, json_pos, time_str, out, colors);
 }
 
 // Validate the result of a test query
 bool PluginTest::validate_result(const fs::path& fn,
                                  std::string& result,
+                                 std::optional<std::size_t> json_pos,
                                  const std::string& time_str,
                                  std::ostream& out,
                                  const OutputColors& colors) const
@@ -633,6 +657,7 @@ bool PluginTest::validate_result(const fs::path& fn,
   if (exists(scriptfile))
   {
     ok = get_processed_response(scriptfile, result);
+    json_pos.reset();  // the script output is not the response
 
     if (!ok)
       out << fg_red << "FAIL" << fg_default << "  " << time_str << "s "
@@ -650,7 +675,7 @@ bool PluginTest::validate_result(const fs::path& fn,
     return validate_with_regex(fn, regexfile, result, time_str, out, colors);
 
   if (ok)
-    return validate_with_output(fn, result, time_str, out, colors);
+    return validate_with_output(fn, result, json_pos, time_str, out, colors);
 
   return ok;
 }
@@ -698,6 +723,7 @@ bool PluginTest::validate_with_regex(const fs::path& fn,
 // Validate the result of a test query against the expected output file
 bool PluginTest::validate_with_output(const fs::path& fn,
                                       const std::string& result,
+                                      std::optional<std::size_t> json_pos,
                                       const std::string& time_str,
                                       std::ostream& out,
                                       const OutputColors& colors) const
@@ -740,10 +766,57 @@ bool PluginTest::validate_with_output(const fs::path& fn,
     return true;
   }
 
-  out << fg_red << "FAIL" << fg_default << "  " << time_str << "s";
+  // JSON is compared ignoring whitespace and with a tolerance for numbers. Strings
+  // must be equal even if they contain numbers. The status and headers requested
+  // with X-Test-Headers precede the JSON and must be equal too.
+  //
+  // The diff is made from pretty printed JSON, which is easier to read than a diff
+  // of single line documents. The failure file keeps the response as is, so that
+  // it can still be copied as the expected output.
+
+  std::string expected_text = output;
+  std::string result_text = result;
+  std::string json_message;
+
+  if (json_pos)
+  {
+    const std::string result_prefix = result.substr(0, *json_pos);
+    std::string output_prefix;
+    std::size_t output_pos = 0;
+    if (*json_pos > 0)
+    {
+      output_pos = output.find("\n\n");
+      output_pos = (output_pos == std::string::npos ? 0 : output_pos + 2);
+      output_prefix = output.substr(0, output_pos);
+    }
+
+    const auto expected_json = JsonCompare::parse(output.substr(output_pos));
+    const auto result_json = JsonCompare::parse(result.substr(*json_pos));
+
+    if (expected_json && result_json)
+    {
+      std::optional<std::string> difference;
+      if (output_prefix != result_prefix)
+        difference = "status or headers differ";
+      else
+        difference = JsonCompare::compare(*expected_json, *result_json, mTolerance);
+
+      if (!difference)
+      {
+        out << fg_green << "OK  " << fg_default << "  " << time_str << "s  (equal as JSON)";
+        return true;
+      }
+
+      json_message = "  (JSON " + *difference + ")";
+      expected_text = output_prefix + JsonCompare::pretty(*expected_json);
+      result_text = result_prefix + JsonCompare::pretty(*result_json);
+    }
+  }
+
+  out << fg_red << "FAIL" << fg_default << "  " << time_str << "s" << json_message;
   std::filesystem::create_directories(failure_fn.parent_path());
   put_file_contents(failure_fn, result);
-  out << get_diff(outputfile.string(), failure_fn.string());
+  out << get_diff(expected_text, result_text);
   return false;
 }
 

@@ -16,6 +16,7 @@
 #include "Reactor.h"
 #include <filesystem>
 #include <functional>
+#include <optional>
 #include <boost/regex.hpp>
 
 namespace SmartMet
@@ -46,6 +47,9 @@ class PluginTest
   void addIgnoreList(const std::string& fileName) { ignore_lists.push_back(fileName); }
   void setFilter(const std::string& filter) { this->filter.reset(new boost::regex(filter)); }
 
+  // Tolerance of numbers in JSON responses, see JsonCompare::numbers_equal
+  void setTolerance(double tolerance) { mTolerance = tolerance; }
+
  private:
   struct IgnoreInfo
   {
@@ -58,6 +62,7 @@ class PluginTest
   using IgnoreMap = std::map<std::string, IgnoreInfo>;
 
   int mNumThreads = 1;
+  double mTolerance = 1e-9;
 
   std::string mInputDir{"input"};
   std::string mOutputDir{"output"};
@@ -85,8 +90,10 @@ class PluginTest
                  std::ostream& out,
                  const OutputColors& colors) const;
 
+  // json_pos: the position of the JSON body in the result if the response is JSON
   bool validate_result(const std::filesystem::path& fn,
                        std::string& result,
+                       std::optional<std::size_t> json_pos,
                        const std::string& time_str,
                        std::ostream& out,
                        const OutputColors& colors) const;
@@ -100,6 +107,7 @@ class PluginTest
 
   bool validate_with_output(const std::filesystem::path& fn,
                             const std::string& result,
+                            std::optional<std::size_t> json_pos,
                             const std::string& time_str,
                             std::ostream& out,
                             const OutputColors& colors) const;

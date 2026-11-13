@@ -28,7 +28,7 @@ LIBS +=	\
 
 PROGS = smartmet-plugin-test cfgvalidate
 
-PLUGIN_TEST_SRCS = SmartmetPluginTest.cpp PluginTest.cpp
+PLUGIN_TEST_SRCS = SmartmetPluginTest.cpp PluginTest.cpp JsonCompare.cpp
 PLUGIN_TEST_OBJS = $(patsubst %.cpp, obj/%.o, $(PLUGIN_TEST_SRCS))
 
 CFGVALIDATE_SRCS = cfgvalidate.cpp
