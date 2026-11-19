@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.11.13
+Version: 26.11.19
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -172,6 +172,11 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Thu Nov 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.11.19-1.fmi
+- Fixed the body of the stock 431 reply, which said "Internal Server Error"
+- Added HandlerView::logRejectedRequest for writing requests the server rejects before
+  they reach a handler to the access log of the handler
+
 * Fri Nov 13 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.11.13-1.fmi
 - Include cleanup: headers include what they use and prefer forward declarations,
   unnecessary includes removed. No functional changes, but code using these headers may

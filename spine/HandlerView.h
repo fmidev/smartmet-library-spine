@@ -67,6 +67,18 @@ class HandlerView
   // Handle a request
   bool handle(Reactor& theReactor, const HTTP::Request& theRequest, HTTP::Response& theResponse);
 
+  // Log a request the server rejected before it reached the handler, for
+  // example one whose header section was too large (431). Such a request never
+  // passes through handle(), so without this it would be answered without
+  // leaving a trace in the access log. The request is logged like any other,
+  // subject to the logging status of the handler, with a zero duration.
+  void logRejectedRequest(const std::string& uri,
+                          const std::string& ip,
+                          const std::string& method,
+                          const std::string& version,
+                          HTTP::Status status,
+                          std::size_t contentLength);
+
   // See if this View is that of a CatchNoMatch
   bool isCatchNoMatch() const;
 

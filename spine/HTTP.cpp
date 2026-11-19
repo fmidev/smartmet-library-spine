@@ -159,7 +159,7 @@ const std::string service_unavailable = "Service Unavailable";
 const std::string length_required = "Length Required";
 const std::string precondition_failed = "Precondition Failed";
 const std::string request_entity_too_large = "Request Entity Too Large";
-const std::string request_header_fields_too_large = "Request header fields too large";
+const std::string request_header_fields_too_large = "Request Header Fields Too Large";
 const std::string request_timeout = "Request Timeout";
 const std::string expectation_failed = "Expectation Failed";
 const std::string high_load = "High Load in Backend Server";
@@ -421,6 +421,8 @@ std::string getStockReply(Status theStatus)
         return precondition_failed;
       case Status::request_entity_too_large:
         return request_entity_too_large;
+      case Status::request_header_fields_too_large:
+        return request_header_fields_too_large;
       case Status::request_timeout:
         return request_timeout;
       case Status::expectation_failed:

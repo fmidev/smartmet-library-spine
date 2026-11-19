@@ -695,6 +695,33 @@ void HandlerView::cleanLog(const Fmi::DateTime& minTime, bool flush)
   }
 }
 
+void HandlerView::logRejectedRequest(const std::string& uri,
+                                     const std::string& ip,
+                                     const std::string& method,
+                                     const std::string& version,
+                                     HTTP::Status status,
+                                     std::size_t contentLength)
+{
+  try
+  {
+    const Fmi::TimeDuration noDuration(0, 0, 0);
+    appendLoggedRequest(uri,
+                        noDuration,
+                        noDuration,
+                        Fmi::to_string(static_cast<int>(status)),
+                        ip,
+                        method,
+                        version,
+                        contentLength,
+                        "-",
+                        "-");
+  }
+  catch (...)
+  {
+    throw Fmi::Exception::Trace(BCP, "Operation failed!");
+  }
+}
+
 void HandlerView::appendLoggedRequest(const std::string& uri,
                                       const Fmi::TimeDuration& accessDuration,
                                       const Fmi::TimeDuration& cpuDuration,
