@@ -518,7 +518,8 @@ void Reactor::addApiCatalogHandler()
     // Private: not announced to the frontends, which serve their own explorer, and the
     // catalog lets only the clients of explorer_ip_filters use it
     if (catalog->settings().explorer)
-      addContentHandler(nullptr, HandlerOptions("/api/explorer").Private(true), handler);
+      addContentHandler(
+          nullptr, HandlerOptions("/api/explorer").Private(true).IsPrefix(true), handler);
   }
   catch (...)
   {

@@ -176,6 +176,8 @@ make %{_smp_mflags}
 - Fixed the body of the stock 431 reply, which said "Internal Server Error"
 - Added HandlerView::logRejectedRequest for writing requests the server rejects before
   they reach a handler to the access log of the handler
+- Fixed the data explorer on backends: its scripts, styles and data files under
+  /api/explorer/ returned 404
 
 * Fri Nov 13 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.11.13-1.fmi
 - Include cleanup: headers include what they use and prefer forward declarations,
