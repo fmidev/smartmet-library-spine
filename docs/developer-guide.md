@@ -235,8 +235,12 @@ then stops at the next boost interruption point (`boost::this_thread::interrupti
 boost sleeps, waits on boost condition variables and on `Fmi::AsyncTask`s), also where it
 does not call `Fmi::check_cancelled()`. The `HandlerView` catches the interruption so
 that the worker survives, clears an interruption the handler did not reach, and replaces
-the response with a 503. Blocking calls which are not interruption points, such as
-database queries and `std::` waits, are not cut short.
+the response with a 503. While watched, the token's checks only read the state the
+watcher sets (`Fmi::CancellationToken::beginWatch()`), and the watcher's thread calls the
+token's `Fmi::CancellationCallback`s when it cancels it. They break off blocking calls
+which are not interruption points, such as database queries
+(`Fmi::Database::PostgreSQLConnection` registers one for each query) and `std::` waits.
+The server also has the watcher watch each chunk of a streamed response.
 
 The server (`AsyncConnection`) then chooses a pool:
 
