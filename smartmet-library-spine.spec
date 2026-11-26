@@ -3,7 +3,7 @@
 %define SPECNAME smartmet-library-%{DIRNAME}
 Summary: SmartMet Server core helper classes
 Name: %{SPECNAME}
-Version: 26.11.19
+Version: 26.11.26
 Release: 1%{?dist}.fmi
 License: MIT
 Group: BrainStorm/Development
@@ -51,7 +51,7 @@ BuildRequires: mariadb-devel
 BuildRequires: fontconfig-devel
 BuildRequires: rpm-build
 BuildRequires: smartmet-library-gis-devel >= 26.10.16
-BuildRequires: smartmet-library-macgyver-devel >= 26.11.10
+BuildRequires: smartmet-library-macgyver-devel >= 26.11.26
 BuildRequires: smartmet-library-newbase-devel >= 26.10.25
 BuildRequires: smartmet-utils-devel >= 26.9.3
 
@@ -101,7 +101,7 @@ Requires: smartmet-uplot
 Requires: libbacktrace
 Requires: double-conversion
 Requires: smartmet-library-gis >= 26.10.17
-Requires: smartmet-library-macgyver >= 26.11.10
+Requires: smartmet-library-macgyver >= 26.11.26
 Requires: smartmet-library-newbase >= 26.10.25
 Requires: smartmet-timezones >= 24.5.27
 #TestRequires: bzip2-devel
@@ -112,7 +112,6 @@ Requires: smartmet-timezones >= 24.5.27
 #TestRequires: smartmet-library-regression
 #TestRequires: zlib-devel
 #TestRequires: fontconfig-devel
-#TestRequires: smartmet-library-macgyver-devel >= 26.11.11
 Obsoletes: libsmartmet-brainstorm-spine < 16.11.1
 Obsoletes: libsmartmet-brainstorm-spine-debuginfo < 16.11.1
 
@@ -172,6 +171,9 @@ make %{_smp_mflags}
 %{_bindir}/smartmet-plugin-test
 
 %changelog
+* Thu Nov 26 2026 Andris Pavēnis <andris.pavenis@fmi.fi> - 26.11.26-1.fmi
+- Improve support of request cancelation (timeout, dropped connections)
+
 * Thu Nov 19 2026 Mika Heiskanen <mika.heiskanen@fmi.fi> - 26.11.19-1.fmi
 - Fixed the body of the stock 431 reply, which said "Internal Server Error"
 - Added HandlerView::logRejectedRequest for writing requests the server rejects before
