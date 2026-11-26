@@ -13,6 +13,7 @@
 <row What="serviceinfo" Target="<builtin>" Authentication="no" Public="yes" Unique="yes" Description="Get info about available services"/>
 <row What="servicestats" Target="<builtin>" Authentication="no" Public="no" Unique="yes" Description="Request service stats"/>
 <row What="setlogging" Target="<builtin>" Authentication="yes" Public="no" Unique="no" Description="Set logging status"/>
+<row What="settimeout" Target="<builtin>" Authentication="yes" Public="no" Unique="no" Description="Set the request time limit of a URI in seconds until the plugin is reinitialized (uri=/name&timeout=seconds, 0 = unlimited)"/>
 <row What="testFail" Target="Test plugin" Authentication="no" Public="yes" Unique="no" Description="Failing bool admin handler"/>
 <row What="testFail" Target="Test engine" Authentication="no" Public="yes" Unique="no" Description="Failing bool engine admin request"/>
 <row What="testOK" Target="Test plugin" Authentication="no" Public="yes" Unique="no" Description="Failing OK admin handler"/>

@@ -827,5 +827,25 @@ const std::string& HandlerView::getResource() const
   return itsResource;
 }
 
+unsigned int HandlerView::getRequestTimeout() const
+{
+  return itsRequestTimeout.load();
+}
+
+void HandlerView::setRequestTimeout(unsigned int theSeconds)
+{
+  itsRequestTimeout = theSeconds;
+}
+
+bool HandlerView::getCancelOnDisconnect() const
+{
+  return itsCancelOnDisconnect.load();
+}
+
+void HandlerView::setCancelOnDisconnect(bool theFlag)
+{
+  itsCancelOnDisconnect = theFlag;
+}
+
 }  // namespace Spine
 }  // namespace SmartMet

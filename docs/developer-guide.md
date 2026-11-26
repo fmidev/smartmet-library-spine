@@ -242,6 +242,18 @@ which are not interruption points, such as database queries
 (`Fmi::Database::PostgreSQLConnection` registers one for each query) and `std::` waits.
 The server also has the watcher watch each chunk of a streamed response.
 
+The time limit and the disconnect setting belong to the handler: `addContentHandler()`
+reads `plugins.<name>.request_timeout` and `plugins.<name>.cancel_on_disconnect` (the
+section found like that of `ip_filters`, host specific overrides apply; the default of the
+latter is the server wide `cancel_on_disconnect`) and stores them in the `HandlerView`
+(`getRequestTimeout()`, `getCancelOnDisconnect()`), where the server reads them. The
+configured limit overrides the plugin's own default, `HandlerOptions::RequestTimeout()`;
+without either there is no limit. The `settimeout` admin request
+(`uri=/name&timeout=seconds`, authentication required) changes the limit of a handler
+until the plugin is reinitialized, and `serviceinfo` through the admin URI lists the
+limits. A server wide `request_timeout` is no longer used, a warning is printed if it is
+set.
+
 The server (`AsyncConnection`) then chooses a pool:
 
 * a frontend's catch-all ("no match") handler always uses the fast pool;
