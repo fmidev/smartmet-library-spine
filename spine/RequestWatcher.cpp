@@ -56,7 +56,10 @@ struct RequestWatcher::Watch::State : std::enable_shared_from_this<State>
     if (err || stopped)
       return;
 
-    if (!token->cancelled())
+    // Notices the deadline and polls the probe, the watched thread only reads the result.
+    // Cancelling the token calls its callbacks, which break off for example database
+    // queries.
+    if (token->poll() == Fmi::CancellationToken::Reason::None)
     {
       wait();
       return;
@@ -129,9 +132,16 @@ RequestWatcher::Watch RequestWatcher::watch(const std::shared_ptr<Fmi::Cancellat
       return {};
 
     auto state = std::make_shared<Watch::State>(impl->context, theToken, thread);
+    theToken->beginWatch();
+    try
     {
       std::lock_guard<std::mutex> lock(state->mutex);
       state->wait();
+    }
+    catch (...)
+    {
+      theToken->endWatch();
+      throw;
     }
     return Watch(std::move(state));
   }
@@ -166,6 +176,8 @@ bool RequestWatcher::Watch::stop()
     itsState->timer.cancel();
     itsInterrupted = itsState->interrupted;
   }
+  // The token notices its deadline by itself again
+  itsState->token->endWatch();
   itsState.reset();
 
   if (itsInterrupted && boost::this_thread::interruption_requested())

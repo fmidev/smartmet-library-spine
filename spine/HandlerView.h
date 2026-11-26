@@ -123,6 +123,18 @@ class HandlerView
   // Get URI
   const std::string& getResource() const;
 
+  // Seconds a request may take, including streaming its response (0 = unlimited). The server
+  // cancels a request which takes longer (Fmi::CancellationToken). Set when the handler is
+  // registered from plugins.<name>.request_timeout or from the handler options, and changed
+  // with the settimeout admin request.
+  unsigned int getRequestTimeout() const;
+  void setRequestTimeout(unsigned int theSeconds);
+
+  // Whether the server cancels a request whose client has closed the connection, from
+  // plugins.<name>.cancel_on_disconnect or the server wide cancel_on_disconnect
+  bool getCancelOnDisconnect() const;
+  void setCancelOnDisconnect(bool theFlag);
+
  private:
   void callHandler(Reactor& theReactor,
                    const HTTP::Request& theRequest,
@@ -196,6 +208,11 @@ class HandlerView
   std::string itsSupportedPostContentsString;
 
   bool checkPostContentType;
+
+  // Cancellation of the requests, see getRequestTimeout(). Last so that the offsets of the
+  // members above do not change.
+  std::atomic<unsigned int> itsRequestTimeout{0};
+  std::atomic<bool> itsCancelOnDisconnect{false};
 };
 
 }  // namespace Spine

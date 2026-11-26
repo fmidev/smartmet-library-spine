@@ -15,6 +15,11 @@ namespace Spine
 // has been cancelled (Fmi::CancellationToken): its time limit has passed or its client has
 // left. The handler then stops at the next boost interruption point, also where it does not
 // call Fmi::check_cancelled(). One thread watches all the requests.
+//
+// The watcher notices the deadline and polls the probe of a watched token, and the checks
+// done by the request only read the state it sets (Fmi::CancellationToken::beginWatch()).
+// The watcher thread calls the callbacks of the token (Fmi::CancellationCallback) when it
+// cancels it, which breaks off blocking calls such as database queries.
 class RequestWatcher
 {
  public:

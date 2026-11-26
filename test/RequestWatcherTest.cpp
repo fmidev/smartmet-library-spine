@@ -8,8 +8,11 @@
 #include <macgyver/ThreadPool.h>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <functional>
 #include <memory>
+#include <mutex>
+#include <thread>
 
 using namespace SmartMet::Spine;
 
@@ -153,6 +156,56 @@ BOOST_AUTO_TEST_CASE(probe_interrupts)
       });
 
   BOOST_CHECK(interrupted);
+}
+
+// A call which is not a boost interruption point, such as a database query, is broken off
+// by a callback which the watcher calls. A watched token reads only the state the watcher
+// sets, and notices its deadline by itself again once the watch has stopped.
+BOOST_AUTO_TEST_CASE(callback_breaks_off_blocking_call)
+{
+  RequestWatcher watcher;
+  bool broken_off = false;
+  bool called_by_watcher = false;
+  bool watched = false;
+  bool unwatched_after_stop = false;
+  auto elapsed = std::chrono::milliseconds(0);
+
+  run_in_pool(
+      [&]()
+      {
+        const auto start = std::chrono::steady_clock::now();
+        auto token = token_with_deadline(std::chrono::milliseconds(100));
+        auto watch = watcher.watch(token);
+        watched = token->watched();
+
+        std::mutex mutex;
+        std::condition_variable cond;
+        bool stop = false;
+        std::thread::id caller;
+        {
+          Fmi::CancellationCallback callback(token,
+                                             [&]()
+                                             {
+                                               std::lock_guard<std::mutex> lock(mutex);
+                                               stop = true;
+                                               caller = std::this_thread::get_id();
+                                               cond.notify_one();
+                                             });
+          std::unique_lock<std::mutex> lock(mutex);
+          broken_off = cond.wait_for(lock, std::chrono::seconds(5), [&]() { return stop; });
+        }
+        called_by_watcher = (caller != std::this_thread::get_id());
+        elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - start);
+        watch.stop();
+        unwatched_after_stop = !token->watched();
+      });
+
+  BOOST_CHECK(watched);
+  BOOST_CHECK(broken_off);
+  BOOST_CHECK(called_by_watcher);
+  BOOST_CHECK(unwatched_after_stop);
+  BOOST_CHECK_LT(elapsed.count(), 2000);
 }
 
 // Nothing is watched outside thread pool workers, or without a deadline or a probe

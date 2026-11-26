@@ -235,8 +235,24 @@ then stops at the next boost interruption point (`boost::this_thread::interrupti
 boost sleeps, waits on boost condition variables and on `Fmi::AsyncTask`s), also where it
 does not call `Fmi::check_cancelled()`. The `HandlerView` catches the interruption so
 that the worker survives, clears an interruption the handler did not reach, and replaces
-the response with a 503. Blocking calls which are not interruption points, such as
-database queries and `std::` waits, are not cut short.
+the response with a 503. While watched, the token's checks only read the state the
+watcher sets (`Fmi::CancellationToken::beginWatch()`), and the watcher's thread calls the
+token's `Fmi::CancellationCallback`s when it cancels it. They break off blocking calls
+which are not interruption points, such as database queries
+(`Fmi::Database::PostgreSQLConnection` registers one for each query) and `std::` waits.
+The server also has the watcher watch each chunk of a streamed response.
+
+The time limit and the disconnect setting belong to the handler: `addContentHandler()`
+reads `plugins.<name>.request_timeout` and `plugins.<name>.cancel_on_disconnect` (the
+section found like that of `ip_filters`, host specific overrides apply; the default of the
+latter is the server wide `cancel_on_disconnect`) and stores them in the `HandlerView`
+(`getRequestTimeout()`, `getCancelOnDisconnect()`), where the server reads them. The
+configured limit overrides the plugin's own default, `HandlerOptions::RequestTimeout()`;
+without either there is no limit. The `settimeout` admin request
+(`uri=/name&timeout=seconds`, authentication required) changes the limit of a handler
+until the plugin is reinitialized, and `serviceinfo` through the admin URI lists the
+limits. A server wide `request_timeout` is no longer used, a warning is printed if it is
+set.
 
 The server (`AsyncConnection`) then chooses a pool:
 

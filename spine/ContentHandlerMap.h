@@ -144,10 +144,19 @@ public:
         HandlerOptions& IsPrefix(bool b = true);
         HandlerOptions& addSupportedPostContentType(const std::string& type);
 
+        /**
+         *  @brief Seconds a request may take before the server cancels it (0 = unlimited)
+         *
+         *  The default of the handler. plugins.<name>.request_timeout in the server
+         *  configuration overrides it.
+         */
+        HandlerOptions& RequestTimeout(unsigned int seconds);
+
         const std::string& uri() const;
         bool getPrivate() const;
         bool getIsPrefix() const;
         const std::set<std::string>& supportedPostContentTypes() const;
+        std::optional<unsigned int> getRequestTimeout() const;
 
         /**
          *  @brief Template method for adding supported POST content types from iterator range
@@ -572,6 +581,8 @@ private:
                                              const HTTP::Request& theRequest) const;
 
     bool setLoggingRequest(const Reactor& reactor, const HTTP::Request& theRequest);
+
+    bool setTimeoutRequest(const Reactor& reactor, const HTTP::Request& theRequest);
 
     std::unique_ptr<Table> serviceInfoRequest(const Reactor& /*unused*/,
                                               const HTTP::Request& /*unused*/);

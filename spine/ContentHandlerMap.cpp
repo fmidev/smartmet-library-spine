@@ -124,6 +124,11 @@ struct ContentHandlerMap::HandlerOptions::Impl
          */
         std::set<std::string> supportedPostContentTypes;
 
+        /**
+         *  @brief Seconds a request may take (0 = unlimited), unset for the server default
+         */
+        std::optional<unsigned int> requestTimeout;
+
         Impl(const std::string& theUri)
             : uri(theUri)
         {
@@ -135,7 +140,8 @@ struct ContentHandlerMap::HandlerOptions::Impl
             : uri(other.uri),
               handlesUriPrefix(other.handlesUriPrefix),
               isPrivate(other.isPrivate),
-              supportedPostContentTypes(other.supportedPostContentTypes)
+              supportedPostContentTypes(other.supportedPostContentTypes),
+              requestTimeout(other.requestTimeout)
         {
         }
 
@@ -204,6 +210,17 @@ const std::set<std::string>& ContentHandlerMap::HandlerOptions::supportedPostCon
     return itsImpl->supportedPostContentTypes;
 }
 
+ContentHandlerMap::HandlerOptions& ContentHandlerMap::HandlerOptions::RequestTimeout(unsigned int seconds)
+{
+    itsImpl->requestTimeout = seconds;
+    return *this;
+}
+
+std::optional<unsigned int> ContentHandlerMap::HandlerOptions::getRequestTimeout() const
+{
+    return itsImpl->requestTimeout;
+}
+
 ContentHandlerMap::ContentHandlerMap(const Options& options)
 try
     : itsOptions(options)
@@ -262,6 +279,21 @@ try
     "serviceinfo",
     AdminRequestAccess::Public,
     std::bind(&ContentHandlerMap::serviceInfoRequest, this, p::_1, p::_2), "Get info about available services");
+
+  addAdminBoolRequestHandler(
+    NoTarget{},
+    "settimeout",
+    AdminRequestAccess::RequiresAuthentication,
+    std::bind(&ContentHandlerMap::setTimeoutRequest, this, p::_1, p::_2),
+    "Set the request time limit of a URI in seconds until the plugin is reinitialized "
+    "(uri=/name&timeout=seconds, 0 = unlimited)");
+
+  // The time limits are plugin specific since the server wide setting was removed
+  if (itsOptions.itsConfig.exists("request_timeout"))
+    std::cout << Spine::log_time_str() << ANSI_BOLD_ON << ANSI_FG_RED
+              << " The server wide request_timeout setting is not used, set "
+                 "plugins.<name>.request_timeout instead"
+              << ANSI_BOLD_OFF << ANSI_FG_DEFAULT << std::endl;
 }
 catch (...)
 {
@@ -313,6 +345,45 @@ namespace
       if (ch != '-' && ch != '_')
         key += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
     return key;
+  }
+
+  // Cancellation settings of the requests of a plugin in the server configuration
+  struct RequestCancellation
+  {
+    std::optional<unsigned int> timeout;  // plugins.<name>.request_timeout
+    bool cancelOnDisconnect = false;      // plugins.<name>.cancel_on_disconnect or the default
+  };
+
+  // The plugin section is found like that of the IP filters. Host specific overrides apply.
+  RequestCancellation request_cancellation(const libconfig::Config& theConfig,
+                                           const std::string& thePluginName)
+  {
+    RequestCancellation result;
+    lookupHostSetting(theConfig, result.cancelOnDisconnect, "cancel_on_disconnect");
+
+    if (!theConfig.exists("plugins"))
+      return result;
+
+    const libconfig::Setting& plugins = theConfig.lookup("plugins");
+    const std::string key = filter_key(thePluginName);
+    for (int i = 0; i < plugins.getLength(); i++)
+    {
+      const char* name = plugins[i].getName();
+      if (name == nullptr || filter_key(name) != key)
+        continue;
+
+      const std::string section = "plugins."s + name;
+      int timeout = 0;
+      if (lookupHostSetting(theConfig, timeout, section + ".request_timeout"))
+      {
+        if (timeout < 0)
+          throw Fmi::Exception(BCP, section + ".request_timeout must not be negative");
+        result.timeout = static_cast<unsigned int>(timeout);
+      }
+      lookupHostSetting(theConfig, result.cancelOnDisconnect, section + ".cancel_on_disconnect");
+      break;
+    }
+    return result;
   }
 }
 
@@ -430,6 +501,20 @@ try
                                                        options.supportedPostContentTypes(),
                                                        itsOptions.accesslogdir,
                                                        itsOptions.otel));
+
+  // Cancellation of the requests of a plugin: the configuration overrides the handler options.
+  // The admin and info requests are not limited.
+  if (thePlugin)
+  {
+    const auto cancellation = request_cancellation(itsOptions.itsConfig, pluginName);
+    const unsigned int timeout =
+        cancellation.timeout.value_or(options.getRequestTimeout().value_or(0));
+    handler->setRequestTimeout(timeout);
+    handler->setCancelOnDisconnect(cancellation.cancelOnDisconnect);
+    if (timeout > 0)
+      std::cout << Spine::log_time_str() << " Requests to URI " << options.uri()
+                << " are cancelled after " << timeout << " seconds" << std::endl;
+  }
 
   if (options.getIsPrefix())
   {
@@ -1554,12 +1639,23 @@ bool ContentHandlerMap::setLoggingRequest(const Reactor& /*reactor*/,
 }
 
 std::unique_ptr<Table> ContentHandlerMap::serviceInfoRequest(const Reactor& /*unused*/,
-                                                             const HTTP::Request& /*unused*/)
+                                                             const HTTP::Request& theRequest)
 try
 {
+  // The settings of the request cancellation are shown only through the admin URI
+  const auto& adminUri = itsAdminHandlerInfo->itsAdminUri;
+  const bool isAdmin = adminUri && theRequest.getResource() == *adminUri;
+
   std::unique_ptr<Table> result(new SmartMet::Spine::Table);
   result->setTitle("Available services");
-  result->setNames({"   URI   ", "   Is prefix   ", "   Provided by   "});
+  if (isAdmin)
+    result->setNames({"   URI   ",
+                      "   Is prefix   ",
+                      "   Provided by   ",
+                      "   Request timeout   ",
+                      "   Cancel on disconnect   "});
+  else
+    result->setNames({"   URI   ", "   Is prefix   ", "   Provided by   "});
   ReadLock lock(itsContentMutex);
   int row = 0;
   for (const auto& item : itsHandlers)
@@ -1570,9 +1666,53 @@ try
     result->set(0, row, name);
     result->set(1, row, (itsUriPrefixes.count(name) ? "yes" : "no"));
     result->set(2, row, (plugin ? plugin->getPluginName() + " plugin" : "<builtin>" ));
+    if (isAdmin)
+    {
+      const auto timeout = handler->getRequestTimeout();
+      result->set(3, row, (timeout > 0 ? Fmi::to_string(timeout) : "-"));
+      result->set(4, row, (handler->getCancelOnDisconnect() ? "yes" : "no"));
+    }
     row++;
   }
   return result;
+}
+catch (...)
+{
+  throw Fmi::Exception::Trace(BCP, "Operation failed!");
+}
+
+bool ContentHandlerMap::setTimeoutRequest(const Reactor& /*unused*/,
+                                          const HTTP::Request& theRequest)
+try
+{
+  const auto uri = theRequest.getParameter("uri");
+  const auto timeout = theRequest.getParameter("timeout");
+  if (!uri || !timeout)
+    throw Fmi::Exception(BCP, "Parameters uri and timeout are required");
+
+  int seconds = 0;
+  try
+  {
+    seconds = Fmi::stoi(*timeout);
+  }
+  catch (...)
+  {
+    throw Fmi::Exception(BCP, "Invalid timeout value: " + *timeout);
+  }
+  if (seconds < 0)
+    throw Fmi::Exception(BCP, "The timeout must not be negative");
+
+  ReadLock lock(itsContentMutex);
+  const auto pos = itsHandlers.find(*uri);
+  if (pos == itsHandlers.end())
+    throw Fmi::Exception(BCP, "Unknown URI: " + *uri);
+  if (pos->second->getPlugin() == nullptr)
+    throw Fmi::Exception(BCP, "The requests to " + *uri + " are not limited");
+
+  pos->second->setRequestTimeout(static_cast<unsigned int>(seconds));
+  std::cout << Spine::log_time_str() << " Request timeout of URI " << *uri << " set to "
+            << seconds << " seconds" << std::endl;
+  return true;
 }
 catch (...)
 {
